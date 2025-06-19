@@ -67,13 +67,13 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Activity</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 {% if admins %}
                     {% for admin in admins %}
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50" data-office-admin-id="{{ admin.office_admin_id }}">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0 h-10 w-10 relative">
@@ -123,38 +123,24 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ admin.last_activity.strftime('%Y-%m-%d %H:%M') if admin.last_activity else 'Never' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div class="flex justify-end space-x-2">
+                        </td>                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-2">
                                 <button 
+                                    onclick="showAdminDetails({{ admin.id }})"
                                     class="text-blue-600 hover:text-blue-900"
-                                    onclick="window.location.href='{{ url_for('admin.view_admin_details', admin_id=admin.id) }}'"
                                     title="View Details">
                                     <i class="fas fa-eye"></i>
-                                </button>
-                                <button 
+                                </button>                                <button 
+                                    onclick="window.location.href='{{ url_for('admin.edit_office_admin', admin_id=admin.office_admin_id) }}'"
                                     class="text-green-600 hover:text-green-900"
-                                    onclick="showReassignModal({{ admin.id }}, '{{ admin.first_name }} {{ admin.last_name }}', {{ admin.office_id }})"
-                                    title="Reassign Office">
-                                    <i class="fas fa-exchange-alt"></i>
+                                    title="Edit Admin">
+                                    <i class="fas fa-edit"></i>
                                 </button>
                                 <button 
-                                    class="{% if admin.is_active %}text-orange-600 hover:text-orange-900{% else %}text-green-600 hover:text-green-900{% endif %}"
-                                    onclick="toggleAdminStatus({{ admin.id }}, {{ admin.is_active|tojson }})"
-                                    title="{% if admin.is_active %}Deactivate{% else %}Activate{% endif %} Account">
-                                    <i class="fas {% if admin.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
-                                </button>
-                                <button 
-                                    class="{% if admin.account_locked %}text-green-600 hover:text-green-900{% else %}text-red-600 hover:text-red-900{% endif %}"
-                                    onclick="showLockToggleModal({{ admin.id }}, {{ admin.account_locked|tojson }})"
-                                    title="{% if admin.account_locked %}Unlock{% else %}Lock{% endif %} Account">
-                                    <i class="fas {% if admin.account_locked %}fa-unlock{% else %}fa-lock{% endif %}"></i>
-                                </button>
-                                <button 
-                                    class="text-red-600 hover:text-red-900"
                                     onclick="showDeleteModal({{ admin.id }}, '{{ admin.first_name }} {{ admin.last_name }}')"
+                                    class="text-red-600 hover:text-red-900"
                                     title="Delete Account">
-                                    <i class="fas fa-trash-alt"></i>
+                                    <i class="fas fa-user-minus"></i>
                                 </button>
                             </div>
                         </td>
@@ -585,128 +571,13 @@
                 showToast(`Error: ${error.message}`, 'error');
             });
         });
-    }
-
-    // Function to show admin details modal
+    }    // Function to show admin details page  
     function showAdminDetails(adminId) {
-        currentAdminId = adminId;
-        const modal = document.getElementById('adminDetailsModal');
-        const content = document.getElementById('adminDetailsContent');
-        
-        content.innerHTML = `
-            <div class="text-center w-full">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
-                <p class="mt-2 text-gray-600">Loading admin details...</p>
-            </div>
-        `;
-        
-        modal.classList.remove('hidden');
-        
-        fetch(`/admin/${adminId}/details`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            // Check if response is JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                throw new Error('Received non-JSON response from server');
-            }
-        })
-        .then(data => {
-            const lastActivity = data.last_activity ? data.last_activity : 'Never';
-            const activeStatus = data.is_active ? 
-                '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>' : 
-                '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Inactive</span>';
-            const lockStatus = data.account_locked ? 
-                '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Locked</span>' : 
-                '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Unlocked</span>';
-            
-            // Add connection status to details
-            const connectionStatus = data.is_online ? 
-                '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Online</span>' : 
-                '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Offline</span>';
-            
-            content.innerHTML = `
-                <div class="w-full">
-                    <div class="flex items-center mb-4">
-                        <div class="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 text-xl font-semibold relative">
-                            ${data.first_name[0]}${data.last_name[0]}
-                            <span 
-                                class="absolute bottom-0 right-0 w-4 h-4 rounded-full ${data.is_online ? 'bg-green-500' : 'bg-gray-400'} border-2 border-white"
-                                title="${data.is_online ? 'Online' : 'Offline'}">
-                            </span>
-                        </div>
-                        <div class="ml-4">
-                            <h3 class="text-lg font-semibold">${data.first_name} ${data.middle_name || ''} ${data.last_name}</h3>
-                            <p class="text-gray-600">${data.email}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="border-t border-gray-200 pt-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Office</p>
-                                <p class="mt-1 text-sm text-gray-900">${data.office_name}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Account Status</p>
-                                <p class="mt-1 text-sm text-gray-900">${activeStatus} ${lockStatus}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Created On</p>
-                                <p class="mt-1 text-sm text-gray-900">${data.created_at}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Connection Status</p>
-                                <p class="mt-1 text-sm text-gray-900">${connectionStatus}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Last Activity</p>
-                                <p class="mt-1 text-sm text-gray-900">${lastActivity}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="border-t border-gray-200 pt-4 mt-4">
-                        <div class="flex justify-between">
-                            <button onclick="showReassignModal(${data.id}, '${data.first_name} ${data.last_name}', ${data.office_id})" 
-                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                <i class="fas fa-exchange-alt mr-2"></i> Reassign
-                            </button>
-                            <button onclick="toggleAdminStatus(${data.id}, ${data.is_active})"
-                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-white ${data.is_active ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                <i class="fas ${data.is_active ? 'fa-user-slash' : 'fa-user-check'} mr-2"></i>
-                                ${data.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
-                            <button onclick="showDeleteModal(${data.id}, '${data.first_name} ${data.last_name}')"
-                                    class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                <i class="fas fa-trash-alt mr-2"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        })
-        .catch(error => {
-            content.innerHTML = `
-                <div class="w-full text-center">
-                    <div class="rounded-full bg-red-100 p-3 mx-auto w-fit">
-                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
-                    </div>
-                    <p class="mt-2 text-red-600">Error loading admin details: ${error.message}</p>
-                </div>
-            `;
-        });
+        // Find the office_admin_id from the table row data
+        const button = document.querySelector(`[onclick*="showAdminDetails(${adminId})"]`);
+        const row = button.closest('tr');
+        const officeAdminId = row.getAttribute('data-office-admin-id');
+        window.location.href = `/admin/office_admin/${officeAdminId}/`;
     }
 
     // Function to show the reassign modal
