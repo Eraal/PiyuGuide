@@ -679,3 +679,48 @@ def save_session_notes(session_id):
             'success': False,
             'message': f'Error saving notes: {str(e)}'
         }), 500
+
+
+@office_bp.route('/sessions/<int:session_id>/notes', methods=['POST'])
+@login_required
+def update_session_notes(session_id):
+    """Save notes for a counseling session during or after the call"""
+    if current_user.role != 'office_admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+    
+    # Check if counselor is assigned to this session or if admin belongs to the office
+    if (session.counselor_id != current_user.id and 
+        session.office_id != current_user.office_admin.office_id):
+        return jsonify({'success': False, 'message': 'You do not have permission to edit notes for this session'}), 403
+    
+    try:
+        data = request.get_json()
+        notes = data.get('notes', '') if data else request.form.get('notes', '')
+        
+        # Update session notes
+        session.notes = notes
+        
+        # Log activity
+        AuditLog.log_action(
+            actor=current_user,
+            action="Updated session notes",
+            target_type="counseling_session",
+            status=session.status,
+            is_success=True,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Notes saved successfully',
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error saving notes: {str(e)}'}), 500

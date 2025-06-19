@@ -1,426 +1,908 @@
-{% extends "office/office_base.html" %}
-
-{% block title %}Video Counseling Session{% endblock %}
-
-{% block styles %}
-<style>
-    /* Video container styles */
-    .video-container {
-        position: relative;
-        overflow: hidden;
-        border-radius: 0.5rem;
-    }
-    
-    /* Video overlay for user information */
-    .video-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 1rem;
-        background: rgba(0, 0, 0, 0.5);
-        color: white;
-    }
-    
-    /* Control button styles */
-    .control-btn {
-        width: 3rem;
-        height: 3rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 9999px;
-        transition: all 0.2s;
-    }
-    
-    .control-btn:hover {
-        transform: scale(1.1);
-    }
-    
-    /* Chat panel scrollbar hiding */
-    .hide-scrollbar {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-    }
-    
-    .hide-scrollbar::-webkit-scrollbar {
-        display: none;  /* Chrome, Safari, Opera */
-    }
-</style>
+{% extends "office/office_base.html" %} 
+{% block title %}Video Session | KapiyuGuide{% endblock %} 
+{% block head_extra %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
-    <!-- Session Header -->
-    <div class="mb-6">
-        <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-800">Video Counseling Session</h1>
-            <div class="text-sm text-gray-600">
-                <span>Session ID: {{ session.id }}</span>
-                <span class="mx-2">|</span>
-                <span>Student: {{ student_user.get_full_name() }}</span>
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+  <div class="flex flex-col h-screen max-h-screen">
+    <!-- Enhanced Header -->
+    <div class="bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-lg relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-green-600/10 via-emerald-600/10 to-teal-600/10"></div>
+      <div class="relative p-6 flex justify-between items-center">
+        <div class="flex items-center space-x-6">
+          <a
+            href="{{ url_for('office.video_counseling') }}"
+            class="group flex items-center text-slate-600 hover:text-green-600 transition-all duration-300 font-medium"
+          >
+            <div class="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-green-100 flex items-center justify-center mr-3 transition-all duration-300 group-hover:scale-105">
+              <i class="fas fa-arrow-left text-sm"></i>
             </div>
-        </div>
-        <div class="mt-2 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-info-circle text-blue-500"></i>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-blue-800" id="session-status">
-                        Connecting to session...
-                    </p>
-                </div>
+            <span class="hidden sm:inline">Back to Counseling</span>
+          </a>
+          
+          <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center shadow-lg">
+              <i class="fas fa-video text-white text-lg"></i>
             </div>
+            <div>
+              <h1 class="text-2xl font-bold text-slate-800">Session with {{ student_user.get_full_name() }}</h1>
+              <p class="text-sm text-slate-500 font-medium">Secure & Confidential</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center">
+            <div
+              class="px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-200 text-emerald-700 text-sm rounded-full flex items-center space-x-2 shadow-sm"
+              id="statusIndicator"
+            >
+              <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span id="statusText" class="font-medium">Waiting</span>
+            </div>
+          </div>
         </div>
+        
+        <div class="flex items-center space-x-4">
+          <div
+            id="timer"
+            class="text-slate-700 text-xl font-mono px-4 py-2 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm"
+          >00:00:00</div>
+          <button
+            id="recordButton"
+            class="group flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <i class="fas fa-record-vinyl mr-2 group-hover:animate-spin transition-transform duration-300"></i>
+            <span class="hidden sm:inline">Record</span>
+          </button>
+          <button
+            id="endSessionButton"
+            class="group flex items-center px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <i class="fas fa-phone-slash mr-2 group-hover:rotate-12 transition-transform duration-300"></i>
+            <span class="hidden sm:inline">End Session</span>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div class="lg:col-span-3">
-            <!-- Waiting Room (shown until both participants join) -->
-            <div id="waiting-room" class="bg-white rounded-lg shadow p-6 mb-6">
-                <div class="text-center py-8">
-                    <div class="mb-4">
-                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+    <!-- Enhanced Waiting Room -->
+    <div
+      id="waitingRoomUI"
+      class="flex-grow flex items-center justify-center p-8"
+    >
+      <div class="max-w-2xl w-full">
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+          <div class="p-8 text-center">
+            <!-- Video Preview Section -->
+            <div class="mb-8">
+              <div class="relative inline-block">
+                <div class="w-80 h-60 mx-auto bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden shadow-2xl relative">
+                  <video
+                    id="waitingRoomVideo"
+                    autoplay
+                    playsinline
+                    muted
+                    class="w-full h-full object-cover"
+                  ></video>
+                  <div
+                    id="waitingRoomVideoPlaceholder"
+                    class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900"
+                  >
+                    <div class="text-center">
+                      <i class="fas fa-video-slash text-slate-400 text-5xl mb-4"></i>
+                      <p class="text-slate-300 text-sm">Camera Preview</p>
                     </div>
-                    <h2 class="text-xl font-semibold text-gray-800 mb-2">Waiting Room</h2>
-                    <p class="text-gray-600 mb-4" id="waiting-room-status">
-                        Waiting for student to join...
-                    </p>
-                    <div class="mt-6 max-w-md mx-auto">
-                        <div class="bg-blue-50 p-4 rounded-md text-sm text-blue-700">
-                            <p>The video session will begin automatically once both you and the student have joined.</p>
-                        </div>
+                  </div>
+                  
+                  <!-- Elegant overlay -->
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  <div class="absolute bottom-4 left-4 right-4">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                      <p class="text-white text-sm font-medium">You ({{ current_user.get_full_name() }})</p>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Video Call Container (hidden until call starts) -->
-            <div id="video-call-container" class="hidden">
-                <!-- Remote Video (Student) -->
-                <div class="video-container aspect-video bg-gray-900 rounded-lg shadow-lg mb-4 relative">
-                    <video id="remote-video" autoplay playsinline class="w-full h-full object-cover rounded-lg"></video>
-                    <div class="video-overlay">
-                        <span id="remote-user-name">Student</span>
-                        <div>
-                            <span id="remote-audio-status" class="mr-2"><i class="fas fa-microphone"></i></span>
-                            <span id="remote-video-status"><i class="fas fa-video"></i></span>
-                        </div>
-                    </div>
-                    <!-- Local Video (Picture-in-picture) -->
-                    <div class="absolute top-4 right-4 w-1/4 aspect-video bg-gray-800 rounded shadow-md overflow-hidden">
-                        <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
-                    </div>
+                  </div>
                 </div>
                 
-                <!-- Video Controls -->
-                <div class="bg-white rounded-lg shadow p-4 flex justify-center space-x-4">
-                    <button id="toggle-audio" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Toggle Microphone">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                    <button id="toggle-video" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Toggle Camera">
-                        <i class="fas fa-video"></i>
-                    </button>
-                    <button id="toggle-screen-share" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Share Screen">
-                        <i class="fas fa-desktop"></i>
-                    </button>
-                    <button id="toggle-chat" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Toggle Chat">
-                        <i class="fas fa-comments"></i>
-                    </button>
-                    <button id="leave-session" class="control-btn bg-red-500 hover:bg-red-600 text-white" title="End Session">
-                        <i class="fas fa-phone-slash"></i>
-                    </button>
+                <!-- Floating control buttons -->
+                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4">
+                  <button
+                    id="waitingRoomMicToggle"
+                    class="w-12 h-12 bg-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center border border-slate-200 transition-all duration-300 hover:scale-110 group"
+                    title="Toggle Microphone"
+                  >
+                    <i class="fas fa-microphone text-green-600 group-hover:scale-110 transition-transform duration-300"></i>
+                  </button>
+                  <button
+                    id="waitingRoomCameraToggle"
+                    class="w-12 h-12 bg-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center border border-slate-200 transition-all duration-300 hover:scale-110 group"
+                    title="Toggle Camera"
+                  >
+                    <i class="fas fa-video text-green-600 group-hover:scale-110 transition-transform duration-300"></i>
+                  </button>
                 </div>
+              </div>
             </div>
-            
-            <!-- Session Information -->
-            <div class="mt-6 bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Session Information</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-sm text-gray-600">Scheduled Date:</p>
-                        <p class="font-medium">{{ session.scheduled_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600">Student:</p>
-                        <p class="font-medium">{{ student_user.get_full_name() }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600">Status:</p>
-                        <p class="font-medium">
-                            {% if session.status == 'pending' %}
-                                <span class="text-yellow-600">Pending</span>
-                            {% elif session.status == 'in_progress' %}
-                                <span class="text-green-600">In Progress</span>
-                            {% elif session.status == 'completed' %}
-                                <span class="text-blue-600">Completed</span>
-                            {% elif session.status == 'cancelled' %}
-                                <span class="text-red-600">Cancelled</span>
-                            {% else %}
-                                <span class="text-gray-600">{{ session.status }}</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600">Duration:</p>
-                        <p class="font-medium">{{ session.duration_minutes }} minutes</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Chat Panel (initially hidden on mobile) -->
-        <div id="chat-panel" class="bg-white rounded-lg shadow hidden lg:block">
-            <div class="p-4 border-b border-gray-200">
-                <h3 class="font-semibold text-gray-800">Session Chat</h3>
-            </div>
-            <div id="chat-messages" class="p-4 h-96 overflow-y-auto hide-scrollbar">
-                <div class="text-center text-sm text-gray-500 my-4">
-                    Chat messages will appear here
-                </div>
-            </div>
-            <div class="p-4 border-t border-gray-200">
-                <form id="chat-form" class="flex">
-                    <input 
-                        type="text" 
-                        id="chat-input" 
-                        class="flex-grow rounded-l-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" 
-                        placeholder="Type a message..."
-                    >
-                    <button 
-                        type="submit" 
-                        class="bg-blue-500 text-white px-4 rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Session End Modal -->
-<div id="session-end-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg p-8 max-w-md w-full">
-        <h3 class="text-xl font-bold text-gray-800 mb-4">End Session</h3>
-        <form id="end-session-form">
-            <div class="mb-4">
-                <label for="session-notes" class="block text-sm font-medium text-gray-700 mb-1">Session Notes</label>
-                <textarea 
-                    id="session-notes" 
-                    rows="5" 
-                    class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter session notes here..."
-                ></textarea>
+            <!-- Welcome Content -->
+            <div class="mt-12 mb-8">
+              <h2 class="text-3xl font-bold text-slate-800 mb-3">
+                Counseling Session Waiting Room
+              </h2>
+              <p class="text-lg text-slate-600 mb-8" id="waitingRoomMessage">
+                Waiting for student to join...
+              </p>
+              
+              <!-- Animated loading indicator -->
+              <div class="flex justify-center mb-8">
+                <div class="flex space-x-2">
+                  <div class="w-3 h-3 bg-green-500 rounded-full animate-bounce" style="animation-delay: -0.3s"></div>
+                  <div class="w-3 h-3 bg-green-500 rounded-full animate-bounce" style="animation-delay: -0.15s"></div>
+                  <div class="w-3 h-3 bg-green-500 rounded-full animate-bounce"></div>
+                </div>
+              </div>
             </div>
-            <div class="flex justify-end space-x-3">
-                <button 
-                    type="button" 
-                    id="cancel-end-session" 
-                    class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                    Cancel
-                </button>
-                <button 
-                    type="submit" 
-                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                    End Session
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 
-<!-- Session Ended Modal -->
-<div id="session-ended-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg p-8 max-w-md w-full">
-        <div class="text-center">
-            <div class="mb-4 text-green-500">
-                <i class="fas fa-check-circle text-6xl"></i>
+            <!-- Session Details Card -->
+            <div class="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-6 mb-8 border border-slate-200/50 shadow-sm">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium">Session ID</span>
+                    <span class="font-semibold text-slate-800">{{ session.id }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium">Student</span>
+                    <div class="flex items-center">
+                      {% if student_user.profile_pic %}
+                      <img
+                        src="{{ url_for('static', filename='uploads/profiles/' + student_user.profile_pic) }}"
+                        alt="Profile"
+                        class="h-6 w-6 rounded-full mr-2"
+                      />
+                      {% else %}
+                      <div class="h-6 w-6 rounded-full bg-green-600 flex items-center justify-center mr-2">
+                        <span class="text-xs text-white">{{ student_user.first_name[0] }}{{ student_user.last_name[0] }}</span>
+                      </div>
+                      {% endif %}
+                      <span class="font-semibold text-slate-800">{{ student_user.get_full_name() }}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium">Student ID</span>
+                    <span class="font-semibold text-slate-800">{{ student.student_number }}</span>
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium">Scheduled</span>
+                    <span class="font-semibold text-slate-800">{{ session.scheduled_at.strftime('%H:%M') }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium">Duration</span>
+                    <span class="font-semibold text-slate-800">{{ session.duration_minutes }} min</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium">Date</span>
+                    <span class="font-semibold text-slate-800">{{ session.scheduled_at.strftime('%Y-%m-%d') }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Session Ended</h3>
-            <p class="text-gray-600 mb-6">The counseling session has been completed.</p>            <div class="flex justify-center">
-                <a href="{{ url_for('office.video_counseling') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
-                    Return to Appointments
+
+            <!-- Connection Status -->
+            <div class="flex items-center justify-center space-x-8">
+              <div class="flex items-center space-x-3">
+                <div class="relative">
+                  <div class="w-4 h-4 rounded-full bg-emerald-500" id="counselorIndicator"></div>
+                  <div class="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
+                </div>
+                <span class="text-sm font-medium text-slate-600">You (Ready)</span>
+              </div>
+              <div class="w-px h-8 bg-slate-300"></div>
+              <div class="flex items-center space-x-3">
+                <div class="relative">
+                  <div class="w-4 h-4 rounded-full bg-slate-300" id="studentIndicator"></div>
+                  <div class="absolute inset-0 rounded-full bg-slate-300 animate-ping opacity-75"></div>
+                </div>
+                <span class="text-sm font-medium text-slate-600">Student</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Main Video Area -->
+    <div id="callUI" class="flex-grow flex hidden">
+      <!-- Video Streams -->
+      <div class="flex-grow flex relative bg-gradient-to-br from-slate-900 to-black">
+        <!-- Main Video Stream (Student) -->
+        <div class="flex-grow relative group" id="mainVideoContainer">
+          <video
+            id="remoteVideo"
+            autoplay
+            playsinline
+            class="w-full h-full object-cover"
+          ></video>
+          
+          <!-- Elegant overlay for student info -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="absolute top-6 left-6 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-xl text-sm flex items-center space-x-3 transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <i class="fas fa-user text-white text-xs"></i>
+            </div>
+            <span class="text-white font-medium">{{ student_user.get_full_name() }}</span>
+          </div>
+        </div>
+
+        <!-- Enhanced Self Video (Counselor) -->
+        <div
+          class="absolute bottom-6 right-6 w-72 h-52 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 group hover:scale-105 transition-all duration-300"
+          id="selfVideoContainer"
+        >
+          <video
+            id="localVideo"
+            autoplay
+            playsinline
+            muted
+            class="w-full h-full object-cover"
+          ></video>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+          <div class="absolute bottom-3 left-3 right-3">
+            <div class="bg-white/10 backdrop-blur-sm px-3 py-2 rounded-lg">
+              <span class="text-white text-sm font-medium">You ({{ current_user.get_full_name() }})</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enhanced Side Panel -->
+      <div class="w-96 bg-white/90 backdrop-blur-xl border-l border-white/20 flex flex-col shadow-2xl">
+        <!-- Modern Tabs -->
+        <div class="flex border-b border-slate-200/50 bg-white/50">
+          <button
+            class="flex-1 py-4 text-center text-slate-600 hover:text-green-600 tab-button active font-medium transition-all duration-300 relative group"
+            data-tab="notes"
+          >
+            <div class="flex items-center justify-center space-x-2">
+              <i class="fas fa-sticky-note text-sm"></i>
+              <span>Notes</span>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600 transform scale-x-100 transition-transform duration-300"></div>
+          </button>
+          <button
+            class="flex-1 py-4 text-center text-slate-600 hover:text-green-600 tab-button font-medium transition-all duration-300 relative group"
+            data-tab="info"
+          >
+            <div class="flex items-center justify-center space-x-2">
+              <i class="fas fa-info-circle text-sm"></i>
+              <span>Info</span>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+          </button>
+          <button
+            class="flex-1 py-4 text-center text-slate-600 hover:text-green-600 tab-button font-medium transition-all duration-300 relative group"
+            data-tab="controls"
+          >
+            <div class="flex items-center justify-center space-x-2">
+              <i class="fas fa-sliders-h text-sm"></i>
+              <span>Controls</span>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="flex-grow overflow-y-auto">
+          <!-- Enhanced Notes Tab -->
+          <div class="tab-content active" data-tab="notes">
+            <div class="p-6 space-y-6">
+              <div>
+                <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                  <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-sticky-note text-green-600 text-sm"></i>
+                  </div>
+                  Session Notes
+                </h3>
+                <div class="bg-gradient-to-br from-slate-50 to-white rounded-xl p-5 border border-slate-200/50 space-y-4">
+                  <textarea
+                    id="sessionNotes"
+                    class="w-full h-64 bg-white/70 text-slate-800 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-green-500 border border-slate-300/50 resize-none backdrop-blur-sm"
+                    placeholder="Take notes during your session..."
+                  >{{ session.notes or '' }}</textarea>
+                  <button
+                    id="saveNotes"
+                    class="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl transition-all duration-300 flex items-center justify-center font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <i class="fas fa-save mr-2"></i>
+                    Save Notes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enhanced Info Tab -->
+          <div class="tab-content hidden" data-tab="info">
+            <div class="p-6 space-y-6">
+              <div>
+                <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                  <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-info-circle text-blue-600 text-sm"></i>
+                  </div>
+                  Session Information
+                </h3>
+                <div class="bg-gradient-to-br from-slate-50 to-white rounded-xl p-5 border border-slate-200/50 space-y-4">
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500 font-medium">Session ID</span>
+                    <span class="font-semibold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg">{{ session.id }}</span>
+                  </div>
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500 font-medium">Student</span>
+                    <div class="flex items-center">
+                      {% if student_user.profile_pic %}
+                      <img
+                        src="{{ url_for('static', filename='uploads/profiles/' + student_user.profile_pic) }}"
+                        alt="Profile"
+                        class="h-6 w-6 rounded-full mr-2"
+                      />
+                      {% else %}
+                      <div class="h-6 w-6 rounded-full bg-green-600 flex items-center justify-center mr-2">
+                        <span class="text-xs text-white">{{ student_user.first_name[0] }}{{ student_user.last_name[0] }}</span>
+                      </div>
+                      {% endif %}
+                      <span class="font-semibold text-slate-800">{{ student_user.get_full_name() }}</span>
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500 font-medium">Student ID</span>
+                    <span class="font-semibold text-slate-800">{{ student.student_number }}</span>
+                  </div>
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500 font-medium">Time</span>
+                    <span class="font-semibold text-slate-800">{{ session.scheduled_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                  </div>
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500 font-medium">Duration</span>
+                    <span class="font-semibold text-slate-800">{{ session.duration_minutes }} minutes</span>
+                  </div>
+                </div>
+              </div>
+
+              {% if session.recording %}
+              <div>
+                <h4 class="text-lg font-bold text-slate-800 mb-3 flex items-center">
+                  <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-video text-purple-600 text-sm"></i>
+                  </div>
+                  Recording
+                </h4>
+                <a
+                  href="{{ url_for('static', filename=session.recording.recording_path) }}"
+                  class="group flex items-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl hover:from-purple-100 hover:to-indigo-100 border border-purple-200/50 transition-all duration-300 hover:scale-105"
+                  download
+                >
+                  <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-download text-white text-sm"></i>
+                  </div>
+                  <span class="font-medium text-slate-800">Download Recording</span>
                 </a>
+              </div>
+              {% endif %}
+
+              <div>
+                <h4 class="text-lg font-bold text-slate-800 mb-3 flex items-center">
+                  <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-shield-alt text-green-600 text-sm"></i>
+                  </div>
+                  Privacy & Security
+                </h4>
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200/50 space-y-3">
+                  <div class="flex items-start space-x-3">
+                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                      <i class="fas fa-check text-white text-xs"></i>
+                    </div>
+                    <p class="text-sm text-slate-700">End-to-end encrypted session</p>
+                  </div>
+                  <div class="flex items-start space-x-3">
+                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                      <i class="fas fa-check text-white text-xs"></i>
+                    </div>
+                    <p class="text-sm text-slate-700">HIPAA compliant platform</p>
+                  </div>
+                  <div class="flex items-start space-x-3">
+                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                      <i class="fas fa-check text-white text-xs"></i>
+                    </div>
+                    <p class="text-sm text-slate-700">Session recording with consent</p>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
+          <!-- Enhanced Controls Tab -->
+          <div class="tab-content hidden" data-tab="controls">
+            <div class="p-6 space-y-6">
+              <div>
+                <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                  <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-sliders-h text-purple-600 text-sm"></i>
+                  </div>
+                  Call Controls
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <button
+                    id="micToggle"
+                    class="group p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl hover:from-green-100 hover:to-emerald-100 flex flex-col items-center justify-center border border-green-200/50 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  >
+                    <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <i class="fas fa-microphone text-white"></i>
+                    </div>
+                    <span class="text-sm font-medium text-slate-700">Microphone</span>
+                    <span class="text-xs text-slate-500">Click to toggle</span>
+                  </button>
+                  
+                  <button
+                    id="cameraToggle"
+                    class="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl hover:from-blue-100 hover:to-indigo-100 flex flex-col items-center justify-center border border-blue-200/50 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  >
+                    <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <i class="fas fa-video text-white"></i>
+                    </div>
+                    <span class="text-sm font-medium text-slate-700">Camera</span>
+                    <span class="text-xs text-slate-500">Click to toggle</span>
+                  </button>
+                  
+                  <button
+                    id="screenShareToggle"
+                    class="group p-6 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl hover:from-orange-100 hover:to-amber-100 flex flex-col items-center justify-center border border-orange-200/50 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  >
+                    <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <i class="fas fa-desktop text-white"></i>
+                    </div>
+                    <span class="text-sm font-medium text-slate-700">Screen Share</span>
+                    <span class="text-xs text-slate-500">Share your screen</span>
+                  </button>
+                  
+                  <button
+                    id="fullScreenToggle"
+                    class="group p-6 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl hover:from-purple-100 hover:to-violet-100 flex flex-col items-center justify-center border border-purple-200/50 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  >
+                    <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <i class="fas fa-expand text-white"></i>
+                    </div>
+                    <span class="text-sm font-medium text-slate-700">Full Screen</span>
+                    <span class="text-xs text-slate-500">Expand view</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                  <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-cog text-indigo-600 text-sm"></i>
+                  </div>
+                  Video Settings
+                </h4>
+                <div class="space-y-4">
+                  <div class="bg-white/70 rounded-xl p-4 border border-slate-200/50">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Video Quality</label>
+                    <select
+                      id="videoQuality"
+                      class="w-full bg-white border border-slate-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300"
+                    >
+                      <option value="high">🎥 High Quality (Best experience)</option>
+                      <option value="medium" selected>📹 Medium Quality (Recommended)</option>
+                      <option value="low">📱 Low Quality (Save bandwidth)</option>
+                      <option value="audio">🎵 Audio Only</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                  <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-wifi text-emerald-600 text-sm"></i>
+                  </div>
+                  Connection Status
+                </h4>
+                <div class="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-5 border border-emerald-200/50">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                      <div class="w-4 h-4 bg-emerald-500 rounded-full animate-pulse" id="connectionIndicator"></div>
+                      <span id="connectionStatus" class="font-semibold text-slate-800">Connected</span>
+                    </div>
+                    <div class="px-3 py-1 bg-emerald-200 rounded-full">
+                      <span class="text-xs font-medium text-emerald-800">Stable</span>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-slate-600">Network Speed</span>
+                      <span id="networkStats" class="text-slate-800 font-medium">Calculating...</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-2">
+                      <div class="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full w-4/5 transition-all duration-300"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
-<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+<!-- Enhanced End Session Modal -->
+<div
+  id="endSessionModal"
+  class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/50 backdrop-blur-sm"
+>
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/20">
+      <div class="bg-gradient-to-br from-white to-slate-50 px-6 pt-6 pb-4 sm:p-8 sm:pb-6">
+        <div class="sm:flex sm:items-start">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 sm:mx-0 shadow-lg">
+            <i class="fas fa-phone-slash text-white text-xl"></i>
+          </div>
+          <div class="mt-4 text-center sm:mt-0 sm:ml-6 sm:text-left">
+            <h3 class="text-2xl leading-6 font-bold text-slate-900 mb-2" id="modal-title">
+              End Counseling Session?
+            </h3>
+            <div class="mt-2">
+              <p class="text-slate-600 leading-relaxed">
+                Are you sure you want to end this counseling session? This will complete the session and disconnect the video call for both participants.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <label for="endSessionNotes" class="block text-sm font-medium text-slate-700 mb-2">
+            Session Notes
+          </label>
+          <textarea
+            id="endSessionNotes"
+            rows="4"
+            class="w-full rounded-xl border border-slate-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-4 py-3 text-sm bg-white/70 backdrop-blur-sm transition-all duration-300"
+            placeholder="Add any final notes about this session..."
+          ></textarea>
+        </div>
+
+        {% if session.recording %}
+        <div class="mt-4">
+          <div class="flex items-start space-x-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50">
+            <input
+              id="studentConsent"
+              name="studentConsent"
+              type="checkbox"
+              class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded mt-0.5"
+            />
+            <label for="studentConsent" class="text-sm text-slate-700 leading-relaxed">
+              <span class="font-medium">Recording Consent:</span> Student has given consent to store and use this session recording for educational and therapeutic purposes.
+            </label>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="bg-slate-50/50 px-6 py-4 sm:px-8 sm:flex sm:flex-row-reverse space-y-3 sm:space-y-0 sm:space-x-3 sm:space-x-reverse">
+        <button
+          type="button"
+          id="confirmEndSession"
+          class="w-full inline-flex justify-center items-center rounded-xl border border-transparent shadow-lg px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-base font-semibold text-white hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto transition-all duration-300 hover:scale-105"
+        >
+          <i class="fas fa-check-circle mr-2"></i>
+          Complete Session
+        </button>
+        <button
+          type="button"
+          id="cancelEndSession"
+          class="w-full inline-flex justify-center items-center rounded-xl border border-slate-300 shadow-sm px-6 py-3 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:w-auto transition-all duration-300"
+        >
+          <i class="fas fa-times mr-2"></i>
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<!-- Include counseling socket files -->
 <script src="{{ url_for('static', filename='js/office/websockets/counseling.js') }}"></script>
-<script>
-    // Initialize video counseling client when page loads
-    document.addEventListener('DOMContentLoaded', async () => {
-        // Get session ID from the server
-        const sessionId = {{ session.id }};
-        
-        // Initialize client
-        const client = new VideoCounselingClient(sessionId);
-        await client.init();
-        
-        // DOM elements
-        const waitingRoom = document.getElementById('waiting-room');
-        const waitingRoomStatus = document.getElementById('waiting-room-status');
-        const videoCallContainer = document.getElementById('video-call-container');
-        const sessionStatus = document.getElementById('session-status');
-        const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
-        const remoteUserName = document.getElementById('remote-user-name');
-        const remoteAudioStatus = document.getElementById('remote-audio-status');
-        const remoteVideoStatus = document.getElementById('remote-video-status');
-        const toggleAudioBtn = document.getElementById('toggle-audio');
-        const toggleVideoBtn = document.getElementById('toggle-video');
-        const toggleScreenShareBtn = document.getElementById('toggle-screen-share');
-        const toggleChatBtn = document.getElementById('toggle-chat');
-        const leaveSessionBtn = document.getElementById('leave-session');
-        const chatPanel = document.getElementById('chat-panel');
-        const chatMessages = document.getElementById('chat-messages');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-        const sessionEndModal = document.getElementById('session-end-modal');
-        const endSessionForm = document.getElementById('end-session-form');
-        const cancelEndSession = document.getElementById('cancel-end-session');
-        const sessionEndedModal = document.getElementById('session-ended-modal');
-        const sessionNotes = document.getElementById('session-notes');
-        
-        // Set up event handlers
-        client.onStatusChange = (status) => {
-            sessionStatus.textContent = status;
-            waitingRoomStatus.textContent = status;
-        };
-        
-        client.onLocalStreamUpdate = (stream) => {
-            localVideo.srcObject = stream;
-        };
-        
-        client.onRemoteStreamUpdate = (stream) => {
-            remoteVideo.srcObject = stream;
-        };
-        
-        client.onParticipantJoined = (participant) => {
-            if (participant.role === 'student') {
-                remoteUserName.textContent = participant.username;
-            }
-        };
-        
-        client.onCallStarted = () => {
-            waitingRoom.classList.add('hidden');
-            videoCallContainer.classList.remove('hidden');
-        };
-        
-        client.onCallEnded = () => {
-            sessionEndedModal.classList.remove('hidden');
-        };
-        
-        client.onChatMessage = (message) => {
-            const messageElement = document.createElement('div');
-            messageElement.className = message.user_id === {{ current_user.id }} ? 
-                'flex justify-end mb-3' : 'flex justify-start mb-3';
-            
-            const bubbleColor = message.user_id === {{ current_user.id }} ? 
-                'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800';
-            
-            messageElement.innerHTML = `
-                <div class="${bubbleColor} rounded-lg py-2 px-4 max-w-[80%]">
-                    <p class="text-sm font-medium">${message.username}</p>
-                    <p>${message.message}</p>
-                    <p class="text-xs opacity-70 text-right">${new Date(message.timestamp).toLocaleTimeString()}</p>
-                </div>
-            `;
-            
-            chatMessages.appendChild(messageElement);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        };
-        
-        client.onAudioStateChanged = (data) => {
-            if (data.user_id !== {{ current_user.id }}) {
-                remoteAudioStatus.innerHTML = data.enabled ? 
-                    '<i class="fas fa-microphone"></i>' : 
-                    '<i class="fas fa-microphone-slash text-red-500"></i>';
-            }
-        };
-        
-        client.onVideoStateChanged = (data) => {
-            if (data.user_id !== {{ current_user.id }}) {
-                remoteVideoStatus.innerHTML = data.enabled ? 
-                    '<i class="fas fa-video"></i>' : 
-                    '<i class="fas fa-video-slash text-red-500"></i>';
-            }
-        };
-        
-        // Button event handlers
-        toggleAudioBtn.addEventListener('click', () => {
-            const enabled = client.toggleAudio();
-            toggleAudioBtn.innerHTML = enabled ? 
-                '<i class="fas fa-microphone"></i>' : 
-                '<i class="fas fa-microphone-slash"></i>';
-            toggleAudioBtn.className = enabled ? 
-                'control-btn bg-gray-100 hover:bg-gray-200 text-gray-700' : 
-                'control-btn bg-red-100 hover:bg-red-200 text-red-700';
-        });
-        
-        toggleVideoBtn.addEventListener('click', () => {
-            const enabled = client.toggleVideo();
-            toggleVideoBtn.innerHTML = enabled ? 
-                '<i class="fas fa-video"></i>' : 
-                '<i class="fas fa-video-slash"></i>';
-            toggleVideoBtn.className = enabled ? 
-                'control-btn bg-gray-100 hover:bg-gray-200 text-gray-700' : 
-                'control-btn bg-red-100 hover:bg-red-200 text-red-700';
-        });
-        
-        toggleScreenShareBtn.addEventListener('click', async () => {
-            const isSharing = await client.toggleScreenSharing();
-            toggleScreenShareBtn.innerHTML = isSharing ? 
-                '<i class="fas fa-desktop text-green-500"></i>' : 
-                '<i class="fas fa-desktop"></i>';
-            toggleScreenShareBtn.className = isSharing ? 
-                'control-btn bg-green-100 hover:bg-green-200 text-green-700' : 
-                'control-btn bg-gray-100 hover:bg-gray-200 text-gray-700';
-        });
-        
-        toggleChatBtn.addEventListener('click', () => {
-            chatPanel.classList.toggle('hidden');
-            chatPanel.classList.toggle('lg:block');
-        });
-        
-        leaveSessionBtn.addEventListener('click', () => {
-            sessionEndModal.classList.remove('hidden');
-        });
-        
-        cancelEndSession.addEventListener('click', () => {
-            sessionEndModal.classList.add('hidden');
-        });
-        
-        endSessionForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const notes = sessionNotes.value;
-            await client.endSession(notes);
-            sessionEndModal.classList.add('hidden');
-        });
-        
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = chatInput.value.trim();
-            if (message) {
-                client.sendChatMessage(message);
-                chatInput.value = '';
-            }
-        });
-        
-        // Handle window beforeunload to warn about leaving
-        window.addEventListener('beforeunload', (e) => {
-            if (client.isConnected) {
-                e.preventDefault();
-                e.returnValue = 'Are you sure you want to leave? The session will be disconnected.';
-            }
-        });
-    });
-</script>
+
+<!-- JavaScript Function and Implementation-->
+
+<!-- Create a basic stylesheet for video call interface -->
+<style>
+/* Custom CSS Variables for consistent theming */
+:root {
+  --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-medium: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-large: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Global font styling */
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Enhanced video container */
+.video-call-container {
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Smooth video transitions */
+video {
+  object-fit: cover;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced tab system */
+.tab-button.active {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.tab-button.active .absolute {
+  transform: scaleX(1);
+}
+
+.tab-content {
+  transform: translateY(0);
+  opacity: 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-content.hidden {
+  transform: translateY(10px);
+  opacity: 0;
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Enhanced hover effects */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Glassmorphism effects */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Status indicator animations */
+.status-pulse {
+  animation: pulse-soft 2s infinite;
+}
+
+/* Enhanced button hover states */
+.btn-enhanced {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-enhanced:hover::before {
+  left: 100%;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .video-call-container {
+    height: 100vh;
+  }
+  
+  #selfVideoContainer {
+    width: 200px !important;
+    height: 150px !important;
+    bottom: 4px !important;
+    right: 4px !important;
+  }
+  
+  .w-96 {
+    width: 100% !important;
+  }
+}
+
+/* Loading animations */
+.loading-dots {
+  display: inline-block;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
+
+/* Connection quality indicators */
+.connection-excellent { color: #10b981; }
+.connection-good { color: #f59e0b; }
+.connection-poor { color: #ef4444; }
+
+/* Smooth page transitions */
+.page-transition {
+  animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Focus states for accessibility */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Enhanced modal animations */
+.modal-backdrop {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Notification styles */
+.notification {
+  animation: slideInDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Enhanced gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.gradient-warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.gradient-info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgba(0, 0, 0, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .glass, .glass-strong {
+    border-width: 2px;
+    border-color: currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
 {% endblock %}
