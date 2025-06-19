@@ -1,0 +1,383 @@
+{% extends "student/student_base.html" %} {% block title %}Counseling Session
+Details - KapiyuGuide{% endblock %} {% block content %}
+<div class="max-w-4xl mx-auto">
+  <!-- Back navigation -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('student.counseling_sessions') }}"
+      class="text-blue-600 hover:text-blue-800 flex items-center"
+    >
+      <i class="fas fa-arrow-left mr-2"></i> Back to All Sessions
+    </a>
+  </div>
+
+  <!-- Session details card -->
+  <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="border-b border-gray-200">
+      <div class="px-6 py-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-xl font-semibold text-gray-800">
+            Counseling Session Details
+          </h1>
+
+          <span
+            class="px-3 py-1 rounded-full text-sm font-semibold {% if session.status == 'pending' %}bg-yellow-100 text-yellow-800 {% elif session.status == 'confirmed' %}bg-blue-100 text-blue-800 {% elif session.status == 'in_progress' %}bg-green-100 text-green-800 {% elif session.status == 'completed' %}bg-gray-100 text-gray-800 {% elif session.status == 'cancelled' %}bg-red-100 text-red-800 {% else %}bg-gray-100 text-gray-800{% endif %}"
+          >
+            {{ session.status|title }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <!-- Session information -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div class="mb-6">
+            <h2 class="text-sm font-medium text-gray-500">Office</h2>
+            <p class="text-base font-medium text-gray-900 mt-1">
+              {{ session.office.name }}
+            </p>
+          </div>
+
+          <div class="mb-6">
+            <h2 class="text-sm font-medium text-gray-500">Session Type</h2>
+            <p class="text-base font-medium text-gray-900 mt-1">
+              {% if session.is_video_session %}
+              <span class="inline-flex items-center">
+                <i class="fas fa-video text-blue-500 mr-2"></i> Video Session
+              </span>
+              {% else %}
+              <span class="inline-flex items-center">
+                <i class="fas fa-user text-blue-500 mr-2"></i> In-Person Session
+              </span>
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="mb-6">
+            <h2 class="text-sm font-medium text-gray-500">Counselor</h2>
+            <p class="text-base font-medium text-gray-900 mt-1">
+              {% if session.counselor %} {{ session.counselor.get_full_name() }}
+              {% else %}
+              <span class="text-yellow-600">Not assigned yet</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-6">
+            <h2 class="text-sm font-medium text-gray-500">Date and Time</h2>
+            <p class="text-base font-medium text-gray-900 mt-1">
+              {{ session.scheduled_at.strftime('%B %d, %Y') }}
+            </p>
+            <p class="text-base font-medium text-gray-900">
+              {{ session.scheduled_at.strftime('%I:%M %p') }}
+            </p>
+
+            {% if session.status == 'confirmed' %}
+            <p class="text-xs text-green-600 mt-1">
+              <i class="fas fa-check-circle mr-1"></i> This time has been
+              confirmed by the office
+            </p>
+            {% elif session.status == 'pending' %}
+            <p class="text-xs text-yellow-600 mt-1">
+              <i class="fas fa-info-circle mr-1"></i> The office may adjust this
+              time based on counselor availability
+            </p>
+            {% endif %} {% if "Rescheduled:" in session.notes %}
+            <div class="mt-2 p-2 bg-blue-50 border-l-4 border-blue-500 text-sm">
+              <p class="text-blue-700">
+                <i class="fas fa-calendar-alt mr-1"></i>
+                <strong>Rescheduled:</strong> This session was rescheduled by
+                the office.
+              </p>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-6">
+            <h2 class="text-sm font-medium text-gray-500">Duration</h2>
+            <p class="text-base font-medium text-gray-900 mt-1">
+              {{ session.duration_minutes }} minutes
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes section -->
+      {% if session.notes and "Rescheduled:" not in session.notes %}
+      <div class="mt-6 border-t border-gray-200 pt-6">
+        <h2 class="text-sm font-medium text-gray-500 mb-2">Notes</h2>
+        <div class="bg-gray-50 p-4 rounded-md">
+          <p class="text-gray-800 whitespace-pre-line">{{ session.notes }}</p>
+        </div>
+      </div>
+      {% elif session.notes %}
+      <!-- Notes with rescheduling info handled specially -->
+      <div class="mt-6 border-t border-gray-200 pt-6">
+        <h2 class="text-sm font-medium text-gray-500 mb-2">Notes</h2>
+        <div class="bg-gray-50 p-4 rounded-md">
+          <p class="text-gray-800 whitespace-pre-line">
+            {% for line in session.notes.split('\n') %} {% if not
+            line.startswith("Rescheduled:") %} {{ line }}{% if not loop.last
+            %}<br />{% endif %} {% endif %} {% endfor %}
+          </p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Video session information -->
+      {% if session.is_video_session and session.status == 'in_progress' %}
+      <div class="mt-8 border-t border-gray-200 pt-6">
+        <div class="bg-green-50 p-6 rounded-lg border border-green-200">
+          <h3 class="text-lg font-semibold text-green-800 flex items-center">
+            <i class="fas fa-video mr-2"></i> Your video session is now active!
+          </h3>
+          <p class="mt-2 text-green-700">
+            You can now join the video counseling session. Click the button
+            below to enter the video call.
+          </p>
+
+          <div class="mt-4">
+            <a
+              href="{{ url_for('student.join_video_session', session_id=session.id) }}"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <i class="fas fa-video mr-2"></i> Join Video Session
+            </a>
+          </div>
+
+          {% if session.meeting_password %}
+          <div class="mt-3 text-sm text-green-700 p-2 bg-green-100 rounded-md">
+            <p class="flex items-center">
+              <i class="fas fa-key mr-2"></i>
+              <strong>Session Password:</strong>
+              <span class="ml-2 font-mono bg-white px-2 py-1 rounded"
+                >{{ session.meeting_password }}</span
+              >
+            </p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% elif session.is_video_session and session.status == 'confirmed' %}
+      <div class="mt-8 border-t border-gray-200 pt-6">
+        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+          <h3 class="text-lg font-semibold text-blue-800 flex items-center">
+            <i class="fas fa-info-circle mr-2"></i> Video Session Information
+          </h3>
+          <p class="mt-2 text-blue-700">
+            Your video session has been confirmed. The link to join will
+            automatically appear here when the session is ready (about 5 minutes
+            before the scheduled time).
+          </p>
+          <p class="mt-3 text-blue-700">
+            <i class="fas fa-bell mr-2"></i> You'll receive a notification when
+            it's time to join. Please be ready 5 minutes before your scheduled
+            time.
+          </p>
+        </div>
+      </div>
+      {% elif session.is_video_session and session.status == 'pending' %}
+      <div class="mt-8 border-t border-gray-200 pt-6">
+        <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+          <h3 class="text-lg font-semibold text-yellow-800 flex items-center">
+            <i class="fas fa-clock mr-2"></i> Awaiting Confirmation
+          </h3>
+          <p class="mt-2 text-yellow-700">
+            Your video session request is pending approval. The counseling
+            office may adjust your preferred time based on counselor
+            availability.
+          </p>
+          <p class="mt-2 text-yellow-700">
+            <i class="fas fa-bell mr-2"></i> You will receive a notification
+            when your session is confirmed or rescheduled.
+          </p>
+        </div>
+      </div>
+      {% elif session.status == 'pending' %}
+      <div class="mt-8 border-t border-gray-200 pt-6">
+        <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+          <h3 class="text-lg font-semibold text-yellow-800 flex items-center">
+            <i class="fas fa-clock mr-2"></i> Awaiting Confirmation
+          </h3>
+          <p class="mt-2 text-yellow-700">
+            Your counseling session request is pending approval. The counseling
+            office may adjust your preferred time based on counselor
+            availability.
+          </p>
+          <p class="mt-2 text-yellow-700">
+            <i class="fas fa-bell mr-2"></i> You will receive a notification
+            when your session is confirmed or rescheduled.
+          </p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Action buttons -->
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+      {% if session.status == 'pending' or session.status == 'confirmed' %}
+      <button
+        id="cancelSessionBtn"
+        class="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-md inline-flex items-center"
+      >
+        <i class="fas fa-times-circle mr-2"></i> Cancel Session
+      </button>
+      {% endif %} {% if session.status == 'completed' and
+      session.is_video_session %}
+      <button
+        id="requestRecordingBtn"
+        class="px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md inline-flex items-center"
+      >
+        <i class="fas fa-download mr-2"></i> Request Recording
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Session Modal -->
+<div id="cancelModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black opacity-50"></div>
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div class="p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          Cancel Counseling Session
+        </h3>
+        <p class="text-gray-600 mb-4">
+          Are you sure you want to cancel this counseling session? This action
+          cannot be undone.
+        </p>
+
+        <form
+          id="cancelSessionForm"
+          action="{{ url_for('student.cancel_session', session_id=session.id) }}"
+          method="post"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="mb-4">
+            <label
+              for="reason"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Reason for cancellation</label
+            >
+            <textarea
+              id="reason"
+              name="reason"
+              rows="3"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            ></textarea>
+          </div>
+
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              id="closeCancelModal"
+              class="px-4 py-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-md"
+            >
+              Confirm Cancellation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Auto refresh the page every 60 seconds if session is confirmed or in_progress
+    // This ensures the student gets the video link as soon as it's available
+    {% if session.is_video_session and (session.status == 'confirmed' or session.status == 'in_progress') %}
+    const sessionStatus = "{{ session.status }}";
+
+    // Only auto-refresh if we're close to the session start time
+    const sessionTime = new Date("{{ session.scheduled_at.isoformat() }}");
+    const now = new Date();
+    const minutesUntilSession = (sessionTime - now) / (1000 * 60);
+
+    if (minutesUntilSession <= 20) {
+      // Auto refresh every minute if getting close to session time
+      setTimeout(function() {
+        window.location.reload();
+      }, 60000);
+    }
+    {% endif %}
+
+    // Cancel session modal
+    const cancelBtn = document.getElementById("cancelSessionBtn");
+    const cancelModal = document.getElementById("cancelModal");
+    const closeCancelModalBtn = document.getElementById("closeCancelModal");
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        cancelModal.classList.remove("hidden");
+      });
+    }
+
+    if (closeCancelModalBtn) {
+      closeCancelModalBtn.addEventListener("click", function () {
+        cancelModal.classList.add("hidden");
+      });
+    }
+
+    // Close modal when clicking on overlay
+    cancelModal.addEventListener("click", function (e) {
+      if (e.target === cancelModal) {
+        cancelModal.classList.add("hidden");
+      }
+    });
+
+    // Request recording button
+    const requestRecordingBtn = document.getElementById("requestRecordingBtn");
+    if (requestRecordingBtn) {
+      requestRecordingBtn.addEventListener("click", function () {
+        // Send a fetch request to the server
+        fetch(
+          "{{ url_for('student.request_recording', session_id=session.id) }}",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": document.querySelector('input[name="csrf_token"]')
+                .value,
+            },
+          }
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert(
+                "Your recording request has been sent. You will be notified when it is available."
+              );
+            } else {
+              alert(
+                data.message ||
+                  "Failed to request recording. Please try again later."
+              );
+            }
+          })
+          .catch((error) => {
+            console.error("Error requesting recording:", error);
+            alert(
+              "There was an error processing your request. Please try again later."
+            );
+          });
+      });
+    }
+  });
+</script>
+{% endblock %}

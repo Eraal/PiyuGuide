@@ -1,0 +1,463 @@
+{% extends "student/student_base.html" %}
+{% block title %}Counseling Dashboard - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+    .tab-active {
+        color: #3b82f6;
+        border-bottom: 2px solid #3b82f6;
+    }
+    .tab-inactive {
+        color: #6b7280;
+        border-bottom: 2px solid transparent;
+    }
+    .session-status-pending { 
+        background-color: #fef3c7; 
+        color: #92400e; 
+    }
+    .session-status-confirmed { 
+        background-color: #dbeafe; 
+        color: #1e40af; 
+    }
+    .session-status-in_progress { 
+        background-color: #d1fae5; 
+        color: #065f46; 
+    }
+    .session-status-completed { 
+        background-color: #d1fae5; 
+        color: #065f46; 
+    }
+    .session-status-cancelled { 
+        background-color: #fee2e2; 
+        color: #991b1b; 
+    }
+    .session-status-no-show { 
+        background-color: #f3e8ff; 
+        color: #7c2d12; 
+    }
+    .stats-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .office-card {
+        transition: all 0.3s ease;
+    }
+    .office-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .filter-section {
+        opacity: 0.97;
+    }
+    .session-type-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .session-type-video {
+        background-color: #e0f2fe;
+        color: #0277bd;
+    }
+    .session-type-inperson {
+        background-color: #f3e5f5;
+        color: #6a1b9a;
+    }
+    .upcoming-badge {
+        background-color: #e8f5e8;
+        color: #2e7d32;
+        border: 1px solid #4caf50;
+    }
+    .past-badge {
+        background-color: #fff3e0;
+        color: #f57c00;
+        border: 1px solid #ff9800;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Counseling Dashboard</h1>
+            <p class="text-gray-600">Manage and track your counseling sessions with comprehensive insights</p>
+        </div>
+        <div class="mt-4 md:mt-0 flex gap-3">
+            <a href="{{ url_for('student.counseling_sessions') }}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center transition-all duration-300">
+                <i class="fas fa-list mr-2"></i>
+                <span>Classic View</span>
+            </a>
+            <a href="{{ url_for('student.request_counseling_session') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center transition-all duration-300 transform hover:scale-105">
+                <i class="fas fa-plus-circle mr-2"></i>
+                <span>New Session</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Dashboard -->
+    <div class="mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <!-- Total Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Total Sessions</p>
+                    <h3 class="text-2xl font-bold text-gray-800">{{ stats.total }}</h3>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <i class="fas fa-calendar text-blue-600 text-xl"></i>
+                </div>
+            </div>
+            
+            <!-- Upcoming Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Upcoming</p>
+                    <h3 class="text-2xl font-bold text-green-600">{{ stats.upcoming }}</h3>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full">
+                    <i class="fas fa-clock text-green-600 text-xl"></i>
+                </div>
+            </div>
+            
+            <!-- Pending Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Pending</p>
+                    <h3 class="text-2xl font-bold text-yellow-600">{{ stats.pending }}</h3>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded-full">
+                    <i class="fas fa-hourglass-half text-yellow-600 text-xl"></i>
+                </div>
+            </div>
+            
+            <!-- Completed Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Completed</p>
+                    <h3 class="text-2xl font-bold text-blue-600">{{ stats.completed }}</h3>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <i class="fas fa-check-circle text-blue-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Confirmed Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Confirmed</p>
+                    <h3 class="text-2xl font-bold text-indigo-600">{{ stats.confirmed }}</h3>
+                </div>
+                <div class="bg-indigo-100 p-3 rounded-full">
+                    <i class="fas fa-calendar-check text-indigo-600 text-xl"></i>
+                </div>
+            </div>
+            
+            <!-- Cancelled Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Cancelled</p>
+                    <h3 class="text-2xl font-bold text-red-600">{{ stats.cancelled }}</h3>
+                </div>
+                <div class="bg-red-100 p-3 rounded-full">
+                    <i class="fas fa-times-circle text-red-600 text-xl"></i>
+                </div>
+            </div>
+                        
+            <!-- No Show Sessions -->
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">No Show</p>
+                    <h3 class="text-2xl font-bold text-purple-600">{{ stats.no_show }}</h3>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full">
+                    <i class="fas fa-user-times text-purple-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filter Section -->
+        <div class="filter-section bg-white rounded-xl shadow-sm mt-4 p-5">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">Filter Sessions</h2>
+            <form action="{{ url_for('student.counseling_dashboard') }}" method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select id="status" name="status" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+                        <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="confirmed" {% if current_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                        <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        <option value="no-show" {% if current_status == 'no-show' %}selected{% endif %}>No Show</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="office_id" class="block text-sm font-medium text-gray-700 mb-1">Office</label>
+                    <select id="office_id" name="office_id" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="all" {% if current_office == 'all' %}selected{% endif %}>All Offices</option>
+                        {% for office in offices %}
+                        <option value="{{ office.id }}" {% if current_office|int == office.id %}selected{% endif %}>{{ office.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200">
+                        <i class="fas fa-filter mr-2"></i> Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sessions Table -->
+    <div class="bg-white rounded-xl shadow-sm mb-8">
+        <div class="border-b">
+            <div class="flex overflow-x-auto">
+                <a href="{{ url_for('student.counseling_dashboard') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'all' %}tab-active{% else %}tab-inactive{% endif %}">
+                    All Sessions
+                </a>
+                <a href="{{ url_for('student.counseling_dashboard', status='pending') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'pending' %}tab-active{% else %}tab-inactive{% endif %}">
+                    Pending
+                </a>
+                <a href="{{ url_for('student.counseling_dashboard', status='confirmed') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'confirmed' %}tab-active{% else %}tab-inactive{% endif %}">
+                    Confirmed
+                </a>
+                <a href="{{ url_for('student.counseling_dashboard', status='completed') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'completed' %}tab-active{% else %}tab-inactive{% endif %}">
+                    Completed
+                </a>
+                <a href="{{ url_for('student.counseling_dashboard', status='cancelled') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'cancelled' %}tab-active{% else %}tab-inactive{% endif %}">
+                    Cancelled
+                </a>
+            </div>
+        </div>
+
+        {% if sessions %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="sessions-table">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Office
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date & Time
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Type
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Counselor
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for session in sessions %}
+                    <tr class="hover:bg-gray-50 transition-colors duration-150" data-session-id="{{ session.id }}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ session.office.name }}
+                                </div>
+                                {% if session.scheduled_at > now and session.status in ['pending', 'confirmed'] %}
+                                <span class="ml-2 upcoming-badge text-xs px-2 py-1 rounded-full">Upcoming</span>
+                                {% elif session.scheduled_at < now and session.status in ['completed', 'no-show', 'cancelled'] %}
+                                <span class="ml-2 past-badge text-xs px-2 py-1 rounded-full">Past</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
+                                {{ session.scheduled_at.strftime('%b %d, %Y') }}
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                {{ session.scheduled_at.strftime('%I:%M %p') }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if session.is_video_session %}
+                            <span class="session-type-badge session-type-video">
+                                <i class="fas fa-video mr-1"></i> Video
+                            </span>
+                            {% else %}
+                            <span class="session-type-badge session-type-inperson">
+                                <i class="fas fa-user mr-1"></i> In-Person
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
+                                {% if session.counselor %}
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-8 w-8">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <span class="text-sm font-medium text-blue-600">
+                                                {{ session.counselor.first_name[0] }}{{ session.counselor.last_name[0] }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-3">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ session.counselor.first_name }} {{ session.counselor.last_name }}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-yellow-600 text-sm">
+                                    <i class="fas fa-clock mr-1"></i> Not assigned yet
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="session-status px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full session-status-{{ session.status }}">
+                                {{ session.status|replace('_', ' ')|title }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex items-center space-x-2">
+                                <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="text-blue-600 hover:text-blue-800 transition-colors duration-150">
+                                    <i class="fas fa-eye mr-1"></i> View
+                                </a>
+                                {% if session.status == 'confirmed' and session.is_video_session and session.scheduled_at <= now + timedelta(minutes=15) and session.scheduled_at >= now - timedelta(minutes=15) %}
+                                <a href="#" class="text-green-600 hover:text-green-800 transition-colors duration-150">
+                                    <i class="fas fa-video mr-1"></i> Join
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+        <div class="px-6 py-4 bg-gray-50 border-t flex justify-between items-center rounded-b-xl">
+            <div>
+                <span class="text-sm text-gray-700">
+                    Showing <span class="font-medium">{{ pagination.page }}</span> of <span class="font-medium">{{ pagination.pages }}</span> pages
+                </span>
+            </div>
+            <div class="flex items-center space-x-2">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('student.counseling_dashboard', page=pagination.prev_num, status=current_status, office_id=current_office) }}" class="px-3 py-1 border rounded text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-150">
+                    <i class="fas fa-chevron-left mr-1"></i> Previous
+                </a>
+                {% else %}
+                <span class="px-3 py-1 border rounded text-sm text-gray-400 cursor-not-allowed">
+                    <i class="fas fa-chevron-left mr-1"></i> Previous
+                </span>
+                {% endif %}
+
+                {% if pagination.has_next %}
+                <a href="{{ url_for('student.counseling_dashboard', page=pagination.next_num, status=current_status, office_id=current_office) }}" class="px-3 py-1 border rounded text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-150">
+                    Next <i class="fas fa-chevron-right ml-1"></i>
+                </a>
+                {% else %}
+                <span class="px-3 py-1 border rounded text-sm text-gray-400 cursor-not-allowed">
+                    Next <i class="fas fa-chevron-right ml-1"></i>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="py-16 text-center">
+            <i class="fas fa-calendar-times text-gray-400 text-5xl mb-4"></i>
+            <h3 class="text-xl font-medium text-gray-700">No counseling sessions found</h3>
+            <p class="text-gray-500 mt-1">You haven't scheduled any sessions yet or none match your current filters</p>
+            <a href="{{ url_for('student.request_counseling_session') }}" class="mt-6 inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105">
+                <i class="fas fa-plus-circle mr-2"></i> Schedule New Session
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- University Offices Section -->
+    <div class="mb-6" id="offices-section">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-building mr-2 text-blue-600"></i>
+            Available Counseling Offices
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for office in offices %}
+            <div class="office-card bg-white rounded-xl shadow-sm">
+                <div class="p-6">
+                    <div class="flex items-start">
+                        <div class="rounded-full p-3 bg-blue-100 text-blue-600">
+                            <i class="fas fa-user-tie text-xl"></i>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <h3 class="text-lg font-medium text-gray-900">{{ office.name }}</h3>
+                            <p class="text-sm text-gray-500 mt-1">{{ office.description|truncate(100) }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            {% if office.supports_video %}
+                            <span class="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                                <i class="fas fa-video mr-1"></i> Video Available
+                            </span>
+                            {% endif %}
+                            <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                                <i class="fas fa-user mr-1"></i> In-Person
+                            </span>
+                        </div>
+                        <a href="{{ url_for('student.request_counseling_session', office_id=office.id) }}" class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md transition-colors duration-200">
+                            Schedule <i class="fas fa-chevron-right ml-1 text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Real-time updates functionality would go here
+        // This could integrate with the existing WebSocket system
+        
+        // Highlight effect for office cards when coming from "New Session" button
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'new') {
+            const officesSection = document.getElementById('offices-section');
+            officesSection.scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+            officesSection.classList.add('animate-pulse');
+            setTimeout(() => {
+                officesSection.classList.remove('animate-pulse');
+            }, 1500);
+        }
+
+        // Auto-refresh stats every 30 seconds
+        setInterval(function() {
+            // This would make an AJAX call to refresh stats without full page reload
+            // Could be implemented later for real-time updates
+        }, 30000);
+    });
+</script>
+{% endblock %}

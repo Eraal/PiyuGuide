@@ -1,0 +1,448 @@
+{% extends 'student/student_base.html' %}
+
+{% block title %}Video Counseling Session{% endblock %}
+
+{% block styles %}
+<style>
+    /* Video container styles */
+    .video-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 0.5rem;
+    }
+    
+    /* Video overlay for user information */
+    .video-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+    }
+    
+    /* Control button styles */
+    .control-btn {
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        transition: all 0.2s;
+    }
+    
+    .control-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    /* Chat panel scrollbar hiding */
+    .hide-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+    
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;  /* Chrome, Safari, Opera */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Session Header -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Video Counseling Session</h1>
+            <div class="text-sm text-gray-600">
+                <span>Session ID: {{ session.id }}</span>
+                <span class="mx-2">|</span>
+                <span>Office: {{ session.office.name }}</span>
+            </div>
+        </div>
+        <div class="mt-2 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle text-blue-500"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-blue-800" id="session-status">
+                        Connecting to session...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div class="lg:col-span-3">
+            <!-- Waiting Room (shown until both participants join) -->
+            <div id="waiting-room" class="bg-white rounded-lg shadow p-6 mb-6">
+                <div class="text-center py-8">
+                    <div class="mb-4">
+                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+                    </div>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-2">Waiting Room</h2>
+                    <p class="text-gray-600 mb-4" id="waiting-room-status">
+                        Waiting for counselor to join...
+                    </p>
+                    <div class="mt-6 max-w-md mx-auto">
+                        <div class="bg-blue-50 p-4 rounded-md text-sm text-blue-700">
+                            <p>The video session will begin automatically once both you and the counselor have joined.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Video Call Container (hidden until call starts) -->
+            <div id="video-call-container" class="hidden">
+                <!-- Remote Video (Counselor) -->
+                <div class="video-container aspect-video bg-gray-900 rounded-lg shadow-lg mb-4 relative">
+                    <video id="remote-video" autoplay playsinline class="w-full h-full object-cover rounded-lg"></video>
+                    <div class="video-overlay">
+                        <span id="remote-user-name">Counselor</span>
+                        <div>
+                            <span id="remote-audio-status" class="mr-2"><i class="fas fa-microphone"></i></span>
+                            <span id="remote-video-status"><i class="fas fa-video"></i></span>
+                        </div>
+                    </div>
+                    <!-- Local Video (Picture-in-picture) -->
+                    <div class="absolute top-4 right-4 w-1/4 aspect-video bg-gray-800 rounded shadow-md overflow-hidden">
+                        <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    </div>
+                </div>
+                
+                <!-- Video Controls -->
+                <div class="bg-white rounded-lg shadow p-4 flex justify-center space-x-4">
+                    <button id="toggle-audio" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Toggle Microphone">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="toggle-video" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Toggle Camera">
+                        <i class="fas fa-video"></i>
+                    </button>
+                    <button id="toggle-screen-share" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Share Screen">
+                        <i class="fas fa-desktop"></i>
+                    </button>
+                    <button id="toggle-chat" class="control-btn bg-gray-100 hover:bg-gray-200 text-gray-700" title="Toggle Chat">
+                        <i class="fas fa-comments"></i>
+                    </button>
+                    <button id="leave-session" class="control-btn bg-red-500 hover:bg-red-600 text-white" title="Leave Session">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Session Information -->
+            <div class="mt-6 bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Session Information</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Scheduled Date:</p>
+                        <p class="font-medium">{{ session.scheduled_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Counselor:</p>
+                        <p class="font-medium">{{ counselor.get_full_name() if counselor else 'Not assigned yet' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Status:</p>
+                        <p class="font-medium">
+                            {% if session.status == 'pending' %}
+                                <span class="text-yellow-600">Pending</span>
+                            {% elif session.status == 'in_progress' %}
+                                <span class="text-green-600">In Progress</span>
+                            {% elif session.status == 'completed' %}
+                                <span class="text-blue-600">Completed</span>
+                            {% elif session.status == 'cancelled' %}
+                                <span class="text-red-600">Cancelled</span>
+                            {% else %}
+                                <span class="text-gray-600">{{ session.status }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Duration:</p>
+                        <p class="font-medium">{{ session.duration_minutes }} minutes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Panel (initially hidden on mobile) -->
+        <div id="chat-panel" class="bg-white rounded-lg shadow hidden lg:block">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="font-semibold text-gray-800">Session Chat</h3>
+            </div>
+            <div id="chat-messages" class="p-4 h-96 overflow-y-auto hide-scrollbar">
+                <div class="text-center text-sm text-gray-500 my-4">
+                    Chat messages will appear here
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-200">
+                <form id="chat-form" class="flex">
+                    <input 
+                        type="text" 
+                        id="chat-input" 
+                        class="flex-grow rounded-l-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" 
+                        placeholder="Type a message..."
+                    >
+                    <button 
+                        type="submit" 
+                        class="bg-blue-500 text-white px-4 rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Session Confirmation Modal -->
+<div id="leave-session-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-8 max-w-md w-full">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Leave Session?</h3>
+        <p class="text-gray-600 mb-6">Are you sure you want to leave this counseling session?</p>
+        <div class="flex justify-end space-x-3">
+            <button 
+                type="button" 
+                id="cancel-leave-session" 
+                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+                Cancel
+            </button>
+            <button 
+                type="button"
+                id="confirm-leave-session"
+                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+                Leave Session
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Session Ended Modal -->
+<div id="session-ended-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-8 max-w-md w-full">
+        <div class="text-center">
+            <div class="mb-4 text-green-500">
+                <i class="fas fa-check-circle text-6xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Session Ended</h3>
+            <p class="text-gray-600 mb-6">Your counseling session has been completed.</p>
+            <div class="flex justify-center">
+                <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                    View Session Details
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/student/websockets/counseling.js') }}"></script>
+<script>
+    // Initialize video counseling client when page loads
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Get session ID and current user ID from the server
+        const sessionId = {{ session.id }};
+        const currentUserId = {{ current_user.id }};
+        
+        // Initialize client with user ID
+        const client = new VideoCounselingClient(sessionId, currentUserId);
+        
+        // Make client globally available for retry functionality
+        window.videoCounselingClient = client;
+        
+        // Try to initialize
+        const initResult = await client.init();
+        
+        if (!initResult) {
+            console.warn('Client initialization had issues, but continuing...');
+        }
+        
+        // DOM elements
+        const waitingRoom = document.getElementById('waiting-room');
+        const waitingRoomStatus = document.getElementById('waiting-room-status');
+        const videoCallContainer = document.getElementById('video-call-container');
+        const sessionStatus = document.getElementById('session-status');
+        const localVideo = document.getElementById('local-video');
+        const remoteVideo = document.getElementById('remote-video');
+        const remoteUserName = document.getElementById('remote-user-name');
+        const remoteAudioStatus = document.getElementById('remote-audio-status');
+        const remoteVideoStatus = document.getElementById('remote-video-status');
+        const toggleAudioBtn = document.getElementById('toggle-audio');
+        const toggleVideoBtn = document.getElementById('toggle-video');
+        const toggleScreenShareBtn = document.getElementById('toggle-screen-share');
+        const toggleChatBtn = document.getElementById('toggle-chat');
+        const leaveSessionBtn = document.getElementById('leave-session');
+        const chatPanel = document.getElementById('chat-panel');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const leaveSessionModal = document.getElementById('leave-session-modal');
+        const cancelLeaveSession = document.getElementById('cancel-leave-session');
+        const confirmLeaveSession = document.getElementById('confirm-leave-session');
+        const sessionEndedModal = document.getElementById('session-ended-modal');
+        
+        // Set up event handlers
+        client.onStatusChange = (status) => {
+            sessionStatus.textContent = status;
+            waitingRoomStatus.textContent = status;
+        };
+        
+        client.onLocalStreamUpdate = (stream) => {
+            localVideo.srcObject = stream;
+        };
+        
+        client.onRemoteStreamUpdate = (stream) => {
+            remoteVideo.srcObject = stream;
+        };
+        
+        client.onParticipantJoined = (participant) => {
+            if (participant.role === 'counselor') {
+                remoteUserName.textContent = participant.username;
+            }
+        };
+        
+        client.onCallStarted = () => {
+            waitingRoom.classList.add('hidden');
+            videoCallContainer.classList.remove('hidden');
+        };
+        
+        client.onCallEnded = () => {
+            sessionEndedModal.classList.remove('hidden');
+        };
+        
+        client.onChatMessage = (message) => {
+            const messageElement = document.createElement('div');
+            messageElement.className = message.user_id === {{ current_user.id }} ? 
+                'flex justify-end mb-3' : 'flex justify-start mb-3';
+            
+            const bubbleColor = message.user_id === {{ current_user.id }} ? 
+                'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800';
+            
+            messageElement.innerHTML = `
+                <div class="${bubbleColor} rounded-lg py-2 px-4 max-w-[80%]">
+                    <p class="text-sm font-medium">${message.username}</p>
+                    <p>${message.message}</p>
+                    <p class="text-xs opacity-70 text-right">${new Date(message.timestamp).toLocaleTimeString()}</p>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+        
+        client.onAudioStateChanged = (data) => {
+            if (data.user_id !== {{ current_user.id }}) {
+                remoteAudioStatus.innerHTML = data.enabled ? 
+                    '<i class="fas fa-microphone"></i>' : 
+                    '<i class="fas fa-microphone-slash text-red-500"></i>';
+            }
+        };
+        
+        client.onVideoStateChanged = (data) => {
+            if (data.user_id !== {{ current_user.id }}) {
+                remoteVideoStatus.innerHTML = data.enabled ? 
+                    '<i class="fas fa-video"></i>' : 
+                    '<i class="fas fa-video-slash text-red-500"></i>';
+            }
+        };
+        
+        // Button event handlers
+        toggleAudioBtn.addEventListener('click', () => {
+            const enabled = client.toggleAudio();
+            toggleAudioBtn.innerHTML = enabled ? 
+                '<i class="fas fa-microphone"></i>' : 
+                '<i class="fas fa-microphone-slash"></i>';
+            toggleAudioBtn.className = enabled ? 
+                'control-btn bg-gray-100 hover:bg-gray-200 text-gray-700' : 
+                'control-btn bg-red-100 hover:bg-red-200 text-red-700';
+        });
+        
+        toggleVideoBtn.addEventListener('click', () => {
+            const enabled = client.toggleVideo();
+            toggleVideoBtn.innerHTML = enabled ? 
+                '<i class="fas fa-video"></i>' : 
+                '<i class="fas fa-video-slash"></i>';
+            toggleVideoBtn.className = enabled ? 
+                'control-btn bg-gray-100 hover:bg-gray-200 text-gray-700' : 
+                'control-btn bg-red-100 hover:bg-red-200 text-red-700';
+        });
+        
+        toggleScreenShareBtn.addEventListener('click', async () => {
+            const isSharing = await client.toggleScreenSharing();
+            toggleScreenShareBtn.innerHTML = isSharing ? 
+                '<i class="fas fa-desktop text-green-500"></i>' : 
+                '<i class="fas fa-desktop"></i>';
+            toggleScreenShareBtn.className = isSharing ? 
+                'control-btn bg-green-100 hover:bg-green-200 text-green-700' : 
+                'control-btn bg-gray-100 hover:bg-gray-200 text-gray-700';
+        });
+        
+        toggleChatBtn.addEventListener('click', () => {
+            chatPanel.classList.toggle('hidden');
+            chatPanel.classList.toggle('lg:block');
+        });
+        
+        leaveSessionBtn.addEventListener('click', () => {
+            leaveSessionModal.classList.remove('hidden');
+        });
+        
+        cancelLeaveSession.addEventListener('click', () => {
+            leaveSessionModal.classList.add('hidden');
+        });
+        
+        confirmLeaveSession.addEventListener('click', () => {
+            client.leaveSession();
+            window.location.href = "{{ url_for('student.view_session', session_id=session.id) }}";
+        });
+        
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (message) {
+                client.sendChatMessage(message);
+                chatInput.value = '';
+            }
+        });
+        
+        // Handle window beforeunload to warn about leaving
+        window.addEventListener('beforeunload', (e) => {
+            if (client.isConnected) {
+                e.preventDefault();
+                e.returnValue = 'Are you sure you want to leave? The session will be disconnected.';
+            }
+        });
+        
+        // Global function to retry media access (called from permission dialogs)
+        window.retryMediaAccess = async () => {
+            if (window.videoCounselingClient) {
+                console.log('Retrying media access from button...');
+                const result = await window.videoCounselingClient.retryMediaAccess();
+                if (result) {
+                    console.log('Media access retry successful');
+                } else {
+                    console.log('Media access retry failed');
+                }
+                return result;
+            }
+            return false;
+        };
+        
+        // Add error handling improvements
+        client.onError = (error) => {
+            console.error('Video counseling error:', error);
+            // The error dialogs are handled within the client now
+        };
+    });
+</script>
+{% endblock %}
+
+

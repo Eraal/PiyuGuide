@@ -1,0 +1,610 @@
+{% extends "office/office_base.html" %}
+{% block title %}View Inquiry - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  .message-bubble {
+    position: relative;
+    max-width: 80%;
+    margin-bottom: 1rem;
+  }
+
+  .message-bubble::after {
+    content: "";
+    position: absolute;
+    bottom: 10px;
+    width: 0;
+    height: 0;
+    border: 8px solid transparent;
+  }
+
+  .message-sent {
+    margin-left: auto;
+    background-color: #dbeafe; /* Changed to match student module (#dbeafe instead of #d1fae5) */
+    border-radius: 18px 18px 4px 18px;
+  }
+
+  .message-sent::after {
+    right: -15px;
+    border-left-color: #dbeafe; /* Changed to match the new background color */
+  }
+
+  .message-received {
+    margin-right: auto;
+    background-color: #f3f4f6;
+    border-radius: 18px 18px 18px 4px;
+  }
+
+  .message-received::after {
+    left: -15px;
+    border-right-color: #f3f4f6;
+  }
+
+  /* Load more messages button style */
+  .load-more-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    color: #4b5563;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    margin: 1rem auto;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #e5e7eb;
+  }
+
+  .load-more-button:hover {
+    background-color: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .attachment-preview {
+    max-width: 100px;
+    max-height: 100px;
+    border-radius: 4px;
+  }
+
+  .inquiry-status-pending {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .inquiry-status-in_progress {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .inquiry-status-resolved {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .inquiry-status-reopened {
+    background-color: #ede9fe;
+    color: #5b21b6;
+  }
+
+  .inquiry-status-closed {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto" data-inquiry-id="{{ inquiry.id }}" data-chat-container="true">
+  <!-- Breadcrumb Navigation -->
+  <div class="flex items-center text-sm text-gray-600 mb-4">
+    <a href="{{ url_for('office.dashboard') }}" class="hover:text-green-600">Dashboard</a>
+    <i class="fas fa-chevron-right mx-2 text-xs"></i>
+    <a href="{{ url_for('office.office_inquiries') }}" class="hover:text-green-600">Inquiries</a>
+    <i class="fas fa-chevron-right mx-2 text-xs"></i>
+    <span class="text-gray-800 font-medium">{{ inquiry.subject }}</span>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Left Column - Inquiry Details -->
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="px-6 py-4 border-b flex justify-between items-center">
+          <h2 class="text-lg font-bold text-gray-800">Inquiry Details</h2>
+          <div>
+            <button id="updateStatusBtn" class="text-green-600 hover:text-green-800" title="Update Status">
+              <i class="fas fa-edit"></i>
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Subject</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ inquiry.subject }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Student</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
+                    {% if inquiry.student.user.profile_pic %}
+                    <img src="{{ url_for('static', filename=inquiry.student.user.profile_pic) }}" class="w-8 h-8 rounded-full">
+                    {% else %}
+                    <span class="text-gray-600">{{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}</span>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <div class="font-medium">{{ inquiry.student.user.get_full_name() }}</div>
+                    <div class="text-xs text-gray-500">{{ inquiry.student.student_number }}</div>
+                  </div>
+                </div>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Status</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full inquiry-status-{{ inquiry.status }}">
+                  {{ inquiry.status|replace('_', ' ')|title }}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Date Submitted</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                {{ inquiry.created_at.strftime('%B %d, %Y') }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Concern Types</dt>
+              <dd class="mt-1 text-sm">
+                {% if inquiry.concerns %}
+                <ul class="space-y-1">
+                  {% for concern in inquiry.concerns %}
+                  <li class="text-gray-900">
+                    {{ concern.concern_type.name }} 
+                    {% if concern.other_specification %}
+                    <span class="text-gray-500 italic">({{ concern.other_specification }})</span>
+                    {% endif %}
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% else %}
+                <span class="text-gray-500">No specific concerns listed</span>
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Student Information -->
+      <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="px-6 py-4 border-b">
+          <h2 class="text-lg font-bold text-gray-800">Student Information</h2>
+        </div>
+        <div class="p-6">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Name</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ inquiry.student.user.get_full_name() }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Student ID</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                {{ inquiry.student.student_number }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Email</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                {{ inquiry.student.user.email }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Program</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                {{ inquiry.student.program or 'Not specified' }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column - Messages -->
+    <div class="lg:col-span-3">
+      <div class="bg-white rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h2 class="text-lg font-bold text-gray-800">Conversation</h2>
+          <a href="{{ url_for('office.office_inquiries') }}" class="text-green-600 hover:text-green-800 text-sm flex items-center">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Inquiries
+          </a>
+        </div>
+        <div class="p-6">
+          <!-- Messages History -->
+          <div class="space-y-6 mb-6 max-h-[500px] overflow-y-auto" id="messageHistory">
+            {% if has_more_messages %}
+            <div id="load-more-container" class="flex justify-center mb-4">
+              <button id="load-more-button" class="load-more-button">
+                <i class="fas fa-arrow-up mr-2"></i>
+                Load Older Messages
+              </button>
+            </div>
+            {% endif %}
+            
+            {% if inquiry.messages %}
+              {% for message in inquiry.messages[-6:] %}
+              <div class="flex {% if message.sender_id == current_user.id %}justify-end{% endif %}">
+                <div class="message-bubble p-4 {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}"
+                     data-message-id="{{ message.id }}" data-sender-id="{{ message.sender_id }}">
+                  <div class="flex items-center mb-2">
+                    {% if message.sender_id != current_user.id %}
+                    <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      {{ message.sender.first_name[0] }}{{ message.sender.last_name[0] }}
+                    </div>
+                    <div class="ml-2">
+                      <div class="text-xs font-semibold">
+                        {{ message.sender.get_full_name() }} 
+                        {% if message.sender.role == 'student' %}
+                        <span class="text-blue-600">(Student)</span>
+                        {% endif %}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ message.created_at.strftime('%b %d, %Y %I:%M %p') }}
+                      </div>
+                    </div>
+                    {% else %}
+                    <div class="text-right ml-auto">
+                      <div class="text-xs font-semibold">You</div>
+                      <div class="text-xs text-gray-500">
+                        {{ message.created_at.strftime('%b %d, %Y %I:%M %p') }}
+                      </div>
+                    </div>
+                    <div class="h-8 w-8 rounded-full bg-green-500 ml-2 flex items-center justify-center text-white">
+                      {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                    </div>
+                    {% endif %}
+                  </div>
+                  <div class="text-sm">{{ message.content|nl2br }}</div>
+                  
+                  <!-- Message status indicator (only for sent messages) -->
+                  {% if message.sender_id == current_user.id %}
+                  <div class="message-status text-xs text-right mt-1">
+                    <span class="status-icon">
+                      <i class="fas {% if message.status == 'read' %}fa-check-double text-green-500{% elif message.status == 'delivered' %}fa-check-double{% else %}fa-check{% endif %}"></i>
+                    </span>
+                    <span class="status-text ml-1">{{ message.status|title }}</span>
+                  </div>
+                  {% endif %}
+                  
+                  <!-- Message Attachments -->
+                  {% if message.attachments %}
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    {% for attachment in message.attachments %}
+                    <a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank" class="block">
+                      {% if attachment.file_path.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                      <img src="{{ url_for('static', filename=attachment.file_path) }}" alt="Attachment" class="attachment-preview" />
+                      {% else %}
+                      <div class="bg-gray-100 p-2 rounded flex items-center">
+                        {% if attachment.file_path.endswith('.pdf') %}
+                        <i class="far fa-file-pdf text-red-500 mr-1"></i>
+                        {% elif attachment.file_path.endswith(('.doc', '.docx')) %}
+                        <i class="far fa-file-word text-blue-500 mr-1"></i>
+                        {% else %}
+                        <i class="far fa-file text-gray-500 mr-1"></i>
+                        {% endif %}
+                        <span class="text-xs">{{ attachment.filename|default('Attachment') }}</span>
+                      </div>
+                      {% endif %}
+                    </a>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="flex items-center justify-center py-10 text-gray-500 flex-col">
+                <i class="fas fa-comments text-gray-300 text-3xl mb-3"></i>
+                <p>No messages in this inquiry yet.</p>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Typing indicator -->
+          <div id="typingIndicator" class="hidden"></div>
+
+          <!-- Message Input Form -->
+          <form id="messageForm" class="mt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="relative">
+              <textarea name="message" rows="4" placeholder="Type your reply here..." id="messageInput"
+                class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required></textarea>
+            </div>
+            <div class="flex items-center justify-between mt-2">
+              <div class="relative">
+                <input type="file" id="replyAttachments" name="attachments" multiple class="hidden" />
+                <label for="replyAttachments" class="flex items-center cursor-pointer text-sm text-gray-600 hover:text-green-600">
+                  <i class="fas fa-paperclip mr-1"></i> Attach Files
+                </label>
+                <div id="replyAttachmentPreview" class="mt-2 flex flex-wrap gap-2"></div>
+              </div>
+              <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition" id="sendButton">
+                Send Reply <i class="fas fa-paper-plane ml-1"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add notification sound -->
+<audio id="notificationSound" preload="auto">
+  <source src="{{ url_for('static', filename='sounds/notification.mp3') }}" type="audio/mpeg">
+</audio>
+
+<!-- Status Update Modal -->
+<div id="statusUpdateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Update Inquiry Status</h2>
+      <button class="text-gray-400 hover:text-gray-600 focus:outline-none" id="closeStatusModal">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <form action="{{ url_for('office.update_inquiry_status', inquiry_id=inquiry.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      
+      <div class="mb-4">
+        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+        <select id="status" name="status" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+          <option value="pending" {% if inquiry.status == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="in_progress" {% if inquiry.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="resolved" {% if inquiry.status == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="closed" {% if inquiry.status == 'closed' %}selected{% endif %}>Closed</option>
+        </select>
+      </div>
+      <div class="mb-4">
+        <label for="noteToStudent" class="block text-sm font-medium text-gray-700 mb-1">Add Note (Optional)</label>
+        <textarea id="noteToStudent" name="note" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Add an optional note to the student"></textarea>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button type="button" id="cancelStatusUpdate" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">
+          Update Status
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- WebSocket Chat Script -->
+<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/office/websockets/chat.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the office chat manager
+    const chatManager = new OfficeChatSocketManager();
+    const inquiryId = document.querySelector('[data-inquiry-id]').getAttribute('data-inquiry-id');
+    const messageContainer = document.getElementById('messageHistory');
+    const messageInput = document.getElementById('messageInput');
+    const messageForm = document.getElementById('messageForm');
+    const sendButton = document.getElementById('sendButton');
+    const connectionStatus = document.getElementById('connection-status');
+    
+    // Set user ID on body for the chat manager
+    document.body.setAttribute('data-user-id', '{{ current_user.id }}');
+    
+    // Set up event handlers
+    chatManager.onConnectionStatusChange(function(status) {
+      if (connectionStatus) {
+        connectionStatus.textContent = status ? 'Connected' : 'Disconnected';
+        connectionStatus.className = status 
+          ? 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2' 
+          : 'text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full ml-2';
+      }
+    });
+    
+    chatManager.onMessageReceived(function(message) {
+      // Create and add message to the UI
+      if (messageContainer) {
+        const messageElement = createMessageElement(message);
+        messageContainer.appendChild(messageElement);
+        scrollToBottom();
+        
+        // Play notification sound for messages from others
+        if (!message.is_current_user) {
+          const notificationSound = document.getElementById('notificationSound');
+          if (notificationSound) {
+            notificationSound.play().catch(function(err) {
+              console.log('Could not play notification sound', err);
+            });
+          }
+        }
+      }
+    });
+    
+    chatManager.onMessageSent(function(data) {
+      if (data.success) {
+        console.log('Message sent successfully:', data.message_id);
+        // Clear the input field
+        if (messageInput) {
+          messageInput.value = '';
+          messageInput.focus();
+          
+          // Reset textarea height
+          messageInput.style.height = 'auto';
+        }
+      }
+    });
+    
+    chatManager.onError(function(errorMessage) {
+      console.error('Chat error:', errorMessage);
+      // Show error to user
+      const errorElement = document.createElement('div');
+      errorElement.className = 'p-2 mb-2 text-sm text-red-700 bg-red-100 rounded-md';
+      errorElement.textContent = errorMessage;
+      
+      if (messageContainer) {
+        messageContainer.appendChild(errorElement);
+        scrollToBottom();
+        
+        // Remove error message after 5 seconds
+        setTimeout(function() {
+          errorElement.remove();
+        }, 5000);
+      }
+    });
+    
+    // Connect to WebSocket server and join inquiry room
+    chatManager.connect()
+      .then(function() {
+        console.log('Connected to chat server');
+        chatManager.joinInquiryRoom(inquiryId);
+        
+        // Add a small connection status indicator to the header
+        const conversationHeader = document.querySelector('.px-6.py-4.border-b.flex.items-center.justify-between');
+        if (conversationHeader) {
+          const statusIndicator = document.createElement('span');
+          statusIndicator.id = 'connection-status';
+          statusIndicator.className = 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2';
+          statusIndicator.textContent = 'Connected';
+          
+          const headerTitle = conversationHeader.querySelector('h2');
+          if (headerTitle) {
+            headerTitle.parentNode.insertBefore(statusIndicator, headerTitle.nextSibling);
+          }
+        }
+      })
+      .catch(function(error) {
+        console.error('Failed to connect to chat server:', error);
+      });
+    
+    // Send message on form submit
+    if (messageForm) {
+      messageForm.addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent form submission
+        sendMessage();
+      });
+    }
+    
+    // Send message on Enter key press (but allow Shift+Enter for new lines)
+    if (messageInput) {
+      messageInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+    }
+    
+    // Function to send a message
+    function sendMessage() {
+      const content = messageInput.value.trim();
+      if (content) {
+        chatManager.sendMessage(content);
+      }
+    }
+    
+    // Create a message element for the UI
+    function createMessageElement(message) {
+      const isSentByMe = parseInt(message.sender_id) === parseInt('{{ current_user.id }}');
+      
+      const wrapperDiv = document.createElement('div');
+      wrapperDiv.className = `flex ${isSentByMe ? 'justify-end' : ''}`;
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message-bubble p-4 ${isSentByMe ? 'message-sent' : 'message-received'}`;
+      messageDiv.setAttribute('data-message-id', message.id);
+      messageDiv.setAttribute('data-sender-id', message.sender_id);
+      
+      // If message is from someone else, add their avatar and name
+      if (!isSentByMe) {
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'flex items-center mb-2';
+        
+        // Create avatar
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white';
+        avatarDiv.textContent = message.sender_name.split(' ').map(function(n) { 
+          return n[0]; 
+        }).join('').substring(0, 2);
+        headerDiv.appendChild(avatarDiv);
+        
+        // Create name container
+        const nameContainer = document.createElement('div');
+        nameContainer.className = 'ml-2';
+        
+        // Add name with role indicator
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'text-xs font-semibold';
+        nameDiv.textContent = message.sender_name;
+        
+        if (message.sender_role === 'student') {
+          const roleSpan = document.createElement('span');
+          roleSpan.className = 'ml-1 text-xs text-green-600';
+          roleSpan.textContent = '(Student)';
+          nameDiv.appendChild(roleSpan);
+        }
+        
+        nameContainer.appendChild(nameDiv);
+        headerDiv.appendChild(nameContainer);
+        messageDiv.appendChild(headerDiv);
+      } else {
+        // For my own messages, add self info
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'text-right ml-auto mb-2';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'text-xs font-semibold';
+        nameDiv.textContent = 'You';
+        headerDiv.appendChild(nameDiv);
+        
+        messageDiv.appendChild(headerDiv);
+      }
+      
+      // Add message content
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'text-sm whitespace-pre-wrap';
+      contentDiv.textContent = message.content;
+      messageDiv.appendChild(contentDiv);
+      
+      // Add timestamp
+      const timestampDiv = document.createElement('div');
+      timestampDiv.className = 'text-xs text-gray-500 mt-1 text-right';
+      
+      const date = new Date(message.timestamp);
+      const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      timestampDiv.textContent = timeString;
+      messageDiv.appendChild(timestampDiv);
+      
+      wrapperDiv.appendChild(messageDiv);
+      return wrapperDiv;
+    }
+    
+    // Scroll chat to bottom
+    function scrollToBottom() {
+      if (messageContainer) {
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+      }
+    }
+    
+    // Initial scroll to bottom
+    setTimeout(scrollToBottom, 100);
+    
+    // Clean up when leaving the page
+    window.addEventListener('beforeunload', function() {
+      chatManager.disconnect();
+    });
+  });
+</script>
+
+{% endblock %}

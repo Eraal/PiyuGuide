@@ -1,0 +1,362 @@
+{% extends "student/student_base.html" %} {% block title %}{{ office.name }} -
+Office Details{% endblock %} {% block content %}
+<div class="container mx-auto px-4 py-6">
+  <!-- Breadcrumb navigation -->
+  <nav class="mb-6">
+    <ol class="flex items-center space-x-2 text-sm">
+      <li>
+        <a
+          href="{{ url_for('student.dashboard') }}"
+          class="text-gray-500 hover:text-gray-700 transition-colors"
+          >Home</a
+        >
+      </li>
+      <li class="flex items-center">
+        <svg
+          class="h-4 w-4 text-gray-400"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </li>
+      <li>
+        <a
+          href="{{ url_for('student.university_offices') }}"
+          class="text-gray-500 hover:text-gray-700 transition-colors"
+          >University Offices</a
+        >
+      </li>
+      <li class="flex items-center">
+        <svg
+          class="h-4 w-4 text-gray-400"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </li>
+      <li>
+        <span class="text-blue-600 font-medium">{{ office.name }}</span>
+      </li>
+    </ol>
+  </nav>
+
+  <div
+    class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+  >
+    <!-- Office Header Banner -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-10">
+      <div
+        class="flex flex-col md:flex-row md:items-center justify-between gap-6"
+      >
+        <div class="flex items-center">
+          <div
+            class="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-sm mr-5 border border-blue-100"
+          >
+            <i class="fas fa-building text-blue-600 text-3xl"></i>
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">{{ office.name }}</h1>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <!-- Service badges -->
+              <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+              >
+                <i class="fas fa-paper-plane mr-1.5"></i> Inquiry
+              </span>
+
+              {% if office.supports_video %}
+              <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+              >
+                <i class="fas fa-calendar-check mr-1.5"></i> Counseling
+              </span>
+
+              <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+              >
+                <i class="fas fa-video mr-1.5"></i> Video
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          {% if office.supports_video %}
+          <a
+            href="{{ url_for('student.request_counseling_session') }}?office_id={{ office.id }}"
+            class="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+          >
+            <i class="fas fa-calendar-plus mr-2"></i>
+            Schedule Appointment
+          </a>
+          {% endif %}
+
+          <a
+            href="{{ url_for('student.submit_inquiry', office_id=office.id) }}"
+            class="inline-flex items-center justify-center px-5 py-2.5 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition border border-gray-200 shadow-sm focus:ring-2 focus:ring-gray-200 focus:outline-none"
+          >
+            <i class="fas fa-paper-plane mr-2"></i>
+            Send Inquiry
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Office Main Content -->
+    <div class="p-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2">
+          <!-- Office Description -->
+          <div class="mb-8">
+            <h2
+              class="text-xl font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+              About this Office
+            </h2>
+            <div
+              class="prose max-w-none text-gray-600 bg-gray-50 p-6 rounded-lg border border-gray-100"
+            >
+              {% if office.description %}
+              <p>{{ office.description }}</p>
+              {% else %}
+              <p class="text-gray-500 italic">
+                No description available for this office.
+              </p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Services & Concerns -->
+          <div class="mb-8">
+            <h2
+              class="text-xl font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
+              Services & Concerns
+            </h2>
+
+            {% if office.supported_concerns %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {% for concern in office.supported_concerns %}
+              <div
+                class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+              >
+                <div class="flex items-start">
+                  <div class="flex-shrink-0 mt-1 mr-3">
+                    <div
+                      class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center"
+                    >
+                      <i class="fas fa-check text-green-600"></i>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 class="font-medium text-gray-900">
+                      {{ concern.concern_type.name }}
+                    </h4>
+                    <p class="text-sm text-gray-600 mt-1">
+                      {{ concern.concern_type.description }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div
+              class="text-gray-500 text-sm bg-gray-50 p-6 rounded-lg border border-gray-100 italic"
+            >
+              No specific services or concerns have been listed for this office.
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Video Counseling Section (if applicable) -->
+          {% if office.supports_video %}
+          <div
+            class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 mb-8 border border-blue-200"
+          >
+            <div class="flex items-start">
+              <div
+                class="flex-shrink-0 bg-white p-3 rounded-full mr-4 shadow-sm"
+              >
+                <i class="fas fa-video text-blue-600 text-xl"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">
+                  Video Counseling Available
+                </h2>
+                <p class="text-gray-700 mb-4">
+                  This office offers remote video counseling sessions. Video
+                  sessions allow you to meet with a counselor from any location
+                  using your computer or smartphone.
+                </p>
+                <a
+                  href="{{ url_for('student.request_counseling_session') }}?office_id={{ office.id }}"
+                  class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <i class="fas fa-calendar-alt mr-2"></i>
+                  Schedule a Video Session
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-1 space-y-6">
+          <!-- Office Staff -->
+          <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h3
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <i class="fas fa-users text-blue-500 mr-2"></i>
+              Office Staff
+            </h3>
+
+            {% if office.office_admins %}
+            <ul class="divide-y divide-gray-100">
+              {% for admin in office.office_admins %}
+              <li class="py-3 first:pt-0 last:pb-0">
+                <div class="flex items-center">
+                  <div
+                    class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3 overflow-hidden"
+                  >
+                    {% if admin.user.profile_pic %}
+                    <img
+                      src="{{ admin.user.profile_pic }}"
+                      alt="{{ admin.user.get_full_name() }}"
+                      class="h-10 w-10 rounded-full object-cover"
+                    />
+                    {% else %}
+                    <span class="text-blue-600 font-medium text-sm">
+                      {{ admin.user.first_name[0] }}{{ admin.user.last_name[0]
+                      }}
+                    </span>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <h4 class="font-medium text-gray-900">
+                      {{ admin.user.get_full_name() }}
+                    </h4>
+                    <p class="text-xs text-gray-500">
+                      {{ admin.user.role|capitalize }}
+                    </p>
+                  </div>
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <div class="text-gray-500 text-sm italic py-2">
+              No staff information available
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h3
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <i class="fas fa-bolt text-blue-500 mr-2"></i>
+              Quick Actions
+            </h3>
+            <div class="space-y-3">
+              <a
+                href="{{ url_for('student.submit_inquiry', office_id=office.id) }}"
+                class="flex items-center w-full py-3 px-4 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition group"
+              >
+                <div
+                  class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3 group-hover:bg-blue-200 transition"
+                >
+                  <i class="fas fa-question-circle text-blue-600"></i>
+                </div>
+                <div>
+                  <span class="font-medium">Submit an Inquiry</span>
+                  <p class="text-xs text-gray-500 mt-0.5">
+                    Ask questions or request information
+                  </p>
+                </div>
+              </a>
+
+              {% if office.supports_video %}
+              <a
+                href="{{ url_for('student.request_counseling_session') }}?office_id={{ office.id }}"
+                class="flex items-center w-full py-3 px-4 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition group"
+              >
+                <div
+                  class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3 group-hover:bg-green-200 transition"
+                >
+                  <i class="fas fa-calendar-alt text-green-600"></i>
+                </div>
+                <div>
+                  <span class="font-medium">Schedule Counseling</span>
+                  <p class="text-xs text-gray-500 mt-0.5">
+                    Book a video consultation session
+                  </p>
+                </div>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h3
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <i class="fas fa-address-card text-blue-500 mr-2"></i>
+              Contact Information
+            </h3>
+            <ul class="space-y-3">
+              <li class="flex items-start">
+                <div class="text-blue-500 mr-3 mt-1">
+                  <i class="fas fa-envelope"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-700">
+                    {{ office.email|default('No email available') }}
+                  </p>
+                </div>
+              </li>
+              <li class="flex items-start">
+                <div class="text-blue-500 mr-3 mt-1">
+                  <i class="fas fa-phone"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-700">
+                    {{ office.phone|default('No phone available') }}
+                  </p>
+                </div>
+              </li>
+              <li class="flex items-start">
+                <div class="text-blue-500 mr-3 mt-1">
+                  <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-700">
+                    {{ office.location|default('No location available') }}
+                  </p>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

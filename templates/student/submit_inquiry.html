@@ -1,0 +1,1046 @@
+{% extends "student/student_base.html" %} {% block title %}Submit Inquiry - {{
+office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
+<style>
+  /* Custom styles for the inquiry form */
+  .full-width-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 2rem;
+  }
+
+  .content-wrapper {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  @media (min-width: 1280px) {
+    .content-wrapper {
+      grid-template-columns: 320px 1fr;
+    }
+  }
+
+  .side-panel {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    border-radius: 1rem;
+    padding: 2rem 1.5rem;
+    color: white;
+    position: sticky;
+    top: 2rem;
+    height: fit-content;
+  }
+
+  .main-panel {
+    flex: 1;
+  }
+
+  /* Improved Step Indicator */
+  .step-indicator {
+    position: relative;
+    display: flex;
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+
+  .step {
+    flex: 1;
+    position: relative;
+    text-align: center;
+    z-index: 2;
+    transition: all 0.3s ease;
+  }
+
+  .step-number {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.75rem;
+    font-weight: bold;
+    transition: all 0.5s ease;
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-size: 1.125rem;
+    border: 2px solid #e5e7eb;
+    position: relative;
+    z-index: 2;
+  }
+
+  .step-title {
+    font-size: 0.95rem;
+    color: #6b7280;
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  .step.active .step-number {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
+    transform: scale(1.1);
+    border-color: #60a5fa;
+  }
+
+  .step.active .step-title {
+    color: #111827;
+    font-weight: 600;
+  }
+
+  .step.completed .step-number {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-color: #34d399;
+  }
+
+  .step.completed .step-number:after {
+    content: "✓";
+    position: absolute;
+    font-size: 1.25rem;
+  }
+
+  /* Improved progress line */
+  .progress-line-container {
+    position: absolute;
+    top: 1.5rem;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background-color: #e5e7eb;
+    z-index: 1;
+  }
+
+  .progress-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, #3b82f6, #2563eb);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 2px;
+  }
+
+  /* Animation for form transition */
+  .form-step {
+    display: none;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .form-step.active {
+    display: block;
+    animation: fadeInUp 0.6s ease forwards;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Concern type cards */
+  .concern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .concern-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: 2px solid transparent;
+    overflow: hidden;
+    position: relative;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    height: 100%;
+  }
+
+  .concern-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 25px -10px rgba(0, 0, 0, 0.1);
+  }
+
+  .concern-card.selected {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.04);
+  }
+
+  .concern-card.selected .concern-check {
+    display: flex;
+  }
+
+  .concern-card.selected::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  }
+
+  .concern-check {
+    display: none;
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px -3px rgba(59, 130, 246, 0.5);
+  }
+
+  /* Futuristic input styles */
+  .futuristic-input {
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+    background-color: #f9fafb;
+  }
+
+  .futuristic-input:focus {
+    border-left: 3px solid #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    background-color: white;
+  }
+
+  .input-with-icon {
+    position: relative;
+  }
+
+  .input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+  }
+
+  .input-with-icon input,
+  .input-with-icon textarea {
+    padding-left: 2.5rem;
+  }
+
+  /* File upload styling */
+  .file-drop-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    padding: 2rem 1rem;
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    background-color: #f8fafc;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .file-drop-area:hover,
+  .file-drop-area.dragover {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+  }
+
+  .file-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .file-msg {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    display: block;
+  }
+
+  .file-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    width: 100%;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    position: relative;
+  }
+
+  .file-item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.875rem;
+    padding-right: 1.5rem;
+  }
+
+  .file-remove {
+    color: #ef4444;
+    cursor: pointer;
+    padding: 0.25rem;
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: white;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .file-remove:hover {
+    background-color: #fee2e2;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0px);
+  }
+
+  .btn-primary::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.7s;
+  }
+
+  .btn-primary:hover::before {
+    left: 100%;
+  }
+
+  .btn-secondary {
+    background-color: white;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+
+  .btn-secondary:hover {
+    background-color: #f9fafb;
+    color: #111827;
+  }
+
+  .btn-loading {
+    position: relative;
+    color: transparent !important;
+  }
+
+  .btn-loading:after {
+    content: "";
+    position: absolute;
+    width: 1.25rem;
+    height: 1.25rem;
+    top: calc(50% - 0.625rem);
+    left: calc(50% - 0.625rem);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Badge styles */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-green {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .badge i {
+    margin-right: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  /* Office info panel */
+  .office-info-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .office-description {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-top: 1rem;
+  }
+
+  .help-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+
+  .help-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .help-card h3 i {
+    margin-right: 0.5rem;
+  }
+
+  .help-card p {
+    font-size: 0.875rem;
+    opacity: 0.9;
+  }
+
+  /* Glowing accent */
+  .glow-bg::after {
+    content: "";
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: rgba(59, 130, 246, 0.4);
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    right: -40px;
+    top: -40px;
+  }
+
+  .form-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .full-width-container {
+      padding: 0 1rem;
+    }
+
+    .concern-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Card animation for hover effects */
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="full-width-container mx-auto py-8">
+  <!-- Back button -->
+  <div class="mb-6">
+    <a
+      href="{{ url_for('student.inquiries') }}"
+      class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+    >
+      <i class="fas fa-arrow-left mr-2"></i> Back to Inquiries
+    </a>
+  </div>
+
+  <!-- Content Grid Layout -->
+  <div class="content-wrapper">
+    <!-- Side Panel: Office Information -->
+    <div class="side-panel relative glow-bg hidden xl:block">
+      <div class="office-info-header">
+        <div class="flex items-center">
+          <div class="rounded-full bg-white/20 p-3 mr-3">
+            <i class="fas fa-building text-white text-lg"></i>
+          </div>
+          <h2 class="text-xl font-bold">{{ office.name }}</h2>
+        </div>
+
+        <p class="office-description">{{ office.description }}</p>
+
+        {% if office.supports_video %}
+        <div class="mt-4">
+          <span class="badge bg-white/20">
+            <i class="fas fa-video"></i>
+            <span>Video Counseling Available</span>
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="help-card">
+        <h3><i class="fas fa-info-circle"></i> Tips for your inquiry</h3>
+        <p>
+          Be clear and concise about your concern. The more specific you are,
+          the better assistance we can provide.
+        </p>
+      </div>
+
+      <div class="help-card">
+        <h3><i class="fas fa-clock"></i> Processing time</h3>
+        <p>
+          Inquiries are typically processed within 24-48 hours during working
+          days.
+        </p>
+      </div>
+
+      <div class="help-card">
+        <h3><i class="fas fa-paperclip"></i> Attachments</h3>
+        <p>
+          You can attach relevant documents to support your inquiry (PDFs,
+          images, Word documents).
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Panel: Form Content -->
+    <div class="main-panel">
+      <!-- Mobile Office Info Summary -->
+      <div class="bg-white rounded-xl shadow-md p-6 mb-6 xl:hidden">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <div class="rounded-full bg-blue-100 p-3 mr-4">
+              <i class="fas fa-building text-blue-600 text-xl"></i>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">{{ office.name }}</h1>
+              <p class="text-gray-600 text-sm mt-1">{{ office.description }}</p>
+            </div>
+          </div>
+          {% if office.supports_video %}
+          <div class="badge badge-green">
+            <i class="fas fa-video"></i>
+            <span>Video Counseling</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Step Indicator -->
+      <div class="step-indicator mb-8 relative">
+        <div class="progress-line-container">
+          <div class="progress-line" id="progressLine"></div>
+        </div>
+
+        <div class="step active" id="step1">
+          <div class="step-number">1</div>
+          <div class="step-title">Select Concern Type</div>
+        </div>
+        <div class="step" id="step2">
+          <div class="step-number">2</div>
+          <div class="step-title">Draft Your Inquiry</div>
+        </div>
+      </div>
+
+      <!-- Form Container -->
+      <div
+        class="bg-white rounded-xl shadow-md overflow-hidden form-container relative"
+      >
+        <form
+          action="{{ url_for('student.create_inquiry') }}"
+          method="POST"
+          enctype="multipart/form-data"
+          id="inquiryForm"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <input type="hidden" name="office_id" value="{{ office.id }}" />
+          <input
+            type="hidden"
+            name="concern_type_id"
+            id="selectedConcernType"
+          />
+
+          <!-- Step 1: Select Concern Type -->
+          <div class="form-step active" id="formStep1">
+            <div class="p-8">
+              <h2 class="text-2xl font-bold text-gray-900 mb-2">
+                What is the nature of your concern?
+              </h2>
+              <p class="text-gray-600 mb-8">
+                Select the category that best describes your inquiry or concern.
+              </p>
+
+              <div class="concern-grid">
+                {% for concern_type in concern_types %}
+                <div
+                  class="concern-card p-5"
+                  data-id="{{ concern_type.id }}"
+                  data-allows-other="{{ concern_type.allows_other|lower }}"
+                >
+                  <div class="concern-check">
+                    <i class="fas fa-check"></i>
+                  </div>
+                  <h3 class="font-semibold text-gray-900 mb-2">
+                    {{ concern_type.name }}
+                  </h3>
+                  <p class="text-gray-600 text-sm">
+                    {{ concern_type.description }}
+                  </p>
+                </div>
+                {% endfor %}
+              </div>
+
+              <!-- Other Concern Specification Field (Hidden by Default) -->
+              <div id="otherConcernContainer" class="mt-8 hidden">
+                <label
+                  for="other_concern"
+                  class="block text-sm font-medium text-gray-700 mb-2"
+                  >Please specify your concern</label
+                >
+                <textarea
+                  id="other_concern"
+                  name="other_concern"
+                  rows="3"
+                  class="futuristic-input w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Please describe your specific concern..."
+                ></textarea>
+              </div>
+
+              <div class="mt-10 flex justify-end">
+                <button
+                  type="button"
+                  id="nextBtn"
+                  class="btn-primary opacity-50 cursor-not-allowed transition-all"
+                  disabled
+                >
+                  Next Step <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Draft Inquiry -->
+          <div class="form-step" id="formStep2">
+            <div class="p-8">
+              <h2 class="text-2xl font-bold text-gray-900 mb-2">
+                Draft Your Inquiry
+              </h2>
+              <p class="text-gray-600 mb-8">
+                Provide details about your inquiry so the office can assist you
+                efficiently.
+              </p>
+
+              <div class="mb-6">
+                <label
+                  for="subject"
+                  class="block text-sm font-medium text-gray-700 mb-2"
+                  >Subject <span class="text-red-600">*</span></label
+                >
+                <div class="input-with-icon">
+                  <i class="fas fa-heading input-icon"></i>
+                  <input
+                    type="text"
+                    id="subject"
+                    name="subject"
+                    required
+                    class="futuristic-input w-full border border-gray-300 rounded-md py-3 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Brief summary of your inquiry"
+                  />
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label
+                  for="message"
+                  class="block text-sm font-medium text-gray-700 mb-2"
+                  >Message <span class="text-red-600">*</span></label
+                >
+                <div class="input-with-icon">
+                  <i class="fas fa-comment input-icon" style="top: 1.25rem"></i>
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows="6"
+                    required
+                    class="futuristic-input w-full border border-gray-300 rounded-md py-3 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Provide details of your inquiry..."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Attachments (Optional)</label
+                >
+                <div class="file-drop-area" id="fileDropArea">
+                  <i
+                    class="fas fa-cloud-upload-alt text-blue-500 text-4xl mb-3"
+                  ></i>
+                  <span class="file-msg"
+                    >Drag and drop files here or click to browse</span
+                  >
+                  <input
+                    type="file"
+                    class="file-input"
+                    name="attachments"
+                    id="attachments"
+                    multiple
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  />
+                  <div class="file-preview" id="filePreview"></div>
+                </div>
+              </div>
+
+              <div class="mt-10 flex justify-between">
+                <button type="button" id="prevBtn" class="btn-secondary">
+                  <i class="fas fa-arrow-left mr-2"></i> Previous Step
+                </button>
+                <button type="submit" id="submitBtn" class="btn-primary">
+                  Submit Inquiry <i class="fas fa-paper-plane ml-2"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Elements
+    const step1 = document.getElementById("step1");
+    const step2 = document.getElementById("step2");
+    const formStep1 = document.getElementById("formStep1");
+    const formStep2 = document.getElementById("formStep2");
+    const nextBtn = document.getElementById("nextBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const progressLine = document.getElementById("progressLine");
+    const concernCards = document.querySelectorAll(".concern-card");
+    const selectedConcernType = document.getElementById("selectedConcernType");
+    const otherConcernContainer = document.getElementById(
+      "otherConcernContainer"
+    );
+    const otherConcern = document.getElementById("other_concern");
+    const fileInput = document.getElementById("attachments");
+    const fileDropArea = document.getElementById("fileDropArea");
+    const filePreview = document.getElementById("filePreview");
+
+    // Current step tracker
+    let currentStep = 1;
+    updateProgress();
+
+    // Update progress line
+    function updateProgress() {
+      // Calculate progress percentage based on current step
+      const progress = ((currentStep - 1) / 1) * 100;
+      progressLine.style.width = `${progress}%`;
+    }
+
+    // Handle concern card selection with animation
+    concernCards.forEach((card) => {
+      card.addEventListener("click", function () {
+        // Apply animation to clicked card
+        this.style.animation = "pulse-border 0.6s";
+
+        // Remove selected class and animation from all cards
+        concernCards.forEach((c) => {
+          c.classList.remove("selected");
+          if (c !== this) {
+            c.style.animation = "";
+          }
+        });
+
+        // Add selected class to clicked card
+        this.classList.add("selected");
+
+        // Store selected concern type ID
+        const concernTypeId = this.getAttribute("data-id");
+        selectedConcernType.value = concernTypeId;
+
+        // Check if this concern type allows "other" specification
+        const allowsOther = this.getAttribute("data-allows-other") === "true";
+
+        if (allowsOther) {
+          otherConcernContainer.classList.remove("hidden");
+          otherConcern.setAttribute("required", "");
+
+          // Scroll to the other concern field with a smooth animation
+          setTimeout(() => {
+            otherConcernContainer.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            otherConcern.focus();
+          }, 100);
+        } else {
+          otherConcernContainer.classList.add("hidden");
+          otherConcern.removeAttribute("required");
+        }
+
+        // Enable next button with animation
+        nextBtn.disabled = false;
+        nextBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        nextBtn.classList.add("animate-pulse");
+        setTimeout(() => nextBtn.classList.remove("animate-pulse"), 1000);
+      });
+
+      // Remove animation after it completes
+      card.addEventListener("animationend", function () {
+        this.style.animation = "";
+      });
+    });
+
+    // Next step button
+    nextBtn.addEventListener("click", function () {
+      if (currentStep === 1) {
+        // Apply transitions
+        formStep1.classList.remove("active");
+        setTimeout(() => {
+          formStep2.classList.add("active");
+
+          // Update step indicators
+          step1.classList.remove("active");
+          step1.classList.add("completed");
+          step2.classList.add("active");
+
+          // Update progress
+          currentStep = 2;
+          updateProgress();
+        }, 300);
+
+        // Focus on the subject input field
+        setTimeout(() => document.getElementById("subject").focus(), 600);
+      }
+    });
+
+    // Previous step button
+    prevBtn.addEventListener("click", function () {
+      if (currentStep === 2) {
+        // Apply transitions
+        formStep2.classList.remove("active");
+        setTimeout(() => {
+          formStep1.classList.add("active");
+
+          // Update step indicators
+          step2.classList.remove("active");
+          step1.classList.remove("completed");
+          step1.classList.add("active");
+
+          // Update progress
+          currentStep = 1;
+          updateProgress();
+        }, 300);
+      }
+    });
+
+    // File upload handling with improved preview
+    fileInput.addEventListener("change", handleFileSelect);
+
+    fileDropArea.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      fileDropArea.classList.add("dragover");
+    });
+
+    fileDropArea.addEventListener("dragleave", function () {
+      fileDropArea.classList.remove("dragover");
+    });
+
+    fileDropArea.addEventListener("drop", function (e) {
+      e.preventDefault();
+      fileDropArea.classList.remove("dragover");
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect();
+
+        // Add satisfying animation
+        this.classList.add("animate-pulse");
+        setTimeout(() => this.classList.remove("animate-pulse"), 1000);
+      }
+    });
+
+    function handleFileSelect() {
+      filePreview.innerHTML = "";
+
+      if (fileInput.files.length > 0) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+          const file = fileInput.files[i];
+          const fileSize = (file.size / 1024).toFixed(1); // Convert to KB
+          let fileSizeText = fileSize + " KB";
+
+          if (fileSize > 1024) {
+            fileSizeText = (fileSize / 1024).toFixed(1) + " MB";
+          }
+
+          // Create file item with staggered animation
+          const fileItem = document.createElement("div");
+          fileItem.className = "file-item";
+          fileItem.style.animationDelay = `${i * 0.1}s`;
+
+          // File icon based on type
+          let fileIcon;
+          if (file.type.startsWith("image/")) {
+            fileIcon = "fa-file-image";
+          } else if (file.type === "application/pdf") {
+            fileIcon = "fa-file-pdf";
+          } else if (file.type.includes("word") || file.type.includes("doc")) {
+            fileIcon = "fa-file-word";
+          } else {
+            fileIcon = "fa-file";
+          }
+
+          fileItem.innerHTML = `
+                        <i class="fas ${fileIcon} text-blue-500 mr-2"></i>
+                        <span class="file-item-name">${file.name} (${fileSizeText})</span>
+                        <span class="file-remove" data-index="${i}"><i class="fas fa-times-circle"></i></span>
+                    `;
+
+          filePreview.appendChild(fileItem);
+
+          // Animate entry
+          setTimeout(() => {
+            fileItem.classList.add("animate-fadeIn");
+          }, i * 100);
+        }
+
+        // Update the drop area text
+        const fileMsg = document.querySelector(".file-msg");
+        fileMsg.textContent = `${fileInput.files.length} file(s) selected`;
+
+        // Add remove functionality
+        document.querySelectorAll(".file-remove").forEach((button) => {
+          button.addEventListener("click", function (e) {
+            e.stopPropagation();
+            // Cannot directly modify FileList, so we'll reset the input
+            fileInput.value = "";
+            filePreview.innerHTML = "";
+            document.querySelector(".file-msg").textContent =
+              "Drag and drop files here or click to browse";
+          });
+        });
+      }
+    }
+
+    // Form submission with loading state and validation feedback
+    document
+      .getElementById("inquiryForm")
+      .addEventListener("submit", function (e) {
+        if (this.checkValidity()) {
+          submitBtn.classList.add("btn-loading");
+          submitBtn.disabled = true;
+
+          // Add a small delay for better UX
+          setTimeout(() => {
+            // Form will be submitted
+          }, 500);
+        } else {
+          e.preventDefault();
+          // Highlight invalid fields
+          const invalidFields = this.querySelectorAll(":invalid");
+          invalidFields.forEach((field) => {
+            field.classList.add("border-red-500");
+            field.addEventListener(
+              "input",
+              function () {
+                this.classList.remove("border-red-500");
+              },
+              { once: true }
+            );
+          });
+
+          // Scroll to the first invalid field
+          if (invalidFields.length > 0) {
+            invalidFields[0].scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            invalidFields[0].focus();
+          }
+        }
+      });
+
+    // Enhance the input fields with animation feedback
+    const inputs = document.querySelectorAll("input, textarea");
+    inputs.forEach((input) => {
+      input.addEventListener("focus", function () {
+        this.parentElement.classList.add("border-blue-200");
+      });
+
+      input.addEventListener("blur", function () {
+        this.parentElement.classList.remove("border-blue-200");
+      });
+    });
+  });
+</script>
+{% endblock %}

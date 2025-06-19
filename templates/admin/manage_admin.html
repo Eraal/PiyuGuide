@@ -1,0 +1,824 @@
+{% extends "admin/adminbase.html" %}
+
+{% block title %}Manage Admin Accounts - KapiyuGuide Admin{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-800">Manage Admin Accounts</h1>
+            <p class="text-gray-600">View and manage all system admin accounts</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <a href="{{ url_for('admin.manage_office_admins') }}" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus-circle mr-1"></i> Create New Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <form method="GET" action="{{ url_for('admin.manage_admins') }}" class="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
+            <div class="w-full md:w-1/4">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <input type="text" id="search" name="search" value="{{ search_query or '' }}" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Name, email, or office...">
+            </div>
+            
+            <div class="w-full md:w-1/4">
+                <label for="office" class="block text-sm font-medium text-gray-700 mb-1">Filter by Office</label>
+                <select id="office" name="office" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Offices</option>
+                    {% for office in offices %}
+                    <option value="{{ office.id }}" {% if office_id == office.id %}selected{% endif %}>{{ office.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="w-full md:w-1/4">
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                <select id="status" name="status" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Statuses</option>
+                    <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    <option value="locked" {% if status == 'locked' %}selected{% endif %}>Locked</option>
+                </select>
+            </div>
+            
+            <div class="w-full md:w-1/4 self-end mt-6">
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-search mr-1"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Admin Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 border">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Activity</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% if admins %}
+                    {% for admin in admins %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 relative">
+                                    <div class="rounded-full bg-blue-100 text-blue-800 flex items-center justify-center h-10 w-10 text-sm font-medium">
+                                        {{ admin.first_name[0] }}{{ admin.last_name[0] }}
+                                    </div>
+                                    <!-- Status indicator -->
+                                    <span
+                                      id="admin-status-{{ admin.id }}"
+                                      class="absolute bottom-0 right-0 w-3 h-3 rounded-full {% if admin.is_online %}bg-green-500{% elif admin.is_idle or admin.is_away %}bg-yellow-500{% else %}bg-gray-400{% endif %} border-2 border-white"
+                                      title="{% if admin.is_online %}Online{% elif admin.is_idle %}Idle{% elif admin.is_away %}Away{% else %}Offline{% endif %}"
+                                    ></span>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ admin.first_name }} {{ admin.last_name }}</div>
+                                    <div class="text-xs text-gray-500">ID: {{ admin.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ admin.email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {{ admin.office_name }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                {% if admin.account_locked %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Locked
+                                    </span>
+                                {% elif admin.is_active %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Inactive
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ admin.created_at.strftime('%Y-%m-%d') if admin.created_at }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ admin.last_activity.strftime('%Y-%m-%d %H:%M') if admin.last_activity else 'Never' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex justify-end space-x-2">
+                                <button 
+                                    class="text-blue-600 hover:text-blue-900"
+                                    onclick="window.location.href='{{ url_for('admin.view_admin_details', admin_id=admin.id) }}'"
+                                    title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button 
+                                    class="text-green-600 hover:text-green-900"
+                                    onclick="showReassignModal({{ admin.id }}, '{{ admin.first_name }} {{ admin.last_name }}', {{ admin.office_id }})"
+                                    title="Reassign Office">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </button>
+                                <button 
+                                    class="{% if admin.is_active %}text-orange-600 hover:text-orange-900{% else %}text-green-600 hover:text-green-900{% endif %}"
+                                    onclick="toggleAdminStatus({{ admin.id }}, {{ admin.is_active|tojson }})"
+                                    title="{% if admin.is_active %}Deactivate{% else %}Activate{% endif %} Account">
+                                    <i class="fas {% if admin.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                </button>
+                                <button 
+                                    class="{% if admin.account_locked %}text-green-600 hover:text-green-900{% else %}text-red-600 hover:text-red-900{% endif %}"
+                                    onclick="showLockToggleModal({{ admin.id }}, {{ admin.account_locked|tojson }})"
+                                    title="{% if admin.account_locked %}Unlock{% else %}Lock{% endif %} Account">
+                                    <i class="fas {% if admin.account_locked %}fa-unlock{% else %}fa-lock{% endif %}"></i>
+                                </button>
+                                <button 
+                                    class="text-red-600 hover:text-red-900"
+                                    onclick="showDeleteModal({{ admin.id }}, '{{ admin.first_name }} {{ admin.last_name }}')"
+                                    title="Delete Account">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            No admin accounts found. 
+                            <a href="{{ url_for('admin.manage_office_admins') }}" class="text-blue-600 hover:underline">Create one now</a>.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="flex justify-between items-center mt-6">
+        <div class="text-sm text-gray-700">
+            Showing <span class="font-medium">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+            to <span class="font-medium">{{ min(pagination.page * pagination.per_page, total_count) }}</span>
+            of <span class="font-medium">{{ total_count }}</span> results
+        </div>
+        <nav class="inline-flex rounded-md shadow-sm">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('admin.manage_admins', page=pagination.page-1, search=search_query, office=office_id, status=status) }}" 
+               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% else %}
+            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                <i class="fas fa-chevron-left"></i>
+            </span>
+            {% endif %}
+            
+            {% for page_num in range(1, pagination.pages + 1) %}
+                {% if page_num == pagination.page %}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-700">
+                    {{ page_num }}
+                </span>
+                {% elif page_num == 1 or page_num == pagination.pages or (page_num >= pagination.page - 2 and page_num <= pagination.page + 2) %}
+                <a href="{{ url_for('admin.manage_admins', page=page_num, search=search_query, office=office_id, status=status) }}" 
+                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{ page_num }}
+                </a>
+                {% elif page_num == pagination.page - 3 or page_num == pagination.page + 3 %}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    ...
+                </span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if pagination.has_next %}
+            <a href="{{ url_for('admin.manage_admins', page=pagination.page+1, search=search_query, office=office_id, status=status) }}" 
+               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Admin Details Modal -->
+<div id="adminDetailsModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-modal="true" role="dialog">
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="flex justify-between items-center px-6 py-4 bg-blue-700 text-white">
+                <h3 class="text-lg font-medium">Admin Details</h3>
+                <button type="button" class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <!-- Hidden CSRF token field -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div id="adminDetailsContent" class="sm:flex sm:items-start">
+                    <!-- Content will be loaded dynamically -->
+                    <div class="text-center w-full">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
+                        <p class="mt-2 text-gray-600">Loading admin details...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" class="close-modal w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reassign Admin Modal -->
+<div id="reassignModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-modal="true" role="dialog">
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="flex justify-between items-center px-6 py-4 bg-blue-700 text-white">
+                <h3 class="text-lg font-medium">Reassign Admin to Different Office</h3>
+                <button type="button" class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <!-- Hidden CSRF token field -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="sm:flex sm:items-start">
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                            Reassign <span id="reassignAdminName" class="font-semibold"></span>
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500 mb-4">
+                                Select a new office for this admin. The admin will no longer have access to their current office.
+                            </p>
+                            <div class="w-full">
+                                <label for="newOffice" class="block text-sm font-medium text-gray-700">New Office Assignment</label>
+                                <select id="newOffice" name="newOffice" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                    {% for office in offices %}
+                                    <option value="{{ office.id }}">{{ office.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" id="confirmReassign" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Reassign
+                </button>
+                <button type="button" class="close-modal mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lock/Unlock Admin Modal -->
+<div id="lockModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-modal="true" role="dialog">
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div id="lockModalHeader" class="flex justify-between items-center px-6 py-4 text-white">
+                <h3 class="text-lg font-medium">Lock Admin Account</h3>
+                <button type="button" class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <!-- Hidden CSRF token field -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10" id="lockModalIcon">
+                        <i class="fas fa-lock text-xl"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="lockModalTitle">
+                            Lock Admin Account
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500" id="lockModalDescription">
+                                This will prevent the admin from logging in. You should provide a reason for this action.
+                            </p>
+                            <div class="mt-4">
+                                <label for="lockReason" class="block text-sm font-medium text-gray-700">Reason</label>
+                                <textarea id="lockReason" name="lockReason" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md" placeholder="Provide a reason for locking/unlocking this account"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" id="confirmLockToggle" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Lock Account
+                </button>
+                <button type="button" class="close-modal mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Admin Modal -->
+<div id="deleteModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-modal="true" role="dialog">
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="flex justify-between items-center px-6 py-4 bg-red-700 text-white">
+                <h3 class="text-lg font-medium">Delete Admin Account</h3>
+                <button type="button" class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <!-- Hidden CSRF token field -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                            Delete Admin Account
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Are you sure you want to delete the admin account for <span id="deleteAdminName" class="font-semibold"></span>? This action cannot be undone.
+                            </p>
+                            <p class="text-sm text-red-500 mt-2">
+                                All data associated with this admin will be permanently removed.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" id="confirmDelete" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Delete
+                </button>
+                <button type="button" class="close-modal mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Toast Notification -->
+<div id="statusToast" class="fixed right-5 top-5 z-50 transform transition-transform duration-300 ease-in-out translate-x-full">
+    <div class="bg-white rounded-lg border-l-4 border-green-500 shadow-md p-4 max-w-md">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <i id="statusIcon" class="fas fa-check-circle text-green-500 text-xl"></i>
+            </div>
+            <div class="ml-3 w-0 flex-1">
+                <p id="statusMessage" class="text-sm leading-5 font-medium text-gray-900">
+                    Operation successful!
+                </p>
+            </div>
+            <div class="ml-4 flex-shrink-0 flex">
+                <button id="closeToast" class="inline-flex text-gray-400 focus:outline-none focus:text-gray-500 transition ease-in-out duration-150">
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414 1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+    // Global variables for actions
+    let currentAdminId = null;
+    let isAdminLocked = false;
+    let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Close modal functionality for all modals
+        document.querySelectorAll('.close-modal').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('[id$="Modal"]').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+            });
+        });
+
+        // Close toast
+        document.getElementById('closeToast').addEventListener('click', function() {
+            document.getElementById('statusToast').classList.add('translate-x-full');
+        });
+
+        // Setup confirm buttons
+        setupConfirmButtons();
+
+ 
+    });
+
+    
+
+    function setupConfirmButtons() {
+        // Delete admin confirmation
+        document.getElementById('confirmDelete').addEventListener('click', function() {
+            if (!currentAdminId) return;
+            
+            fetch(`/admin/${currentAdminId}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('Received non-JSON response from server');
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('deleteModal').classList.add('hidden');
+                    showToast(data.message, 'success');
+                    // Reload page after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showToast(`Error: ${error.message}`, 'error');
+            });
+        });
+
+        // Reassign admin confirmation
+        document.getElementById('confirmReassign').addEventListener('click', function() {
+            if (!currentAdminId) return;
+            
+            const newOfficeId = document.getElementById('newOffice').value;
+            
+            fetch(`/admin/${currentAdminId}/reassign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ office_id: newOfficeId })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('Received non-JSON response from server');
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('reassignModal').classList.add('hidden');
+                    showToast(data.message, 'success');
+                    // Reload page after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showToast(`Error: ${error.message}`, 'error');
+            });
+        });
+
+        // Lock/unlock admin confirmation
+        document.getElementById('confirmLockToggle').addEventListener('click', function() {
+            if (!currentAdminId) return;
+            
+            const reason = document.getElementById('lockReason').value;
+            
+            fetch(`/admin/${currentAdminId}/toggle-lock`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ reason: reason })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('Received non-JSON response from server');
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('lockModal').classList.add('hidden');
+                    showToast(data.message, 'success');
+                    // Reload page after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showToast(`Error: ${error.message}`, 'error');
+            });
+        });
+    }
+
+    // Function to show admin details modal
+    function showAdminDetails(adminId) {
+        currentAdminId = adminId;
+        const modal = document.getElementById('adminDetailsModal');
+        const content = document.getElementById('adminDetailsContent');
+        
+        content.innerHTML = `
+            <div class="text-center w-full">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
+                <p class="mt-2 text-gray-600">Loading admin details...</p>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        
+        fetch(`/admin/${adminId}/details`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('Received non-JSON response from server');
+            }
+        })
+        .then(data => {
+            const lastActivity = data.last_activity ? data.last_activity : 'Never';
+            const activeStatus = data.is_active ? 
+                '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>' : 
+                '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Inactive</span>';
+            const lockStatus = data.account_locked ? 
+                '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Locked</span>' : 
+                '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Unlocked</span>';
+            
+            // Add connection status to details
+            const connectionStatus = data.is_online ? 
+                '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Online</span>' : 
+                '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Offline</span>';
+            
+            content.innerHTML = `
+                <div class="w-full">
+                    <div class="flex items-center mb-4">
+                        <div class="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 text-xl font-semibold relative">
+                            ${data.first_name[0]}${data.last_name[0]}
+                            <span 
+                                class="absolute bottom-0 right-0 w-4 h-4 rounded-full ${data.is_online ? 'bg-green-500' : 'bg-gray-400'} border-2 border-white"
+                                title="${data.is_online ? 'Online' : 'Offline'}">
+                            </span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold">${data.first_name} ${data.middle_name || ''} ${data.last_name}</h3>
+                            <p class="text-gray-600">${data.email}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 pt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Office</p>
+                                <p class="mt-1 text-sm text-gray-900">${data.office_name}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Account Status</p>
+                                <p class="mt-1 text-sm text-gray-900">${activeStatus} ${lockStatus}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Created On</p>
+                                <p class="mt-1 text-sm text-gray-900">${data.created_at}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Connection Status</p>
+                                <p class="mt-1 text-sm text-gray-900">${connectionStatus}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Last Activity</p>
+                                <p class="mt-1 text-sm text-gray-900">${lastActivity}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <div class="flex justify-between">
+                            <button onclick="showReassignModal(${data.id}, '${data.first_name} ${data.last_name}', ${data.office_id})" 
+                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-exchange-alt mr-2"></i> Reassign
+                            </button>
+                            <button onclick="toggleAdminStatus(${data.id}, ${data.is_active})"
+                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-white ${data.is_active ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas ${data.is_active ? 'fa-user-slash' : 'fa-user-check'} mr-2"></i>
+                                ${data.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button onclick="showDeleteModal(${data.id}, '${data.first_name} ${data.last_name}')"
+                                    class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                <i class="fas fa-trash-alt mr-2"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            content.innerHTML = `
+                <div class="w-full text-center">
+                    <div class="rounded-full bg-red-100 p-3 mx-auto w-fit">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    </div>
+                    <p class="mt-2 text-red-600">Error loading admin details: ${error.message}</p>
+                </div>
+            `;
+        });
+    }
+
+    // Function to show the reassign modal
+    function showReassignModal(adminId, adminName, currentOfficeId) {
+        currentAdminId = adminId;
+        document.getElementById('reassignAdminName').textContent = adminName;
+        document.getElementById('newOffice').value = currentOfficeId;
+        document.getElementById('adminDetailsModal').classList.add('hidden');
+        document.getElementById('reassignModal').classList.remove('hidden');
+    }
+
+    // Function to toggle admin status (active/inactive)
+    function toggleAdminStatus(adminId, isActive) {
+        currentAdminId = adminId;
+        
+        fetch(`/admin/${adminId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                // Reload page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast(`Error: ${data.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            showToast(`Error: ${error.message}`, 'error');
+        });
+    }
+
+    // Function to show lock toggle modal
+    function showLockToggleModal(adminId, isLocked) {
+        currentAdminId = adminId;
+        isAdminLocked = isLocked;
+        
+        const modal = document.getElementById('lockModal');
+        const title = document.getElementById('lockModalTitle');
+        const description = document.getElementById('lockModalDescription');
+        const button = document.getElementById('confirmLockToggle');
+        const header = document.getElementById('lockModalHeader');
+        const icon = document.getElementById('lockModalIcon');
+        
+        if (isLocked) {
+            title.textContent = 'Unlock Admin Account';
+            description.textContent = 'This will allow the admin to log in again. You should provide a reason for unlocking.';
+            button.textContent = 'Unlock Account';
+            button.classList.remove('bg-red-600', 'hover:bg-red-700');
+            button.classList.add('bg-green-600', 'hover:bg-green-700');
+            header.classList.remove('bg-red-700');
+            header.classList.add('bg-green-700');
+            icon.innerHTML = '<i class="fas fa-unlock text-green-500 text-xl"></i>';
+        } else {
+            title.textContent = 'Lock Admin Account';
+            description.textContent = 'This will prevent the admin from logging in. You should provide a reason for locking.';
+            button.textContent = 'Lock Account';
+            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+            button.classList.add('bg-red-600', 'hover:bg-red-700');
+            header.classList.remove('bg-green-700');
+            header.classList.add('bg-red-700');
+            icon.innerHTML = '<i class="fas fa-lock text-red-500 text-xl"></i>';
+        }
+        
+        document.getElementById('lockReason').value = '';
+        document.getElementById('adminDetailsModal').classList.add('hidden');
+        modal.classList.remove('hidden');
+    }
+
+    // Function to show delete confirmation modal
+    function showDeleteModal(adminId, adminName) {
+        currentAdminId = adminId;
+        document.getElementById('deleteAdminName').textContent = adminName;
+        document.getElementById('adminDetailsModal').classList.add('hidden');
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    // Function to show toast notifications
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('statusToast');
+        const icon = document.getElementById('statusIcon');
+        const msg = document.getElementById('statusMessage');
+        
+        // Set the message
+        msg.textContent = message;
+        
+        // Set the icon and color based on type
+        if (type === 'success') {
+            icon.className = 'fas fa-check-circle text-green-500 text-xl';
+            toast.querySelector('div').classList.remove('border-red-500');
+            toast.querySelector('div').classList.add('border-green-500');
+        } else {
+            icon.className = 'fas fa-exclamation-circle text-red-500 text-xl';
+            toast.querySelector('div').classList.remove('border-green-500');
+            toast.querySelector('div').classList.add('border-red-500');
+        }
+        
+        // Show the toast
+        toast.classList.remove('translate-x-full');
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+        }, 3000);
+    }
+</script>
+{% endblock %}

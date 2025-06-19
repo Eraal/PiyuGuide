@@ -1,0 +1,13 @@
+## HOW TO RUN THIS SYSTEM
+
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force;
+.\kapiyu\Scripts\activate
+python run.py
+
+## COMMIT TO GITHUB REPO
+
+git -C "d:\SystemProject\KapiyuGuide_System" remote -v
+git -C "d:\SystemProject\KapiyuGuide_System" add .
+git -C "d:\SystemProject\KapiyuGuide_System" commit -m "Description"
+git -C "d:\SystemProject\KapiyuGuide_System" push origin master
+git -C "d:\SystemProject\KapiyuGuide_System" status

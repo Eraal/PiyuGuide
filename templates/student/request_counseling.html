@@ -1,0 +1,1346 @@
+{% extends "student/student_base.html" %} {% block title %}Request Counseling
+Session - KapiyuGuide{% endblock %} {% block extra_head %}
+<style>
+  /* Custom styles for counseling session request form */
+  .full-width-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 2rem;
+  }
+
+  .content-wrapper {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  @media (min-width: 1280px) {
+    .content-wrapper {
+      grid-template-columns: 320px 1fr;
+    }
+  }
+
+  .side-panel {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    border-radius: 1rem;
+    padding: 2rem 1.5rem;
+    color: white;
+    position: sticky;
+    top: 2rem;
+    height: fit-content;
+  }
+
+  .main-panel {
+    flex: 1;
+  }
+
+  /* Office info panel */
+  .office-info-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .office-description {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-top: 1rem;
+  }
+
+  .help-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+
+  .help-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .help-card h3 i {
+    margin-right: 0.5rem;
+  }
+
+  .help-card p {
+    font-size: 0.875rem;
+    opacity: 0.9;
+  }
+
+  /* Form styling */
+  .form-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .form-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .form-section-title i {
+    margin-right: 0.75rem;
+    color: #3b82f6;
+  }
+
+  /* Input styling */
+  .input-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .input-field[disabled] {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+  }
+
+  /* Session type selection cards */
+  .session-type-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .session-type-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background-color: white;
+  }
+
+  .session-type-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .session-type-card.selected {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+
+  .session-type-card.selected::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  }
+
+  .session-type-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f9fafb;
+  }
+
+  .session-type-card h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .session-type-card h4 i {
+    margin-right: 0.75rem;
+  }
+
+  .session-type-card p {
+    color: #4b5563;
+    font-size: 0.875rem;
+  }
+
+  .session-type-badge {
+    display: inline-block;
+    background-color: #dbeafe;
+    color: #1e40af;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    margin-top: 0.75rem;
+  }
+
+  /* Date and time picker styling */
+  .date-time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 640px) {
+    .date-time-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Button styles */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-secondary {
+    background-color: #f9fafb;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+  }
+
+  .btn-secondary:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+  }
+
+  /* Glowing accent */
+  .glow-bg::after {
+    content: "";
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: rgba(59, 130, 246, 0.4);
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    right: -40px;
+    top: -40px;
+  }
+
+  /* Badge styles */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-green {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .badge i {
+    margin-right: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  /* Multi-step form styling */
+  .step-container {
+    position: relative;
+    margin-bottom: 2rem;
+  }
+
+  .step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+    opacity: 0.7;
+  }
+
+  .step.active {
+    opacity: 1;
+  }
+
+  .step.completed {
+    opacity: 1;
+  }
+
+  .step-number {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .step.active .step-number {
+    background-color: #3b82f6;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+
+  .step.completed .step-number {
+    background-color: #10b981;
+    color: white;
+  }
+
+  .step-title {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  .step.active .step-title {
+    color: #1f2937;
+    font-weight: 500;
+  }
+
+  .step.completed .step-title {
+    color: #10b981;
+    font-weight: 500;
+  }
+
+  .progress-line {
+    position: absolute;
+    top: 1.25rem;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #e5e7eb;
+    z-index: 0;
+  }
+
+  .progress-line-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #10b981;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  /* Form step content */
+  .form-step {
+    display: none;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .form-step.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Office card selection */
+  .office-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .office-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .office-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .office-card.selected {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+
+  .office-card.selected::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  }
+
+  .office-card-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background-color: #dbeafe;
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .office-card h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #111827;
+  }
+
+  .office-card p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    flex-grow: 1;
+    margin-bottom: 1rem;
+  }
+
+  .office-card-check {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background-color: #3b82f6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0);
+    transition: transform 0.3s ease;
+  }
+
+  .office-card.selected .office-card-check {
+    transform: scale(1);
+  }
+
+  .office-supports-video {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .office-supports-video i {
+    margin-right: 0.35rem;
+  }
+
+  /* Form navigation buttons */
+  .form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+  }
+
+  .btn-next,
+  .btn-prev,
+  .btn-submit {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-next:after,
+  .btn-submit:after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: -100%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0)
+    );
+    transition: left 0.5s ease;
+  }
+
+  .btn-next:hover:after,
+  .btn-submit:hover:after {
+    left: 100%;
+  }
+
+  /* Error messages */
+  .error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .error-message.visible {
+    display: block;
+    animation: shake 0.5s ease;
+  }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20%,
+    60% {
+      transform: translateX(-5px);
+    }
+    40%,
+    80% {
+      transform: translateX(5px);
+    }
+  }
+
+  /* Loading state */
+  .loading {
+    position: relative;
+  }
+
+  .loading:after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 50%;
+    margin-top: -0.5rem;
+    margin-left: -0.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="full-width-container mx-auto py-8">
+  <!-- Back button -->
+  <div class="mb-6">
+    <a
+      href="{{ url_for('student.counseling_sessions') }}"
+      class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+    >
+      <i class="fas fa-arrow-left mr-2"></i> Back to Counseling Sessions
+    </a>
+  </div>
+
+  <!-- Content Grid Layout -->
+  <div class="content-wrapper">
+    <!-- Side Panel: Help Information -->
+    <div class="side-panel relative glow-bg hidden xl:block">
+      <div class="office-info-header">
+        <div class="flex items-center">
+          <div class="rounded-full bg-white/20 p-3 mr-3">
+            <i class="fas fa-calendar-check text-white text-lg"></i>
+          </div>
+          <h2 class="text-xl font-bold">Counseling Request</h2>
+        </div>
+
+        <p class="office-description">
+          Schedule a personal counseling session with our staff to discuss your
+          concerns in detail.
+        </p>
+      </div>
+
+      <div class="help-card">
+        <h3><i class="fas fa-info-circle"></i> About Counseling</h3>
+        <p>
+          Counseling sessions are one-on-one appointments where you can discuss
+          your concerns in a private, confidential environment.
+        </p>
+      </div>
+
+      <div class="help-card">
+        <h3><i class="fas fa-video"></i> Video Counseling</h3>
+        <p>
+          Some offices offer video counseling sessions that allow you to meet
+          with a counselor remotely using your computer or smartphone.
+        </p>
+      </div>
+
+      <div class="help-card">
+        <h3><i class="fas fa-clock"></i> Scheduling</h3>
+        <p>
+          Sessions can be scheduled up to 30 days in advance and typically last
+          45-60 minutes. Choose a time that works best for you.
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Panel: Form Content -->
+    <div class="main-panel">
+      <!-- Form Container -->
+      <div class="bg-white rounded-xl shadow-md overflow-hidden form-container">
+        <div class="p-8">
+          <h1 class="text-2xl font-bold text-gray-900 mb-4">
+            Request a Counseling Session
+          </h1>
+          <p class="text-gray-600 mb-8">
+            Complete the following steps to schedule your counseling session.
+          </p>
+
+          <!-- Step Indicator -->
+          <div class="step-container">
+            <div class="step-indicator">
+              <div class="step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-title">Select Office</div>
+              </div>
+              <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-title">Session Type</div>
+              </div>
+              <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-title">Date & Time</div>
+              </div>
+              <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-title">Additional Info</div>
+              </div>
+            </div>
+            <div class="progress-line">
+              <div class="progress-line-fill" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <form
+            id="counselingForm"
+            action="{{ url_for('student.schedule_session') }}"
+            method="POST"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input
+              type="hidden"
+              id="selected_office_id"
+              name="office_id"
+              value=""
+            />
+            <input
+              type="hidden"
+              id="is_video_session"
+              name="is_video"
+              value="false"
+            />
+
+            <!-- Step 1: Office Selection -->
+            <div class="form-step active" id="step-1">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-building"></i> Select an Office
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Choose which office you'd like to schedule your counseling
+                  session with
+                </p>
+
+                <div class="office-grid">
+                  {% for office in offices %}
+                  {% if office.counseling_sessions is defined %}
+                  <div
+                    class="office-card"
+                    data-office-id="{{ office.id }}"
+                    data-supports-video="{{ office.supports_video|lower }}"
+                  >
+                    <div class="office-card-icon">
+                      <i class="fas fa-building"></i>
+                    </div>
+                    <h4>{{ office.name }}</h4>
+                    <p>{{ office.description }}</p>
+                    {% if office.supports_video %}
+                    <div class="office-supports-video">
+                      <i class="fas fa-video"></i> Video Available
+                    </div>
+                    {% endif %}
+                    <div class="office-card-check">
+                      <i class="fas fa-check"></i>
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% endfor %}
+                </div>
+                {% if counseling_offices_count == 0 %}
+                <div class="bg-yellow-50 text-yellow-700 p-4 rounded-md mt-3">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <i class="fas fa-exclamation-circle text-yellow-500"></i>
+                    </div>
+                    <div class="ml-3">
+                      <h3 class="text-sm font-medium">
+                        No counseling offices available
+                      </h3>
+                      <p class="mt-2 text-sm">
+                        There are currently no offices that provide counseling
+                        services. Please check back later or contact the
+                        university administration.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+                <div class="error-message" id="office-error">
+                  Please select an office to continue
+                </div>
+              </div>
+
+              <div class="form-navigation">
+                <div></div>
+                <!-- Empty div to maintain flex spacing -->
+                <button
+                  type="button"
+                  class="btn btn-primary btn-next"
+                  id="next-step-1"
+                  {% if counseling_offices_count == 0 %}disabled{% endif %}
+                >
+                  Next Step <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Session Type -->
+            <div class="form-step" id="step-2">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-handshake"></i> Session Type
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Choose how you would like to meet with the counselor
+                </p>
+
+                <div class="session-type-container">
+                  <!-- In-person session card -->
+                  <label class="session-type-card selected" id="inPersonCard">
+                    <input
+                      type="radio"
+                      name="session_type"
+                      value="false"
+                      class="hidden"
+                      checked
+                    />
+                    <h4><i class="fas fa-user"></i> In-Person Session</h4>
+                    <p>
+                      Meet face-to-face with a counselor at their office
+                      location
+                    </p>
+                    <span class="session-type-badge">
+                      <i class="fas fa-map-marker-alt"></i> On Campus
+                    </span>
+                  </label>
+
+                  <!-- Video session card -->
+                  <label class="session-type-card disabled" id="videoCard">
+                    <input
+                      type="radio"
+                      name="session_type"
+                      value="true"
+                      class="hidden"
+                      disabled
+                    />
+                    <h4><i class="fas fa-video"></i> Video Session</h4>
+                    <p>Meet virtually through a secure video platform</p>
+                    <span class="session-type-badge">
+                      <i class="fas fa-wifi"></i> Remote
+                    </span>
+                  </label>
+                </div>
+
+                <!-- Video not available message -->
+                <div id="videoNotAvailable" class="hidden mt-3">
+                  <p
+                    class="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-md flex items-center"
+                  >
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    Video counseling is not available for the selected office
+                  </p>
+                </div>
+              </div>
+
+              <div class="form-navigation">
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-prev"
+                  id="prev-step-2"
+                >
+                  <i class="fas fa-arrow-left mr-2"></i> Previous
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-next"
+                  id="next-step-2"
+                >
+                  Next Step <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 3: Date and Time -->
+            <div class="form-step" id="step-3">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-calendar-alt"></i> Preferred Date & Time
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Select your preferred date and time for the session. The office may adjust this based on counselor availability.
+                </p>
+
+                <div class="date-time-grid">
+                  <div>
+                    <label for="scheduled_date" class="input-label"
+                      >Preferred Date <span class="text-red-500">*</span></label
+                    >
+                    <input
+                      type="date"
+                      id="scheduled_date"
+                      name="scheduled_date"
+                      class="input-field"
+                      min="{{ today }}"
+                      max="{{ max_date }}"
+                      required
+                    />
+                    <p class="text-xs text-gray-500 mt-1">
+                      Sessions can be requested up to 30 days in advance
+                    </p>
+                    <div class="error-message" id="date-error">
+                      Please select a valid date
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="scheduled_time" class="input-label"
+                      >Preferred Time <span class="text-red-500">*</span></label
+                    >
+                    <select
+                      id="scheduled_time"
+                      name="scheduled_time"
+                      class="input-field"
+                      required
+                    >
+                      <option value="">Select a time</option>
+                      <option value="08:00">8:00 AM</option>
+                      <option value="08:30">8:30 AM</option>
+                      <option value="09:00">9:00 AM</option>
+                      <option value="09:30">9:30 AM</option>
+                      <option value="10:00">10:00 AM</option>
+                      <option value="10:30">10:30 AM</option>
+                      <option value="11:00">11:00 AM</option>
+                      <option value="11:30">11:30 AM</option>
+                      <option value="13:00">1:00 PM</option>
+                      <option value="13:30">1:30 PM</option>
+                      <option value="14:00">2:00 PM</option>
+                      <option value="14:30">2:30 PM</option>
+                      <option value="15:00">3:00 PM</option>
+                      <option value="15:30">3:30 PM</option>
+                      <option value="16:00">4:00 PM</option>
+                      <option value="16:30">4:30 PM</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Office hours are 8:00 AM - 5:00 PM (PHT). The final time may be adjusted by the counseling office.
+                    </p>
+                    <div class="error-message" id="time-error">
+                      Please select a valid time
+                    </div>
+                  </div>
+                </div>
+                <div class="error-message" id="datetime-error">
+                  Please select a future date and time
+                </div>
+                
+                <div class="mt-3 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+                  <p class="text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i> Note: Your selected time is a preference. 
+                    The office may adjust this time based on counselor availability. You will receive a notification when your session is confirmed.
+                  </p>
+                </div>
+              </div>
+              
+              <div class="form-navigation">
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-prev"
+                  id="prev-step-3"
+                >
+                  <i class="fas fa-arrow-left mr-2"></i> Previous
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-next"
+                  id="next-step-3"
+                >
+                  Next Step <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 4: Additional Information -->
+            <div class="form-step" id="step-4">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-sticky-note"></i> Additional Information
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Provide any details that might help the counselor prepare for
+                  your session
+                </p>
+
+                <div class="mb-4">
+                  <label for="notes" class="input-label"
+                    >Notes (Optional)</label
+                  >
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows="4"
+                    class="input-field"
+                    placeholder="Briefly describe the reason for your session or any specific concerns..."
+                  ></textarea>
+                  <p class="text-xs text-gray-500 mt-1">
+                    This information helps the counselor prepare for your
+                    session
+                  </p>
+                </div>
+              </div>
+
+              <!-- Summary of selections -->
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h4 class="font-medium text-gray-900 mb-2">Session Summary</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Office:</p>
+                    <p class="text-sm text-gray-900" id="summary-office">
+                      Not selected
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">
+                      Session Type:
+                    </p>
+                    <p class="text-sm text-gray-900" id="summary-type">
+                      In-Person
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Date:</p>
+                    <p class="text-sm text-gray-900" id="summary-date">
+                      Not selected
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Time:</p>
+                    <p class="text-sm text-gray-900" id="summary-time">
+                      Not selected
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-navigation">
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-prev"
+                  id="prev-step-4"
+                >
+                  <i class="fas fa-arrow-left mr-2"></i> Previous
+                </button>
+                <button type="submit" class="btn btn-primary btn-submit">
+                  <i class="fas fa-calendar-plus mr-2"></i> Request Session
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Variables
+    let currentStep = 1;
+    const totalSteps = 4;
+    const progressLine = document.querySelector(".progress-line-fill");
+
+    // Elements for office selection
+    const officeCards = document.querySelectorAll(".office-card");
+    const selectedOfficeInput = document.getElementById("selected_office_id");
+    const officeError = document.getElementById("office-error");
+
+    // Check for office_id in URL parameters for pre-selection
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('office_id')) {
+      const officeIdFromUrl = urlParams.get('office_id');
+      
+      // Find the matching office card and select it
+      officeCards.forEach((card) => {
+        const cardOfficeId = card.getAttribute("data-office-id");
+        if (cardOfficeId === officeIdFromUrl) {
+          // Trigger a click event on this card to select it
+          card.click();
+          
+          // Auto-advance to step 2 if an office is pre-selected
+          setTimeout(() => {
+            document.getElementById("next-step-1").click();
+          }, 300);
+        }
+      });
+    }
+
+    // Set counseling offices count for UI updates
+    const counselingOfficesCount = {{ counseling_offices_count|default(0) }};
+
+    // Check if there are counseling offices available
+    if (counselingOfficesCount === 0) {
+      document.getElementById("next-step-1").disabled = true;
+      document
+        .getElementById("next-step-1")
+        .classList.add("opacity-50", "cursor-not-allowed");
+    }
+
+    // Elements for session type
+    const inPersonCard = document.getElementById("inPersonCard");
+    const videoCard = document.getElementById("videoCard");
+    const videoInput = document.querySelector(
+      "input[name='session_type'][value='true']"
+    );
+    const inPersonInput = document.querySelector(
+      "input[name='session_type'][value='false']"
+    );
+    const isVideoInput = document.getElementById("is_video_session");
+    const videoNotAvailable = document.getElementById("videoNotAvailable");
+
+    // Elements for date and time
+    const dateInput = document.getElementById("scheduled_date");
+    const timeInput = document.getElementById("scheduled_time");
+    const dateError = document.getElementById("date-error");
+    const timeError = document.getElementById("time-error");
+    const datetimeError = document.getElementById("datetime-error");
+
+    // Elements for summary
+    const summaryOffice = document.getElementById("summary-office");
+    const summaryType = document.getElementById("summary-type");
+    const summaryDate = document.getElementById("summary-date");
+    const summaryTime = document.getElementById("summary-time");
+
+    // Navigation buttons
+    const nextStep1 = document.getElementById("next-step-1");
+    const nextStep2 = document.getElementById("next-step-2");
+    const nextStep3 = document.getElementById("next-step-3");
+    const prevStep2 = document.getElementById("prev-step-2");
+    const prevStep3 = document.getElementById("prev-step-3");
+    const prevStep4 = document.getElementById("prev-step-4");
+
+    // Office card selection
+    officeCards.forEach((card) => {
+      card.addEventListener("click", function () {
+        // Remove selection from all cards
+        officeCards.forEach((c) => c.classList.remove("selected"));
+
+        // Select this card
+        this.classList.add("selected");
+
+        // Store the office ID
+        const officeId = this.getAttribute("data-office-id");
+        selectedOfficeInput.value = officeId;
+
+        // Update the summary
+        summaryOffice.textContent = this.querySelector("h4").textContent;
+
+        // Hide error message if shown
+        officeError.classList.remove("visible");
+
+        // Check if selected office supports video
+        // Fix: Parse the data-supports-video attribute correctly by checking for various true values
+        const supportsVideoAttr = this.getAttribute("data-supports-video");
+        const supportsVideo = supportsVideoAttr === "true" || supportsVideoAttr === "True" || supportsVideoAttr === "1" || supportsVideoAttr === true;
+        
+        console.log("Office ID:", officeId, "Supports Video:", supportsVideo, "Raw value:", supportsVideoAttr);
+        
+        if (supportsVideo) {
+          videoCard.classList.remove("disabled");
+          videoInput.disabled = false;
+          videoNotAvailable.classList.add("hidden");
+        } else {
+          videoCard.classList.add("disabled");
+          videoInput.disabled = true;
+          inPersonInput.checked = true;
+          videoCard.classList.remove("selected");
+          inPersonCard.classList.add("selected");
+          videoNotAvailable.classList.remove("hidden");
+          isVideoInput.value = "false";
+          summaryType.textContent = "In-Person";
+        }
+      });
+    });
+
+    // Session type selection
+    const sessionTypeCards = document.querySelectorAll(".session-type-card");
+    sessionTypeCards.forEach((card) => {
+      card.addEventListener("click", function (e) {
+        // Skip if card is disabled
+        if (this.classList.contains("disabled")) {
+          e.preventDefault();
+          return false;
+        }
+
+        // Update selected state
+        sessionTypeCards.forEach((c) => c.classList.remove("selected"));
+        this.classList.add("selected");
+
+        // Check the radio input
+        this.querySelector("input").checked = true;
+
+        // Update hidden input
+        isVideoInput.value = this.querySelector("input").value;
+
+        // Update summary
+        summaryType.textContent =
+          this.id === "videoCard" ? "Video" : "In-Person";
+      });
+    });
+
+    // Helper function to format date for display
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // Helper function to format time for display
+    function formatTime(timeString) {
+      const [hours, minutes] = timeString.split(":");
+      const date = new Date();
+      date.setHours(hours, minutes);
+      return date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+    }
+
+    // Date and time input event listeners
+    dateInput.addEventListener("change", function () {
+      if (this.value) {
+        summaryDate.textContent = formatDate(this.value);
+        dateError.classList.remove("visible");
+      }
+    });
+
+    timeInput.addEventListener("change", function () {
+      if (this.value) {
+        summaryTime.textContent = formatTime(this.value);
+        timeError.classList.remove("visible");
+      }
+    });
+
+    // Function to update the step indicator
+    function updateStepIndicator(step) {
+      // Update steps
+      document.querySelectorAll(".step").forEach((stepEl) => {
+        const stepNum = parseInt(stepEl.getAttribute("data-step"));
+        stepEl.classList.remove("active", "completed");
+
+        if (stepNum === step) {
+          stepEl.classList.add("active");
+        } else if (stepNum < step) {
+          stepEl.classList.add("completed");
+        }
+      });
+
+      // Update progress line
+      const progressPercentage = ((step - 1) / (totalSteps - 1)) * 100;
+      progressLine.style.width = `${progressPercentage}%`;
+    }
+
+    // Function to show a specific step
+    function showStep(step) {
+      // Hide all steps
+      document.querySelectorAll(".form-step").forEach((stepEl) => {
+        stepEl.classList.remove("active");
+      });
+
+      // Show the target step
+      document.getElementById(`step-${step}`).classList.add("active");
+
+      // Update the step indicator
+      updateStepIndicator(step);
+
+      // Update current step
+      currentStep = step;
+    }
+
+    // Next button event listeners
+    nextStep1.addEventListener("click", function () {
+      // Validate office selection
+      if (!selectedOfficeInput.value) {
+        officeError.classList.add("visible");
+        return;
+      }
+
+      showStep(2);
+    });
+
+    nextStep2.addEventListener("click", function () {
+      showStep(3);
+    });
+
+    nextStep3.addEventListener("click", function () {
+      // Validate date and time
+      if (!dateInput.value) {
+        dateError.classList.add("visible");
+        return;
+      }
+
+      if (!timeInput.value) {
+        timeError.classList.add("visible");
+        return;
+      }
+
+      // Check if selected date/time is in the future
+      const selectedDateTime = new Date(
+        `${dateInput.value}T${timeInput.value}`
+      );
+      const now = new Date();
+
+      if (selectedDateTime <= now) {
+        datetimeError.classList.add("visible");
+        return;
+      }
+
+      datetimeError.classList.remove("visible");
+      showStep(4);
+    });
+
+    // Previous button event listeners
+    prevStep2.addEventListener("click", function () {
+      showStep(1);
+    });
+
+    prevStep3.addEventListener("click", function () {
+      showStep(2);
+    });
+
+    prevStep4.addEventListener("click", function () {
+      showStep(3);
+    });
+
+    // Form submission
+    const counselingForm = document.getElementById("counselingForm");
+    counselingForm.addEventListener("submit", function (e) {
+      // Final validation before submission
+      if (!selectedOfficeInput.value) {
+        e.preventDefault();
+        showStep(1);
+        officeError.classList.add("visible");
+        return;
+      }
+
+      if (!dateInput.value || !timeInput.value) {
+        e.preventDefault();
+        showStep(3);
+
+        if (!dateInput.value) dateError.classList.add("visible");
+        if (!timeInput.value) timeError.classList.add("visible");
+        return;
+      }
+
+      const selectedDateTime = new Date(
+        `${dateInput.value}T${timeInput.value}`
+      );
+      const now = new Date();
+
+      if (selectedDateTime <= now) {
+        e.preventDefault();
+        showStep(3);
+        datetimeError.classList.add("visible");
+        return;
+      }
+
+      // Show loading state on submit button
+      document.querySelector(".btn-submit").classList.add("loading");
+      document.querySelector(".btn-submit").textContent = "";
+    });
+  });
+</script>
+{% endblock %}

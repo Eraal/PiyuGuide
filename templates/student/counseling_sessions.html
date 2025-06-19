@@ -1,0 +1,464 @@
+{% extends "student/student_base.html" %} {% block title %}My Counseling
+Sessions - KapiyuGuide{% endblock %} {% block content %}
+<div class="max-w-7xl mx-auto">
+  <div
+    class="flex flex-col md:flex-row md:items-center md:justify-between mb-6"
+  >
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">
+        My Counseling Sessions
+      </h1>
+      <p class="text-gray-600 mt-1">
+        View and manage your scheduled counseling sessions
+      </p>
+    </div>
+    <div class="mt-4 md:mt-0">
+      <a
+        href="{{ url_for('student.request_counseling_session') }}"
+        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      >
+        <i class="fas fa-plus mr-2"></i> Request New Session
+      </a>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="mb-6 border-b border-gray-200">
+    <div class="flex space-x-8">
+      <button
+        id="upcoming-tab"
+        class="border-b-2 border-blue-500 py-4 px-1 text-sm font-medium text-blue-600"
+      >
+        Upcoming Sessions
+      </button>
+      <button
+        id="past-tab"
+        class="border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+      >
+        Past Sessions
+      </button>
+      <button
+        id="cancelled-tab"
+        class="border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+      >
+        Cancelled Sessions
+      </button>
+    </div>
+  </div>
+
+  <!-- Upcoming Sessions Tab Content -->
+  <div id="upcoming-content" class="tab-content">
+    <!-- Info banner about session scheduling -->
+    <div class="mb-4 bg-blue-50 p-4 rounded-md border-l-4 border-blue-400">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <i class="fas fa-info-circle text-blue-500"></i>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm text-blue-700">
+            The times you select when requesting a session are preferences. The
+            counseling office may adjust these times based on counselor
+            availability. You will be notified of any changes.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden rounded-lg">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Office
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Date & Time
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Type
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Counselor
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Status
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% set upcoming_sessions = [] %} {% for session in sessions %} {% if
+            session.status in ['pending', 'confirmed', 'in_progress'] and
+            session.scheduled_at > now %} {% set upcoming_sessions =
+            upcoming_sessions + [session] %}
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  {{ session.office.name }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {{ session.scheduled_at.strftime('%Y-%m-%d') }}
+                </div>
+                <div class="text-sm text-gray-500">
+                  {{ session.scheduled_at.strftime('%I:%M %p') }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {% if session.is_video_session %}
+                  <span class="flex items-center">
+                    <i class="fas fa-video text-blue-500 mr-2"></i> Video
+                  </span>
+                  {% else %}
+                  <span class="flex items-center">
+                    <i class="fas fa-user text-blue-500 mr-2"></i> In-Person
+                  </span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {% if session.counselor %} {{ session.counselor.first_name }}
+                  {{ session.counselor.last_name }} {% else %}
+                  <span class="text-yellow-600">Not assigned yet</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {% if session.status == 'pending' %}bg-yellow-100 text-yellow-800 {% elif session.status == 'confirmed' %}bg-blue-100 text-blue-800 {% elif session.status == 'in_progress' %}bg-green-100 text-green-800 {% else %}bg-gray-100 text-gray-800{% endif %}"
+                >
+                  {{ session.status|title }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <a
+                  href="{{ url_for('student.view_session', session_id=session.id) }}"
+                  class="text-blue-600 hover:text-blue-900"
+                  >View</a
+                >
+              </td>
+            </tr>
+            {% endif %} {% endfor %} {% if upcoming_sessions|length == 0 %}
+            <tr>
+              <td
+                colspan="6"
+                class="px-6 py-10 text-center text-sm text-gray-500"
+              >
+                <p>You don't have any upcoming counseling sessions.</p>
+                <a
+                  href="{{ url_for('student.request_counseling_session') }}"
+                  class="mt-2 inline-flex items-center text-blue-600 hover:text-blue-500"
+                >
+                  <i class="fas fa-calendar-plus mr-2"></i> Schedule a new
+                  session
+                </a>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Past Sessions Tab Content -->
+  <div id="past-content" class="tab-content hidden">
+    <div class="bg-white shadow overflow-hidden rounded-lg">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Office
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Date & Time
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Type
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Counselor
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Status
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% set past_sessions = [] %} {% for session in sessions %} {% if
+            session.status == 'completed' or (session.scheduled_at < now and
+            session.status != 'cancelled') %} {% set past_sessions =
+            past_sessions + [session] %}
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  {{ session.office.name }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {{ session.scheduled_at.strftime('%Y-%m-%d') }}
+                </div>
+                <div class="text-sm text-gray-500">
+                  {{ session.scheduled_at.strftime('%I:%M %p') }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {% if session.is_video_session %}
+                  <span class="flex items-center">
+                    <i class="fas fa-video text-blue-500 mr-2"></i> Video
+                  </span>
+                  {% else %}
+                  <span class="flex items-center">
+                    <i class="fas fa-user text-blue-500 mr-2"></i> In-Person
+                  </span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {% if session.counselor %} {{ session.counselor.first_name }}
+                  {{ session.counselor.last_name }} {% else %}
+                  <span class="text-gray-600">Not assigned</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {% if session.status == 'completed' %}bg-green-100 text-green-800 {% elif session.status == 'no-show' %}bg-red-100 text-red-800 {% else %}bg-gray-100 text-gray-800{% endif %}"
+                >
+                  {{ session.status|title }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <a
+                  href="{{ url_for('student.view_session', session_id=session.id) }}"
+                  class="text-blue-600 hover:text-blue-900"
+                  >View</a
+                >
+              </td>
+            </tr>
+            {% endif %} {% endfor %} {% if past_sessions|length == 0 %}
+            <tr>
+              <td
+                colspan="6"
+                class="px-6 py-10 text-center text-sm text-gray-500"
+              >
+                <p>You don't have any past counseling sessions.</p>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancelled Sessions Tab Content -->
+  <div id="cancelled-content" class="tab-content hidden">
+    <div class="bg-white shadow overflow-hidden rounded-lg">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Office
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Date & Time
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Type
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Counselor
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Status
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% set cancelled_sessions = [] %} {% for session in sessions %} {%
+            if session.status == 'cancelled' %} {% set cancelled_sessions =
+            cancelled_sessions + [session] %}
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  {{ session.office.name }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {{ session.scheduled_at.strftime('%Y-%m-%d') }}
+                </div>
+                <div class="text-sm text-gray-500">
+                  {{ session.scheduled_at.strftime('%I:%M %p') }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {% if session.is_video_session %}
+                  <span class="flex items-center">
+                    <i class="fas fa-video text-blue-500 mr-2"></i> Video
+                  </span>
+                  {% else %}
+                  <span class="flex items-center">
+                    <i class="fas fa-user text-blue-500 mr-2"></i> In-Person
+                  </span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {% if session.counselor %} {{ session.counselor.first_name }}
+                  {{ session.counselor.last_name }} {% else %}
+                  <span class="text-gray-600">Not assigned</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800"
+                >
+                  Cancelled
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <a
+                  href="{{ url_for('student.view_session', session_id=session.id) }}"
+                  class="text-blue-600 hover:text-blue-900"
+                  >View</a
+                >
+              </td>
+            </tr>
+            {% endif %} {% endfor %} {% if cancelled_sessions|length == 0 %}
+            <tr>
+              <td
+                colspan="6"
+                class="px-6 py-10 text-center text-sm text-gray-500"
+              >
+                <p>You don't have any cancelled counseling sessions.</p>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Tab functionality
+    const upcomingTab = document.getElementById("upcoming-tab");
+    const pastTab = document.getElementById("past-tab");
+    const cancelledTab = document.getElementById("cancelled-tab");
+
+    const upcomingContent = document.getElementById("upcoming-content");
+    const pastContent = document.getElementById("past-content");
+    const cancelledContent = document.getElementById("cancelled-content");
+
+    function activateTab(tab, content) {
+      // Deactivate all tabs
+      [upcomingTab, pastTab, cancelledTab].forEach((t) => {
+        t.classList.remove("border-blue-500", "text-blue-600");
+        t.classList.add("border-transparent", "text-gray-500");
+      });
+
+      // Hide all content
+      [upcomingContent, pastContent, cancelledContent].forEach((c) => {
+        c.classList.add("hidden");
+      });
+
+      // Activate selected tab
+      tab.classList.remove("border-transparent", "text-gray-500");
+      tab.classList.add("border-blue-500", "text-blue-600");
+
+      // Show selected content
+      content.classList.remove("hidden");
+    }
+
+    upcomingTab.addEventListener("click", function () {
+      activateTab(upcomingTab, upcomingContent);
+    });
+
+    pastTab.addEventListener("click", function () {
+      activateTab(pastTab, pastContent);
+    });
+
+    cancelledTab.addEventListener("click", function () {
+      activateTab(cancelledTab, cancelledContent);
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,421 @@
+{% extends "admin/adminbase.html" %}
+{% block title %}Manage Concern Types - KapiyuGuide Admin{% endblock %}
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <!-- Back button -->
+    <div class="mb-6">
+        <a href="{{ url_for('admin.dashboard') }}" class="flex items-center text-blue-600 hover:text-blue-800">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+        </a>
+    </div>
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-gray-200">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-800">Manage Concern Types</h1>
+            <p class="text-gray-600 mt-1">Create and manage the types of concerns that offices can handle.</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <button type="button" onclick="openAddModal()" class="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                <i class="fas fa-plus-circle mr-2"></i> Add New Concern Type
+            </button>
+        </div>
+    </div>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="mb-4 p-4 border rounded-md {{ 'bg-green-50 border-green-400 text-green-700' if category == 'success' else 'bg-red-50 border-red-400 text-red-700' }}" id="flashMessage">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle text-green-400"></i>
+                            {% else %}
+                                <i class="fas fa-exclamation-circle text-red-400"></i>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium">{{ message }}</p>
+                        </div>
+                        <div class="ml-auto pl-3">
+                            <div class="-mx-1.5 -my-1.5">
+                                <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="inline-flex rounded-md p-1.5 text-gray-500 hover:bg-gray-100 focus:outline-none">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <!-- Concern Types Table -->
+    <div class="mb-8">
+        <div class="bg-gray-50 overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Existing Concern Types
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    These concern types can be associated with offices to determine what issues they handle.
+                </p>
+            </div>
+            <div class="bg-white">
+                {% if concern_types %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Name
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Description
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Options
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for concern_type in concern_types %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">{{ concern_type.name }}</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm text-gray-500">{{ concern_type.description }}</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if concern_type.allows_other else 'bg-gray-100 text-gray-800' }}">
+                                            {{ 'Allows "Other" option' if concern_type.allows_other else 'Standard options only' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button type="button" onclick="openEditModal({{ concern_type.id }}, '{{ concern_type.name }}', '{{ concern_type.description }}', {{ 'true' if concern_type.allows_other else 'false' }})" 
+                                            class="text-blue-600 hover:text-blue-900 mr-3">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button type="button" onclick="openDeleteModal({{ concern_type.id }}, '{{ concern_type.name }}')" 
+                                            class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash-alt"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="py-8 text-center">
+                    <p class="text-gray-500 italic">No concern types defined yet. Click the "Add New Concern Type" button to create one.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Card -->
+    <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+        <h2 class="text-xl font-semibold text-blue-800 mb-4">About Concern Types</h2>
+        
+        <div class="mb-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 pt-0.5">
+                    <i class="fas fa-info-circle text-blue-600 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">What are Concern Types?</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>Concern types define the categories of issues that students can seek help for within the KapiyuGuide system.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-4 pt-4 border-t border-blue-200">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 pt-0.5">
+                    <i class="fas fa-lightbulb text-blue-600 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">Office Associations</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>Each concern type can be assigned to multiple offices. When a student selects a concern, they'll be directed to an appropriate office that handles that type of issue.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="pt-4 border-t border-blue-200">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 pt-0.5">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">Deletion Warning</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>Concern types cannot be deleted if they are currently associated with any office or inquiry. You must remove all associations first.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Concern Type Modal -->
+<div id="addModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-medium text-gray-900">Add New Concern Type</h3>
+            <button type="button" onclick="closeAddModal()" class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.manage_concern_types') }}" id="addForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="add">
+            
+            <div class="mt-4">
+                <label for="add_name" class="block text-sm font-medium text-gray-700">Name <span class="text-red-600">*</span></label>
+                <input type="text" name="name" id="add_name" required 
+                    class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                <p class="mt-1 text-xs text-gray-500">Enter a descriptive name for this concern type.</p>
+            </div>
+            
+            <div class="mt-4">
+                <label for="add_description" class="block text-sm font-medium text-gray-700">Description <span class="text-red-600">*</span></label>
+                <textarea name="description" id="add_description" rows="3" required
+                    class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                <p class="mt-1 text-xs text-gray-500">Explain what this concern type covers.</p>
+            </div>
+            
+            <div class="mt-4">
+                <div class="flex items-center">
+                    <input id="add_allows_other" name="allows_other" type="checkbox" value="true"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="add_allows_other" class="ml-2 block text-sm text-gray-700">
+                        Allow "Other" option
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">If checked, students can specify custom concerns within this type.</p>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" onclick="closeAddModal()" 
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" 
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                    Add Concern Type
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Concern Type Modal -->
+<div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-medium text-gray-900">Edit Concern Type</h3>
+            <button type="button" onclick="closeEditModal()" class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.manage_concern_types') }}" id="editForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="concern_id" id="edit_concern_id">
+            
+            <div class="mt-4">
+                <label for="edit_name" class="block text-sm font-medium text-gray-700">Name <span class="text-red-600">*</span></label>
+                <input type="text" name="name" id="edit_name" required 
+                    class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+            </div>
+            
+            <div class="mt-4">
+                <label for="edit_description" class="block text-sm font-medium text-gray-700">Description <span class="text-red-600">*</span></label>
+                <textarea name="description" id="edit_description" rows="3" required
+                    class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+            </div>
+            
+            <div class="mt-4">
+                <div class="flex items-center">
+                    <input id="edit_allows_other" name="allows_other" type="checkbox" value="true"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="edit_allows_other" class="ml-2 block text-sm text-gray-700">
+                        Allow "Other" option
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">If checked, students can specify custom concerns within this type.</p>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" onclick="closeEditModal()" 
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" 
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                    Update Concern Type
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-medium text-gray-900">Confirm Deletion</h3>
+            <button type="button" onclick="closeDeleteModal()" class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="mt-4">
+            <p class="text-sm text-gray-500">Are you sure you want to delete the concern type: <span id="delete_concern_name" class="font-medium text-gray-700"></span>?</p>
+            <p class="mt-2 text-sm text-red-600">This action cannot be undone if the concern type is not in use. If it's in use, the deletion will fail.</p>
+        </div>
+        <form method="POST" action="{{ url_for('admin.manage_concern_types') }}" id="deleteForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="concern_id" id="delete_concern_id">
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" onclick="closeDeleteModal()" 
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" 
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                    Delete Concern Type
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle flash message disappearing
+        const flashMessage = document.getElementById('flashMessage');
+        if (flashMessage) {
+            setTimeout(function() {
+                flashMessage.style.opacity = '0';
+                flashMessage.style.transition = 'opacity 0.5s ease-in-out';
+                setTimeout(function() {
+                    flashMessage.style.display = 'none';
+                }, 500);
+            }, 5000);
+        }
+    });
+    
+    // Add Modal Functions
+    function openAddModal() {
+        document.getElementById('addModal').classList.remove('hidden');
+        document.getElementById('add_name').focus();
+    }
+    
+    function closeAddModal() {
+        document.getElementById('addModal').classList.add('hidden');
+        document.getElementById('addForm').reset();
+    }
+    
+    // Edit Modal Functions
+    function openEditModal(id, name, description, allowsOther) {
+        document.getElementById('edit_concern_id').value = id;
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_allows_other').checked = allowsOther;
+        
+        document.getElementById('editModal').classList.remove('hidden');
+        document.getElementById('edit_name').focus();
+    }
+    
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        document.getElementById('editForm').reset();
+    }
+    
+    // Delete Modal Functions
+    function openDeleteModal(id, name) {
+        document.getElementById('delete_concern_id').value = id;
+        document.getElementById('delete_concern_name').textContent = name;
+        
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+    
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+    }
+    
+    // Validate forms before submission
+    document.getElementById('addForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('add_name').value.trim();
+        const description = document.getElementById('add_description').value.trim();
+        
+        if (!name) {
+            e.preventDefault();
+            alert('Please enter a name for the concern type.');
+            document.getElementById('add_name').focus();
+            return false;
+        }
+        
+        if (!description) {
+            e.preventDefault();
+            alert('Please enter a description for the concern type.');
+            document.getElementById('add_description').focus();
+            return false;
+        }
+        
+        return true;
+    });
+    
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('edit_name').value.trim();
+        const description = document.getElementById('edit_description').value.trim();
+        
+        if (!name) {
+            e.preventDefault();
+            alert('Please enter a name for the concern type.');
+            document.getElementById('edit_name').focus();
+            return false;
+        }
+        
+        if (!description) {
+            e.preventDefault();
+            alert('Please enter a description for the concern type.');
+            document.getElementById('edit_description').focus();
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        const addModal = document.getElementById('addModal');
+        const editModal = document.getElementById('editModal');
+        const deleteModal = document.getElementById('deleteModal');
+        
+        if (event.target === addModal) {
+            closeAddModal();
+        }
+        
+        if (event.target === editModal) {
+            closeEditModal();
+        }
+        
+        if (event.target === deleteModal) {
+            closeDeleteModal();
+        }
+    }
+</script>
+{% endblock %}

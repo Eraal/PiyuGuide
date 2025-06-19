@@ -1,0 +1,854 @@
+{% extends "student/student_base.html" %} {% block title %}Student Dashboard -
+KapiyuGuide{% endblock %} {% block extra_head %}
+<style>
+  .indicator {
+    transition: all 0.3s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  .activity-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
+  }
+</style>
+{% endblock %} {% block content %}
+<div>
+  <!-- Welcome Section -->
+  <div
+    class="flex flex-col md:flex-row md:items-center md:justify-between mb-6"
+  >
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800">
+        Welcome, {{ current_user.first_name }}!
+      </h1>
+      <p class="text-gray-600">{{ today.strftime('%A, %B %d, %Y') }}</p>
+    </div>
+    <div class="mt-4 md:mt-0 flex space-x-3">
+      <a
+        href="{{ url_for('student.request_counseling_session') }}"
+        class="px-4 py-2 bg-green-600 text-white rounded-md flex items-center hover:bg-green-700 transition-colors"
+      >
+        <i class="fas fa-calendar-plus mr-2"></i> Request Counseling Session
+      </a>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <!-- Pending Inquiries -->
+    <div
+      class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500 card-hover transition-all duration-300"
+    >
+      <div class="flex items-center">
+        <div class="rounded-full p-3 bg-yellow-100 text-yellow-600">
+          <i class="fas fa-question-circle text-xl"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-sm font-medium text-gray-500">Pending Inquiries</h3>
+          <p class="text-2xl font-bold text-gray-800">
+            {{ stats.pending_inquiries|default(0) }}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <a
+          href="{{ url_for('student.inquiries', status='pending') }}"
+          class="text-sm text-yellow-600 hover:text-yellow-800 flex items-center"
+        >
+          <span>View Details</span>
+          <i class="fas fa-arrow-right ml-1 text-xs"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Total Inquiries -->
+    <div
+      class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 card-hover transition-all duration-300"
+    >
+      <div class="flex items-center">
+        <div class="rounded-full p-3 bg-blue-100 text-blue-600">
+          <i class="fas fa-inbox text-xl"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-sm font-medium text-gray-500">Total Inquiries</h3>
+          <p class="text-2xl font-bold text-gray-800">
+            {{ stats.total_inquiries|default(0) }}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <a
+          href="{{ url_for('student.inquiries') }}"
+          class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+        >
+          <span>View All</span>
+          <i class="fas fa-arrow-right ml-1 text-xs"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Upcoming Sessions -->
+    <div
+      class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 card-hover transition-all duration-300"
+    >
+      <div class="flex items-center">
+        <div class="rounded-full p-3 bg-green-100 text-green-600">
+          <i class="fas fa-calendar-alt text-xl"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-sm font-medium text-gray-500">Upcoming Sessions</h3>
+          <p class="text-2xl font-bold text-gray-800">
+            {{ stats.upcoming_sessions|default(0) }}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <a
+          href="{{ url_for('student.inquiries', status='pending') }}"
+          class="text-sm text-green-600 hover:text-green-800 flex items-center"
+        >
+          <span>View Schedule</span>
+          <i class="fas fa-arrow-right ml-1 text-xs"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Recent Announcements -->
+    <div
+      class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500 card-hover transition-all duration-300"
+    >
+      <div class="flex items-center">
+        <div class="rounded-full p-3 bg-purple-100 text-purple-600">
+          <i class="fas fa-bullhorn text-xl"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-sm font-medium text-gray-500">New Announcements</h3>
+          <p class="text-2xl font-bold text-gray-800">
+            {{ stats.new_announcements|default(0) }}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <a
+          href="{{ url_for('student.inquiries') }}"
+          class="text-sm text-purple-600 hover:text-purple-800 flex items-center"
+        >
+          <span>Read Announcements</span>
+          <i class="fas fa-arrow-right ml-1 text-xs"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column -->
+    <div class="lg:col-span-2">
+      <!-- Calendar for Upcoming Sessions -->
+      <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="px-6 py-4 border-b flex justify-between items-center">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fas fa-calendar-day mr-2 text-blue-600"></i>
+            Upcoming Schedule
+          </h2>
+          <div>
+            <a
+              href="{{ url_for('student.inquiries') }}"
+              class="text-blue-600 hover:text-blue-800 text-sm"
+              >View All</a
+            >
+          </div>
+        </div>
+
+        <div class="p-6">
+          {% if upcoming_schedule %}
+          <div class="space-y-4">
+            {% for session in upcoming_schedule %}
+            <div
+              class="flex items-start p-4 border rounded-lg {% if session.is_today %}bg-blue-50 border-blue-200{% else %}bg-white border-gray-200{% endif %}"
+            >
+              <div class="mr-4 text-center">
+                <div class="text-sm font-bold text-blue-800">
+                  {{ session.scheduled_at.strftime('%b') }}
+                </div>
+                <div class="text-2xl font-bold text-gray-800">
+                  {{ session.scheduled_at.day }}
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ session.scheduled_at.strftime('%a') }}
+                </div>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-medium text-gray-800">
+                  {{ session.office.name }}
+                </h3>
+                <div class="text-sm text-gray-600 mt-1">
+                  <span class="inline-block mr-4">
+                    <i class="far fa-clock mr-1"></i>
+                    {{ session.scheduled_at.strftime('%I:%M %p') }}
+                  </span>
+                  <span class="inline-block">
+                    <i class="far fa-user mr-1"></i>
+                    {{ session.counselor.first_name }} {{
+                    session.counselor.last_name }}
+                  </span>
+                </div>
+                <div class="mt-2">
+                  <span
+                    class="px-2 py-1 text-xs rounded-full {% if session.status == 'confirmed' %}bg-green-100 text-green-800{% elif session.status == 'pending' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}"
+                  >
+                    {{ session.status|title }}
+                  </span>
+                  {% if session.is_video_session %}
+                  <span
+                    class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 ml-1"
+                  >
+                    <i class="fas fa-video mr-1"></i> Video
+                  </span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="ml-2">
+                <a
+                  href="{{ url_for('student.view_session', session_id=session.id) }}"
+                  class="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                >
+                  <i class="fas fa-chevron-right"></i>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-6 text-gray-500">
+            <i class="fas fa-calendar-day text-3xl mb-2"></i>
+            <p>No upcoming sessions scheduled</p>
+            <a
+              href="{{ url_for('student.request_counseling_session') }}"
+              class="mt-2 inline-block text-blue-600 hover:text-blue-800 hover:underline"
+              >Schedule a session</a
+            >
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Inquiries -->
+      <div class="bg-white rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b flex justify-between items-center">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fas fa-inbox mr-2 text-blue-600"></i>
+            Recent Inquiries
+          </h2>
+          <div>
+            <a
+              href="{{ url_for('student.inquiries') }}"
+              class="text-blue-600 hover:text-blue-800 text-sm"
+              >View All</a
+            >
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Subject
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Office
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {% if recent_inquiries %} {% for inquiry in recent_inquiries %}
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div
+                    class="text-sm font-medium text-gray-900 truncate max-w-[200px]"
+                  >
+                    {{ inquiry.subject }}
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-500">
+                    {{ inquiry.office.name }}
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span
+                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {% if inquiry.status == 'pending' %}bg-yellow-100 text-yellow-800 {% elif inquiry.status == 'in_progress' %}bg-blue-100 text-blue-800 {% elif inquiry.status == 'resolved' %}bg-green-100 text-green-800 {% else %}bg-gray-100 text-gray-800{% endif %}"
+                  >
+                    {{ inquiry.status|replace('_', ' ')|title }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-500">
+                    {{ inquiry.created_at.strftime('%b %d, %Y') }}
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <a
+                    href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}"
+                    class="text-blue-600 hover:text-blue-900"
+                    >View</a
+                  >
+                </td>
+              </tr>
+              {% endfor %} {% else %}
+              <tr>
+                <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                  No inquiries found
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div>
+      <!-- Today's Activities -->
+      <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="px-6 py-4 border-b">
+          <h2 class="text-lg font-bold text-gray-800">Today's Activities</h2>
+        </div>
+        <div class="p-4">
+          {% if todays_activities %}
+          <div class="divide-y">
+            {% for activity in todays_activities %}
+            <div class="py-3">
+              <div class="flex items-start">
+                <div
+                  class="activity-indicator {% if activity.type == 'counseling' %}bg-green-500 {% elif activity.type == 'inquiry' %}bg-blue-500 {% elif activity.type == 'announcement' %}bg-purple-500 {% else %}bg-gray-500{% endif %}"
+                ></div>
+                <div>
+                  <p class="text-sm text-gray-800">
+                    {{ activity.description }}
+                  </p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    {{ activity.time.strftime('%I:%M %p') }}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="py-4 text-center text-gray-500">
+            No activities for today
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Announcements -->
+      <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="px-6 py-4 border-b flex justify-between items-center">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fas fa-bullhorn mr-2 text-purple-600"></i>
+            Announcements
+          </h2>
+          <div>
+            <a
+              href="{{ url_for('student.inquiries') }}"
+              class="text-purple-600 hover:text-purple-800 text-sm"
+              >View All</a
+            >
+          </div>
+        </div>
+        <div class="p-4">
+          {% if recent_announcements %}
+          <div class="space-y-4">
+            {% for announcement in recent_announcements %}
+            <div
+              class="border rounded-lg overflow-hidden {% if announcement.is_new %}border-purple-200 bg-purple-50{% else %}border-gray-200{% endif %}"
+            >
+              <div
+                class="px-4 py-3 bg-gray-50 flex justify-between items-center"
+              >
+                <div class="flex items-center">
+                  <div class="font-medium text-gray-800">
+                    {{ announcement.author.first_name }} {{
+                    announcement.author.last_name }}
+                  </div>
+                  <div class="text-xs text-gray-500 ml-2">
+                    &bull; {{ announcement.created_at.strftime('%b %d') }}
+                  </div>
+                </div>
+                {% if announcement.is_new %}
+                <span
+                  class="px-2 py-1 text-xs bg-purple-500 text-white rounded-full"
+                  >New</span
+                >
+                {% endif %}
+              </div>
+              <div class="px-4 py-3">
+                <h3 class="font-medium text-gray-900">
+                  {{ announcement.title }}
+                </h3>
+                <p class="text-sm text-gray-600 mt-1 line-clamp-2">
+                  {{ announcement.content|truncate(100) }}
+                </p>
+              </div>
+              <div class="px-4 py-2 bg-gray-50 border-t text-sm">
+                <a
+                  href="{{ url_for('student.view_announcement', announcement_id=announcement.id) }}"
+                  class="text-blue-600 hover:text-blue-800"
+                  >Read More</a
+                >
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="py-4 text-center text-gray-500">
+            No recent announcements
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Active Offices -->
+      <div class="bg-white rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b">
+          <h2 class="text-lg font-bold text-gray-800">University Offices</h2>
+        </div>
+        <div class="p-4">
+          {% if available_offices %}
+          <div class="grid grid-cols-1 gap-4">
+            {% for office in available_offices %}
+            <div
+              class="flex items-center p-3 border rounded-lg hover:bg-gray-50"
+            >
+              <div
+                class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3"
+              >
+                <i class="fas fa-building text-gray-600"></i>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-medium text-gray-800">{{ office.name }}</h3>
+                <p class="text-xs text-gray-500">
+                  {{ office.description|truncate(50) }}
+                </p>
+              </div>
+              <div class="ml-2">
+                <a
+                  href="{{ url_for('student.inquiries', office_id=office.id) }}"
+                  class="text-blue-600 hover:text-blue-800"
+                >
+                  <i class="fas fa-chevron-right"></i>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="py-4 text-center text-gray-500">
+            No available offices found
+          </div>
+          {% endif %}
+        </div>
+        <div class="px-4 py-3 bg-gray-50 border-t">
+          <a
+            href="{{ url_for('student.inquiries') }}"
+            class="text-sm text-blue-600 hover:text-blue-800 flex justify-center items-center"
+          >
+            <span>View All Offices</span>
+            <i class="fas fa-arrow-right ml-1 text-xs"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Inquiry Modal -->
+  <div id="newInquiryModal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black opacity-50" id="modalOverlay"></div>
+    <div
+      class="bg-white rounded-lg shadow-lg max-w-2xl w-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto"
+    >
+      <div class="flex items-center justify-between p-4 border-b">
+        <h3 class="text-lg font-bold text-gray-800">Submit New Inquiry</h3>
+        <button
+          id="closeModal"
+          class="text-gray-500 hover:text-gray-700 focus:outline-none"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <form
+          id="inquiryForm"
+          action="{{ url_for('student.create_inquiry') }}"
+          method="post"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="mb-4">
+            <label
+              for="office"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Select Office</label
+            >
+            <select
+              id="office"
+              name="office_id"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select an office</option>
+              {% for office in available_offices %}
+              <option value="{{ office.id }}">{{ office.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="concernTypesContainer" class="mb-4 hidden">
+            <label
+              for="concern_type"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Concern Type</label
+            >
+            <select
+              id="concern_type"
+              name="concern_type_id"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+              disabled
+            >
+              <option value="">Please select an office first</option>
+            </select>
+          </div>
+
+          <div id="otherConcernContainer" class="mb-4 hidden">
+            <label
+              for="other_concern"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Please specify your concern</label
+            >
+            <input
+              type="text"
+              id="other_concern"
+              name="other_concern"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="subject"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Subject</label
+            >
+            <input
+              type="text"
+              id="subject"
+              name="subject"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="message"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Message</label
+            >
+            <textarea
+              id="message"
+              name="message"
+              rows="4"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            ></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="attachments"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Attachments (optional)</label
+            >
+            <input
+              type="file"
+              id="attachments"
+              name="attachments"
+              multiple
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              You can upload up to 3 files (max 5MB each)
+            </p>
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <button
+              type="button"
+              id="cancelInquiry"
+              class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md mr-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md"
+            >
+              Submit Inquiry
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule Session Modal -->
+  <div id="scheduleSessionModal" class="fixed inset-0 z-50 hidden">
+    <div
+      class="fixed inset-0 bg-black opacity-50"
+      id="sessionModalOverlay"
+    ></div>
+    <div
+      class="bg-white rounded-lg shadow-lg max-w-2xl w-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto"
+    >
+      <div class="flex items-center justify-between p-4 border-b">
+        <h3 class="text-lg font-bold text-gray-800">
+          Schedule Counseling Session
+        </h3>
+        <button
+          id="closeSessionModal"
+          class="text-gray-500 hover:text-gray-700 focus:outline-none"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <form
+          id="sessionForm"
+          action="{{ url_for('student.inquiries') }}"
+          method="post"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="mb-4">
+            <label
+              for="session_office"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Select Office</label
+            >
+            <select
+              id="session_office"
+              name="office_id"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select an office</option>
+              {% for office in available_offices %}
+              <option value="{{ office.id }}">{{ office.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="session_date"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Preferred Date</label
+            >
+            <input
+              type="date"
+              id="session_date"
+              name="session_date"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="session_time"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Preferred Time</label
+            >
+            <input
+              type="time"
+              id="session_time"
+              name="session_time"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="session_type"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Session Type</label
+            >
+            <select
+              id="session_type"
+              name="session_type"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="in_person">In-person</option>
+              <option value="video">Video Call</option>
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="session_notes"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Notes (optional)</label
+            >
+            <textarea
+              id="session_notes"
+              name="session_notes"
+              rows="3"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            ></textarea>
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <button
+              type="button"
+              id="cancelSession"
+              class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md mr-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md"
+            >
+              Schedule Session
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // New Inquiry Modal
+    const newInquiryBtn = document.getElementById("newInquiryBtn");
+    const newInquiryModal = document.getElementById("newInquiryModal");
+    const modalOverlay = document.getElementById("modalOverlay");
+    const closeModal = document.getElementById("closeModal");
+    const cancelInquiry = document.getElementById("cancelInquiry");
+
+    newInquiryBtn.addEventListener("click", function () {
+      newInquiryModal.classList.remove("hidden");
+    });
+
+    const closeInquiryModal = function () {
+      newInquiryModal.classList.add("hidden");
+    };
+
+    closeModal.addEventListener("click", closeInquiryModal);
+    modalOverlay.addEventListener("click", closeInquiryModal);
+    cancelInquiry.addEventListener("click", closeInquiryModal);
+
+    // Schedule Session Modal
+    const scheduleSessionBtn = document.getElementById("scheduleSessionBtn");
+    if (scheduleSessionBtn) {
+      scheduleSessionBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        window.location.href =
+          "{{ url_for('student.request_counseling_session') }}";
+      });
+    }
+
+    // Handle office selection and concern types loading
+    const officeSelect = document.getElementById("office");
+    const concernTypesContainer = document.getElementById(
+      "concernTypesContainer"
+    );
+    const concernTypeSelect = document.getElementById("concern_type");
+    const otherConcernContainer = document.getElementById(
+      "otherConcernContainer"
+    );
+
+    officeSelect.addEventListener("change", function () {
+      const officeId = this.value;
+      if (officeId) {
+        // Make an AJAX request to get concern types for the selected office
+        fetch(`/student/api/office/${officeId}/concern-types`)
+          .then((response) => response.json())
+          .then((data) => {
+            // Enable concern type selection
+            concernTypeSelect.disabled = false;
+            concernTypeSelect.innerHTML =
+              '<option value="">Select a concern type</option>';
+
+            // Add concern types to dropdown
+            data.concern_types.forEach((concern) => {
+              const option = document.createElement("option");
+              option.value = concern.id;
+              option.textContent = concern.name;
+              option.dataset.allowsOther = concern.allows_other;
+              concernTypeSelect.appendChild(option);
+            });
+
+            // Show concern types container
+            concernTypesContainer.classList.remove("hidden");
+          })
+          .catch((error) => {
+            console.error("Error fetching concern types:", error);
+          });
+      } else {
+        concernTypesContainer.classList.add("hidden");
+        concernTypeSelect.disabled = true;
+        otherConcernContainer.classList.add("hidden");
+      }
+    });
+
+    concernTypeSelect.addEventListener("change", function () {
+      const selectedOption = this.options[this.selectedIndex];
+
+      if (selectedOption && selectedOption.dataset.allowsOther === "true") {
+        otherConcernContainer.classList.remove("hidden");
+      } else {
+        otherConcernContainer.classList.add("hidden");
+      }
+    });
+  });
+</script>
+{% endblock %}

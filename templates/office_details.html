@@ -1,0 +1,463 @@
+{% extends 'headerbase.html' %}
+
+{% block title %}{{ office.name }} - KapiyuGuide{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+  <!-- Enhanced Breadcrumb with backdrop blur -->
+  <div class="sticky top-0 z-10 backdrop-blur-md bg-white/80 border-b border-white/20 shadow-sm">
+    <div class="container mx-auto px-4 py-3">
+      <nav aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-sm">
+          <li>
+            <a href="{{ url_for('main.index') }}" 
+               class="flex items-center text-slate-600 hover:text-blue-600 transition-colors duration-200">
+              <i class="fas fa-home mr-1"></i>
+              Home
+            </a>
+          </li>
+          <li class="text-slate-400">
+            <i class="fas fa-chevron-right text-xs"></i>
+          </li>
+          <li>
+            <a href="{{ url_for('main.offices') }}" 
+               class="text-slate-600 hover:text-blue-600 transition-colors duration-200">
+              Offices
+            </a>
+          </li>
+          <li class="text-slate-400">
+            <i class="fas fa-chevron-right text-xs"></i>
+          </li>
+          <li class="text-slate-900 font-medium">{{ office.name }}</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-4 py-8">
+    <!-- Enhanced Office Header with glass morphism effect -->
+    <div class="relative overflow-hidden rounded-3xl mb-8 shadow-2xl">
+      <!-- Background gradient with animated particles effect -->
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800"></div>
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="4"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+      
+      <div class="relative p-8 lg:p-12 text-white">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex-1">
+            <div class="flex items-center mb-4">
+              <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-4">
+                <i class="fas fa-building text-2xl text-white"></i>
+              </div>
+              <div>
+                <h1 class="text-4xl lg:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                  {{ office.name }}
+                </h1>
+                <p class="text-blue-100 text-lg lg:text-xl font-light">
+                  {{ office.description or "Providing quality services to students and staff" }}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-6 lg:mt-0 flex flex-wrap items-center gap-3">
+            {% if is_available %}
+            <div class="flex items-center bg-emerald-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+              <div class="w-2 h-2 bg-emerald-300 rounded-full mr-2 animate-pulse"></div>
+              Available Now
+            </div>
+            {% else %}
+            <div class="flex items-center bg-red-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+              <div class="w-2 h-2 bg-red-300 rounded-full mr-2"></div>
+              Currently Offline
+            </div>
+            {% endif %}
+            
+            {% if office.supports_video %}
+            <div class="flex items-center bg-purple-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+              <i class="fas fa-video text-sm mr-2"></i>
+              Video Support
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+      <!-- Enhanced Main Content -->
+      <div class="xl:col-span-3 space-y-8">
+        <!-- Enhanced Services Section -->
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-300">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+              <i class="fas fa-concierge-bell text-white text-lg"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-800">Services Offered</h2>
+          </div>
+          
+          {% if concern_types %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for concern in concern_types %}
+            <div class="group relative overflow-hidden bg-gradient-to-br from-white to-slate-50 border border-slate-200/50 rounded-2xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+              <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/10 to-transparent rounded-bl-2xl"></div>
+              <h3 class="font-bold text-slate-800 mb-3 text-lg group-hover:text-blue-600 transition-colors">
+                {{ concern.name }}
+              </h3>
+              {% if concern.description %}
+              <p class="text-slate-600 leading-relaxed">{{ concern.description }}</p>
+              {% endif %}
+              <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <i class="fas fa-arrow-right text-blue-500"></i>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-12">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-info-circle text-slate-400 text-xl"></i>
+            </div>
+            <p class="text-slate-600 text-lg">Service information will be updated soon.</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Enhanced Office Staff Section -->
+        {% if office_admins %}
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-300">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+              <i class="fas fa-users text-white text-lg"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-800">Office Staff</h2>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for admin in office_admins %}
+            <div class="group bg-gradient-to-br from-white to-slate-50 border border-slate-200/50 rounded-2xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300">
+              <div class="flex items-center space-x-4">
+                <div class="relative">
+                  {% if admin.user.profile_pic %}
+                  <img src="{{ admin.user.profile_pic }}" alt="{{ admin.user.get_full_name() }}" 
+                       class="w-16 h-16 rounded-2xl object-cover shadow-lg ring-4 ring-white">
+                  {% else %}
+                  <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white">
+                    <i class="fas fa-user text-white text-xl"></i>
+                  </div>
+                  {% endif %}
+                  
+                  <!-- Online status indicator -->
+                  <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-white shadow-lg flex items-center justify-center
+                    {% if admin.user.is_online %}bg-emerald-500{% else %}bg-slate-400{% endif %}">
+                    <div class="w-2 h-2 rounded-full bg-white"></div>
+                  </div>
+                </div>
+                
+                <div class="flex-1">
+                  <h3 class="font-bold text-slate-800 text-lg mb-1 group-hover:text-blue-600 transition-colors">
+                    {{ admin.user.get_full_name() }}
+                  </h3>
+                  <p class="text-slate-600 font-medium mb-2">Office Administrator</p>
+                  <div class="flex items-center">
+                    {% if admin.user.is_online %}
+                    <span class="text-emerald-600 text-sm font-semibold flex items-center">
+                      <div class="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+                      Online
+                    </span>
+                    {% else %}
+                    <span class="text-slate-500 text-sm font-semibold flex items-center">
+                      <div class="w-2 h-2 bg-slate-400 rounded-full mr-2"></div>
+                      Offline
+                    </span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Enhanced Recent Activity Section -->
+        {% if recent_inquiries %}
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-300">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+              <i class="fas fa-clock text-white text-lg"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-800">Recent Activity</h2>
+          </div>
+          
+          <div class="space-y-4">
+            {% for inquiry in recent_inquiries[:5] %}
+            <div class="group bg-gradient-to-r from-white to-slate-50 border border-slate-200/50 rounded-2xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300">
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <h4 class="font-bold text-slate-800 text-lg mb-2 group-hover:text-blue-600 transition-colors">
+                    {{ inquiry.subject }}
+                  </h4>
+                  <p class="text-slate-600 flex items-center">
+                    <i class="fas fa-calendar-alt mr-2 text-slate-400"></i>
+                    {{ inquiry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                  </p>
+                </div>
+                <div class="ml-4">
+                  <span class="inline-flex items-center px-4 py-2 text-sm font-bold rounded-full shadow-lg
+                    {% if inquiry.status == 'pending' %}bg-gradient-to-r from-amber-400 to-orange-500 text-white
+                    {% elif inquiry.status == 'in_progress' %}bg-gradient-to-r from-blue-400 to-indigo-500 text-white
+                    {% elif inquiry.status == 'resolved' %}bg-gradient-to-r from-emerald-400 to-green-500 text-white
+                    {% else %}bg-gradient-to-r from-slate-400 to-slate-500 text-white{% endif %}">
+                    {% if inquiry.status == 'pending' %}
+                    <i class="fas fa-clock mr-2"></i>
+                    {% elif inquiry.status == 'in_progress' %}
+                    <i class="fas fa-spinner mr-2"></i>
+                    {% elif inquiry.status == 'resolved' %}
+                    <i class="fas fa-check mr-2"></i>
+                    {% endif %}
+                    {{ inquiry.status.replace('_', ' ').title() }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Enhanced Sidebar -->
+      <div class="space-y-6">
+        <!-- Enhanced Quick Stats -->
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+            <i class="fas fa-chart-bar text-blue-600 mr-3"></i>
+            Quick Stats
+          </h3>
+          
+          <div class="space-y-6">
+            <div class="group">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-600 font-medium">Total Inquiries</span>
+                <span class="font-black text-3xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  {{ total_inquiries }}
+                </span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-2">
+                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full w-full"></div>
+              </div>
+            </div>
+            
+            <div class="group">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-600 font-medium">Pending</span>
+                <span class="font-black text-3xl bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
+                  {{ pending_inquiries }}
+                </span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-2">
+                <div class="bg-gradient-to-r from-amber-500 to-orange-600 h-2 rounded-full" 
+                     style="width: {% if total_inquiries > 0 %}{{ (pending_inquiries / total_inquiries) * 100 }}%{% else %}0%{% endif %}"></div>
+              </div>
+            </div>
+            
+            <div class="group">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-600 font-medium">Resolved</span>
+                <span class="font-black text-3xl bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent">
+                  {{ resolved_inquiries }}
+                </span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-2">
+                <div class="bg-gradient-to-r from-emerald-500 to-green-600 h-2 rounded-full" 
+                     style="width: {% if total_inquiries > 0 %}{{ (resolved_inquiries / total_inquiries) * 100 }}%{% else %}0%{% endif %}"></div>
+              </div>
+            </div>
+            
+            <div class="group bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-200/50">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-700 font-semibold flex items-center">
+                  <i class="fas fa-trophy text-purple-600 mr-2"></i>
+                  Success Rate
+                </span>
+                <span class="font-black text-3xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  {% if total_inquiries > 0 %}
+                  {{ ((resolved_inquiries / total_inquiries) * 100)|round }}%
+                  {% else %}
+                  N/A
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enhanced Quick Actions -->
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+            <i class="fas fa-bolt text-amber-600 mr-3"></i>
+            Quick Actions
+          </h3>
+          
+          <div class="space-y-4">
+            {% if is_available %}
+            <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}" 
+               class="group block w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-center py-4 px-6 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
+              <i class="fas fa-paper-plane mr-3 group-hover:animate-bounce"></i>
+              Submit New Inquiry
+            </a>
+            
+            {% if office.supports_video %}
+            <a href="{{ url_for('student.request_counseling_session', office_id=office.id) }}" 
+               class="group block w-full bg-gradient-to-r from-purple-600 to-pink-700 hover:from-purple-700 hover:to-pink-800 text-white text-center py-4 px-6 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
+              <i class="fas fa-video mr-3 group-hover:animate-pulse"></i>
+              Schedule Video Session
+            </a>
+            {% endif %}
+            {% else %}
+            <div class="block w-full bg-gradient-to-r from-slate-400 to-slate-500 text-white text-center py-4 px-6 rounded-2xl font-bold cursor-not-allowed opacity-75">
+              <i class="fas fa-clock mr-3"></i>
+              Office Currently Unavailable
+            </div>
+            {% endif %}
+            
+            <a href="{{ url_for('main.offices') }}" 
+               class="group block w-full bg-gradient-to-r from-slate-200 to-slate-300 hover:from-slate-300 hover:to-slate-400 text-slate-700 text-center py-4 px-6 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105">
+              <i class="fas fa-arrow-left mr-3 group-hover:animate-pulse"></i>
+              Back to All Offices
+            </a>
+          </div>
+        </div>
+
+        <!-- Enhanced Office Hours -->
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+            <i class="fas fa-clock text-emerald-600 mr-3"></i>
+            Office Hours
+          </h3>
+          
+          <div class="space-y-4">
+            <div class="flex justify-between items-center p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200/50">
+              <span class="text-slate-700 font-medium">Monday - Friday</span>
+              <span class="font-bold text-emerald-700">8:00 AM - 5:00 PM</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50">
+              <span class="text-slate-700 font-medium">Saturday</span>
+              <span class="font-bold text-blue-700">8:00 AM - 12:00 PM</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl border border-slate-200/50">
+              <span class="text-slate-700 font-medium">Sunday</span>
+              <span class="font-bold text-slate-500">Closed</span>
+            </div>
+          </div>
+          
+          <div class="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/50">
+            <p class="text-sm text-amber-800 flex items-start">
+              <i class="fas fa-info-circle mr-2 mt-0.5 text-amber-600"></i>
+              Response times may vary during peak hours. We appreciate your patience!
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating scroll to top button -->
+<button id="scrollToTop" class="fixed bottom-8 right-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 opacity-0 invisible z-50">
+  <i class="fas fa-arrow-up text-lg"></i>
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Track page views for analytics
+    const officeId = {{ office.id }};
+    console.log(`Office details viewed: ${officeId}`);
+    
+    // Add smooth scroll to sections if coming from anchor links
+    if (window.location.hash) {
+      const element = document.querySelector(window.location.hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    
+    // Scroll to top button functionality
+    const scrollToTopBtn = document.getElementById('scrollToTop');
+    
+    window.addEventListener('scroll', function() {
+      if (window.pageYOffset > 300) {
+        scrollToTopBtn.classList.add('opacity-100');
+        scrollToTopBtn.classList.remove('invisible');
+      } else {
+        scrollToTopBtn.classList.remove('opacity-100');
+        scrollToTopBtn.classList.add('invisible');
+      }
+    });
+    
+    scrollToTopBtn.addEventListener('click', function() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+    
+    // Add subtle animations when elements come into view
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver(function(entries) {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animate-fade-in-up');
+        }
+      });
+    }, observerOptions);
+    
+    // Observe all main content sections
+    document.querySelectorAll('.bg-white\\/70').forEach(el => {
+      observer.observe(el);
+    });
+  });
+</script>
+
+<style>
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #3b82f6, #6366f1);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #2563eb, #4f46e5);
+  }
+</style>
+{% endblock %}

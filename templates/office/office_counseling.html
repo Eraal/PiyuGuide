@@ -1,0 +1,719 @@
+{% extends "office/office_base.html" %}
+
+{% block title %}Video Counseling Sessions | KapiyuGuide Office{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Statistics Cards Section -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Video Counseling Dashboard</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Today's Sessions Card -->
+            <a href="{{ url_for('office.video_counseling', status='today') }}" 
+               class="block bg-white rounded-lg shadow-sm border-l-4 {% if status == 'today' %}border-blue-500{% else %}border-gray-200{% endif %} hover:shadow-md transition-shadow duration-200">
+                <div class="p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Today's Sessions</div>
+                            <div class="text-2xl font-semibold text-gray-800">{{ today_video_count }}</div>
+                        </div>
+                        <div class="p-3 rounded-full {% if status == 'today' %}bg-blue-100 text-blue-600{% else %}bg-gray-100 text-gray-600{% endif %}">
+                            <i class="fas fa-calendar-day text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Active Sessions Card -->
+            <a href="{{ url_for('office.video_counseling', status='active') }}" 
+               class="block bg-white rounded-lg shadow-sm border-l-4 {% if status == 'active' %}border-green-500{% else %}border-gray-200{% endif %} hover:shadow-md transition-shadow duration-200">
+                <div class="p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Active Sessions</div>
+                            <div class="text-2xl font-semibold text-gray-800">{{ active_video_count }}</div>
+                        </div>
+                        <div class="p-3 rounded-full {% if status == 'active' %}bg-green-100 text-green-600{% else %}bg-gray-100 text-gray-600{% endif %}">
+                            <i class="fas fa-play-circle text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Upcoming Sessions Card -->
+            <a href="{{ url_for('office.video_counseling', status='upcoming') }}" 
+               class="block bg-white rounded-lg shadow-sm border-l-4 {% if status == 'upcoming' %}border-yellow-500{% else %}border-gray-200{% endif %} hover:shadow-md transition-shadow duration-200">
+                <div class="p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Upcoming Sessions</div>
+                            <div class="text-2xl font-semibold text-gray-800">{{ upcoming_video_count }}</div>
+                        </div>
+                        <div class="p-3 rounded-full {% if status == 'upcoming' %}bg-yellow-100 text-yellow-600{% else %}bg-gray-100 text-gray-600{% endif %}">
+                            <i class="fas fa-clock text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Past Sessions Card -->
+            <a href="{{ url_for('office.video_counseling', status='past') }}" 
+               class="block bg-white rounded-lg shadow-sm border-l-4 {% if status == 'past' %}border-purple-500{% else %}border-gray-200{% endif %} hover:shadow-md transition-shadow duration-200">
+                <div class="p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Past Sessions</div>
+                            <div class="text-2xl font-semibold text-gray-800">{{ completed_video_count }}</div>
+                        </div>
+                        <div class="p-3 rounded-full {% if status == 'past' %}bg-purple-100 text-purple-600{% else %}bg-gray-100 text-gray-600{% endif %}">
+                            <i class="fas fa-history text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Main Content -->
+        <div class="flex-1">
+            <!-- Header with Filters -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">
+                        {% if status == 'active' %}Active Video Sessions
+                        {% elif status == 'today' %}Today's Video Sessions
+                        {% elif status == 'upcoming' %}Upcoming Video Sessions
+                        {% elif status == 'past' %}Past Video Sessions
+                        {% else %}All Video Sessions{% endif %}
+                    </h2>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- My Sessions Toggle -->
+                        <a href="{{ url_for('office.video_counseling', status=status, my_sessions='true') }}" 
+                           class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium
+                                  {% if request.args.get('my_sessions') == 'true' %}
+                                  bg-indigo-100 text-indigo-700 border border-indigo-300
+                                  {% else %}
+                                  bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200
+                                  {% endif %}">
+                            <i class="fas fa-user-circle mr-2"></i>
+                            My Sessions Only
+                        </a>
+                        
+                        <!-- Date Range Filter -->
+                        <div class="relative">
+                            <select id="dateRange" class="appearance-none block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                <option value="7d" {% if date_range == '7d' %}selected{% endif %}>Last 7 days</option>
+                                <option value="30d" {% if date_range == '30d' %}selected{% endif %}>Last 30 days</option>
+                                <option value="all" {% if date_range == 'all' %}selected{% endif %}>All time</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessions Table -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Counselor</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% if video_sessions.items %}
+                                {% for session in video_sessions.items %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                {% if session.student.user.profile_pic %}
+                                                <img class="h-10 w-10 rounded-full object-cover" src="{{ url_for('static', filename='uploads/profiles/' + session.student.user.profile_pic) }}" alt="Profile">
+                                                {% else %}
+                                                <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                    <span class="text-blue-800 font-medium">{{ session.student.user.first_name[0] }}{{ session.student.user.last_name[0] }}</span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ session.student.user.get_full_name() }}
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    ID: {{ session.student.student_number }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ session.scheduled_at.strftime('%Y-%m-%d') }}</div>
+                                        <div class="text-sm text-gray-500">{{ session.scheduled_at.strftime('%H:%M') }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {% if session.counselor %}
+                                                {{ session.counselor.get_full_name() }}
+                                            {% else %}
+                                                <span class="text-gray-400">Not assigned</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                              {% if session.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                              {% elif session.status == 'confirmed' %}bg-blue-100 text-blue-800
+                                              {% elif session.status == 'in_progress' %}bg-green-100 text-green-800
+                                              {% elif session.status == 'completed' %}bg-gray-100 text-gray-800
+                                              {% elif session.status == 'cancelled' %}bg-red-100 text-red-800
+                                              {% elif session.status == 'no-show' %}bg-purple-100 text-purple-800
+                                              {% endif %}">
+                                            {{ session.status|title }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-2">
+                                            {% if session.status in ['pending', 'confirmed'] and session.counselor_id == current_user.id %}
+                                                <!-- Always show join button for sessions assigned to current user, regardless of time -->
+                                                <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-green-100 text-green-700 hover:bg-green-200 transition-colors">
+                                                    <i class="fas fa-video mr-1"></i> Join
+                                                </a>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors send-reminder" data-session-id="{{ session.id }}">
+                                                    <i class="fas fa-bell mr-1"></i> Remind
+                                                </button>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors update-status" data-session-id="{{ session.id }}" data-status="confirmed">
+                                                    <i class="fas fa-check mr-1"></i> Confirm
+                                                </button>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors reschedule-session" data-session-id="{{ session.id }}" data-date="{{ session.scheduled_at.strftime('%Y-%m-%d') }}" data-time="{{ session.scheduled_at.strftime('%H:%M') }}">
+                                                    <i class="fas fa-calendar-alt mr-1"></i> Reschedule
+                                                </button>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200 transition-colors cancel-session" data-session-id="{{ session.id }}">
+                                                    <i class="fas fa-times mr-1"></i> Cancel
+                                                </button>
+                                            {% elif session.status == 'pending' and session.counselor_id is none %}
+                                                <!-- Show confirmation button for pending sessions without a counselor -->
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors update-status" data-session-id="{{ session.id }}" data-status="confirmed">
+                                                    <i class="fas fa-user-check mr-1"></i> Assign & Confirm
+                                                </button>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors reschedule-session" data-session-id="{{ session.id }}" data-date="{{ session.scheduled_at.strftime('%Y-%m-%d') }}" data-time="{{ session.scheduled_at.strftime('%H:%M') }}">
+                                                    <i class="fas fa-calendar-alt mr-1"></i> Reschedule
+                                                </button>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200 transition-colors cancel-session" data-session-id="{{ session.id }}">
+                                                    <i class="fas fa-times mr-1"></i> Cancel
+                                                </button>
+                                            {% elif session.status in ['pending', 'confirmed'] and session.counselor_id != current_user.id %}
+                                                <span class="text-gray-400 text-sm">Assigned to other counselor</span>
+                                                <!-- Allow office admins to cancel sessions even if they're not the assigned counselor -->
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200 transition-colors cancel-session" data-session-id="{{ session.id }}">
+                                                    <i class="fas fa-times mr-1"></i> Cancel
+                                                </button>
+                                            {% elif session.status == 'in_progress' and session.counselor_id == current_user.id %}
+                                                <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-green-100 text-green-700 hover:bg-green-200 transition-colors">
+                                                    <i class="fas fa-video mr-1"></i> Rejoin
+                                                </a>
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200 transition-colors update-status" data-session-id="{{ session.id }}" data-status="completed">
+                                                    <i class="fas fa-check-circle mr-1"></i> Complete
+                                                </button>
+                                            {% elif session.status == 'completed' %}
+                                                <button class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors view-notes" data-session-id="{{ session.id }}" data-notes="{{ session.notes or 'No notes available' }}">
+                                                    <i class="fas fa-sticky-note mr-1"></i> Notes
+                                                </button>
+                                                {% if session.recording %}
+                                                <a href="{{ url_for('static', filename=session.recording.recording_path) }}" class="px-3 py-1 inline-flex items-center rounded-md text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors" target="_blank">
+                                                    <i class="fas fa-video mr-1"></i> Recording
+                                                </a>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                        <div class="flex flex-col items-center">
+                                            <i class="fas fa-calendar-times text-4xl text-gray-300 mb-3"></i>
+                                            <p>No video sessions found matching your criteria.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if video_sessions.pages > 1 %}
+                <div class="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ video_sessions.items|length }}</span> of <span class="font-medium">{{ video_sessions.total }}</span> results
+                        </p>
+                    </div>
+                    <div class="flex-1 flex justify-end">
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if video_sessions.has_prev %}
+                                <a href="{{ url_for('office.video_counseling', status=status, date_range=date_range, page=video_sessions.prev_num) }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Previous</span>
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            {% endif %}
+
+                            {% for page_num in video_sessions.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                    {% if page_num == video_sessions.page %}
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">{{ page_num }}</span>
+                                    {% else %}
+                                        <a href="{{ url_for('office.video_counseling', status=status, date_range=date_range, page=page_num) }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ page_num }}</a>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if video_sessions.has_next %}
+                                <a href="{{ url_for('office.video_counseling', status=status, date_range=date_range, page=video_sessions.next_num) }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Next</span>
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Sidebar for Upcoming Sessions -->
+        <div class="w-full lg:w-80 flex-shrink-0">
+            {% if my_upcoming_sessions %}
+            <div class="bg-white rounded-lg shadow-sm p-4 sticky top-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-calendar-check text-blue-500 mr-2"></i>
+                    My Upcoming Sessions
+                </h3>
+                <div class="space-y-3">
+                    {% for session in my_upcoming_sessions %}
+                    <div class="p-3 rounded-lg border-l-4 {% if (session.scheduled_at - now).total_seconds() // 60 <= 15 %}border-green-500 bg-green-50{% else %}border-blue-500 bg-blue-50{% endif %}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-medium">{{ session.student.user.get_full_name() }}</h4>
+                                <p class="text-sm text-gray-600 flex items-center">
+                                    <i class="far fa-clock mr-1"></i> 
+                                    {{ session.scheduled_at.strftime('%b %d, %H:%M') }}
+                                </p>
+                            </div>
+                            <div>
+                                <span class="px-2 py-1 text-xs rounded-full 
+                                    {% if session.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                    {% elif session.status == 'confirmed' %}bg-green-100 text-green-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ session.status|title }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex gap-2">
+                            {% set time_diff = (session.scheduled_at - now).total_seconds() // 60 %}
+                            {% if time_diff <= 15 %}
+                                <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="flex-1 text-center text-xs px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors">
+                                    <i class="fas fa-video mr-1"></i> Join Now
+                                </a>
+                            {% endif %}
+                            <button class="flex-1 text-center text-xs px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors send-reminder"
+                                    data-session-id="{{ session.id }}">
+                                <i class="fas fa-bell mr-1"></i> Send Reminder
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Notes Modal -->
+<div id="notesModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div>
+                    <div class="flex items-start justify-between">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                            <i class="fas fa-sticky-note text-yellow-500 mr-2"></i> Session Notes
+                        </h3>
+                        <button type="button" class="close-modal text-gray-400 hover:text-gray-500">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="mt-4">
+                        <div class="bg-gray-50 p-4 rounded-md">
+                            <p class="text-sm text-gray-700" id="notesContent"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm close-modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div id="cancelModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                            Cancel Session
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Are you sure you want to cancel this counseling session? This action cannot be undone.
+                            </p>
+                            <div class="mt-4">
+                                <label for="cancelReason" class="block text-sm font-medium text-gray-700">Cancellation Reason</label>
+                                <textarea id="cancelReason" name="cancelReason" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Please provide a reason for cancellation..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" id="confirmCancel" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Cancel Session
+                </button>
+                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm close-modal">
+                    Keep Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div id="rescheduleModal" class="fixed z-10 inset-0 overflow-y-auto hidden">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-calendar-alt text-blue-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                            Reschedule Session
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Adjust the date and time for this counseling session.
+                            </p>
+                            <form id="rescheduleForm" class="mt-4">
+                                <input type="hidden" id="rescheduleSessionId" name="session_id">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="new_date" class="block text-sm font-medium text-gray-700">New Date</label>
+                                        <input type="date" id="new_date" name="new_date" 
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                    </div>
+                                    <div>
+                                        <label for="new_time" class="block text-sm font-medium text-gray-700">New Time</label>
+                                        <input type="time" id="new_time" name="new_time" 
+                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <p class="text-sm text-blue-600 bg-blue-50 p-3 rounded-md">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        The student will be notified of this schedule change.
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" id="confirmReschedule" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Confirm Reschedule
+                </button>
+                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm close-modal">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Date Range Filter
+    const dateRangeSelect = document.getElementById('dateRange');
+    if (dateRangeSelect) {
+        dateRangeSelect.addEventListener('change', function() {
+            const status = '{{ status }}';
+            const url = new URL(window.location.href);
+            url.searchParams.set('date_range', this.value);
+            url.searchParams.set('page', '1'); // Reset to first page
+            window.location.href = url.toString();
+        });
+    }
+    
+    // Notes Modal
+    const notesModal = document.getElementById('notesModal');
+    const notesContent = document.getElementById('notesContent');
+    
+    document.querySelectorAll('.view-notes').forEach(button => {
+        button.addEventListener('click', function() {
+            const notes = this.dataset.notes;
+            notesContent.textContent = notes;
+            notesModal.classList.remove('hidden');
+        });
+    });
+    
+    // Cancel Session Modal
+    const cancelModal = document.getElementById('cancelModal');
+    let sessionToCancel = null;
+    
+    document.querySelectorAll('.cancel-session').forEach(button => {
+        button.addEventListener('click', function() {
+            sessionToCancel = this.dataset.sessionId;
+            cancelModal.classList.remove('hidden');
+        });
+    });
+    
+    // Handle cancel confirmation
+    const confirmCancelBtn = document.getElementById('confirmCancel');
+    if (confirmCancelBtn) {
+        confirmCancelBtn.addEventListener('click', function() {
+            const reason = document.getElementById('cancelReason').value;
+            
+            // Send AJAX request to cancel the session
+            fetch(`/office/video-session/${sessionToCancel}/update-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: `status=cancelled&reason=${encodeURIComponent(reason)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Hide modal
+                    cancelModal.classList.add('hidden');
+                    
+                    // Show success message
+                    showNotification('Session cancelled successfully', 'success');
+                    
+                    // Reload page after a brief delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('Failed to cancel session: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error cancelling session:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    }
+    
+    // Reschedule Session Modal
+    const rescheduleModal = document.getElementById('rescheduleModal');
+    let sessionToReschedule = null;
+    
+    document.querySelectorAll('.reschedule-session').forEach(button => {
+        button.addEventListener('click', function() {
+            // Store the session ID
+            sessionToReschedule = this.dataset.sessionId;
+            
+            // Set default values from current session date and time
+            const currentDate = this.dataset.date;
+            const currentTime = this.dataset.time;
+            
+            document.getElementById('new_date').value = currentDate;
+            document.getElementById('new_time').value = currentTime;
+            
+            // Show the modal
+            rescheduleModal.classList.remove('hidden');
+        });
+    });
+    
+    // Handle reschedule confirmation
+    const confirmRescheduleBtn = document.getElementById('confirmReschedule');
+    if (confirmRescheduleBtn) {
+        confirmRescheduleBtn.addEventListener('click', function() {
+            const newDate = document.getElementById('new_date').value;
+            const newTime = document.getElementById('new_time').value;
+            
+            if (!newDate || !newTime) {
+                showNotification('Please select both date and time', 'error');
+                return;
+            }
+            
+            // Send AJAX request to reschedule the session
+            fetch(`/office/video-session/${sessionToReschedule}/reschedule`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: `reschedule_date=${encodeURIComponent(newDate)}&reschedule_time=${encodeURIComponent(newTime)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Hide modal
+                    rescheduleModal.classList.add('hidden');
+                    
+                    // Show success message with information about the new time
+                    showNotification(`Session rescheduled successfully to ${data.new_time}`, 'success');
+                    
+                    // Reload page after a brief delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('Failed to reschedule session: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error rescheduling session:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    }
+    
+    // Close modals with close buttons
+    document.querySelectorAll('.close-modal').forEach(button => {
+        button.addEventListener('click', function() {
+            document.getElementById('notesModal').classList.add('hidden');
+            document.getElementById('cancelModal').classList.add('hidden');
+            document.getElementById('rescheduleModal').classList.add('hidden');
+        });
+    });
+    
+    // Handle session status update (Confirm/Approve button)
+    document.querySelectorAll('.update-status').forEach(button => {
+        button.addEventListener('click', function() {
+            const sessionId = this.dataset.sessionId;
+            const newStatus = this.dataset.status;
+            
+            fetch(`/office/video-session/${sessionId}/update-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: `status=${newStatus}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification(`Session status updated to ${newStatus}`, 'success');
+                    
+                    // Reload page after a brief delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('Failed to update status: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating session status:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
+    
+    // Handle sending reminders
+    document.querySelectorAll('.send-reminder').forEach(button => {
+        button.addEventListener('click', function() {
+            const sessionId = this.dataset.sessionId;
+            
+            fetch(`/office/video-session/${sessionId}/send-reminder`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: 'type=in_app'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification('Reminder sent to student', 'success');
+                } else {
+                    showNotification('Failed to send reminder: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error sending reminder:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
+    
+    // Helper function to get CSRF token from meta tag
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+    
+    // Show notifications
+    function showNotification(message, type) {
+        // Remove any existing notifications
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(n => n.remove());
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = `notification fixed top-4 right-4 px-4 py-2 rounded-md text-white z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+        notification.textContent = message;
+        
+        // Add to DOM
+        document.body.appendChild(notification);
+        
+        // Remove after delay
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}
