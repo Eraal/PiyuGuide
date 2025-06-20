@@ -385,30 +385,39 @@ class VideoCounselingClientOffice {
     }
     
     async startCall() {
-        console.log('Starting video call as counselor...');
+        console.log('=== COUNSELOR STARTING VIDEO CALL ===');
+        console.log('Session ID:', this.sessionId);
+        console.log('Is in call before:', this.isInCall);
         
         try {
             await this.createPeerConnection();
+            console.log('Peer connection created successfully');
+            
             // Don't show call UI immediately - wait for connection to establish
             this.startSessionTimer();
             this.isInCall = true;
-            
+            console.log('Is in call after:', this.isInCall);
+
             // Create and send offer
             const offer = await this.peerConnection.createOffer();
             await this.peerConnection.setLocalDescription(offer);
-            
+            console.log('Offer created and set as local description');
+
             this.socket.emit('offer', {
                 session_id: this.sessionId,
                 offer: offer,
                 target_user_id: null // Broadcast to room
             });
-            
+            console.log('Offer sent to student');
+
             this.updateConnectionStatus('Call started - waiting for student response', 'info');
             
         } catch (error) {
             console.error('Error starting call:', error);
             this.showError('Failed to start video call');
         }
+        
+        console.log('=== START CALL COMPLETED ===');
     }
     
     async createPeerConnection() {
@@ -427,17 +436,17 @@ class VideoCounselingClientOffice {
         
         // Handle remote stream
         this.peerConnection.ontrack = (event) => {
-            console.log('Received remote stream');
+            console.log('Received remote stream from student');
             this.remoteStream = event.streams[0];
             const remoteVideo = document.getElementById('remoteVideo');
             if (remoteVideo) {
                 remoteVideo.srcObject = this.remoteStream;
+                console.log('Remote video stream attached to video element');
             }
             
-            // Show call UI when we receive remote stream
-            if (this.isInCall && !document.getElementById('callInterface').classList.contains('hidden')) {
-                // UI already shown
-            } else {
+            // Show call UI when we receive remote stream - this is a reliable indicator
+            if (this.isInCall) {
+                console.log('Remote stream received - showing call UI');
                 this.showCallUI();
             }
         };
@@ -532,28 +541,70 @@ class VideoCounselingClientOffice {
             await this.peerConnection.setRemoteDescription(answer);
             this.updateConnectionStatus('Call connection established', 'success');
             
-            // Check if we should show the call UI
+            // Show call UI immediately after setting remote description
+            console.log('Connection state:', this.peerConnection.connectionState);
+            console.log('ICE connection state:', this.peerConnection.iceConnectionState);
+            
+            // Show call UI after a short delay to ensure DOM is ready
             setTimeout(() => {
-                if (this.isInCall && this.peerConnection.connectionState === 'connected') {
+                console.log('Checking if we should show call UI...');
+                console.log('isInCall:', this.isInCall);
+                console.log('Connection state:', this.peerConnection?.connectionState);
+                console.log('ICE state:', this.peerConnection?.iceConnectionState);
+                
+                if (this.isInCall) {
                     this.showCallUI();
                 }
-            }, 1000);
+            }, 500);
         }
     }
     
     showCallUI() {
-        console.log('Showing call UI');
-        const waitingRoom = document.getElementById('waitingRoom');
-        const callInterface = document.getElementById('callInterface');
+        console.log('=== SHOWING CALL UI ===');
+        const waitingRoom = document.getElementById('waitingRoomUI');
+        const callInterface = document.getElementById('callUI');
         
-        if (waitingRoom) waitingRoom.classList.add('hidden');
-        if (callInterface) callInterface.classList.remove('hidden');
+        console.log('Waiting room element:', waitingRoom);
+        console.log('Call interface element:', callInterface);
         
-        // Switch to video tab
-        this.switchTab('video');
+        if (waitingRoom) {
+            console.log('Waiting room classes before:', waitingRoom.className);
+            waitingRoom.classList.add('hidden');
+            console.log('Waiting room classes after:', waitingRoom.className);
+        } else {
+            console.error('Waiting room element (waitingRoomUI) not found!');
+        }
+        
+        if (callInterface) {
+            console.log('Call interface classes before:', callInterface.className);
+            callInterface.classList.remove('hidden');
+            console.log('Call interface classes after:', callInterface.className);
+        } else {
+            console.error('Call interface element (callUI) not found!');
+        }
+        
+        // Try to find and activate the first available tab
+        const firstTab = document.querySelector('.tab-button');
+        if (firstTab) {
+            const tabName = firstTab.getAttribute('data-tab');
+            if (tabName) {
+                console.log('Switching to first available tab:', tabName);
+                this.switchTab(tabName);
+            }
+        }
         
         // Update status
         this.updateConnectionStatus('Video call active', 'success');
+        
+        // Ensure local video stream is attached
+        const localVideo = document.getElementById('localVideo');
+        if (localVideo && this.localStream) {
+            localVideo.srcObject = this.localStream;
+            localVideo.muted = true;
+            console.log('Local video stream attached');
+        }
+        
+        console.log('=== CALL UI SETUP COMPLETE ===');
     }
     
     async toggleScreenShare() {
@@ -749,8 +800,8 @@ class VideoCounselingClientOffice {
     }
     
     showWaitingRoom() {
-        const waitingRoom = document.getElementById('waitingRoom');
-        const callInterface = document.getElementById('callInterface');
+        const waitingRoom = document.getElementById('waitingRoomUI');
+        const callInterface = document.getElementById('callUI');
         
         if (waitingRoom) waitingRoom.classList.remove('hidden');
         if (callInterface) callInterface.classList.add('hidden');
@@ -758,23 +809,8 @@ class VideoCounselingClientOffice {
         this.updateWaitingRoomMessage('Connecting to session...');
     }
     
-    showCallUI() {
-        console.log('Showing call UI');
-        const waitingRoom = document.getElementById('waitingRoom');
-        const callInterface = document.getElementById('callInterface');
-        
-        if (waitingRoom) waitingRoom.classList.add('hidden');
-        if (callInterface) callInterface.classList.remove('hidden');
-        
-        // Switch to video tab
-        this.switchTab('video');
-        
-        // Update status
-        this.updateConnectionStatus('Video call active', 'success');
-    }
-    
     updateWaitingRoomMessage(message) {
-        const messageElement = document.getElementById('waitingMessage');
+        const messageElement = document.getElementById('waitingRoomMessage');
         if (messageElement) {
             messageElement.textContent = message;
         }
@@ -1023,26 +1059,32 @@ class VideoCounselingClientOffice {
     }
     
     switchTab(tabName) {
-        // Hide all tab contents
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabContents.forEach(content => content.classList.add('hidden'));
-        
-        // Remove active class from all buttons
-        const tabButtons = document.querySelectorAll('.tab-button');
-        tabButtons.forEach(button => button.classList.remove('active'));
-        
-        // Show selected tab content
-        const selectedContent = document.getElementById(`${tabName}Tab`);
-        if (selectedContent) {
-            selectedContent.classList.remove('hidden');
-        }
-        
-        // Add active class to selected button
-        const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
-        if (selectedButton) {
-            selectedButton.classList.add('active');
-        }
+    console.log('Switching to tab:', tabName);
+    
+    // Hide all tab contents
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => {
+        content.classList.add('hidden');
+        content.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => button.classList.remove('active'));
+    
+    // Show selected tab content based on data-tab attribute
+    const selectedContent = document.querySelector(`[data-tab="${tabName}"]`);
+    if (selectedContent) {
+        selectedContent.classList.remove('hidden');
+        selectedContent.classList.add('active');
     }
+    
+    // Add active class to selected button
+    const selectedButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+    }
+}
     
     toggleFullScreen() {
         const remoteVideo = document.getElementById('remoteVideo');
