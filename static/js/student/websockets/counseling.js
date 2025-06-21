@@ -137,14 +137,46 @@ class VideoCounselingClient {
         
         this.socket.on('session_ready', (data) => {
             console.log('Session is ready to start:', data);
-            this.updateConnectionStatus('Ready to start call', 'success');
+            if (data.status === 'ready' && data.all_ready) {
+                this.updateConnectionStatus('Ready to start call - waiting for counselor to begin', 'success');
+                this.showJoinCallButton();
+            } else {
+                this.updateConnectionStatus('Waiting for all participants to be ready...', 'info');
+            }
+        });
+        
+        this.socket.on('session_waiting', (data) => {
+            console.log('Session waiting:', data);
+            if (!data.has_counselor) {
+                this.updateConnectionStatus('Waiting for counselor to join...', 'info');
+            } else if (!data.has_student) {
+                this.updateConnectionStatus('Waiting for student to join...', 'info');
+            } else {
+                this.updateConnectionStatus('Waiting for participants to be ready...', 'info');
+            }
+        });
+        
+        this.socket.on('call_starting', (data) => {
+            console.log('Call is starting:', data);
+            this.updateConnectionStatus('Call is starting! Join when ready.', 'success');
             this.showJoinCallButton();
+        });
+        
+        this.socket.on('call_joined', (data) => {
+            console.log('Successfully joined call:', data);
+            this.showCallUI();
+            this.updateConnectionStatus('Connected to call', 'success');
+        });
+        
+        this.socket.on('user_joined_call', (data) => {
+            console.log('User joined call:', data.name);
+            this.showNotification(`${data.name} joined the call`, 'info');
         });
         
         this.socket.on('offer_received', async (data) => {
             console.log('Received WebRTC offer from:', data.from_name);
             try {
-                await this.handleOffer(data.offer);
+                await this.handleOffer(data);
             } catch (error) {
                 console.error('Error handling offer:', error);
                 this.showError('Failed to process video call offer');
@@ -154,7 +186,7 @@ class VideoCounselingClient {
         this.socket.on('answer_received', async (data) => {
             console.log('Received WebRTC answer');
             try {
-                await this.handleAnswer(data.answer);
+                await this.handleAnswer(data);
             } catch (error) {
                 console.error('Error handling answer:', error);
             }
@@ -184,6 +216,18 @@ class VideoCounselingClient {
         this.socket.on('recording_stopped', (data) => {
             this.showRecordingIndicator(false);
             this.showNotification(`Recording stopped by ${data.stopped_by}`, 'info');
+        });
+        
+        this.socket.on('screen_share_started', (data) => {
+            console.log('🖥️ Screen sharing started by counselor:', data.name);
+            this.showNotification(`${data.name} started screen sharing`, 'info');
+            this.handleScreenShareStarted(data);
+        });
+        
+        this.socket.on('screen_share_stopped', (data) => {
+            console.log('🛑 Screen sharing stopped by counselor:', data.name);
+            this.showNotification(`${data.name} stopped screen sharing`, 'info');
+            this.handleScreenShareStopped(data);
         });
         
         this.socket.on('session_ended', (data) => {
@@ -469,29 +513,22 @@ class VideoCounselingClient {
     }
     
     async startCall() {
-        console.log('Starting video call...');
+        console.log('Joining video call...');
         
         try {
-            await this.createPeerConnection();
-            // Don't show call UI immediately - wait for connection to establish
-            this.startSessionTimer();
-            this.isInCall = true;
-            
-            // Create and send offer
-            const offer = await this.peerConnection.createOffer();
-            await this.peerConnection.setLocalDescription(offer);
-            
-            this.socket.emit('offer', {
-                session_id: this.sessionId,
-                offer: offer,
-                target_user_id: null // Broadcast to room
+            // Emit join_call event to server
+            this.socket.emit('join_call', {
+                session_id: this.sessionId
             });
             
-            this.updateConnectionStatus('Call started - waiting for counselor response', 'info');
+            this.updateConnectionStatus('Joining call...', 'info');
+            
+            // Initialize peer connection for when we receive an offer
+            await this.createPeerConnection();
             
         } catch (error) {
-            console.error('Error starting call:', error);
-            this.showError('Failed to start video call');
+            console.error('Error joining call:', error);
+            this.showError('Failed to join video call');
         }
     }
     
@@ -584,53 +621,58 @@ class VideoCounselingClient {
         this.monitorConnectionQuality();
     }
     
-    async handleOffer(offer) {
-        console.log('Handling WebRTC offer');
+    async handleOffer(data) {
+        console.log('Handling WebRTC offer from:', data.from_name);
         
         if (!this.peerConnection) {
             await this.createPeerConnection();
         }
         
-        await this.peerConnection.setRemoteDescription(offer);
-        const answer = await this.peerConnection.createAnswer();
-        await this.peerConnection.setLocalDescription(answer);
-        
-        this.socket.emit('answer', {
-            session_id: this.sessionId,
-            answer: answer
-        });
-        
-        if (!this.isInCall) {
-            this.startSessionTimer();
-            this.isInCall = true;
+        try {
+            await this.peerConnection.setRemoteDescription(data.offer);
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+            
+            this.socket.emit('answer', {
+                session_id: this.sessionId,
+                answer: answer,
+                offer_id: data.offer_id,
+                target_user_id: data.from_user_id
+            });
+            
+            if (!this.isInCall) {
+                this.startSessionTimer();
+                this.isInCall = true;
+            }
+            
+            this.updateConnectionStatus('Connecting to call...', 'info');
+            
+        } catch (error) {
+            console.error('Error processing offer:', error);
+            this.showError('Failed to process call connection');
         }
-        
-        // Don't show call UI immediately - wait for connection to establish
-        this.updateConnectionStatus('Processing call connection...', 'info');
     }
     
-    async handleAnswer(answer) {
+    async handleAnswer(data) {
         console.log('Handling WebRTC answer');
         
         if (this.peerConnection) {
-            await this.peerConnection.setRemoteDescription(answer);
-            this.updateConnectionStatus('Call connection established', 'success');
-            
-            // Show call UI immediately after setting remote description
-            console.log('Connection state:', this.peerConnection.connectionState);
-            console.log('ICE connection state:', this.peerConnection.iceConnectionState);
-            
-            // Show call UI after a short delay to ensure DOM is ready
-            setTimeout(() => {
-                console.log('Checking if we should show call UI...');
-                console.log('isInCall:', this.isInCall);
-                console.log('Connection state:', this.peerConnection?.connectionState);
-                console.log('ICE state:', this.peerConnection?.iceConnectionState);
+            try {
+                await this.peerConnection.setRemoteDescription(data.answer);
+                this.updateConnectionStatus('Call connection established', 'success');
                 
-                if (this.isInCall) {
-                    this.showCallUI();
-                }
-            }, 500);
+                // Show call UI after connection is established
+                setTimeout(() => {
+                    console.log('Showing call UI after answer processed');
+                    if (this.isInCall) {
+                        this.showCallUI();
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error setting remote description:', error);
+                this.showError('Failed to establish call connection');
+            }
         }
     }
     
@@ -1773,6 +1815,140 @@ class VideoCounselingClient {
             qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
             qualityElement.className = `connection-${quality}`;
         }
+    }
+    
+    // Screen sharing handlers
+    handleScreenShareStarted(data) {
+        console.log('🖥️ Handling screen share started from counselor');
+        
+        // The remote video will automatically update when the counselor replaces their video track
+        // We just need to update the UI to indicate screen sharing is active
+        const remoteVideo = document.getElementById('remoteVideo');
+        if (remoteVideo) {
+            // Add a visual indicator that screen sharing is active
+            remoteVideo.style.objectFit = 'contain'; // Better for screen content
+            console.log('✅ Remote video set to contain mode for screen sharing');
+        }
+        
+        // Update UI to show screen sharing indicator
+        this.showScreenShareIndicator(true);
+        
+        // Show notification to student
+        this.showNotification('Counselor is now sharing their screen', 'info');
+    }
+    
+    handleScreenShareStopped(data) {
+        console.log('🛑 Handling screen share stopped from counselor');
+        
+        // Reset remote video display
+        const remoteVideo = document.getElementById('remoteVideo');
+        if (remoteVideo) {
+            remoteVideo.style.objectFit = 'cover'; // Back to normal video mode
+            console.log('✅ Remote video set back to cover mode');
+        }
+        
+        // Hide screen sharing indicator
+        this.showScreenShareIndicator(false);
+        
+        // Show notification to student
+        this.showNotification('Screen sharing ended', 'info');
+    }
+    
+    showScreenShareIndicator(isSharing) {
+        // Add a visual indicator for screen sharing
+        let indicator = document.getElementById('screenShareIndicator');
+        
+        if (isSharing) {
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'screenShareIndicator';
+                indicator.className = 'absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2 z-20';
+                indicator.innerHTML = `
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm1 0v8h12V4H4z" clip-rule="evenodd"></path>
+                        <path d="M5 16a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z"></path>
+                    </svg>
+                    <span>Screen Sharing</span>
+                `;
+                
+                // Add to remote video container
+                const remoteVideoContainer = document.getElementById('remoteVideoContainer') || document.getElementById('mainVideoContainer');
+                if (remoteVideoContainer) {
+                    remoteVideoContainer.appendChild(indicator);
+                    console.log('✅ Screen share indicator added');
+                }
+            }
+        } else {
+            if (indicator) {
+                indicator.remove();
+                console.log('✅ Screen share indicator removed');
+            }
+        }
+    }
+    
+    showRecordingIndicator(isRecording) {
+        // Add a visual indicator for recording
+        let indicator = document.getElementById('recordingIndicator');
+        
+        if (isRecording) {
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'recordingIndicator';
+                indicator.className = 'absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2 z-20 animate-pulse';
+                indicator.innerHTML = `
+                    <div class="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
+                    <span>Recording</span>
+                `;
+                
+                // Add to video container
+                const videoContainer = document.getElementById('callUI') || document.body;
+                if (videoContainer) {
+                    videoContainer.appendChild(indicator);
+                    console.log('✅ Recording indicator added');
+                }
+            }
+        } else {
+            if (indicator) {
+                indicator.remove();
+                console.log('✅ Recording indicator removed');
+            }
+        }
+    }
+    
+    handleRemoteAudioToggle(data) {
+        console.log('Remote audio toggle:', data);
+        // Could add visual indicator for remote audio state
+        const message = data.audio_enabled ? 
+            `${data.name} turned on microphone` : 
+            `${data.name} turned off microphone`;
+        this.showNotification(message, 'info');
+    }
+    
+    handleRemoteVideoToggle(data) {
+        console.log('Remote video toggle:', data);
+        // Could add visual indicator for remote video state
+        const message = data.video_enabled ? 
+            `${data.name} turned on camera` : 
+            `${data.name} turned off camera`;
+        this.showNotification(message, 'info');
+    }
+    
+    handleSessionEnd(data) {
+        console.log('Session ended:', data);
+        this.stopSessionTimer();
+        this.showNotification(`Session ended by ${data.ended_by}`, 'info');
+        this.updateConnectionStatus('Session has ended', 'info');
+        this.cleanup();
+        
+        setTimeout(() => {
+            window.location.href = '/student/dashboard';
+        }, 3000);
+    }
+    
+    handleCounselorDisconnect() {
+        console.log('Counselor disconnected');
+        this.showNotification('Counselor has disconnected from the session', 'warning');
+        this.updateConnectionStatus('Waiting for counselor to reconnect...', 'warning');
     }
     
     // Method to manually initialize tabs if needed

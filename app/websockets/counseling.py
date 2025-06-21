@@ -159,13 +159,149 @@ def handle_ready(data):
     emit('user_ready', {
         'user_id': current_user.id,
         'role': current_user.role,
-        'name': current_user.get_full_name()
+        'name': current_user.get_full_name(),
+        'timestamp': datetime.utcnow().isoformat()
     }, room=room_name, include_self=False)
     
     logger.info(f"User {current_user.id} is ready in session {session_id}")
     
     # Check if call can start
     check_session_ready(session_id, room_name)
+
+@socketio.on('not_ready', namespace='/video-counseling')
+def handle_not_ready(data):
+    """Handle user indicating they're not ready for the call"""
+    session_id = data.get('session_id')
+    if not session_id or session_id not in active_sessions:
+        emit('error', {'message': 'Invalid session'})
+        return
+    
+    if current_user.id not in active_sessions[session_id]:
+        emit('error', {'message': 'User not in session'})
+        return
+    
+    # Mark user as not ready
+    active_sessions[session_id][current_user.id]['ready'] = False
+    
+    room_name = f"video_session_{session_id}"
+    
+    # Notify others
+    emit('user_not_ready', {
+        'user_id': current_user.id,
+        'role': current_user.role,
+        'name': current_user.get_full_name(),
+        'timestamp': datetime.utcnow().isoformat()
+    }, room=room_name, include_self=False)
+    
+    logger.info(f"User {current_user.id} is not ready in session {session_id}")
+    
+    # Check session status
+    check_session_ready(session_id, room_name)
+
+@socketio.on('start_call', namespace='/video-counseling')
+def handle_start_call(data):
+    """Handle call start request (counselor initiates)"""
+    if current_user.role not in ['office_admin', 'super_admin']:
+        emit('error', {'message': 'Only counselors can start the call'})
+        return
+    
+    session_id = data.get('session_id')
+    if not session_id:
+        emit('error', {'message': 'Session ID required'})
+        return
+    
+    # Verify session exists and user has access
+    session = CounselingSession.query.get(session_id)
+    if not session or (session.counselor_id != current_user.id and current_user.role != 'super_admin'):
+        emit('error', {'message': 'Access denied or session not found'})
+        return
+    
+    # Check if session has participants
+    if session_id not in active_sessions:
+        emit('error', {'message': 'No participants in session'})
+        return
+    
+    participants = active_sessions[session_id]
+    has_student = any(p['role'] == 'student' for p in participants.values())
+    has_counselor = any(p['role'] in ['office_admin', 'super_admin'] for p in participants.values())
+    
+    if not (has_student and has_counselor):
+        emit('error', {'message': 'Both student and counselor must be present'})
+        return
+    
+    room_name = f"video_session_{session_id}"
+    
+    # Update session status
+    try:
+        if session.status == 'scheduled':
+            session.status = 'active'
+            session.started_at = datetime.utcnow()
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating session status: {str(e)}")
+    
+    # Notify all participants that the call is starting
+    emit('call_starting', {
+        'session_id': session_id,
+        'started_by': current_user.get_full_name(),
+        'participants': [
+            {
+                'user_id': p['user_id'],
+                'role': p['role'],
+                'name': p['name']
+            }
+            for p in participants.values()
+        ],
+        'timestamp': datetime.utcnow().isoformat()
+    }, room=room_name)
+    
+    logger.info(f"Call started by {current_user.id} for session {session_id}")
+
+@socketio.on('join_call', namespace='/video-counseling')
+def handle_join_call(data):
+    """Handle user joining the active call"""
+    session_id = data.get('session_id')
+    if not session_id:
+        emit('error', {'message': 'Session ID required'})
+        return
+    
+    # Verify user is in session
+    if session_id not in active_sessions or current_user.id not in active_sessions[session_id]:
+        emit('error', {'message': 'User not in session'})
+        return
+    
+    room_name = f"video_session_{session_id}"
+    
+    # Mark user as joined in call
+    active_sessions[session_id][current_user.id]['in_call'] = True
+    active_sessions[session_id][current_user.id]['call_joined_at'] = datetime.utcnow()
+    
+    # Notify others that user has joined the call
+    emit('user_joined_call', {
+        'user_id': current_user.id,
+        'role': current_user.role,
+        'name': current_user.get_full_name(),
+        'timestamp': datetime.utcnow().isoformat()
+    }, room=room_name, include_self=False)
+    
+    # Send call state to the newly joined user
+    call_participants = []
+    for participant in active_sessions[session_id].values():
+        if participant.get('in_call', False):
+            call_participants.append({
+                'user_id': participant['user_id'],
+                'role': participant['role'],
+                'name': participant['name']
+            })
+    
+    emit('call_joined', {
+        'session_id': session_id,
+        'participants': call_participants,
+        'your_role': current_user.role
+    })
+    
+    logger.info(f"User {current_user.id} joined call for session {session_id}")
 
 @socketio.on('waiting_room_media_toggle', namespace='/video-counseling')
 def handle_waiting_room_media_toggle(data):
@@ -198,51 +334,78 @@ def handle_offer(data):
         emit('error', {'message': 'Missing required data for offer'})
         return
     
+    # Verify user is in session
+    if session_id not in active_sessions or current_user.id not in active_sessions[session_id]:
+        emit('error', {'message': 'User not in session'})
+        return
+    
     room_name = f"video_session_{session_id}"
     
-    # If target_user_id is None, broadcast to all participants in the room
-    if target_user_id is None:
-        # Forward offer to all other users in room
-        emit('offer_received', {
-            'session_id': session_id,
-            'offer': offer,
-            'from_user_id': current_user.id,
-            'from_role': current_user.role,
-            'from_name': current_user.get_full_name()
-        }, room=room_name, include_self=False)
-    else:
-        # Forward offer to specific target user
-        emit('offer_received', {
-            'session_id': session_id,
-            'offer': offer,
-            'from_user_id': current_user.id,
-            'from_role': current_user.role,
-            'from_name': current_user.get_full_name(),
-            'target_user_id': target_user_id
-        }, room=room_name, include_self=False)
+    logger.info(f"Handling offer from {current_user.id} (role: {current_user.role}) in session {session_id}")
     
-    logger.info(f"Offer sent from {current_user.id} to session {session_id}")
+    # Generate a unique offer ID to prevent conflicts
+    offer_id = str(uuid.uuid4())
+    
+    # Forward offer to all other users in room or specific target
+    offer_data = {
+        'session_id': session_id,
+        'offer': offer,
+        'offer_id': offer_id,
+        'from_user_id': current_user.id,
+        'from_role': current_user.role,
+        'from_name': current_user.get_full_name(),
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    
+    if target_user_id:
+        offer_data['target_user_id'] = target_user_id
+        logger.info(f"Sending targeted offer to user {target_user_id}")
+    else:
+        logger.info(f"Broadcasting offer to all participants in session")
+    
+    emit('offer_received', offer_data, room=room_name, include_self=False)
+    
+    logger.info(f"Offer {offer_id} sent from {current_user.id} to session {session_id}")
 
 @socketio.on('answer', namespace='/video-counseling')
 def handle_answer(data):
     """Handle WebRTC answer"""
     session_id = data.get('session_id')
     answer = data.get('answer')
+    offer_id = data.get('offer_id')
+    target_user_id = data.get('target_user_id')
     
     if not all([session_id, answer]):
         emit('error', {'message': 'Missing required data for answer'})
         return
     
+    # Verify user is in session
+    if session_id not in active_sessions or current_user.id not in active_sessions[session_id]:
+        emit('error', {'message': 'User not in session'})
+        return
+    
     room_name = f"video_session_{session_id}"
     
-    # Forward answer to all users in room
-    emit('answer_received', {
+    logger.info(f"Handling answer from {current_user.id} (role: {current_user.role}) for offer {offer_id}")
+    
+    # Forward answer to all users in room or specific target
+    answer_data = {
         'session_id': session_id,
         'answer': answer,
+        'offer_id': offer_id,
         'from_user_id': current_user.id,
         'from_role': current_user.role,
-        'from_name': current_user.get_full_name()
-    }, room=room_name, include_self=False)
+        'from_name': current_user.get_full_name(),
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    
+    if target_user_id:
+        answer_data['target_user_id'] = target_user_id
+        logger.info(f"Sending targeted answer to user {target_user_id}")
+    else:
+        logger.info(f"Broadcasting answer to all participants in session")
+    
+    emit('answer_received', answer_data, room=room_name, include_self=False)
     
     logger.info(f"Answer sent from {current_user.id} in session {session_id}")
 
@@ -251,19 +414,34 @@ def handle_ice_candidate(data):
     """Handle ICE candidate exchange"""
     session_id = data.get('session_id')
     candidate = data.get('candidate')
+    target_user_id = data.get('target_user_id')
     
     if not all([session_id, candidate]):
         emit('error', {'message': 'Missing required data for ICE candidate'})
         return
     
+    # Verify user is in session
+    if session_id not in active_sessions or current_user.id not in active_sessions[session_id]:
+        emit('error', {'message': 'User not in session'})
+        return
+    
     room_name = f"video_session_{session_id}"
     
     # Forward ICE candidate to other users
-    emit('ice_candidate_received', {
+    candidate_data = {
         'session_id': session_id,
         'candidate': candidate,
-        'from_user_id': current_user.id
-    }, room=room_name, include_self=False)
+        'from_user_id': current_user.id,
+        'from_role': current_user.role,
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    
+    if target_user_id:
+        candidate_data['target_user_id'] = target_user_id
+    
+    emit('ice_candidate_received', candidate_data, room=room_name, include_self=False)
+    
+    logger.debug(f"ICE candidate sent from {current_user.id} in session {session_id}")
 
 @socketio.on('toggle_audio', namespace='/video-counseling')
 def handle_toggle_audio(data):
@@ -598,21 +776,50 @@ def check_session_ready(session_id, room_name):
     # Check if both are ready
     all_ready = all(p['ready'] for p in participants.values())
     
-    if has_student and has_counselor and all_ready and len(participants) >= 2:
+    # Only emit session_ready when we have the minimum requirements
+    if has_student and has_counselor and len(participants) >= 2:
+        status = 'ready' if all_ready else 'waiting_for_ready'
+        
         emit('session_ready', {
             'session_id': session_id,
+            'status': status,
+            'all_ready': all_ready,
             'participants': [
                 {
                     'user_id': p['user_id'],
                     'role': p['role'],
-                    'name': p['name']
+                    'name': p['name'],
+                    'ready': p['ready']
                 }
                 for p in participants.values()
             ],
             'timestamp': datetime.utcnow().isoformat()
         }, room=room_name)
         
-        logger.info(f"Session {session_id} is ready to start")
+        if all_ready:
+            logger.info(f"Session {session_id} is ready to start - all participants ready")
+        else:
+            logger.info(f"Session {session_id} has all participants but waiting for ready status")
+    else:
+        # Emit waiting status
+        emit('session_waiting', {
+            'session_id': session_id,
+            'has_student': has_student,
+            'has_counselor': has_counselor,
+            'participant_count': len(participants),
+            'participants': [
+                {
+                    'user_id': p['user_id'],
+                    'role': p['role'],
+                    'name': p['name'],
+                    'ready': p['ready']
+                }
+                for p in participants.values()
+            ],
+            'timestamp': datetime.utcnow().isoformat()
+        }, room=room_name)
+        
+        logger.info(f"Session {session_id} waiting - student: {has_student}, counselor: {has_counselor}, count: {len(participants)}")
 
 def cleanup_user_sessions(user_id):
     """Clean up sessions when user disconnects"""

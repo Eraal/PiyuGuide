@@ -51,17 +51,24 @@ class VideoCounselingClientOffice {
     
     async init() {
         try {
-            console.log('Initializing Video Counseling Client for Office...');
+            console.log('🚀 Initializing Video Counseling Client for Office...');
             this.updateConnectionStatus('Initializing...', 'info');
             this.initializeSocket();
             this.setupEventListeners();
-            this.showWaitingRoom();
-            // Request media access immediately on initialization
+            
+            // Request media access BEFORE showing waiting room
             await this.initializeMedia();
+            
+            // Device list will be populated AFTER successful media access
+            await this.populateDeviceList();
+            
+            // NOW show waiting room with media already available
+            this.showWaitingRoom();
+            
             // Initialize participant indicators - counselor is connected, student is not yet
             this.updateParticipantIndicators(true, false);
         } catch (error) {
-            console.error('Failed to initialize video counseling:', error);
+            console.error('❌ Failed to initialize video counseling:', error);
             this.updateConnectionStatus('Initialization failed', 'error');
             this.showError('Failed to initialize video calling. Please check camera/microphone permissions and refresh the page.');
         }
@@ -213,50 +220,129 @@ class VideoCounselingClientOffice {
         });
     }
     
+async handleIceCandidate(candidate) {
+        console.log('Handling ICE candidate');
+        
+        if (this.peerConnection && this.peerConnection.remoteDescription) {
+            try {
+                await this.peerConnection.addIceCandidate(candidate);
+                console.log('ICE candidate added successfully');
+            } catch (error) {
+                console.error('Error adding ICE candidate:', error);
+            }
+        } else {
+            console.warn('Cannot add ICE candidate - peer connection not ready or no remote description');
+        }
+    }
+
     async initializeMedia() {
-        console.log('Requesting media access...');
+        console.log('🎥 Requesting media access...');
         this.updateConnectionStatus('Requesting camera and microphone access...', 'info');
         
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia is not supported in this browser');
+        }
+        
+        // First, let's check what devices are available (without permissions)
         try {
-            // Start with more permissive constraints to ensure compatibility
-            const basicConstraints = {
-                video: {
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 },
-                    frameRate: { ideal: 30, min: 15 }
-                },
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                    sampleRate: 44100
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoInputs = devices.filter(device => device.kind === 'videoinput');
+            const audioInputs = devices.filter(device => device.kind === 'audioinput');
+            
+            console.log('📱 Devices detected before permission:');
+            console.log(`  - Video inputs: ${videoInputs.length}`);
+            console.log(`  - Audio inputs: ${audioInputs.length}`);
+            
+            if (videoInputs.length === 0 && audioInputs.length === 0) {
+                throw new Error('No media devices detected on this system');
+            }
+        } catch (enumError) {
+            console.warn('⚠️ Could not enumerate devices:', enumError);
+        }
+        
+        // Check current permissions if supported
+        if (navigator.permissions) {
+            try {
+                const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+                const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+                
+                console.log('🔐 Current permissions:');
+                console.log(`  - Camera: ${cameraPermission.state}`);
+                console.log(`  - Microphone: ${microphonePermission.state}`);
+                
+                if (cameraPermission.state === 'denied' && microphonePermission.state === 'denied') {
+                    throw new Error('Both camera and microphone permissions are denied');
                 }
+            } catch (permError) {
+                console.warn('⚠️ Could not check permissions:', permError);
+            }
+        }
+        
+        try {
+            // Start with the most basic constraints possible
+            let constraints = {
+                video: true,
+                audio: true
             };
             
-            // Request permission for camera and microphone
-            console.log('Requesting media with constraints:', basicConstraints);
-            this.localStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
-            console.log('Media access granted successfully');
-            console.log('Local stream tracks:', this.localStream.getTracks());
+            console.log('🎬 Requesting media with basic constraints first:', constraints);
             
-            // Verify we have both audio and video tracks
+            try {
+                // Try basic constraints first
+                this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Media access granted with basic constraints');
+            } catch (basicError) {
+                console.log('⚠️ Basic constraints failed, trying video only...', basicError);
+                
+                // Try video only
+                try {
+                    constraints = { video: true, audio: false };
+                    this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    console.log('✅ Video-only access granted');
+                    this.isAudioEnabled = false;
+                } catch (videoError) {
+                    console.log('⚠️ Video only failed, trying audio only...', videoError);
+                    
+                    // Try audio only
+                    try {
+                        constraints = { video: false, audio: true };
+                        this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                        console.log('✅ Audio-only access granted');
+                        this.isVideoEnabled = false;
+                    } catch (audioError) {
+                        console.error('❌ All media access attempts failed');
+                        console.error('Final error details:', {
+                            basic: basicError.name + ': ' + basicError.message,
+                            video: videoError.name + ': ' + videoError.message,
+                            audio: audioError.name + ': ' + audioError.message
+                        });
+                        throw basicError; // Throw the original error
+                    }
+                }
+            }
+            
+            console.log('🎵 Local stream tracks:', this.localStream.getTracks());
+            
+            // Verify we have the expected tracks
             const videoTracks = this.localStream.getVideoTracks();
             const audioTracks = this.localStream.getAudioTracks();
             
-            console.log('Video tracks:', videoTracks.length);
-            console.log('Audio tracks:', audioTracks.length);
+            console.log('✅ Video tracks:', videoTracks.length);
+            console.log('✅ Audio tracks:', audioTracks.length);
             
+            // Update enabled states based on what we actually got
             if (videoTracks.length === 0) {
-                console.warn('No video track available');
+                console.warn('⚠️ No video track available');
                 this.isVideoEnabled = false;
             }
             
             if (audioTracks.length === 0) {
-                console.warn('No audio track available');
+                console.warn('⚠️ No audio track available');
                 this.isAudioEnabled = false;
             }
             
-            // Set track states based on initial preferences
+            // Set track states based on current preferences
             videoTracks.forEach(track => {
                 track.enabled = this.isVideoEnabled;
                 console.log('Video track enabled:', track.enabled);
@@ -267,29 +353,35 @@ class VideoCounselingClientOffice {
                 console.log('Audio track enabled:', track.enabled);
             });
             
-            // Attach to waiting room video element first
+            // Attach to waiting room video element
             const waitingRoomVideo = document.getElementById('waitingRoomVideo');
-            if (waitingRoomVideo) {
-                console.log('Attaching stream to waiting room video');
+            if (waitingRoomVideo && videoTracks.length > 0) {
+                console.log('✅ Attaching stream to waiting room video');
                 waitingRoomVideo.srcObject = this.localStream;
-                waitingRoomVideo.muted = true; // Prevent feedback
+                waitingRoomVideo.muted = true;
                 
-                // Ensure video plays
                 waitingRoomVideo.onloadedmetadata = () => {
                     waitingRoomVideo.play().catch(e => {
                         console.warn('Error playing waiting room video:', e);
                     });
                 };
+                
+                // Force play if metadata is already loaded
+                if (waitingRoomVideo.readyState >= 2) {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video on ready state:', e);
+                    });
+                }
             } else {
-                console.warn('Waiting room video element not found');
+                console.warn('⚠️ Waiting room video element not found or no video tracks');
             }
             
             // Also attach to main local video element if it exists
             const localVideo = document.getElementById('localVideo');
-            if (localVideo) {
-                console.log('Attaching stream to local video');
+            if (localVideo && videoTracks.length > 0) {
+                console.log('✅ Attaching stream to local video');
                 localVideo.srcObject = this.localStream;
-                localVideo.muted = true; // Prevent feedback
+                localVideo.muted = true;
                 
                 localVideo.onloadedmetadata = () => {
                     localVideo.play().catch(e => {
@@ -298,55 +390,86 @@ class VideoCounselingClientOffice {
                 };
             }
             
-            // Populate device lists after getting media access
-            await this.populateDeviceList();
-            
             // Initialize button states
             this.updateAllMediaButtons();
             this.updateVideoPlaceholder();
             
-            this.updateConnectionStatus('Camera and microphone ready', 'success');
-            console.log('Media initialization completed successfully');
+            // Show success message
+            let statusMessage = 'Media ready: ';
+            if (videoTracks.length > 0 && audioTracks.length > 0) {
+                statusMessage += 'Camera and microphone';
+            } else if (videoTracks.length > 0) {
+                statusMessage += 'Camera only';
+            } else if (audioTracks.length > 0) {
+                statusMessage += 'Microphone only';
+            } else {
+                statusMessage += 'No media devices';
+            }
+            
+            this.updateConnectionStatus(statusMessage, 'success');
+            console.log('✅ Media initialization completed successfully');
             
         } catch (error) {
-            console.error('Failed to access media devices:', error);
+            console.error('❌ Failed to access media devices:', error);
             this.handleMediaError(error);
         }
     }
     
     async populateDeviceList() {
         try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
+            console.log('Populating device list after media access...');
             
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            const audioDevices = devices.filter(device => device.kind === 'audioinput');
+            // Check if media access has been granted
+            if (!this.localStream) {
+                console.warn('Cannot populate device list - no media access yet');
+                return;
+            }
+            
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            console.log('Available devices:', devices);
+            
+            const videoDevices = devices.filter(device => 
+                device.kind === 'videoinput' && device.label // Only include devices with labels
+            );
+            const audioDevices = devices.filter(device => 
+                device.kind === 'audioinput' && device.label // Only include devices with labels
+            );
+            
+            console.log('Video devices found:', videoDevices.length);
+            console.log('Audio devices found:', audioDevices.length);
             
             // Populate camera select
             const cameraSelect = document.getElementById('cameraSelect');
-            if (cameraSelect) {
+            if (cameraSelect && videoDevices.length > 0) {
                 cameraSelect.innerHTML = '';
-                videoDevices.forEach(device => {
+                videoDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.textContent = device.label || `Camera ${cameraSelect.options.length + 1}`;
+                    option.textContent = device.label || `Camera ${index + 1}`;
                     cameraSelect.appendChild(option);
                 });
+                console.log('Camera select populated with', videoDevices.length, 'devices');
+            } else {
+                console.warn('Camera select element not found or no video devices available');
             }
             
             // Populate microphone select
             const micSelect = document.getElementById('microphoneSelect');
-            if (micSelect) {
+            if (micSelect && audioDevices.length > 0) {
                 micSelect.innerHTML = '';
-                audioDevices.forEach(device => {
+                audioDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.textContent = device.label || `Microphone ${micSelect.options.length + 1}`;
+                    option.textContent = device.label || `Microphone ${index + 1}`;
                     micSelect.appendChild(option);
                 });
+                console.log('Microphone select populated with', audioDevices.length, 'devices');
+            } else {
+                console.warn('Microphone select element not found or no audio devices available');
             }
             
         } catch (error) {
-            console.error('Error enumerating devices:', error);
+            console.error('Error populating device list:', error);
         }
     }
     
@@ -412,12 +535,26 @@ class VideoCounselingClientOffice {
         // Device selection
         const cameraSelect = document.getElementById('cameraSelect');
         if (cameraSelect) {
-            cameraSelect.addEventListener('change', (e) => this.changeCamera(e.target.value));
+            cameraSelect.addEventListener('change', (e) => {
+                const deviceId = e.target.value;
+                if (deviceId && this.localStream) {
+                    this.changeCamera(deviceId);
+                } else {
+                    console.warn('Cannot change camera: no device selected or no media stream');
+                }
+            });
         }
         
         const micSelect = document.getElementById('microphoneSelect');
         if (micSelect) {
-            micSelect.addEventListener('change', (e) => this.changeMicrophone(e.target.value));
+            micSelect.addEventListener('change', (e) => {
+                const deviceId = e.target.value;
+                if (deviceId && this.localStream) {
+                    this.changeMicrophone(deviceId);
+                } else {
+                    console.warn('Cannot change microphone: no device selected or no media stream');
+                }
+            });
         }
         
         // Tab switching
@@ -853,13 +990,20 @@ class VideoCounselingClientOffice {
     
     async startScreenShare() {
         try {
-            console.log('Starting screen share...');
+            console.log('🖥️ Starting screen share...');
             
-            // Get screen capture stream
+            // Get screen capture stream with enhanced options
             this.screenShareStream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
+                video: {
+                    mediaSource: 'screen',
+                    width: { ideal: 1920, max: 1920 },
+                    height: { ideal: 1080, max: 1080 },
+                    frameRate: { ideal: 30, max: 30 }
+                },
                 audio: true
             });
+            
+            console.log('✅ Screen capture stream obtained');
             
             // Replace video track in peer connection
             if (this.peerConnection) {
@@ -868,14 +1012,39 @@ class VideoCounselingClientOffice {
                 );
                 
                 if (videoSender) {
-                    await videoSender.replaceTrack(this.screenShareStream.getVideoTracks()[0]);
+                    const screenVideoTrack = this.screenShareStream.getVideoTracks()[0];
+                    await videoSender.replaceTrack(screenVideoTrack);
+                    console.log('✅ Screen share video track replaced in peer connection');
+                } else {
+                    console.warn('⚠️ No video sender found in peer connection');
                 }
+                
+                // Also handle audio if available
+                const audioSender = this.peerConnection.getSenders().find(sender => 
+                    sender.track && sender.track.kind === 'audio'
+                );
+                const screenAudioTrack = this.screenShareStream.getAudioTracks()[0];
+                
+                if (audioSender && screenAudioTrack) {
+                    // Note: We keep the microphone audio, don't replace it with screen audio
+                    console.log('Screen audio available but keeping microphone audio');
+                }
+            } else {
+                console.warn('⚠️ No peer connection available for screen sharing');
             }
             
             // Update local video to show screen share
             const localVideo = document.getElementById('localVideo');
             if (localVideo) {
                 localVideo.srcObject = this.screenShareStream;
+                console.log('✅ Local video updated to show screen share');
+            }
+            
+            // Also update waiting room video if still in waiting room
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                waitingRoomVideo.srcObject = this.screenShareStream;
+                console.log('✅ Waiting room video updated to show screen share');
             }
             
             this.isScreenSharing = true;
@@ -883,32 +1052,46 @@ class VideoCounselingClientOffice {
             
             // Handle when user stops sharing via browser controls
             this.screenShareStream.getVideoTracks()[0].onended = () => {
+                console.log('Screen share ended by user via browser controls');
                 this.stopScreenShare();
             };
             
             // Notify other participants
-            this.socket.emit('screen_share_start', {
-                session_id: this.sessionId
-            });
+            if (this.socket) {
+                this.socket.emit('screen_share_start', {
+                    session_id: this.sessionId
+                });
+                console.log('✅ Screen share start notification sent');
+            }
             
-            this.showNotification('Screen sharing started', 'success');
+            this.showNotification('Screen sharing started - students can now see your screen', 'success');
             
         } catch (error) {
-            console.error('Error starting screen share:', error);
-            this.showError('Failed to start screen sharing');
+            console.error('❌ Error starting screen share:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                this.showError('Screen sharing permission denied. Please allow screen sharing and try again.');
+            } else if (error.name === 'NotSupportedError') {
+                this.showError('Screen sharing is not supported in this browser.');
+            } else {
+                this.showError('Failed to start screen sharing. Please try again.');
+            }
         }
     }
     
     async stopScreenShare() {
         try {
-            console.log('Stopping screen share...');
+            console.log('🛑 Stopping screen share...');
             
             if (this.screenShareStream) {
-                this.screenShareStream.getTracks().forEach(track => track.stop());
+                this.screenShareStream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log(`Stopped ${track.kind} track`);
+                });
                 this.screenShareStream = null;
             }
             
-            // Replace with camera stream
+            // Replace with camera stream (if available)
             if (this.peerConnection && this.localStream) {
                 const videoSender = this.peerConnection.getSenders().find(sender => 
                     sender.track && sender.track.kind === 'video'
@@ -918,28 +1101,44 @@ class VideoCounselingClientOffice {
                     const cameraTrack = this.localStream.getVideoTracks()[0];
                     if (cameraTrack) {
                         await videoSender.replaceTrack(cameraTrack);
+                        console.log('✅ Replaced screen share with camera track');
+                    } else {
+                        // No camera available, send null track
+                        await videoSender.replaceTrack(null);
+                        console.log('✅ Replaced screen share with null (no camera)');
                     }
                 }
             }
             
-            // Update local video to show camera
+            // Update local video to show camera (or hide if no camera)
             const localVideo = document.getElementById('localVideo');
             if (localVideo && this.localStream) {
                 localVideo.srcObject = this.localStream;
+                console.log('✅ Local video updated to show camera');
+            }
+            
+            // Update waiting room video too
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo && this.localStream) {
+                waitingRoomVideo.srcObject = this.localStream;
+                console.log('✅ Waiting room video updated to show camera');
             }
             
             this.isScreenSharing = false;
             this.updateScreenShareButton();
             
             // Notify other participants
-            this.socket.emit('screen_share_stop', {
-                session_id: this.sessionId
-            });
+            if (this.socket) {
+                this.socket.emit('screen_share_stop', {
+                    session_id: this.sessionId
+                });
+                console.log('✅ Screen share stop notification sent');
+            }
             
             this.showNotification('Screen sharing stopped', 'info');
             
         } catch (error) {
-            console.error('Error stopping screen share:', error);
+            console.error('❌ Error stopping screen share:', error);
             this.showError('Failed to stop screen sharing');
         }
     }
@@ -1476,39 +1675,46 @@ class VideoCounselingClientOffice {
         let message = 'Failed to access camera or microphone';
         let solution = '';
         
-        console.error('Media error:', error);
+        console.error('❌ Media error:', error);
         
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
             message = 'Camera and microphone access denied';
-            solution = 'Please allow camera and microphone permissions in your browser and refresh the page.';
+            solution = 'Please click "Allow" when prompted for camera/microphone permissions and refresh the page.';
         } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
             message = 'No camera or microphone found';
-            solution = 'Please connect a camera and microphone and refresh the page.';
+            solution = 'Please connect a camera and/or microphone to your computer and refresh the page.';
         } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
             message = 'Camera or microphone is already in use';
             solution = 'Please close other applications using your camera/microphone and refresh the page.';
-        } else if (error.name === 'OverconstrainedError') {
+        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
             message = 'Camera or microphone settings not supported';
-            solution = 'Trying with basic settings...';
-            // Try with basic constraints
-            this.retryWithBasicConstraints();
-            return;
+            solution = 'Your device does not support the required media settings. Please try with a different device.';
         } else if (error.name === 'SecurityError') {
             message = 'Security error accessing media devices';
-            solution = 'Please ensure you are using HTTPS and refresh the page.';
+            solution = 'Please ensure you are using HTTPS and your browser supports media access.';
+        } else if (error.name === 'AbortError') {
+            message = 'Media access was aborted';
+            solution = 'Please try again and allow access to your camera and microphone.';
         } else {
-            message = `Media access error: ${error.message || error.name}`;
+            message = `Media access error: ${error.message || error.name || 'Unknown error'}`;
             solution = 'Please check your camera and microphone connections and refresh the page.';
         }
         
         this.updateConnectionStatus(message, 'error');
         this.showError(`${message}. ${solution}`);
         
-        // Disable media toggles if there's no stream
+        // Set media states to disabled
         this.isAudioEnabled = false;
         this.isVideoEnabled = false;
         this.updateAllMediaButtons();
         this.updateVideoPlaceholder();
+        
+        // Show a helpful message to user about the specific issue
+        console.log('💡 Troubleshooting suggestions:');
+        console.log('1. Check browser permissions for camera/microphone');
+        console.log('2. Ensure no other applications are using the camera/microphone');
+        console.log('3. Try refreshing the page');
+        console.log('4. Check if camera/microphone is properly connected');
     }
     
     async retryWithBasicConstraints() {
@@ -1527,16 +1733,32 @@ class VideoCounselingClientOffice {
             if (waitingRoomVideo) {
                 waitingRoomVideo.srcObject = this.localStream;
                 waitingRoomVideo.muted = true;
+                
+                waitingRoomVideo.onloadedmetadata = () => {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video after retry:', e);
+                    });
+                };
             }
             
             const localVideo = document.getElementById('localVideo');
             if (localVideo) {
                 localVideo.srcObject = this.localStream;
                 localVideo.muted = true;
+                
+                localVideo.onloadedmetadata = () => {
+                    localVideo.play().catch(e => {
+                        console.warn('Error playing local video after retry:', e);
+                    });
+                };
             }
             
             this.isAudioEnabled = true;
             this.isVideoEnabled = true;
+            
+            // Populate device list after successful retry
+            await this.populateDeviceList();
+            
             this.updateAllMediaButtons();
             this.updateVideoPlaceholder();
             this.updateConnectionStatus('Camera and microphone ready (basic mode)', 'success');
@@ -1834,86 +2056,136 @@ class VideoCounselingClientOffice {
     }
     
     async changeCamera(deviceId) {
-        if (!deviceId || !this.localStream) return;
+        if (!deviceId || !this.localStream) {
+            console.warn('Cannot change camera - invalid device ID or no local stream');
+            return;
+        }
+        
+        console.log('Changing camera to device:', deviceId);
         
         try {
-            // Stop current video track
-            const videoTrack = this.localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.stop();
-            }
+            // Store current video track state
+            const currentVideoTrack = this.localStream.getVideoTracks()[0];
+            const wasVideoEnabled = currentVideoTrack ? currentVideoTrack.enabled : true;
             
-            // Get new video stream
+            // Get new video stream with enhanced constraints
             const newStream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: { exact: deviceId } },
+                video: { 
+                    deviceId: { exact: deviceId },
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 },
+                    frameRate: { ideal: 30, min: 15 }
+                },
                 audio: false
             });
             
-            // Replace video track
             const newVideoTrack = newStream.getVideoTracks()[0];
-            this.localStream.removeTrack(videoTrack);
+            if (!newVideoTrack) {
+                throw new Error('No video track in new stream');
+            }
+            
+            // Set the enabled state to match current state
+            newVideoTrack.enabled = wasVideoEnabled;
+            
+            // Replace video track in local stream
+            if (currentVideoTrack) {
+                this.localStream.removeTrack(currentVideoTrack);
+                currentVideoTrack.stop();
+            }
             this.localStream.addTrack(newVideoTrack);
             
-            // Update peer connection
+            // Update peer connection if it exists
             if (this.peerConnection) {
                 const sender = this.peerConnection.getSenders().find(s => 
                     s.track && s.track.kind === 'video'
                 );
                 if (sender) {
                     await sender.replaceTrack(newVideoTrack);
+                    console.log('Video track replaced in peer connection');
                 }
             }
             
-            // Update local video element
+            // Update video elements
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                waitingRoomVideo.srcObject = this.localStream;
+            }
+            
             const localVideo = document.getElementById('localVideo');
             if (localVideo) {
                 localVideo.srcObject = this.localStream;
             }
             
+            console.log('Camera changed successfully to:', deviceId);
             this.showNotification('Camera changed successfully', 'success');
             
         } catch (error) {
             console.error('Error changing camera:', error);
-            this.showError('Failed to change camera');
+            this.showError('Failed to change camera. The selected camera may not be available.');
+            
+            // Don't break existing functionality - keep the current stream working
         }
     }
     
     async changeMicrophone(deviceId) {
-        if (!deviceId || !this.localStream) return;
+        if (!deviceId || !this.localStream) {
+            console.warn('Cannot change microphone - invalid device ID or no local stream');
+            return;
+        }
+        
+        console.log('Changing microphone to device:', deviceId);
         
         try {
-            // Stop current audio track
-            const audioTrack = this.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.stop();
-            }
+            // Store current audio track state
+            const currentAudioTrack = this.localStream.getAudioTracks()[0];
+            const wasAudioEnabled = currentAudioTrack ? currentAudioTrack.enabled : true;
             
-            // Get new audio stream
+            // Get new audio stream with enhanced constraints
             const newStream = await navigator.mediaDevices.getUserMedia({
-                audio: { deviceId: { exact: deviceId } },
+                audio: { 
+                    deviceId: { exact: deviceId },
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 44100
+                },
                 video: false
             });
             
-            // Replace audio track
             const newAudioTrack = newStream.getAudioTracks()[0];
-            this.localStream.removeTrack(audioTrack);
+            if (!newAudioTrack) {
+                throw new Error('No audio track in new stream');
+            }
+            
+            // Set the enabled state to match current state
+            newAudioTrack.enabled = wasAudioEnabled;
+            
+            // Replace audio track in local stream
+            if (currentAudioTrack) {
+                this.localStream.removeTrack(currentAudioTrack);
+                currentAudioTrack.stop();
+            }
             this.localStream.addTrack(newAudioTrack);
             
-            // Update peer connection
+            // Update peer connection if it exists
             if (this.peerConnection) {
                 const sender = this.peerConnection.getSenders().find(s => 
                     s.track && s.track.kind === 'audio'
                 );
                 if (sender) {
                     await sender.replaceTrack(newAudioTrack);
+                    console.log('Audio track replaced in peer connection');
                 }
             }
             
+            console.log('Microphone changed successfully to:', deviceId);
             this.showNotification('Microphone changed successfully', 'success');
             
         } catch (error) {
             console.error('Error changing microphone:', error);
-            this.showError('Failed to change microphone');
+            this.showError('Failed to change microphone. The selected microphone may not be available.');
+            
+            // Don't break existing functionality - keep the current stream working
         }
     }
     
