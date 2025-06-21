@@ -4,18 +4,146 @@
 
 {% block extra_css %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+        font-family: 'Poppins', sans-serif;
+    }
+    
     .text-stroke {
-        -webkit-text-stroke: 1px white;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.8);
+        text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
     }
     
     @media (max-width: 640px) {
         .text-stroke {
-            -webkit-text-stroke: 0.5px white;
+            -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.8);
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.6);
         }
     }
 
-    /* Added styles for mobile responsiveness */
+    /* Smooth animations */
+    .fade-in-up {
+        animation: fadeInUp 0.8s ease-out forwards;
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    
+    .fade-in-left {
+        animation: fadeInLeft 0.8s ease-out forwards;
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    
+    .fade-in-right {
+        animation: fadeInRight 0.8s ease-out forwards;
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    
+    .scale-in {
+        animation: scaleIn 0.6s ease-out forwards;
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInLeft {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes fadeInRight {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes scaleIn {
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Floating animation */
+    .float {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(2deg); }
+    }
+
+    /* Gradient backgrounds */
+    .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .gradient-card {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+    }
+
+    /* Hover effects */
+    .hover-lift {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Custom button styles */
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border: none;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-primary:hover::before {
+        left: 100%;
+    }
+
+    /* Parallax effect */
+    .parallax {
+        background-attachment: fixed;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    /* Mobile responsiveness */
     @media (max-width: 768px) {
         .hero-content-mobile {
             display: flex;
@@ -24,200 +152,249 @@
             text-align: center;
             padding-top: 2rem;
         }
+        
+        .parallax {
+            background-attachment: scroll;
+        }
+    }
+
+    /* Stagger animation delays */
+    .stagger-1 { animation-delay: 0.1s; }
+    .stagger-2 { animation-delay: 0.2s; }
+    .stagger-3 { animation-delay: 0.3s; }
+    .stagger-4 { animation-delay: 0.4s; }
+
+    /* Pulse animation for logo */
+    .pulse-subtle {
+        animation: pulseSubtle 4s ease-in-out infinite;
+    }
+    
+    @keyframes pulseSubtle {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* Section divider */
+    .section-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+        margin: 2rem 0;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="relative scroll-smooth">
-    <!-- Hero Section with Background Image -->
-    <div class="bg-cover bg-center h-screen"
-        style="background-image: url('{{ url_for('static', filename='images/backgroundlanding.png') }}');">
-        <div class="absolute inset-0 bg-opacity-70"></div>
+<div class="relative scroll-smooth overflow-hidden">
+    <!-- Hero Section with Enhanced Background -->
+    <div class="bg-cover bg-center h-screen parallax relative"
+        style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.3)), url('{{ url_for('static', filename='images/backgroundlanding.png') }}');">
         
-        <!-- Desktop Layout (logo on right) -->
+        <!-- Animated background overlay -->
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/20"></div>
+        
+        <!-- Desktop Layout -->
         <div class="relative container mx-auto px-4 h-full hidden md:flex flex-col justify-center">
-            <div class="max-w-lg text-white">
-                <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-italic font-bold mb-2 md:mb-4 text-stroke">
+            <div class="max-w-2xl text-white fade-in-left">
+                <h1 class="text-6xl md:text-7xl lg:text-8xl font-bold mb-4 text-stroke leading-tight">
                     KapiyuGuide
                 </h1>
-                <p class="text-xl sm:text-2xl mb-4 md:mb-6 font-bold">
+                <p class="text-2xl md:text-3xl mb-6 font-semibold text-blue-100 fade-in-left stagger-1">
                     "Manage Your Campus Inquiries with Ease"
                 </p>
-                <p class="text-base sm:text-lg md:text-xl mb-6 md:mb-8">
-                    Easily reach the right office for your concern - anytime, anywhere
+                <p class="text-lg md:text-xl mb-8 text-gray-200 leading-relaxed fade-in-left stagger-2">
+                    Easily reach the right office for your concern - anytime, anywhere. Experience seamless communication with our intuitive platform.
                 </p>
                 <a href="#about"
-                    class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 sm:py-4 md:py-6 px-6 sm:px-8 md:px-12 rounded-3xl transition shadow">
-                    Learn More
+                    class="inline-block btn-primary text-white font-bold py-4 px-8 rounded-full transition-all duration-300 shadow-2xl fade-in-left stagger-3">
+                    <span class="relative z-10">Discover More</span>
                 </a>
             </div>
         </div>
 
-        <!-- Mobile Layout (vertically aligned with logo on top) -->
+        <!-- Mobile Layout -->
         <div class="relative container mx-auto px-4 h-full flex md:hidden hero-content-mobile">
-            <!-- Logo first on mobile -->
-            <div class="mb-6 mt-20">
+            <!-- Logo with enhanced animation -->
+            <div class="mb-8 mt-20 scale-in">
                 <img src="{{ url_for('static', filename='images/schoollogo.png') }}" alt="Polytechnic University Logo"
-                    class="w-48 mx-auto" />
+                    class="w-48 mx-auto pulse-subtle drop-shadow-2xl" />
             </div>
             
-            <!-- Text content centered below logo -->
-            <div class="text-white text-center">
-                <h1 class="text-4xl font-italic font-bold mb-2 text-stroke">
+            <!-- Enhanced mobile text content -->
+            <div class="text-white text-center fade-in-up stagger-1">
+                <h1 class="text-4xl sm:text-5xl font-bold mb-3 text-stroke leading-tight">
                     KapiyuGuide
                 </h1>
-                <p class="text-lg mb-3 font-bold">
+                <p class="text-xl mb-4 font-semibold text-blue-100">
                     "Manage Your Campus Inquiries with Ease"
                 </p>
-                <p class="text-base mb-6">
+                <p class="text-base mb-8 text-gray-200 leading-relaxed px-4">
                     Easily reach the right office for your concern - anytime, anywhere
                 </p>
                 <a href="#about"
-                    class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-3xl transition shadow">
-                    Learn More
+                    class="inline-block btn-primary text-white font-bold py-3 px-6 rounded-full transition-all duration-300 shadow-xl">
+                    <span class="relative z-10">Learn More</span>
                 </a>
             </div>
         </div>
-    </div>
 
-    <!-- School Logo (Only visible on desktop) -->
-    <div class="absolute top-24 right-10 sm:right-10 md:right-20 lg:right-32 hidden md:block">
-        <img src="{{ url_for('static', filename='images/schoollogo.png') }}" alt="Polytechnic University Logo"
-            class="w-64 sm:w-72 md:w-80 lg:w-96" />
+        <!-- Enhanced School Logo with floating animation -->
+        <div class="absolute top-24 right-10 sm:right-10 md:right-20 lg:right-32 hidden md:block fade-in-right">
+            <img src="{{ url_for('static', filename='images/schoollogo.png') }}" alt="Polytechnic University Logo"
+                class="w-64 sm:w-72 md:w-80 lg:w-96 float drop-shadow-2xl" />
+        </div>
+
+        <!-- Scroll indicator -->
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
+            <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+        </div>
     </div>
 </div>
 
-<!-- What is KapiyuGuide Section -->
-<section id="about" class="py-8 md:py-12">
+<!-- What is KapiyuGuide Section - Enhanced -->
+<section id="about" class="py-16 md:py-20 bg-gradient-to-br from-gray-50 to-white">
     <div class="container mx-auto px-4">
-        <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-center md:text-left">
-            What is <span class="text-blue-600">KapiyuGuide</span>?
-        </h2>
-        <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-center">
-            <div class="md:w-2/3">
-                <p class="text-gray-700 text-base sm:text-xl md:text-2xl lg:text-3xl mb-6 md:mb-20">
-                    KapiyuGuide is a campus-wide inquiry management system designed to
-                    streamline communication between students and the school offices. No
-                    more long queues or confusion—allowing students to send inquiries
-                    directly to the appropriate office, receive real-time updates, and
-                    stay informed through announcements—all in one centralized platform.
-                </p>
+        <div class="text-center mb-12 fade-in-up">
+            <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-gray-800">
+                What is <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">KapiyuGuide</span>?
+            </h2>
+            <div class="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto rounded-full"></div>
+        </div>
+        
+        <div class="flex flex-col lg:flex-row gap-12 items-center">
+            <div class="lg:w-2/3 fade-in-left">
+                <div class="bg-white rounded-3xl p-8 shadow-2xl gradient-card">
+                    <p class="text-gray-700 text-lg md:text-xl lg:text-2xl leading-relaxed">
+                        KapiyuGuide is a <span class="font-semibold text-blue-600">revolutionary campus-wide inquiry management system</span> designed to
+                        streamline communication between students and school offices. 
+                    </p>
+                    <br>
+                    <p class="text-gray-600 text-base md:text-lg leading-relaxed">
+                        Say goodbye to long queues and confusion—our platform allows students to send inquiries
+                        directly to the appropriate office, receive real-time updates, and
+                        stay informed through announcements—all in one centralized, intuitive platform.
+                    </p>
+                </div>
             </div>
-            <div class="md:w-1/3">
-                <img src="{{ url_for('static', filename='images/whatis.png') }}" alt="Students using KapiyuGuide"
-                    class="rounded-lg shadow-md w-full" />
+            <div class="lg:w-1/3 fade-in-right">
+                <div class="relative">
+                    <div class="absolute -inset-4 bg-gradient-to-r from-blue-400 to-purple-400 rounded-3xl blur opacity-20"></div>
+                    <img src="{{ url_for('static', filename='images/whatis.png') }}" alt="Students using KapiyuGuide"
+                        class="relative rounded-2xl shadow-2xl w-full hover-lift" />
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- How does KapiyuGuide works Section -->
-<section class="py-8 md:py-12 bg-gray-100">
-    <div class="container mx-auto px-4">
-        <h2 class="text-xl sm:text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-center md:text-left">
-            How does <span class="text-blue-600">KapiyuGuide</span> work?
-        </h2>
+<div class="section-divider"></div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <!-- Feature 1 -->
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow-md">
-                <div class="bg-blue-100 rounded-lg p-4 mb-4 flex justify-center items-center" style="height: 160px;">
+<!-- How does KapiyuGuide work Section - Enhanced -->
+<section class="py-16 md:py-20 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-16 fade-in-up">
+            <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-gray-800">
+                How does <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">KapiyuGuide</span> work?
+            </h2>
+            <div class="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto rounded-full mb-4"></div>
+            <p class="text-gray-600 text-lg max-w-2xl mx-auto">
+                Experience seamless campus communication through our four core features
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Feature 1 - Enhanced -->
+            <div class="gradient-card p-6 rounded-3xl shadow-xl hover-lift fade-in-up stagger-1">
+                <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 mb-6 flex justify-center items-center" style="height: 180px;">
                     <img src="{{ url_for('static', filename='images/inquiry.png') }}" alt="Real-Time Inquiry"
-                        class="h-32 w-32 object-contain" />
+                        class="h-32 w-32 object-contain drop-shadow-lg hover:scale-110 transition-transform duration-300" />
                 </div>
-                <h3 class="font-bold text-lg md:text-xl lg:text-2xl mb-2 text-center">Real-Time Inquiry Responses</h3>
-                <p class="text-gray-600 text-sm md:text-base text-justify">
-                    Stay informed with instant updates on your inquiries' status as they are processed.
+                <h3 class="font-bold text-xl lg:text-2xl mb-3 text-center text-gray-800">Real-Time Inquiry Responses</h3>
+                <p class="text-gray-600 text-sm md:text-base text-center leading-relaxed">
+                    Stay informed with instant updates on your inquiries' status as they are processed by our dedicated team.
                 </p>
             </div>
 
-            <!-- Feature 2 -->
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow-md">
-                <div class="bg-blue-100 rounded-lg p-4 mb-4 flex justify-center items-center" style="height: 160px;">
+            <!-- Feature 2 - Enhanced -->
+            <div class="gradient-card p-6 rounded-3xl shadow-xl hover-lift fade-in-up stagger-2">
+                <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 mb-6 flex justify-center items-center" style="height: 180px;">
                     <img src="{{ url_for('static', filename='images/office.png') }}" alt="Office-specific Responses"
-                        class="h-32 w-32 object-contain" />
+                        class="h-32 w-32 object-contain drop-shadow-lg hover:scale-110 transition-transform duration-300" />
                 </div>
-                <h3 class="font-bold text-lg md:text-xl lg:text-2xl mb-2 text-center">Office-specific Responses</h3>
-                <p class="text-gray-600 text-sm md:text-base text-justify">
+                <h3 class="font-bold text-xl lg:text-2xl mb-3 text-center text-gray-800">Office-specific Responses</h3>
+                <p class="text-gray-600 text-sm md:text-base text-center leading-relaxed">
                     Get responses tailored to your inquiry from the specific office you've contacted, ensuring quick and accurate support.
                 </p>
             </div>
 
-            <!-- Feature 3 -->
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow-md">
-                <div class="bg-blue-100 rounded-lg p-4 mb-4 flex justify-center items-center" style="height: 160px;">
+            <!-- Feature 3 - Enhanced -->
+            <div class="gradient-card p-6 rounded-3xl shadow-xl hover-lift fade-in-up stagger-3">
+                <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 mb-6 flex justify-center items-center" style="height: 180px;">
                     <img src="{{ url_for('static', filename='images/counceling.png') }}" alt="Secure Counseling"
-                        class="h-32 w-32 object-contain" />
+                        class="h-32 w-32 object-contain drop-shadow-lg hover:scale-110 transition-transform duration-300" />
                 </div>
-                <h3 class="font-bold text-lg md:text-xl lg:text-2xl mb-2 text-center">Secure Counseling</h3>
-                <p class="text-gray-600 text-sm md:text-base text-justify">
+                <h3 class="font-bold text-xl lg:text-2xl mb-3 text-center text-gray-800">Secure Counseling</h3>
+                <p class="text-gray-600 text-sm md:text-base text-center leading-relaxed">
                     Request confidential counseling or schedule a secure video session with offices like Guidance and Counseling or GAD.
                 </p>
             </div>
 
-            <!-- Feature 4 -->
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow-md">
-                <div class="bg-blue-100 rounded-lg p-4 mb-4 flex justify-center items-center" style="height: 160px;">
+            <!-- Feature 4 - Enhanced -->
+            <div class="gradient-card p-6 rounded-3xl shadow-xl hover-lift fade-in-up stagger-4">
+                <div class="bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl p-6 mb-6 flex justify-center items-center" style="height: 180px;">
                     <img src="{{ url_for('static', filename='images/announcement.png') }}" alt="Announcements"
-                        class="h-32 w-32 object-contain" />
+                        class="h-32 w-32 object-contain drop-shadow-lg hover:scale-110 transition-transform duration-300" />
                 </div>
-                <h3 class="font-bold text-lg md:text-xl lg:text-2xl mb-2 text-center">Announcements</h3>
-                <p class="text-gray-600 text-sm md:text-base text-justify">
-                    Catch up on important news, updates, and announcements from various university units.
+                <h3 class="font-bold text-xl lg:text-2xl mb-3 text-center text-gray-800">Announcements</h3>
+                <p class="text-gray-600 text-sm md:text-base text-center leading-relaxed">
+                    Catch up on important news, updates, and announcements from various university units in real-time.
                 </p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Description Section -->
-<section class="py-8 md:py-12">
+<!-- Enhanced Description Section -->
+<section class="py-16 md:py-20 bg-gradient-to-br from-gray-900 to-blue-900 text-white">
     <div class="container mx-auto px-4">
-        <p class="text-gray-700 text-center text-sm md:text-base max-w-4xl mx-auto">
-            This platform connects students with various campus units and offices for
-            faster, more organized communication. Whether it's academic records,
-            counseling, health, or student services — send your inquiry directly to
-            the appropriate unit or office.
-        </p>
+        <div class="max-w-4xl mx-auto text-center fade-in-up">
+            <h3 class="text-2xl md:text-3xl font-bold mb-6">Ready to Transform Your Campus Experience?</h3>
+            <p class="text-lg md:text-xl leading-relaxed mb-8 text-gray-200">
+                This platform connects students with various campus units and offices for
+                faster, more organized communication. Whether it's academic records,
+                counseling, health, or student services — send your inquiry directly to
+                the appropriate unit or office with confidence and ease.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <div class="flex items-center text-blue-300">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>24/7 Access</span>
+                </div>
+                <div class="flex items-center text-blue-300">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Secure Communication</span>
+                </div>
+                <div class="flex items-center text-blue-300">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Real-time Updates</span>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 
-<!-- Contact Form Section -->
-<!-- <section class="py-8 md:py-12 bg-gray-50">
-    <div class="container mx-auto px-4 max-w-sm md:max-w-md">
-        <h3 class="text-center text-gray-700 text-lg md:text-xl mb-6">
-            Need help? Reach out to your office
-        </h3>
-
-        <form class="bg-white p-4 md:p-6 rounded-lg shadow-md">
-            <div class="mb-4">
-                <input type="text" id="name" name="name" placeholder="Name"
-                    class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500" />
-            </div>
-
-            <div class="mb-4">
-                <input type="email" id="email" name="email" placeholder="Email"
-                    class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500" />
-            </div>
-
-            <div class="mb-4">
-                <textarea id="message" name="message" rows="4" placeholder="Message"
-                    class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"></textarea>
-            </div>
-
-            <button type="submit"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition">
-                SUBMIT
-            </button>
-        </form>
-    </div>
-</section> -->
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Smooth scrolling for anchor links
+    // Enhanced smooth scrolling with easing
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
@@ -226,8 +403,12 @@
             const targetElement = document.querySelector(targetId);
             
             if (targetElement) {
+                const headerOffset = 80;
+                const elementPosition = targetElement.offsetTop;
+                const offsetPosition = elementPosition - headerOffset;
+
                 window.scrollTo({
-                    top: targetElement.offsetTop - 80, // Offset for the fixed header
+                    top: offsetPosition,
                     behavior: 'smooth'
                 });
                 
@@ -239,25 +420,99 @@
             }
         });
     });
-    
-    // Form validation
+
+    // Intersection Observer for animations
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.animationPlayState = 'running';
+            }
+        });
+    }, observerOptions);
+
+    // Observe all animated elements
+    document.querySelectorAll('.fade-in-up, .fade-in-left, .fade-in-right, .scale-in').forEach(el => {
+        el.style.animationPlayState = 'paused';
+        observer.observe(el);
+    });
+
+    // Parallax effect for hero section
+    window.addEventListener('scroll', () => {
+        const scrolled = window.pageYOffset;
+        const parallax = document.querySelector('.parallax');
+        if (parallax) {
+            const speed = scrolled * 0.5;
+            parallax.style.transform = `translateY(${speed}px)`;
+        }
+    });
+
+    // Enhanced form validation (if form exists)
     const form = document.querySelector('form');
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const message = document.getElementById('message').value;
+            const name = document.getElementById('name')?.value;
+            const email = document.getElementById('email')?.value;
+            const message = document.getElementById('message')?.value;
             
             if (!name || !email || !message) {
-                alert('Please fill in all fields');
+                // Enhanced alert with better UX
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+                alertDiv.textContent = 'Please fill in all fields';
+                document.body.appendChild(alertDiv);
+                
+                setTimeout(() => alertDiv.style.transform = 'translateX(0)', 100);
+                setTimeout(() => {
+                    alertDiv.style.transform = 'translateX(full)';
+                    setTimeout(() => document.body.removeChild(alertDiv), 300);
+                }, 3000);
                 return;
             }
             
-            alert('Your message has been sent!');
+            // Success message
+            const successDiv = document.createElement('div');
+            successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+            successDiv.textContent = 'Your message has been sent successfully!';
+            document.body.appendChild(successDiv);
+            
+            setTimeout(() => successDiv.style.transform = 'translateX(0)', 100);
+            setTimeout(() => {
+                successDiv.style.transform = 'translateX(full)';
+                setTimeout(() => document.body.removeChild(successDiv), 300);
+            }, 3000);
+            
             form.reset();
         });
     }
+
+    // Add loading animation when page loads
+    window.addEventListener('load', () => {
+        document.body.classList.add('loaded');
+    });
+
+    // Smooth reveal animation for elements on scroll
+    const revealElements = document.querySelectorAll('.hover-lift');
+    const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+
+    revealElements.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        revealObserver.observe(el);
+    });
 </script>
 {% endblock %}

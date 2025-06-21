@@ -55,14 +55,15 @@ class VideoCounselingClientOffice {
             this.updateConnectionStatus('Initializing...', 'info');
             this.initializeSocket();
             this.setupEventListeners();
-            await this.initializeMedia();
             this.showWaitingRoom();
+            // Request media access immediately on initialization
+            await this.initializeMedia();
             // Initialize participant indicators - counselor is connected, student is not yet
             this.updateParticipantIndicators(true, false);
         } catch (error) {
             console.error('Failed to initialize video counseling:', error);
             this.updateConnectionStatus('Initialization failed', 'error');
-            this.showError('Failed to initialize video calling. Please refresh and try again.');
+            this.showError('Failed to initialize video calling. Please check camera/microphone permissions and refresh the page.');
         }
     }
     
@@ -139,6 +140,7 @@ class VideoCounselingClientOffice {
         
         this.socket.on('session_ready', (data) => {
             console.log('Session is ready to start:', data);
+            this.updateConnectionStatus('Ready to start call', 'success');
             this.showStartCallButton();
         });
         
@@ -213,23 +215,98 @@ class VideoCounselingClientOffice {
     
     async initializeMedia() {
         console.log('Requesting media access...');
+        this.updateConnectionStatus('Requesting camera and microphone access...', 'info');
         
         try {
-            // Request permission for camera and microphone
-            this.localStream = await navigator.mediaDevices.getUserMedia(this.mediaConstraints);
-            console.log('Media access granted');
+            // Start with more permissive constraints to ensure compatibility
+            const basicConstraints = {
+                video: {
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 },
+                    frameRate: { ideal: 30, min: 15 }
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 44100
+                }
+            };
             
-            // Attach to local video element
-            const localVideo = document.getElementById('localVideo');
-            if (localVideo) {
-                localVideo.srcObject = this.localStream;
-                localVideo.muted = true; // Prevent feedback
+            // Request permission for camera and microphone
+            console.log('Requesting media with constraints:', basicConstraints);
+            this.localStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+            console.log('Media access granted successfully');
+            console.log('Local stream tracks:', this.localStream.getTracks());
+            
+            // Verify we have both audio and video tracks
+            const videoTracks = this.localStream.getVideoTracks();
+            const audioTracks = this.localStream.getAudioTracks();
+            
+            console.log('Video tracks:', videoTracks.length);
+            console.log('Audio tracks:', audioTracks.length);
+            
+            if (videoTracks.length === 0) {
+                console.warn('No video track available');
+                this.isVideoEnabled = false;
             }
             
-            // Populate device lists
+            if (audioTracks.length === 0) {
+                console.warn('No audio track available');
+                this.isAudioEnabled = false;
+            }
+            
+            // Set track states based on initial preferences
+            videoTracks.forEach(track => {
+                track.enabled = this.isVideoEnabled;
+                console.log('Video track enabled:', track.enabled);
+            });
+            
+            audioTracks.forEach(track => {
+                track.enabled = this.isAudioEnabled;
+                console.log('Audio track enabled:', track.enabled);
+            });
+            
+            // Attach to waiting room video element first
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                console.log('Attaching stream to waiting room video');
+                waitingRoomVideo.srcObject = this.localStream;
+                waitingRoomVideo.muted = true; // Prevent feedback
+                
+                // Ensure video plays
+                waitingRoomVideo.onloadedmetadata = () => {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video:', e);
+                    });
+                };
+            } else {
+                console.warn('Waiting room video element not found');
+            }
+            
+            // Also attach to main local video element if it exists
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo) {
+                console.log('Attaching stream to local video');
+                localVideo.srcObject = this.localStream;
+                localVideo.muted = true; // Prevent feedback
+                
+                localVideo.onloadedmetadata = () => {
+                    localVideo.play().catch(e => {
+                        console.warn('Error playing local video:', e);
+                    });
+                };
+            }
+            
+            // Populate device lists after getting media access
             await this.populateDeviceList();
             
+            // Initialize button states
+            this.updateAllMediaButtons();
+            this.updateVideoPlaceholder();
+            
             this.updateConnectionStatus('Camera and microphone ready', 'success');
+            console.log('Media initialization completed successfully');
             
         } catch (error) {
             console.error('Failed to access media devices:', error);
@@ -274,36 +351,48 @@ class VideoCounselingClientOffice {
     }
     
     setupEventListeners() {
-        // Media control buttons
-        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        // Media control buttons (main call interface)
+        const toggleAudioBtn = document.getElementById('micToggle');
         if (toggleAudioBtn) {
             toggleAudioBtn.addEventListener('click', () => this.toggleAudio());
         }
         
-        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const toggleVideoBtn = document.getElementById('cameraToggle');
         if (toggleVideoBtn) {
             toggleVideoBtn.addEventListener('click', () => this.toggleVideo());
         }
         
+        // Waiting room media control buttons
+        const waitingRoomMicToggle = document.getElementById('waitingRoomMicToggle');
+        if (waitingRoomMicToggle) {
+            waitingRoomMicToggle.addEventListener('click', () => this.toggleAudio(true));
+        }
+        
+        const waitingRoomCameraToggle = document.getElementById('waitingRoomCameraToggle');
+        if (waitingRoomCameraToggle) {
+            waitingRoomCameraToggle.addEventListener('click', () => this.toggleVideo(true));
+        }
+        
         // Screen sharing
-        const screenShareBtn = document.getElementById('screenShareBtn');
+        const screenShareBtn = document.getElementById('screenShareToggle');
         if (screenShareBtn) {
             screenShareBtn.addEventListener('click', () => this.toggleScreenShare());
         }
         
         // Recording controls
-        const startRecordingBtn = document.getElementById('startRecordingBtn');
-        if (startRecordingBtn) {
-            startRecordingBtn.addEventListener('click', () => this.startRecording());
-        }
-        
-        const stopRecordingBtn = document.getElementById('stopRecordingBtn');
-        if (stopRecordingBtn) {
-            stopRecordingBtn.addEventListener('click', () => this.stopRecording());
+        const recordingBtn = document.getElementById('recordButton');
+        if (recordingBtn) {
+            recordingBtn.addEventListener('click', () => {
+                if (this.isRecording) {
+                    this.stopRecording();
+                } else {
+                    this.startRecording();
+                }
+            });
         }
         
         // End call button
-        const endCallBtn = document.getElementById('endCallBtn');
+        const endCallBtn = document.getElementById('endSessionButton');
         if (endCallBtn) {
             endCallBtn.addEventListener('click', () => this.showEndSessionModal());
         }
@@ -315,7 +404,7 @@ class VideoCounselingClientOffice {
         }
         
         // Fullscreen button
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
         if (fullscreenBtn) {
             fullscreenBtn.addEventListener('click', () => this.toggleFullScreen());
         }
@@ -335,8 +424,15 @@ class VideoCounselingClientOffice {
         const tabButtons = document.querySelectorAll('.tab-button');
         tabButtons.forEach(button => {
             button.addEventListener('click', (e) => {
-                const tabName = e.target.dataset.tab;
-                if (tabName) this.switchTab(tabName);
+                // Find the button element (in case user clicks on child elements like icon or span)
+                const buttonElement = e.currentTarget;
+                const tabName = buttonElement.dataset.tab;
+                if (tabName) {
+                    console.log('Tab button clicked:', tabName);
+                    this.switchTab(tabName);
+                } else {
+                    console.error('No tab name found on button:', buttonElement);
+                }
             });
         });
         
@@ -348,7 +444,7 @@ class VideoCounselingClientOffice {
             });
         }
         
-        const saveNotesBtn = document.getElementById('saveNotesBtn');
+        const saveNotesBtn = document.getElementById('saveNotes');
         if (saveNotesBtn) {
             saveNotesBtn.addEventListener('click', () => this.saveNotes());
         }
@@ -373,6 +469,29 @@ class VideoCounselingClientOffice {
                 }
             });
         }
+        
+        // Fullscreen event listeners
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                // Exited fullscreen
+                this.exitFullscreenMode();
+            }
+        });
+        
+        // ESC key to exit fullscreen
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        });
+        
+        // F11 key for fullscreen toggle
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                this.toggleFullScreen();
+            }
+        });
     }
     
     joinSession() {
@@ -590,11 +709,39 @@ class VideoCounselingClientOffice {
             if (tabName) {
                 console.log('Switching to first available tab:', tabName);
                 this.switchTab(tabName);
+            } else {
+                console.error('First tab button has no data-tab attribute');
             }
+        } else {
+            console.error('No tab buttons found');
         }
         
-        // Update status
-        this.updateConnectionStatus('Video call active', 'success');
+        // Debug: log all available tabs
+        const allTabs = document.querySelectorAll('.tab-button');
+        const allContents = document.querySelectorAll('.tab-content');
+        console.log('Available tab buttons:', allTabs.length);
+        console.log('Available tab contents:', allContents.length);
+        
+        allTabs.forEach((tab, index) => {
+            console.log(`Tab ${index}:`, tab.getAttribute('data-tab'), tab);
+        });
+        
+        allContents.forEach((content, index) => {
+            console.log(`Content ${index}:`, content.getAttribute('data-tab'), content);
+        });
+        
+        // Initialize tabs properly
+        this.initializeTabs();
+        
+        // Update status and start timer when call UI is shown
+        this.updateConnectionStatus('In Session', 'success');
+        
+        // Mark call as active and start timer
+        if (!this.isInCall) {
+            this.isInCall = true;
+            this.startSessionTimer();
+            console.log('Call marked as active and timer started');
+        }
         
         // Ensure local video stream is attached
         const localVideo = document.getElementById('localVideo');
@@ -604,9 +751,98 @@ class VideoCounselingClientOffice {
             console.log('Local video stream attached');
         }
         
+        // Update all media button states when showing call UI
+        this.updateAllMediaButtons();
+        this.updateVideoPlaceholder();
+        
         console.log('=== CALL UI SETUP COMPLETE ===');
     }
     
+    toggleAudio(isWaitingRoom = false) {
+        console.log('Toggling audio, current state:', this.isAudioEnabled, 'waiting room:', isWaitingRoom);
+        
+        if (this.localStream) {
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                this.isAudioEnabled = !this.isAudioEnabled;
+                audioTrack.enabled = this.isAudioEnabled;
+                
+                console.log('Audio track enabled set to:', audioTrack.enabled);
+                
+                // Notify other participants (only if not in waiting room)
+                if (!isWaitingRoom && this.socket) {
+                    this.socket.emit('toggle_audio', {
+                        session_id: this.sessionId,
+                        audio_enabled: this.isAudioEnabled
+                    });
+                } else if (isWaitingRoom && this.socket) {
+                    // Notify waiting room media toggle
+                    this.socket.emit('waiting_room_media_toggle', {
+                        session_id: this.sessionId,
+                        media_type: 'audio',
+                        enabled: this.isAudioEnabled
+                    });
+                }
+                
+                // Update all media buttons (both waiting room and call interface)
+                this.updateAllMediaButtons();
+                
+                const status = this.isAudioEnabled ? 'Microphone on' : 'Microphone off';
+                this.showNotification(status, this.isAudioEnabled ? 'success' : 'warning');
+            } else {
+                console.warn('No audio track available for toggle');
+                this.showError('No audio track available');
+            }
+        } else {
+            console.warn('No local stream available for audio toggle');
+            this.showError('Microphone not initialized. Please refresh the page.');
+        }
+    }
+    
+    toggleVideo(isWaitingRoom = false) {
+        console.log('Toggling video, current state:', this.isVideoEnabled, 'waiting room:', isWaitingRoom);
+        
+        if (this.localStream) {
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                this.isVideoEnabled = !this.isVideoEnabled;
+                videoTrack.enabled = this.isVideoEnabled;
+                
+                console.log('Video track enabled set to:', videoTrack.enabled);
+                
+                // Handle video placeholder visibility
+                this.updateVideoPlaceholder();
+                
+                // Notify other participants (only if not in waiting room)
+                if (!isWaitingRoom && this.socket) {
+                    this.socket.emit('toggle_video', {
+                        session_id: this.sessionId,
+                        video_enabled: this.isVideoEnabled
+                    });
+                } else if (isWaitingRoom && this.socket) {
+                    // Notify waiting room media toggle
+                    this.socket.emit('waiting_room_media_toggle', {
+                        session_id: this.sessionId,
+                        media_type: 'video',
+                        enabled: this.isVideoEnabled
+                    });
+                }
+                
+                // Update all media buttons (both waiting room and call interface)
+                this.updateAllMediaButtons();
+                
+                const status = this.isVideoEnabled ? 'Camera on' : 'Camera off';
+                this.showNotification(status, this.isVideoEnabled ? 'success' : 'warning');
+            } else {
+                console.warn('No video track available for toggle');
+                this.showError('No video track available');
+            }
+        } else {
+            console.warn('No local stream available for video toggle');
+            this.showError('Camera not initialized. Please refresh the page.');
+        }
+    }
+
     async toggleScreenShare() {
         if (!this.isScreenSharing) {
             await this.startScreenShare();
@@ -742,8 +978,9 @@ class VideoCounselingClientOffice {
     }
     
     updateMediaButtons() {
-        const audioBtn = document.getElementById('toggleAudioBtn');
-        const videoBtn = document.getElementById('toggleVideoBtn');
+        // Update main call interface buttons
+        const audioBtn = document.getElementById('micToggle');
+        const videoBtn = document.getElementById('cameraToggle');
         
         if (audioBtn) {
             const icon = audioBtn.querySelector('i');
@@ -751,8 +988,11 @@ class VideoCounselingClientOffice {
                 icon.className = this.isAudioEnabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
             }
             audioBtn.className = this.isAudioEnabled ? 
-                'btn-enhanced bg-green-500 hover:bg-green-600 text-white' : 
-                'btn-enhanced bg-red-500 hover:bg-red-600 text-white';
+                'w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110' : 
+                'w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110';
+            
+            // Update title attribute for accessibility
+            audioBtn.title = this.isAudioEnabled ? 'Mute microphone' : 'Unmute microphone';
         }
         
         if (videoBtn) {
@@ -761,52 +1001,193 @@ class VideoCounselingClientOffice {
                 icon.className = this.isVideoEnabled ? 'fas fa-video' : 'fas fa-video-slash';
             }
             videoBtn.className = this.isVideoEnabled ? 
-                'btn-enhanced bg-green-500 hover:bg-green-600 text-white' : 
-                'btn-enhanced bg-red-500 hover:bg-red-600 text-white';
+                'w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110' : 
+                'w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110';
+            
+            // Update title attribute for accessibility
+            videoBtn.title = this.isVideoEnabled ? 'Turn off camera' : 'Turn on camera';
+        }
+    }
+    
+    updateWaitingRoomButtons() {
+        // Update waiting room buttons
+        const waitingRoomMicToggle = document.getElementById('waitingRoomMicToggle');
+        const waitingRoomCameraToggle = document.getElementById('waitingRoomCameraToggle');
+        
+        console.log('Updating waiting room buttons - audio:', this.isAudioEnabled, 'video:', this.isVideoEnabled);
+        
+        if (waitingRoomMicToggle) {
+            const icon = waitingRoomMicToggle.querySelector('i');
+            if (icon) {
+                icon.className = this.isAudioEnabled ? 'fas fa-microphone text-green-600 group-hover:scale-110 transition-transform duration-300' : 'fas fa-microphone-slash text-red-600 group-hover:scale-110 transition-transform duration-300';
+            }
+            
+            // Update button styling based on state - use the original template classes
+            const baseClasses = 'w-12 h-12 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center border border-slate-200 transition-all duration-300 hover:scale-110 group';
+            waitingRoomMicToggle.className = baseClasses + (this.isAudioEnabled ? ' bg-white' : ' bg-red-50');
+            
+            // Update title attribute
+            waitingRoomMicToggle.title = this.isAudioEnabled ? 'Mute microphone' : 'Unmute microphone';
+        } else {
+            console.warn('Waiting room mic toggle button not found');
+        }
+        
+        if (waitingRoomCameraToggle) {
+            const icon = waitingRoomCameraToggle.querySelector('i');
+            if (icon) {
+                icon.className = this.isVideoEnabled ? 'fas fa-video text-green-600 group-hover:scale-110 transition-transform duration-300' : 'fas fa-video-slash text-red-600 group-hover:scale-110 transition-transform duration-300';
+            }
+            
+            // Update button styling based on state - use the original template classes
+            const baseClasses = 'w-12 h-12 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center border border-slate-200 transition-all duration-300 hover:scale-110 group';
+            waitingRoomCameraToggle.className = baseClasses + (this.isVideoEnabled ? ' bg-white' : ' bg-red-50');
+            
+            // Update title attribute
+            waitingRoomCameraToggle.title = this.isVideoEnabled ? 'Turn off camera' : 'Turn on camera';
+        } else {
+            console.warn('Waiting room camera toggle button not found');
+        }
+    }
+    
+    updateAllMediaButtons() {
+        // Update both waiting room and call interface buttons
+        this.updateMediaButtons();
+        this.updateWaitingRoomButtons();
+    }
+    
+    updateVideoPlaceholder() {
+        console.log('Updating video placeholder, video enabled:', this.isVideoEnabled);
+        
+        // Update video placeholder visibility in waiting room
+        const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+        const waitingRoomVideoPlaceholder = document.getElementById('waitingRoomVideoPlaceholder');
+        
+        if (waitingRoomVideo && waitingRoomVideoPlaceholder) {
+            if (this.isVideoEnabled) {
+                waitingRoomVideo.style.display = 'block';
+                waitingRoomVideoPlaceholder.style.display = 'none';
+                console.log('Waiting room video visible, placeholder hidden');
+            } else {
+                waitingRoomVideo.style.display = 'none';
+                waitingRoomVideoPlaceholder.style.display = 'flex';
+                console.log('Waiting room video hidden, placeholder visible');
+            }
+        } else {
+            console.warn('Waiting room video elements not found');
+        }
+        
+        // Also update main video elements if they exist
+        const localVideo = document.getElementById('localVideo');
+        if (localVideo) {
+            // Don't hide the video element completely as it needs to keep streaming
+            // Instead, use opacity or add a class for styling
+            if (this.isVideoEnabled) {
+                localVideo.style.opacity = '1';
+                localVideo.style.filter = 'none';
+            } else {
+                localVideo.style.opacity = '0.3';
+                localVideo.style.filter = 'blur(10px)';
+            }
+            console.log('Local video opacity updated:', this.isVideoEnabled ? '1' : '0.3');
         }
     }
     
     updateScreenShareButton() {
-        const screenShareBtn = document.getElementById('screenShareBtn');
+        const screenShareBtn = document.getElementById('screenShareToggle');
         if (screenShareBtn) {
             const icon = screenShareBtn.querySelector('i');
-            const text = screenShareBtn.querySelector('span');
             
             if (this.isScreenSharing) {
-                if (icon) icon.className = 'fas fa-stop';
-                if (text) text.textContent = 'Stop Sharing';
-                screenShareBtn.className = 'btn-enhanced bg-red-500 hover:bg-red-600 text-white';
+                if (icon) icon.className = 'fas fa-stop text-white';
+                screenShareBtn.className = 'w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110';
             } else {
-                if (icon) icon.className = 'fas fa-desktop';
-                if (text) text.textContent = 'Share Screen';
-                screenShareBtn.className = 'btn-enhanced bg-blue-500 hover:bg-blue-600 text-white';
+                if (icon) icon.className = 'fas fa-desktop text-white';
+                screenShareBtn.className = 'w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110';
             }
         }
     }
     
     updateRecordingButtons() {
-        const startBtn = document.getElementById('startRecordingBtn');
-        const stopBtn = document.getElementById('stopRecordingBtn');
+        const recordBtn = document.getElementById('recordButton');
+        const recordIndicator = document.getElementById('recordingIndicator');
         
-        if (startBtn && stopBtn) {
+        if (recordBtn) {
+            const icon = recordBtn.querySelector('i');
+            const text = recordBtn.querySelector('span');
+            
             if (this.isRecording) {
-                startBtn.classList.add('hidden');
-                stopBtn.classList.remove('hidden');
+                if (icon) icon.className = 'fas fa-stop mr-2 group-hover:animate-spin transition-transform duration-300';
+                if (text) text.textContent = 'Stop';
+                recordBtn.className = 'group flex items-center px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105';
             } else {
-                startBtn.classList.remove('hidden');
-                stopBtn.classList.add('hidden');
+                if (icon) icon.className = 'fas fa-record-vinyl mr-2 group-hover:animate-spin transition-transform duration-300';
+                if (text) text.textContent = 'Record';
+                recordBtn.className = 'group flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105';
+            }
+        }
+        
+        if (recordIndicator) {
+            if (this.isRecording) {
+                recordIndicator.classList.remove('hidden');
+            } else {
+                recordIndicator.classList.add('hidden');
             }
         }
     }
     
     showWaitingRoom() {
+        console.log('Showing waiting room');
         const waitingRoom = document.getElementById('waitingRoomUI');
         const callInterface = document.getElementById('callUI');
         
-        if (waitingRoom) waitingRoom.classList.remove('hidden');
-        if (callInterface) callInterface.classList.add('hidden');
+        if (waitingRoom) {
+            waitingRoom.classList.remove('hidden');
+            console.log('Waiting room shown');
+        } else {
+            console.warn('Waiting room element not found');
+        }
+        
+        if (callInterface) {
+            callInterface.classList.add('hidden');
+        }
         
         this.updateWaitingRoomMessage('Connecting to session...');
+        
+        // Initialize waiting room button states
+        this.updateWaitingRoomButtons();
+        this.updateVideoPlaceholder();
+        
+        // Ensure video stream is attached to waiting room video
+        this.attachStreamToWaitingRoom();
+    }
+    
+    attachStreamToWaitingRoom() {
+        if (this.localStream) {
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                console.log('Attaching stream to waiting room video');
+                waitingRoomVideo.srcObject = this.localStream;
+                waitingRoomVideo.muted = true;
+                
+                // Ensure video plays
+                waitingRoomVideo.onloadedmetadata = () => {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video:', e);
+                    });
+                };
+                
+                // Force play if metadata is already loaded
+                if (waitingRoomVideo.readyState >= 2) {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video:', e);
+                    });
+                }
+            } else {
+                console.warn('Waiting room video element not found');
+            }
+        } else {
+            console.warn('No local stream available for waiting room');
+        }
     }
     
     updateWaitingRoomMessage(message) {
@@ -817,24 +1198,69 @@ class VideoCounselingClientOffice {
     }
     
     updateConnectionStatus(status, type = 'info') {
-        const statusElement = document.getElementById('connectionStatus');
-        if (statusElement) {
-            statusElement.textContent = status;
+        // Update the main status text
+        const statusTextElement = document.getElementById('statusText');
+        if (statusTextElement) {
+            statusTextElement.textContent = status;
+        }
+        
+        // Update the status indicator container styling
+        const statusIndicatorElement = document.getElementById('statusIndicator');
+        if (statusIndicatorElement) {
+            // Remove existing status classes more carefully
+            const classList = statusIndicatorElement.classList;
+            const classesToRemove = Array.from(classList).filter(cls => 
+                cls.includes('from-') || cls.includes('to-') || cls.includes('border-') || cls.includes('text-')
+            );
+            classesToRemove.forEach(cls => classList.remove(cls));
             
-            // Update status styling
-            statusElement.className = 'text-sm font-medium';
+            // Add base classes if they don't exist
+            if (!classList.contains('px-4')) classList.add('px-4');
+            if (!classList.contains('py-2')) classList.add('py-2');
+            if (!classList.contains('bg-gradient-to-r')) classList.add('bg-gradient-to-r');
+            if (!classList.contains('border')) classList.add('border');
+            if (!classList.contains('text-sm')) classList.add('text-sm');
+            if (!classList.contains('rounded-full')) classList.add('rounded-full');
+            if (!classList.contains('flex')) classList.add('flex');
+            if (!classList.contains('items-center')) classList.add('items-center');
+            if (!classList.contains('space-x-2')) classList.add('space-x-2');
+            if (!classList.contains('shadow-sm')) classList.add('shadow-sm');
+            
+            // Add appropriate status styling
             switch (type) {
                 case 'success':
-                    statusElement.classList.add('text-green-600');
+                    classList.add('from-green-500/20', 'to-emerald-500/20', 'border-green-200', 'text-green-700');
                     break;
                 case 'warning':
-                    statusElement.classList.add('text-yellow-600');
+                    classList.add('from-yellow-500/20', 'to-orange-500/20', 'border-yellow-200', 'text-yellow-700');
                     break;
                 case 'error':
-                    statusElement.classList.add('text-red-600');
+                    classList.add('from-red-500/20', 'to-pink-500/20', 'border-red-200', 'text-red-700');
                     break;
                 default:
-                    statusElement.classList.add('text-blue-600');
+                    classList.add('from-blue-500/20', 'to-indigo-500/20', 'border-blue-200', 'text-blue-700');
+            }
+        }
+        
+        // Legacy support - also update connectionStatus if it exists
+        const connectionStatusElement = document.getElementById('connectionStatus');
+        if (connectionStatusElement) {
+            connectionStatusElement.textContent = status;
+            
+            // Update status styling
+            connectionStatusElement.className = 'text-sm font-medium';
+            switch (type) {
+                case 'success':
+                    connectionStatusElement.classList.add('text-green-600');
+                    break;
+                case 'warning':
+                    connectionStatusElement.classList.add('text-yellow-600');
+                    break;
+                case 'error':
+                    connectionStatusElement.classList.add('text-red-600');
+                    break;
+                default:
+                    connectionStatusElement.classList.add('text-blue-600');
             }
         }
         
@@ -846,12 +1272,24 @@ class VideoCounselingClientOffice {
         this.startTime = new Date();
         this.sessionTimer = setInterval(() => {
             const elapsed = new Date() - this.startTime;
-            const minutes = Math.floor(elapsed / 60000);
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
             const seconds = Math.floor((elapsed % 60000) / 1000);
             
-            const timerElement = document.getElementById('sessionTimer');
+            // Update the main timer element
+            const timerElement = document.getElementById('timer');
             if (timerElement) {
-                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                const timeString = hours > 0 
+                    ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                    : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                timerElement.textContent = timeString;
+            }
+            
+            // Also update sessionTimer if it exists
+            const sessionTimerElement = document.getElementById('sessionTimer');
+            if (sessionTimerElement) {
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                sessionTimerElement.textContent = timeString;
             }
         }, 1000);
     }
@@ -954,6 +1392,15 @@ class VideoCounselingClientOffice {
             this.stopRecording();
         }
         
+        // Exit fullscreen if active
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        
+        // Clean up fullscreen-related handlers
+        this.stopControlsAutoHide();
+        this.hideFullscreenInfo();
+        
         // Close peer connection
         if (this.peerConnection) {
             this.peerConnection.close();
@@ -1027,16 +1474,77 @@ class VideoCounselingClientOffice {
     
     handleMediaError(error) {
         let message = 'Failed to access camera or microphone';
+        let solution = '';
         
-        if (error.name === 'NotAllowedError') {
-            message = 'Camera and microphone access denied. Please allow permissions and refresh.';
-        } else if (error.name === 'NotFoundError') {
-            message = 'No camera or microphone found. Please connect a device.';
-        } else if (error.name === 'NotReadableError') {
-            message = 'Camera or microphone is already in use by another application.';
+        console.error('Media error:', error);
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            message = 'Camera and microphone access denied';
+            solution = 'Please allow camera and microphone permissions in your browser and refresh the page.';
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            message = 'No camera or microphone found';
+            solution = 'Please connect a camera and microphone and refresh the page.';
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            message = 'Camera or microphone is already in use';
+            solution = 'Please close other applications using your camera/microphone and refresh the page.';
+        } else if (error.name === 'OverconstrainedError') {
+            message = 'Camera or microphone settings not supported';
+            solution = 'Trying with basic settings...';
+            // Try with basic constraints
+            this.retryWithBasicConstraints();
+            return;
+        } else if (error.name === 'SecurityError') {
+            message = 'Security error accessing media devices';
+            solution = 'Please ensure you are using HTTPS and refresh the page.';
+        } else {
+            message = `Media access error: ${error.message || error.name}`;
+            solution = 'Please check your camera and microphone connections and refresh the page.';
         }
         
-        this.showError(message);
+        this.updateConnectionStatus(message, 'error');
+        this.showError(`${message}. ${solution}`);
+        
+        // Disable media toggles if there's no stream
+        this.isAudioEnabled = false;
+        this.isVideoEnabled = false;
+        this.updateAllMediaButtons();
+        this.updateVideoPlaceholder();
+    }
+    
+    async retryWithBasicConstraints() {
+        console.log('Retrying with basic media constraints...');
+        try {
+            const basicConstraints = {
+                video: true,
+                audio: true
+            };
+            
+            this.localStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+            console.log('Basic media access granted');
+            
+            // Attach to video elements
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                waitingRoomVideo.srcObject = this.localStream;
+                waitingRoomVideo.muted = true;
+            }
+            
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo) {
+                localVideo.srcObject = this.localStream;
+                localVideo.muted = true;
+            }
+            
+            this.isAudioEnabled = true;
+            this.isVideoEnabled = true;
+            this.updateAllMediaButtons();
+            this.updateVideoPlaceholder();
+            this.updateConnectionStatus('Camera and microphone ready (basic mode)', 'success');
+            
+        } catch (retryError) {
+            console.error('Failed to access media with basic constraints:', retryError);
+            this.handleMediaError(retryError);
+        }
     }
     
     handleDisconnection() {
@@ -1059,43 +1567,269 @@ class VideoCounselingClientOffice {
     }
     
     switchTab(tabName) {
-    console.log('Switching to tab:', tabName);
-    
-    // Hide all tab contents
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabContents.forEach(content => {
-        content.classList.add('hidden');
-        content.classList.remove('active');
-    });
-    
-    // Remove active class from all buttons
-    const tabButtons = document.querySelectorAll('.tab-button');
-    tabButtons.forEach(button => button.classList.remove('active'));
-    
-    // Show selected tab content based on data-tab attribute
-    const selectedContent = document.querySelector(`[data-tab="${tabName}"]`);
-    if (selectedContent) {
-        selectedContent.classList.remove('hidden');
-        selectedContent.classList.add('active');
+        console.log('Switching to tab:', tabName);
+        
+        // Hide all tab contents
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach(content => {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+        });
+        
+        // Remove active class from all buttons
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => button.classList.remove('active'));
+        
+        // Show selected tab content - specifically target .tab-content elements
+        const selectedContent = document.querySelector(`.tab-content[data-tab="${tabName}"]`);
+        if (selectedContent) {
+            selectedContent.classList.remove('hidden');
+            selectedContent.classList.add('active');
+            console.log('Tab content shown for:', tabName);
+        } else {
+            console.error('Tab content not found for:', tabName);
+        }
+        
+        // Add active class to selected button
+        const selectedButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+            console.log('Tab button activated for:', tabName);
+        } else {
+            console.error('Tab button not found for:', tabName);
+        }
     }
-    
-    // Add active class to selected button
-    const selectedButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-    }
-}
     
     toggleFullScreen() {
-        const remoteVideo = document.getElementById('remoteVideo');
-        if (remoteVideo) {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            } else {
-                remoteVideo.requestFullscreen().catch(err => {
-                    console.error('Error attempting to enable fullscreen:', err);
-                });
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
+        
+        if (!videoContainer) {
+            console.error('Video container not found');
+            return;
+        }
+        
+        if (document.fullscreenElement) {
+            // Exit fullscreen
+            document.exitFullscreen().then(() => {
+                this.exitFullscreenMode();
+            }).catch(err => {
+                console.error('Error exiting fullscreen:', err);
+            });
+        } else {
+            // Enter fullscreen
+            videoContainer.requestFullscreen().then(() => {
+                this.enterFullscreenMode();
+            }).catch(err => {
+                console.error('Error entering fullscreen:', err);
+                // Fallback to video element fullscreen if container fails
+                const remoteVideo = document.getElementById('remoteVideo');
+                if (remoteVideo) {
+                    remoteVideo.requestFullscreen().catch(fallbackErr => {
+                        console.error('Fallback fullscreen also failed:', fallbackErr);
+                    });
+                }
+            });
+        }
+        
+        // Update button icon
+        if (fullscreenBtn) {
+            const icon = fullscreenBtn.querySelector('i');
+            if (icon) {
+                if (document.fullscreenElement) {
+                    icon.className = 'fas fa-compress text-white';
+                    fullscreenBtn.title = 'Exit Fullscreen';
+                } else {
+                    icon.className = 'fas fa-expand text-white';
+                    fullscreenBtn.title = 'Fullscreen';
+                }
             }
+        }
+    }
+    
+    enterFullscreenMode() {
+        console.log('Entering enhanced fullscreen mode');
+        
+        // Add fullscreen-specific styles
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        if (videoContainer) {
+            videoContainer.classList.add('fullscreen-active');
+        }
+        
+        // Enhance video controls visibility in fullscreen
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        if (controlBar) {
+            controlBar.classList.add('fullscreen-controls');
+        }
+        
+        // Enhance local video positioning in fullscreen
+        const localVideoContainer = document.getElementById('selfVideoContainer');
+        if (localVideoContainer) {
+            localVideoContainer.classList.add('fullscreen-local-video');
+        }
+        
+        // Add fullscreen info overlay
+        this.showFullscreenInfo();
+        
+        // Ensure controls are visible initially, then auto-hide
+        this.startControlsAutoHide();
+    }
+    
+    exitFullscreenMode() {
+        console.log('Exiting enhanced fullscreen mode');
+        
+        // Remove fullscreen-specific styles
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        if (videoContainer) {
+            videoContainer.classList.remove('fullscreen-active');
+        }
+        
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        if (controlBar) {
+            controlBar.classList.remove('fullscreen-controls', 'controls-hidden');
+        }
+        
+        const localVideoContainer = document.getElementById('selfVideoContainer');
+        if (localVideoContainer) {
+            localVideoContainer.classList.remove('fullscreen-local-video');
+        }
+        
+        // Clear auto-hide timer
+        this.stopControlsAutoHide();
+        
+        // Remove fullscreen info overlay
+        this.hideFullscreenInfo();
+        
+        // Update button icon
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
+        if (fullscreenBtn) {
+            const icon = fullscreenBtn.querySelector('i');
+            if (icon) {
+                icon.className = 'fas fa-expand text-white';
+                fullscreenBtn.title = 'Fullscreen';
+            }
+        }
+    }
+    
+    startControlsAutoHide() {
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        
+        if (!videoContainer || !controlBar) return;
+        
+        let hideTimer;
+        let isMouseOverControls = false;
+        
+        const showControls = () => {
+            controlBar.classList.remove('controls-hidden');
+            clearTimeout(hideTimer);
+            
+            if (!isMouseOverControls) {
+                hideTimer = setTimeout(() => {
+                    if (!isMouseOverControls) {
+                        controlBar.classList.add('controls-hidden');
+                    }
+                }, 3000);
+            }
+        };
+        
+        const hideControls = () => {
+            if (!isMouseOverControls) {
+                controlBar.classList.add('controls-hidden');
+            }
+        };
+        
+        // Show controls on mouse movement
+        videoContainer.addEventListener('mousemove', showControls);
+        videoContainer.addEventListener('click', showControls);
+        
+        // Prevent hiding when hovering over controls
+        controlBar.addEventListener('mouseenter', () => {
+            isMouseOverControls = true;
+            clearTimeout(hideTimer);
+        });
+        
+        controlBar.addEventListener('mouseleave', () => {
+            isMouseOverControls = false;
+            hideTimer = setTimeout(() => {
+                controlBar.classList.add('controls-hidden');
+            }, 1000);
+        });
+        
+        // Store references for cleanup
+        this.fullscreenMouseHandler = showControls;
+        this.fullscreenClickHandler = showControls;
+        this.controlsMouseEnter = () => {
+            isMouseOverControls = true;
+            clearTimeout(hideTimer);
+        };
+        this.controlsMouseLeave = () => {
+            isMouseOverControls = false;
+            hideTimer = setTimeout(() => {
+                controlBar.classList.add('controls-hidden');
+            }, 1000);
+        };
+        
+        // Initial hide timer
+        hideTimer = setTimeout(hideControls, 3000);
+    }
+    
+    stopControlsAutoHide() {
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        
+        if (videoContainer && this.fullscreenMouseHandler) {
+            videoContainer.removeEventListener('mousemove', this.fullscreenMouseHandler);
+            videoContainer.removeEventListener('click', this.fullscreenClickHandler);
+        }
+        
+        if (controlBar) {
+            if (this.controlsMouseEnter) {
+                controlBar.removeEventListener('mouseenter', this.controlsMouseEnter);
+            }
+            if (this.controlsMouseLeave) {
+                controlBar.removeEventListener('mouseleave', this.controlsMouseLeave);
+            }
+        }
+    }
+    
+    showFullscreenInfo() {
+        // Remove existing info if any
+        this.hideFullscreenInfo();
+        
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        if (!videoContainer) return;
+        
+        const infoOverlay = document.createElement('div');
+        infoOverlay.id = 'fullscreenInfo';
+        infoOverlay.className = 'absolute top-6 right-6 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-xl text-sm text-white z-10 opacity-0 transition-opacity duration-300';
+        infoOverlay.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-expand text-green-400"></i>
+                <span>Fullscreen Mode</span>
+            </div>
+            <div class="text-xs text-gray-300 mt-1">Press ESC to exit</div>
+        `;
+        
+        videoContainer.appendChild(infoOverlay);
+        
+        // Animate in
+        setTimeout(() => {
+            infoOverlay.classList.remove('opacity-0');
+            infoOverlay.classList.add('opacity-100');
+        }, 100);
+        
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+            infoOverlay.classList.remove('opacity-100');
+            infoOverlay.classList.add('opacity-0');
+        }, 4000);
+    }
+    
+    hideFullscreenInfo() {
+        const existingInfo = document.getElementById('fullscreenInfo');
+        if (existingInfo) {
+            existingInfo.remove();
         }
     }
     
@@ -1374,6 +2108,196 @@ class VideoCounselingClientOffice {
         if (qualityElement) {
             qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
             qualityElement.className = `connection-${quality}`;
+        }
+    }
+    
+    // Debug method to manually initialize tabs
+    initializeTabs() {
+        console.log('=== INITIALIZING TABS ===');
+        
+        // Check if tabs exist
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        console.log('Found tab buttons:', tabButtons.length);
+        console.log('Found tab contents:', tabContents.length);
+        
+        if (tabButtons.length === 0) {
+            console.error('No tab buttons found!');
+            return;
+        }
+        
+        if (tabContents.length === 0) {
+            console.error('No tab contents found!');
+            return;
+        }
+        
+        // Hide all contents first
+        tabContents.forEach(content => {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+        });
+        
+        // Remove active from all buttons
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+        });
+        
+        // Activate the first tab (notes)
+        this.switchTab('notes');
+        
+        console.log('=== TABS INITIALIZED ===');
+    }
+    
+    
+    async changeCamera(deviceId) {
+        if (!deviceId || !this.localStream) return;
+        
+        try {
+            console.log('Changing camera to device:', deviceId);
+            
+            // Stop current video track
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.stop();
+            }
+            
+            // Get new video stream with selected device
+            const newVideoStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    deviceId: { exact: deviceId },
+                    ...this.mediaConstraints.video
+                },
+                audio: false
+            });
+            
+            // Replace video track in the stream
+            const newVideoTrack = newVideoStream.getVideoTracks()[0];
+            if (newVideoTrack) {
+                // Remove old video track
+                this.localStream.getVideoTracks().forEach(track => {
+                    this.localStream.removeTrack(track);
+                });
+                
+                // Add new video track
+                this.localStream.addTrack(newVideoTrack);
+                
+                // Update video elements
+                const localVideo = document.getElementById('localVideo');
+                if (localVideo) {
+                    localVideo.srcObject = this.localStream;
+                }
+                
+                const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+                if (waitingRoomVideo) {
+                    waitingRoomVideo.srcObject = this.localStream;
+                }
+                
+                // Update peer connection if active
+                if (this.peerConnection) {
+                    const sender = this.peerConnection.getSenders().find(s => 
+                        s.track && s.track.kind === 'video'
+                    );
+                    if (sender) {
+                        await sender.replaceTrack(newVideoTrack);
+                    }
+                }
+                
+                // Ensure video state is maintained
+                newVideoTrack.enabled = this.isVideoEnabled;
+                this.updateVideoPlaceholder();
+                
+                this.showNotification('Camera changed successfully', 'success');
+            }
+            
+        } catch (error) {
+            console.error('Failed to change camera:', error);
+            this.showNotification('Failed to change camera', 'error');
+        }
+    }
+    
+    async changeMicrophone(deviceId) {
+        if (!deviceId || !this.localStream) return;
+        
+        try {
+            console.log('Changing microphone to device:', deviceId);
+            
+            // Stop current audio track
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.stop();
+            }
+            
+            // Get new audio stream with selected device
+            const newAudioStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: { exact: deviceId },
+                    ...this.mediaConstraints.audio
+                },
+                video: false
+            });
+            
+            // Replace audio track in the stream
+            const newAudioTrack = newAudioStream.getAudioTracks()[0];
+            if (newAudioTrack) {
+                // Remove old audio track
+                this.localStream.getAudioTracks().forEach(track => {
+                    this.localStream.removeTrack(track);
+                });
+                
+                // Add new audio track
+                this.localStream.addTrack(newAudioTrack);
+                
+                // Update peer connection if active
+                if (this.peerConnection) {
+                    const sender = this.peerConnection.getSenders().find(s => 
+                        s.track && s.track.kind === 'audio'
+                    );
+                    if (sender) {
+                        await sender.replaceTrack(newAudioTrack);
+                    }
+                }
+                
+                // Ensure audio state is maintained
+                newAudioTrack.enabled = this.isAudioEnabled;
+                
+                this.showNotification('Microphone changed successfully', 'success');
+            }
+            
+        } catch (error) {
+            console.error('Failed to change microphone:', error);
+            this.showNotification('Failed to change microphone', 'error');
+        }
+    }
+
+    // Method to force show tabs (for debugging)
+    forceShowTabs() {
+        console.log('=== FORCE SHOWING TABS ===');
+        
+        // Make sure the side panel is visible
+        const sidePanel = document.querySelector('.w-96');
+        if (sidePanel) {
+            sidePanel.style.display = 'flex';
+            console.log('Side panel made visible');
+        }
+        
+        // Show all tab contents temporarily for debugging
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach((content, index) => {
+            console.log(`Tab content ${index}:`, content.getAttribute('data-tab'), content.classList.toString());
+            if (index === 0) {
+                // Show first tab
+                content.classList.remove('hidden');
+                content.classList.add('active');
+                content.style.display = 'block';
+            }
+        });
+        
+        // Activate first tab button
+        const firstButton = document.querySelector('.tab-button');
+        if (firstButton) {
+            firstButton.classList.add('active');
+            console.log('First tab button activated');
         }
     }
 }

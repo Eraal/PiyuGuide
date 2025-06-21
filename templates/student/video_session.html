@@ -226,7 +226,7 @@
 
         <!-- Enhanced Self Video (Student) -->
         <div
-          class="absolute bottom-6 right-6 w-72 h-52 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 group hover:scale-105 transition-all duration-300"
+          class="absolute bottom-6 right-6 w-72 h-52 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 group hover:scale-105 transition-all duration-300 fullscreen-local-video"
           id="selfVideoContainer"
         >
           <video
@@ -245,7 +245,7 @@
         </div>
 
         <!-- Video Control Bar -->
-        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center space-x-4 bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-3">
+        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center space-x-4 bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-3 fullscreen-controls">
           <button
             id="micToggle"
             class="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
@@ -267,6 +267,20 @@
           >
             <i class="fas fa-expand text-white"></i>
           </button>
+        </div>
+        
+        <!-- Fullscreen Info Overlay -->
+        <div
+          id="fullscreenInfo"
+          class="absolute top-6 right-6 bg-black/60 backdrop-blur-sm px-4 py-3 rounded-xl text-white text-sm hidden"
+        >
+          <div class="flex items-center space-x-3">
+            <i class="fas fa-expand text-purple-400"></i>
+            <div>
+              <p class="font-medium">Fullscreen Mode</p>
+              <p class="text-xs text-slate-300">Press ESC or click Exit to return</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -761,11 +775,144 @@ video {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
 }
 
-/* Dark mode support (if needed) */
+/* Enhanced fullscreen styles */
+.fullscreen-active {
+  width: 100vw !important;
+  height: 100vh !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 9999 !important;
+  background: #000 !important;
+}
+
+.fullscreen-controls {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 10000 !important;
+}
+
+.fullscreen-controls.controls-hidden {
+  opacity: 0 !important;
+  transform: translateX(-50%) translateY(20px) !important;
+  pointer-events: none !important;
+}
+
+.fullscreen-local-video {
+  width: 320px !important;
+  height: 240px !important;
+  bottom: 80px !important;
+  right: 24px !important;
+  z-index: 10001 !important;
+  border: 3px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Enhanced fullscreen video controls */
+.fullscreen-active .absolute.bottom-6 {
+  bottom: 32px !important;
+  padding: 16px 24px !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.fullscreen-active .absolute.bottom-6 button {
+  width: 56px !important;
+  height: 56px !important;
+  font-size: 18px !important;
+  margin: 0 8px !important;
+}
+
+/* Fullscreen info overlay animations */
+#fullscreenInfo {
+  animation: slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Enhanced fullscreen counselor info overlay */
+.fullscreen-active .absolute.top-6.left-6 {
+  top: 24px !important;
+  left: 24px !important;
+  padding: 16px 20px !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Fullscreen cursor auto-hide */
+.fullscreen-active {
+  cursor: none;
+}
+
+.fullscreen-active:hover {
+  cursor: default;
+}
+
+.fullscreen-active .fullscreen-controls:hover,
+.fullscreen-active .fullscreen-local-video:hover,
+.fullscreen-active .absolute.top-6.left-6:hover,
+.fullscreen-active #fullscreenInfo:hover {
+  cursor: pointer;
+}
+
+/* Smooth transitions for all fullscreen elements */
+.fullscreen-active * {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced button hover effects in fullscreen */
+.fullscreen-active button:hover {
+  transform: scale(1.15) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Responsive fullscreen adjustments */
+@media (max-width: 768px) {
+  .fullscreen-local-video {
+    width: 240px !important;
+    height: 180px !important;
+    bottom: 120px !important;
+    right: 16px !important;
+  }
+  
+  .fullscreen-active .absolute.bottom-6.left-1\/2 {
+    bottom: 24px !important;
+    padding: 12px 16px !important;
+  }
+  
+  .fullscreen-active .absolute.bottom-6.left-1\/2 button {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 16px !important;
+    margin: 0 6px !important;
+  }
+  
+  .fullscreen-active .absolute.top-6.left-6 {
+    top: 16px !important;
+    left: 16px !important;
+    padding: 12px 16px !important;
+  }
+}
+
+/* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --glass-bg: rgba(0, 0, 0, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
+  .fullscreen-controls {
+    background: rgba(0, 0, 0, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
   }
 }
 

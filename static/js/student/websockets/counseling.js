@@ -137,6 +137,7 @@ class VideoCounselingClient {
         
         this.socket.on('session_ready', (data) => {
             console.log('Session is ready to start:', data);
+            this.updateConnectionStatus('Ready to start call', 'success');
             this.showJoinCallButton();
         });
         
@@ -215,21 +216,85 @@ class VideoCounselingClient {
     
     async initializeMedia() {
         console.log('Requesting media access...');
+        this.updateConnectionStatus('Requesting camera and microphone access...', 'info');
         
         try {
-            // Request permission for camera and microphone
-            this.localStream = await navigator.mediaDevices.getUserMedia(this.mediaConstraints);
-            console.log('Media access granted');
+            // Start with more permissive constraints to ensure compatibility
+            const basicConstraints = {
+                video: {
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 },
+                    frameRate: { ideal: 30, min: 15 }
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 44100
+                }
+            };
             
-            // Attach to local video element
+            this.localStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+            console.log('Media access granted successfully');
+            
+            // Verify we have both audio and video tracks
+            const videoTracks = this.localStream.getVideoTracks();
+            const audioTracks = this.localStream.getAudioTracks();
+            
+            console.log('Video tracks:', videoTracks.length);
+            console.log('Audio tracks:', audioTracks.length);
+            
+            if (videoTracks.length === 0) {
+                console.warn('No video track available');
+                this.isVideoEnabled = false;
+            }
+            
+            if (audioTracks.length === 0) {
+                console.warn('No audio track available');
+                this.isAudioEnabled = false;
+            }
+            
+            // Set track states based on initial preferences
+            videoTracks.forEach(track => {
+                track.enabled = this.isVideoEnabled;
+            });
+            
+            audioTracks.forEach(track => {
+                track.enabled = this.isAudioEnabled;
+            });
+            
+            // Attach to waiting room video element first
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                waitingRoomVideo.srcObject = this.localStream;
+                waitingRoomVideo.muted = true;
+                
+                waitingRoomVideo.onloadedmetadata = () => {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Failed to play waiting room video:', e);
+                    });
+                };
+            }
+            
+            // Also attach to main local video element if it exists
             const localVideo = document.getElementById('localVideo');
             if (localVideo) {
                 localVideo.srcObject = this.localStream;
-                localVideo.muted = true; // Prevent feedback
+                localVideo.muted = true;
+                
+                localVideo.onloadedmetadata = () => {
+                    localVideo.play().catch(e => {
+                        console.warn('Failed to play local video:', e);
+                    });
+                };
             }
             
             // Populate device lists
             await this.populateDeviceList();
+            
+            // Initialize button states
+            this.updateAllMediaButtons();
+            this.updateVideoPlaceholder();
             
             this.updateConnectionStatus('Camera and microphone ready', 'success');
             
@@ -276,21 +341,37 @@ class VideoCounselingClient {
     }
     
     setupEventListeners() {
-        // Media control buttons
-        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        // Media control buttons (main call interface) - FIXED IDs
+        const toggleAudioBtn = document.getElementById('micToggle'); // Changed from 'toggleAudioBtn'
         if (toggleAudioBtn) {
             toggleAudioBtn.addEventListener('click', () => this.toggleAudio());
         }
         
-        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const toggleVideoBtn = document.getElementById('cameraToggle'); // Changed from 'toggleVideoBtn'
         if (toggleVideoBtn) {
             toggleVideoBtn.addEventListener('click', () => this.toggleVideo());
         }
         
-        // End call button
+        // Waiting room media control buttons
+        const waitingRoomMicToggle = document.getElementById('waitingRoomMicToggle');
+        if (waitingRoomMicToggle) {
+            waitingRoomMicToggle.addEventListener('click', () => this.toggleAudio(true));
+        }
+        
+        const waitingRoomCameraToggle = document.getElementById('waitingRoomCameraToggle');
+        if (waitingRoomCameraToggle) {
+            waitingRoomCameraToggle.addEventListener('click', () => this.toggleVideo(true));
+        }
+        
+        // End call button (check both possible IDs)
         const endCallBtn = document.getElementById('endCallBtn');
         if (endCallBtn) {
             endCallBtn.addEventListener('click', () => this.showEndSessionModal());
+        }
+        
+        const endSessionBtn = document.getElementById('endSessionButton');
+        if (endSessionBtn) {
+            endSessionBtn.addEventListener('click', () => this.showEndSessionModal());
         }
         
         // Join call button
@@ -300,7 +381,7 @@ class VideoCounselingClient {
         }
         
         // Fullscreen button
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
         if (fullscreenBtn) {
             fullscreenBtn.addEventListener('click', () => this.toggleFullScreen());
         }
@@ -320,8 +401,16 @@ class VideoCounselingClient {
         const tabButtons = document.querySelectorAll('.tab-button');
         tabButtons.forEach(button => {
             button.addEventListener('click', (e) => {
-                const tabName = e.target.dataset.tab;
-                if (tabName) this.switchTab(tabName);
+                e.preventDefault();
+                e.stopPropagation();
+                // Use currentTarget to get the button element itself, not the clicked child
+                const tabName = e.currentTarget.dataset.tab || e.currentTarget.getAttribute('data-tab');
+                console.log('Tab button clicked, switching to:', tabName);
+                if (tabName) {
+                    this.switchTab(tabName);
+                } else {
+                    console.warn('No tab name found for button:', e.currentTarget);
+                }
             });
         });
         
@@ -345,6 +434,29 @@ class VideoCounselingClient {
                 }
             });
         }
+        
+        // Fullscreen event listeners
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                // Exited fullscreen
+                this.exitFullscreenMode();
+            }
+        });
+        
+        // ESC key to exit fullscreen
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        });
+        
+        // F11 key for fullscreen toggle
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                this.toggleFullScreen();
+            }
+        });
     }
     
     joinSession() {
@@ -529,54 +641,92 @@ class VideoCounselingClient {
     }
     
     toggleAudio(isWaitingRoom = false) {
+        console.log('Toggling audio, current state:', this.isAudioEnabled, 'waiting room:', isWaitingRoom);
+        
         if (this.localStream) {
             const audioTrack = this.localStream.getAudioTracks()[0];
             if (audioTrack) {
                 this.isAudioEnabled = !this.isAudioEnabled;
                 audioTrack.enabled = this.isAudioEnabled;
                 
-                // Notify other participants
-                if (!isWaitingRoom) {
+                console.log('Audio track enabled set to:', audioTrack.enabled);
+                
+                // Notify other participants (only if not in waiting room)
+                if (!isWaitingRoom && this.socket) {
                     this.socket.emit('toggle_audio', {
                         session_id: this.sessionId,
                         audio_enabled: this.isAudioEnabled
                     });
+                } else if (isWaitingRoom && this.socket) {
+                    this.socket.emit('waiting_room_media_toggle', {
+                        session_id: this.sessionId,
+                        media_type: 'audio',
+                        enabled: this.isAudioEnabled
+                    });
                 }
                 
-                this.updateMediaButtons();
+                // Update all media buttons (both waiting room and call interface)
+                this.updateAllMediaButtons();
                 
                 const status = this.isAudioEnabled ? 'Microphone on' : 'Microphone off';
-                this.showNotification(status, 'info');
+                this.showNotification(status, this.isAudioEnabled ? 'success' : 'warning');
+            } else {
+                console.warn('No audio track available for toggle');
+                this.showError('No audio track available');
             }
+        } else {
+            console.warn('No local stream available for audio toggle');
+            this.showError('Microphone not initialized. Please refresh the page.');
         }
     }
     
     toggleVideo(isWaitingRoom = false) {
+        console.log('Toggling video, current state:', this.isVideoEnabled, 'waiting room:', isWaitingRoom);
+        
         if (this.localStream) {
             const videoTrack = this.localStream.getVideoTracks()[0];
             if (videoTrack) {
                 this.isVideoEnabled = !this.isVideoEnabled;
                 videoTrack.enabled = this.isVideoEnabled;
                 
-                // Notify other participants
-                if (!isWaitingRoom) {
+                console.log('Video track enabled set to:', videoTrack.enabled);
+                
+                // Handle video placeholder visibility
+                this.updateVideoPlaceholder();
+                
+                // Notify other participants (only if not in waiting room)
+                if (!isWaitingRoom && this.socket) {
                     this.socket.emit('toggle_video', {
                         session_id: this.sessionId,
                         video_enabled: this.isVideoEnabled
                     });
+                } else if (isWaitingRoom && this.socket) {
+                    this.socket.emit('waiting_room_media_toggle', {
+                        session_id: this.sessionId,
+                        media_type: 'video',
+                        enabled: this.isVideoEnabled
+                    });
                 }
                 
-                this.updateMediaButtons();
+                // Update all media buttons (both waiting room and call interface)
+                this.updateAllMediaButtons();
                 
                 const status = this.isVideoEnabled ? 'Camera on' : 'Camera off';
-                this.showNotification(status, 'info');
+                this.showNotification(status, this.isVideoEnabled ? 'success' : 'warning');
+            } else {
+                console.warn('No video track available for toggle');
+                this.showError('No video track available');
             }
+        } else {
+            console.warn('No local stream available for video toggle');
+            this.showError('Camera not initialized. Please refresh the page.');
         }
     }
     
     updateMediaButtons() {
-        const audioBtn = document.getElementById('toggleAudioBtn');
-        const videoBtn = document.getElementById('toggleVideoBtn');
+        // Update main call interface buttons
+        const audioBtn = document.getElementById('micToggle'); // Changed from 'toggleAudioBtn'
+        const videoBtn = document.getElementById('cameraToggle'); // Changed from 'toggleVideoBtn'
         
         if (audioBtn) {
             const icon = audioBtn.querySelector('i');
@@ -584,8 +734,10 @@ class VideoCounselingClient {
                 icon.className = this.isAudioEnabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
             }
             audioBtn.className = this.isAudioEnabled ? 
-                'btn-enhanced bg-green-500 hover:bg-green-600 text-white' : 
-                'btn-enhanced bg-red-500 hover:bg-red-600 text-white';
+                'w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110' : 
+                'w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110';
+            
+            audioBtn.title = this.isAudioEnabled ? 'Mute microphone' : 'Unmute microphone';
         }
         
         if (videoBtn) {
@@ -594,19 +746,113 @@ class VideoCounselingClient {
                 icon.className = this.isVideoEnabled ? 'fas fa-video' : 'fas fa-video-slash';
             }
             videoBtn.className = this.isVideoEnabled ? 
-                'btn-enhanced bg-green-500 hover:bg-green-600 text-white' : 
-                'btn-enhanced bg-red-500 hover:bg-red-600 text-white';
+                'w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110' : 
+                'w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110';
+            
+            videoBtn.title = this.isVideoEnabled ? 'Turn off camera' : 'Turn on camera';
+        }
+    }
+
+    updateWaitingRoomButtons() {
+        // Update waiting room buttons
+        const waitingRoomMicToggle = document.getElementById('waitingRoomMicToggle');
+        const waitingRoomCameraToggle = document.getElementById('waitingRoomCameraToggle');
+        
+        if (waitingRoomMicToggle) {
+            const icon = waitingRoomMicToggle.querySelector('i');
+            if (icon) {
+                icon.className = this.isAudioEnabled ? 
+                    'fas fa-microphone text-blue-600 group-hover:scale-110 transition-transform duration-300' : 
+                    'fas fa-microphone-slash text-red-600 group-hover:scale-110 transition-transform duration-300';
+            }
+            
+            const baseClasses = 'w-12 h-12 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center border border-slate-200 transition-all duration-300 hover:scale-110 group';
+            waitingRoomMicToggle.className = baseClasses + (this.isAudioEnabled ? ' bg-white' : ' bg-red-50');
+            
+            waitingRoomMicToggle.title = this.isAudioEnabled ? 'Mute microphone' : 'Unmute microphone';
+        }
+        
+        if (waitingRoomCameraToggle) {
+            const icon = waitingRoomCameraToggle.querySelector('i');
+            if (icon) {
+                icon.className = this.isVideoEnabled ? 
+                    'fas fa-video text-blue-600 group-hover:scale-110 transition-transform duration-300' : 
+                    'fas fa-video-slash text-red-600 group-hover:scale-110 transition-transform duration-300';
+            }
+            
+            const baseClasses = 'w-12 h-12 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center border border-slate-200 transition-all duration-300 hover:scale-110 group';
+            waitingRoomCameraToggle.className = baseClasses + (this.isVideoEnabled ? ' bg-white' : ' bg-red-50');
+            
+            waitingRoomCameraToggle.title = this.isVideoEnabled ? 'Turn off camera' : 'Turn on camera';
+        }
+    }
+
+    updateAllMediaButtons() {
+        // Update both waiting room and call interface buttons
+        this.updateMediaButtons();
+        this.updateWaitingRoomButtons();
+    }
+
+    updateVideoPlaceholder() {
+        // Update video placeholder visibility in waiting room
+        const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+        const waitingRoomVideoPlaceholder = document.getElementById('waitingRoomVideoPlaceholder');
+        
+        if (waitingRoomVideo && waitingRoomVideoPlaceholder) {
+            if (this.isVideoEnabled) {
+                waitingRoomVideo.style.display = 'block';
+                waitingRoomVideoPlaceholder.style.display = 'none';
+            } else {
+                waitingRoomVideo.style.display = 'none';
+                waitingRoomVideoPlaceholder.style.display = 'flex';
+            }
+        }
+        
+        // Also update main video elements if they exist
+        const localVideo = document.getElementById('localVideo');
+        if (localVideo) {
+            if (this.isVideoEnabled) {
+                localVideo.style.opacity = '1';
+                localVideo.style.filter = 'none';
+            } else {
+                localVideo.style.opacity = '0.3';
+                localVideo.style.filter = 'blur(10px)';
+            }
         }
     }
     
     showWaitingRoom() {
-        const waitingRoom = document.getElementById('waitingRoom');
-        const callInterface = document.getElementById('callInterface');
+        const waitingRoom = document.getElementById('waitingRoomUI'); // Fixed ID
+        const callInterface = document.getElementById('callUI'); // Fixed ID
         
-        if (waitingRoom) waitingRoom.classList.remove('hidden');
-        if (callInterface) callInterface.classList.add('hidden');
+        if (waitingRoom) {
+            waitingRoom.classList.remove('hidden');
+            console.log('Waiting room shown');
+        } else {
+            console.warn('Waiting room element not found');
+        }
+        
+        if (callInterface) {
+            callInterface.classList.add('hidden');
+            console.log('Call interface hidden');
+        } else {
+            console.warn('Call interface element not found');
+        }
         
         this.updateWaitingRoomMessage('Connecting to session...');
+        
+        // Attach stream to waiting room video if available
+        if (this.localStream) {
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                waitingRoomVideo.srcObject = this.localStream;
+                waitingRoomVideo.muted = true;
+                waitingRoomVideo.play().catch(e => console.warn('Failed to play waiting room video:', e));
+            }
+        }
+        
+        // Update button states
+        this.updateAllMediaButtons();
     }
     
     showCallUI() {
@@ -641,10 +887,34 @@ class VideoCounselingClient {
                 console.log('Switching to first available tab:', tabName);
                 this.switchTab(tabName);
             }
+        } else {
+            console.warn('No tab buttons found, attempting to initialize tabs...');
+            this.initializeTabs();
         }
         
-        // Update status
-        this.updateConnectionStatus('Video call active', 'success');
+        // Debug: log all available tabs
+        const allTabs = document.querySelectorAll('.tab-button');
+        const allContents = document.querySelectorAll('.tab-content');
+        console.log('Available tab buttons:', allTabs.length);
+        console.log('Available tab contents:', allContents.length);
+        
+        allTabs.forEach((tab, index) => {
+            console.log(`Tab button ${index}:`, tab.getAttribute('data-tab'), tab.classList.toString());
+        });
+        
+        allContents.forEach((content, index) => {
+            console.log(`Tab content ${index}:`, content.getAttribute('data-tab'), content.classList.toString());
+        });
+        
+        // Update status and start timer when call UI is shown
+        this.updateConnectionStatus('In Session', 'success');
+        
+        // Mark call as active and start timer
+        if (!this.isInCall) {
+            this.isInCall = true;
+            this.startSessionTimer();
+            console.log('Call marked as active and timer started');
+        }
         
         // Ensure local video stream is attached
         const localVideo = document.getElementById('localVideo');
@@ -667,24 +937,69 @@ class VideoCounselingClient {
     }
     
     updateConnectionStatus(status, type = 'info') {
-        const statusElement = document.getElementById('connectionStatus');
-        if (statusElement) {
-            statusElement.textContent = status;
+        // Update the main status text
+        const statusTextElement = document.getElementById('statusText');
+        if (statusTextElement) {
+            statusTextElement.textContent = status;
+        }
+        
+        // Update the status indicator container styling
+        const statusIndicatorElement = document.getElementById('statusIndicator');
+        if (statusIndicatorElement) {
+            // Remove existing status classes more carefully
+            const classList = statusIndicatorElement.classList;
+            const classesToRemove = Array.from(classList).filter(cls => 
+                cls.includes('from-') || cls.includes('to-') || cls.includes('border-') || cls.includes('text-')
+            );
+            classesToRemove.forEach(cls => classList.remove(cls));
             
-            // Update status styling
-            statusElement.className = 'text-sm font-medium';
+            // Add base classes if they don't exist
+            if (!classList.contains('px-4')) classList.add('px-4');
+            if (!classList.contains('py-2')) classList.add('py-2');
+            if (!classList.contains('bg-gradient-to-r')) classList.add('bg-gradient-to-r');
+            if (!classList.contains('border')) classList.add('border');
+            if (!classList.contains('text-sm')) classList.add('text-sm');
+            if (!classList.contains('rounded-full')) classList.add('rounded-full');
+            if (!classList.contains('flex')) classList.add('flex');
+            if (!classList.contains('items-center')) classList.add('items-center');
+            if (!classList.contains('space-x-2')) classList.add('space-x-2');
+            if (!classList.contains('shadow-sm')) classList.add('shadow-sm');
+            
+            // Add appropriate status styling
             switch (type) {
                 case 'success':
-                    statusElement.classList.add('text-green-600');
+                    classList.add('from-green-500/20', 'to-emerald-500/20', 'border-green-200', 'text-green-700');
                     break;
                 case 'warning':
-                    statusElement.classList.add('text-yellow-600');
+                    classList.add('from-yellow-500/20', 'to-orange-500/20', 'border-yellow-200', 'text-yellow-700');
                     break;
                 case 'error':
-                    statusElement.classList.add('text-red-600');
+                    classList.add('from-red-500/20', 'to-pink-500/20', 'border-red-200', 'text-red-700');
                     break;
                 default:
-                    statusElement.classList.add('text-blue-600');
+                    classList.add('from-blue-500/20', 'to-indigo-500/20', 'border-blue-200', 'text-blue-700');
+            }
+        }
+        
+        // Legacy support - also update connectionStatus if it exists
+        const connectionStatusElement = document.getElementById('connectionStatus');
+        if (connectionStatusElement) {
+            connectionStatusElement.textContent = status;
+            
+            // Update status styling
+            connectionStatusElement.className = 'text-sm font-medium';
+            switch (type) {
+                case 'success':
+                    connectionStatusElement.classList.add('text-green-600');
+                    break;
+                case 'warning':
+                    connectionStatusElement.classList.add('text-yellow-600');
+                    break;
+                case 'error':
+                    connectionStatusElement.classList.add('text-red-600');
+                    break;
+                default:
+                    connectionStatusElement.classList.add('text-blue-600');
             }
         }
         
@@ -696,12 +1011,24 @@ class VideoCounselingClient {
         this.startTime = new Date();
         this.sessionTimer = setInterval(() => {
             const elapsed = new Date() - this.startTime;
-            const minutes = Math.floor(elapsed / 60000);
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
             const seconds = Math.floor((elapsed % 60000) / 1000);
             
-            const timerElement = document.getElementById('sessionTimer');
+            // Update the main timer element
+            const timerElement = document.getElementById('timer');
             if (timerElement) {
-                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                const timeString = hours > 0 
+                    ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                    : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                timerElement.textContent = timeString;
+            }
+            
+            // Also update sessionTimer if it exists
+            const sessionTimerElement = document.getElementById('sessionTimer');
+            if (sessionTimerElement) {
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                sessionTimerElement.textContent = timeString;
             }
         }, 1000);
     }
@@ -782,6 +1109,15 @@ class VideoCounselingClient {
         
         this.stopSessionTimer();
         this.stopHeartbeat();
+        
+        // Exit fullscreen if active
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        
+        // Clean up fullscreen-related handlers
+        this.stopControlsAutoHide();
+        this.hideFullscreenInfo();
         
         // Close peer connection
         if (this.peerConnection) {
@@ -883,37 +1219,270 @@ class VideoCounselingClient {
     }
     
     switchTab(tabName) {
+        console.log('Switching to tab:', tabName);
+        
         // Hide all tab contents
         const tabContents = document.querySelectorAll('.tab-content');
-        tabContents.forEach(content => content.classList.add('hidden'));
+        tabContents.forEach(content => {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+        });
         
         // Remove active class from all buttons
         const tabButtons = document.querySelectorAll('.tab-button');
         tabButtons.forEach(button => button.classList.remove('active'));
         
-        // Show selected tab content
-        const selectedContent = document.getElementById(`${tabName}Tab`);
+        // Show selected tab content using data-tab attribute
+        const selectedContent = document.querySelector(`[data-tab="${tabName}"].tab-content`);
         if (selectedContent) {
             selectedContent.classList.remove('hidden');
+            selectedContent.classList.add('active');
+            console.log('Activated tab content for:', tabName);
+        } else {
+            console.warn('Tab content not found for:', tabName);
+            console.log('Available tab contents:', document.querySelectorAll('.tab-content'));
         }
         
         // Add active class to selected button
-        const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+        const selectedButton = document.querySelector(`[data-tab="${tabName}"].tab-button`);
         if (selectedButton) {
             selectedButton.classList.add('active');
+            console.log('Activated tab button for:', tabName);
+        } else {
+            console.warn('Tab button not found for:', tabName);
         }
     }
     
     toggleFullScreen() {
-        const remoteVideo = document.getElementById('remoteVideo');
-        if (remoteVideo) {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            } else {
-                remoteVideo.requestFullscreen().catch(err => {
-                    console.error('Error attempting to enable fullscreen:', err);
-                });
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
+        
+        if (!videoContainer) {
+            console.error('Video container not found');
+            return;
+        }
+        
+        if (document.fullscreenElement) {
+            // Exit fullscreen
+            document.exitFullscreen().then(() => {
+                this.exitFullscreenMode();
+            }).catch(err => {
+                console.error('Error exiting fullscreen:', err);
+            });
+        } else {
+            // Enter fullscreen
+            videoContainer.requestFullscreen().then(() => {
+                this.enterFullscreenMode();
+            }).catch(err => {
+                console.error('Error entering fullscreen:', err);
+                // Fallback to video element fullscreen if container fails
+                const remoteVideo = document.getElementById('remoteVideo');
+                if (remoteVideo) {
+                    remoteVideo.requestFullscreen().catch(fallbackErr => {
+                        console.error('Fallback fullscreen also failed:', fallbackErr);
+                    });
+                }
+            });
+        }
+        
+        // Update button icon
+        if (fullscreenBtn) {
+            const icon = fullscreenBtn.querySelector('i');
+            if (icon) {
+                if (document.fullscreenElement) {
+                    icon.className = 'fas fa-compress text-white';
+                    fullscreenBtn.title = 'Exit Fullscreen';
+                } else {
+                    icon.className = 'fas fa-expand text-white';
+                    fullscreenBtn.title = 'Fullscreen';
+                }
             }
+        }
+    }
+    
+    enterFullscreenMode() {
+        console.log('Entering enhanced fullscreen mode');
+        
+        // Add fullscreen-specific styles
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        if (videoContainer) {
+            videoContainer.classList.add('fullscreen-active');
+        }
+        
+        // Enhance video controls visibility in fullscreen
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        if (controlBar) {
+            controlBar.classList.add('fullscreen-controls');
+        }
+        
+        // Enhance local video positioning in fullscreen
+        const localVideoContainer = document.getElementById('selfVideoContainer');
+        if (localVideoContainer) {
+            localVideoContainer.classList.add('fullscreen-local-video');
+        }
+        
+        // Show fullscreen info overlay
+        this.showFullscreenInfo();
+        
+        // Ensure controls are visible initially, then auto-hide
+        this.startControlsAutoHide();
+    }
+    
+    exitFullscreenMode() {
+        console.log('Exiting enhanced fullscreen mode');
+        
+        // Remove fullscreen-specific styles
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        if (videoContainer) {
+            videoContainer.classList.remove('fullscreen-active');
+        }
+        
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        if (controlBar) {
+            controlBar.classList.remove('fullscreen-controls', 'controls-hidden');
+        }
+        
+        const localVideoContainer = document.getElementById('selfVideoContainer');
+        if (localVideoContainer) {
+            localVideoContainer.classList.remove('fullscreen-local-video');
+        }
+        
+        // Clear auto-hide timer
+        this.stopControlsAutoHide();
+        
+        // Remove fullscreen info overlay
+        this.hideFullscreenInfo();
+        
+        // Update button icon
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
+        if (fullscreenBtn) {
+            const icon = fullscreenBtn.querySelector('i');
+            if (icon) {
+                icon.className = 'fas fa-expand text-white';
+                fullscreenBtn.title = 'Fullscreen';
+            }
+        }
+    }
+    
+    startControlsAutoHide() {
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        
+        if (!videoContainer || !controlBar) return;
+        
+        let hideTimer;
+        let isMouseOverControls = false;
+        
+        const showControls = () => {
+            controlBar.classList.remove('controls-hidden');
+            clearTimeout(hideTimer);
+            
+            if (!isMouseOverControls) {
+                hideTimer = setTimeout(() => {
+                    if (!isMouseOverControls) {
+                        controlBar.classList.add('controls-hidden');
+                    }
+                }, 3000);
+            }
+        };
+        
+        const hideControls = () => {
+            if (!isMouseOverControls) {
+                controlBar.classList.add('controls-hidden');
+            }
+        };
+        
+        // Show controls on mouse movement
+        videoContainer.addEventListener('mousemove', showControls);
+        videoContainer.addEventListener('click', showControls);
+        
+        // Prevent hiding when hovering over controls
+        controlBar.addEventListener('mouseenter', () => {
+            isMouseOverControls = true;
+            clearTimeout(hideTimer);
+        });
+        
+        controlBar.addEventListener('mouseleave', () => {
+            isMouseOverControls = false;
+            hideTimer = setTimeout(() => {
+                controlBar.classList.add('controls-hidden');
+            }, 1000);
+        });
+        
+        // Store references for cleanup
+        this.fullscreenMouseHandler = showControls;
+        this.fullscreenClickHandler = showControls;
+        this.controlsMouseEnter = () => {
+            isMouseOverControls = true;
+            clearTimeout(hideTimer);
+        };
+        this.controlsMouseLeave = () => {
+            isMouseOverControls = false;
+            hideTimer = setTimeout(() => {
+                controlBar.classList.add('controls-hidden');
+            }, 1000);
+        };
+        
+        // Initial hide timer
+        hideTimer = setTimeout(hideControls, 3000);
+    }
+    
+    stopControlsAutoHide() {
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        const controlBar = document.querySelector('.absolute.bottom-6');
+        
+        if (videoContainer && this.fullscreenMouseHandler) {
+            videoContainer.removeEventListener('mousemove', this.fullscreenMouseHandler);
+            videoContainer.removeEventListener('click', this.fullscreenClickHandler);
+        }
+        
+        if (controlBar) {
+            if (this.controlsMouseEnter) {
+                controlBar.removeEventListener('mouseenter', this.controlsMouseEnter);
+            }
+            if (this.controlsMouseLeave) {
+                controlBar.removeEventListener('mouseleave', this.controlsMouseLeave);
+            }
+        }
+    }
+    
+    showFullscreenInfo() {
+        // Remove existing info if any
+        this.hideFullscreenInfo();
+        
+        const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+        if (!videoContainer) return;
+        
+        const infoOverlay = document.createElement('div');
+        infoOverlay.id = 'fullscreenInfo';
+        infoOverlay.className = 'absolute top-6 right-6 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-xl text-sm text-white z-10 opacity-0 transition-opacity duration-300';
+        infoOverlay.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-expand text-blue-400"></i>
+                <span>Fullscreen Mode</span>
+            </div>
+            <div class="text-xs text-gray-300 mt-1">Press ESC to exit</div>
+        `;
+        
+        videoContainer.appendChild(infoOverlay);
+        
+        // Animate in
+        setTimeout(() => {
+            infoOverlay.classList.remove('opacity-0');
+            infoOverlay.classList.add('opacity-100');
+        }, 100);
+        
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+            infoOverlay.classList.remove('opacity-100');
+            infoOverlay.classList.add('opacity-0');
+        }, 4000);
+    }
+    
+    hideFullscreenInfo() {
+        const existingInfo = document.getElementById('fullscreenInfo');
+        if (existingInfo) {
+            existingInfo.remove();
         }
     }
     
@@ -1204,6 +1773,81 @@ class VideoCounselingClient {
             qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
             qualityElement.className = `connection-${quality}`;
         }
+    }
+    
+    // Method to manually initialize tabs if needed
+    initializeTabs() {
+        console.log('Manually initializing tabs...');
+        
+        // Find all tab buttons and contents
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        console.log('Found tab buttons:', tabButtons.length);
+        console.log('Found tab contents:', tabContents.length);
+        
+        if (tabButtons.length === 0 || tabContents.length === 0) {
+            console.error('No tabs found to initialize');
+            return;
+        }
+        
+        // Hide all contents first
+        tabContents.forEach(content => {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+        });
+        
+        // Remove active from all buttons
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+        });
+        
+        // Activate first tab
+        const firstButton = tabButtons[0];
+        const firstTabName = firstButton.getAttribute('data-tab');
+        
+        if (firstTabName) {
+            console.log('Activating first tab:', firstTabName);
+            this.switchTab(firstTabName);
+        } else {
+            console.error('First tab button has no data-tab attribute');
+        }
+    }
+    
+    // Method to force show tabs (for debugging)
+    forceShowTabs() {
+        console.log('Force showing all tabs for debugging...');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach((content, index) => {
+            console.log(`Tab content ${index}:`, content.getAttribute('data-tab'), 'hidden?', content.classList.contains('hidden'));
+            if (index === 0) {
+                content.classList.remove('hidden');
+                content.classList.add('active');
+            }
+        });
+   }
+    
+    // Debug method for testing tabs from console
+    debugTabs() {
+        console.log('=== TAB DEBUGGING ===');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        console.log('Tab buttons found:', tabButtons.length);
+        tabButtons.forEach((btn, i) => {
+            console.log(`Button ${i}:`, btn.getAttribute('data-tab'), 'classes:', btn.className);
+        });
+        
+        console.log('Tab contents found:', tabContents.length);
+        tabContents.forEach((content, i) => {
+            console.log(`Content ${i}:`, content.getAttribute('data-tab'), 'classes:', content.className);
+        });
+        
+        // Try to switch to info tab
+        console.log('Attempting to switch to info tab...');
+        this.switchTab('info');
+        
+        console.log('=== END TAB DEBUGGING ===');
     }
 }
 
