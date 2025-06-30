@@ -109,6 +109,8 @@ KapiyuGuide Office{% endblock %} {% block content %}
 
       <form
         id="newAnnouncementForm"
+        action="{{ url_for('office.create_announcement') }}"
+        method="POST"
         class="mt-6"
         enctype="multipart/form-data"
       >
@@ -160,6 +162,7 @@ KapiyuGuide Office{% endblock %} {% block content %}
                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
                   checked
                 />
+                <input type="hidden" name="visibility" id="visibility-hidden" value="public" />
                 <label
                   for="is-public"
                   class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
@@ -206,10 +209,11 @@ KapiyuGuide Office{% endblock %} {% block content %}
                   <span>Upload a file</span>
                   <input
                     id="announcement-image"
-                    name="image"
+                    name="images[]"
                     type="file"
                     class="sr-only"
                     accept="image/*"
+                    multiple
                   />
                 </label>
                 <p class="pl-1">or drag and drop</p>
@@ -545,8 +549,10 @@ KapiyuGuide Office{% endblock %} {% block content %}
     if (isPublicCheckbox) {
       isPublicCheckbox.addEventListener('change', function() {
         const visibilityLabel = document.getElementById('visibility-label');
-        if (visibilityLabel) {
+        const visibilityHidden = document.getElementById('visibility-hidden');
+        if (visibilityLabel && visibilityHidden) {
           visibilityLabel.textContent = this.checked ? 'Public' : 'Private';
+          visibilityHidden.value = this.checked ? 'public' : 'office';
         }
       });
     }

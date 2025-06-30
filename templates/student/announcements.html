@@ -1,401 +1,732 @@
-{% extends "student/student_base.html" %} {% block title %}Announcements -
-KapiyuGuide{% endblock %} {% block extra_head %}
-<link
-  href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-  rel="stylesheet"
-/>
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-/>
+{% extends "student/student_base.html" %}
+{% block title %}Announcements - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
 <style>
-  :root {
-    --primary-color: #4f46e5;
-    --primary-hover: #4338ca;
-    --light-bg: #f9fafb;
-    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-      0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-
-  body {
-    background-color: var(--light-bg);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      Helvetica, Arial, sans-serif;
-  }
-
-  /* Modern Card Design */
-  .announcement-card {
-    transition: all 0.3s ease;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .announcement-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  }
-
-  /* Search bar */
-  .search-container {
-    position: relative;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 12px 20px 12px 45px;
-    border-radius: 9999px;
-    border: 1px solid rgba(229, 231, 235, 1);
-    background-color: rgba(249, 250, 251, 1);
-    font-size: 0.95rem;
-    transition: all 0.3s ease;
-  }
-
-  .search-input:focus {
-    background-color: white;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #9ca3af;
-  }
-
-  /* Loading indicator */
-  .loader-ring {
-    display: inline-block;
-    width: 40px;
-    height: 40px;
-  }
-
-  .loader-ring:after {
-    content: " ";
-    display: block;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 4px solid var(--primary-color);
-    border-color: var(--primary-color) transparent var(--primary-color)
-      transparent;
-    animation: loader-ring 1.2s linear infinite;
-  }
-
-  @keyframes loader-ring {
-    0% {
-      transform: rotate(0deg);
+    /* Modern Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+        overflow: hidden;
     }
-    100% {
-      transform: rotate(360deg);
+    
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.3;
     }
-  }
+
+    /* Enhanced Announcement Cards */
+    .announcement-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e2e8f0;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .announcement-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .announcement-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        border-color: #3b82f6;
+    }
+    
+    .announcement-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    /* Enhanced Search and Filter Container */
+    .search-filter-container {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .search-filter-container:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Enhanced Search Bar */
+    .search-container {
+        position: relative;
+    }
+    
+    .search-input {
+        width: 100%;
+        padding: 16px 20px 16px 48px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .search-input:focus {
+        background: white;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        transition: color 0.3s ease;
+    }
+    
+    .search-container:focus-within .search-icon {
+        color: #3b82f6;
+    }
+
+    /* Filter Pills */
+    .filter-pill {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        border: 1px solid #cbd5e1;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .filter-pill::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+        z-index: 0;
+    }
+    
+    .filter-pill.active::before {
+        transform: scaleX(1);
+    }
+    
+    .filter-pill.active {
+        color: white;
+        border-color: #3b82f6;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .filter-pill:hover:not(.active) {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .filter-pill span,
+    .filter-pill i {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #0ea5e9;
+        color: #0369a1;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .action-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+        z-index: 0;
+    }
+    
+    .action-btn:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .action-btn:hover {
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);
+    }
+    
+    .action-btn span,
+    .action-btn i {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #0ea5e9;
+        color: #0369a1;
+        transition: all 0.2s ease;
+    }
+    
+    .status-badge.public {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        border-color: #22c55e;
+        color: #166534;
+    }
+    
+    .status-badge.new {
+        background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+        border-color: #8b5cf6;
+        color: #6b21a8;
+    }
+    
+    .status-badge.priority {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-color: #f59e0b;
+        color: #92400e;
+    }
+    
+    .status-badge:hover {
+        transform: scale(1.05);
+    }
+
+    /* Typography Enhancement */
+    .announcement-title {
+        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.4;
+    }
+
+    /* Image Gallery */
+    .image-gallery {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .image-gallery:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Author Avatar */
+    .author-avatar {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .author-avatar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px solid rgba(59, 130, 246, 0);
+        border-radius: inherit;
+        transition: border-color 0.3s ease;
+    }
+    
+    .announcement-card:hover .author-avatar::after {
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    /* Statistics Cards */
+    .stat-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+        border-color: #3b82f6;
+    }
+
+    /* Ensure stats text is visible on header background */
+    .page-header .stat-card {
+        background: rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .page-header .stat-card .text-white {
+        color: white !important;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .page-header .stat-card .text-indigo-100 {
+        color: rgba(199, 210, 254, 1) !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Animations */
+    .fade-in-up {
+        animation: fadeInUp 0.6s ease-out forwards;
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .slide-in-right {
+        animation: slideInRight 0.5s ease-out forwards;
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    
+    @keyframes slideInRight {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Loading Spinner */
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e2e8f0;
+        border-left-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Empty State */
+    .empty-state {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 2px dashed #cbd5e1;
+        transition: all 0.3s ease;
+    }
+    
+    .empty-state:hover {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    }
+
+    /* Interactive Elements */
+    .interactive-element {
+        transition: all 0.2s ease;
+    }
+    
+    .interactive-element:hover {
+        transform: scale(1.02);
+    }
+
+    /* Improved Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+        border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+    }
 </style>
 {% endblock %} {% block content %}
-<div class="container mx-auto px-4 py-8 max-w-6xl">
-  <!-- Page Header with Subtle Shadow -->
-  <div
-    class="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white rounded-lg shadow-sm p-4"
-  >
-    <div class="flex items-center">
-      <i class="fas fa-bullhorn text-indigo-600 text-2xl mr-3"></i>
-      <h1 class="text-2xl font-bold text-gray-800">University Announcements</h1>
-    </div>
-    <div class="search-container w-full md:w-96 mt-4 sm:mt-0">
-      <span class="search-icon">
-        <i class="fas fa-search"></i>
-      </span>
-      <input
-        type="text"
-        id="announcement-search"
-        placeholder="Search announcements..."
-        class="search-input focus:outline-none focus:ring-0"
-      />
-    </div>
-  </div>
-
-  <!-- Filters in Floating Card -->
-  <div
-    class="bg-white p-4 rounded-lg shadow-md mb-6 transition-all duration-200 hover:shadow-lg"
-  >
-    <div class="flex items-center mb-2">
-      <i class="fas fa-filter text-indigo-600 mr-2"></i>
-      <h2 class="text-lg font-semibold text-gray-800">Filters</h2>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-4">
-      <div class="flex-grow md:flex-grow-0 min-w-[180px]">
-        <label
-          for="timeFilter"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Time Period</label
-        >
-        <div class="relative">
-          <select
-            id="timeFilter"
-            class="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-          >
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-          >
-            <i class="fas fa-chevron-down text-xs"></i>
-          </div>
+<div class="min-h-screen bg-gray-50">
+    <!-- Modern Page Header -->
+    <div class="page-header rounded-none md:rounded-b-3xl shadow-lg mb-8 relative">
+        <div class="container mx-auto px-4 py-12 relative z-10">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+                <div class="flex-1">
+                    <div class="flex items-center mb-4">
+                        <div class="w-16 h-16 bg-white bg-opacity-20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                            <i class="fas fa-bullhorn text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-4xl font-bold text-white mb-2">University Announcements</h1>
+                            <p class="text-indigo-100 text-lg max-w-2xl">Stay updated with the latest news, events, and important information from university offices</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 gap-4 w-full lg:w-auto">
+                    <div class="stat-card rounded-2xl p-4 text-center backdrop-blur-sm bg-white bg-opacity-10 border border-white border-opacity-20">
+                        <div class="text-2xl font-bold text-white">{{ total_announcements_count|default(0) }}</div>
+                        <div class="text-indigo-100 text-sm">Total Posts</div>
+                    </div>
+                    <div class="stat-card rounded-2xl p-4 text-center backdrop-blur-sm bg-white bg-opacity-10 border border-white border-opacity-20">
+                        <div class="text-2xl font-bold text-white">{{ new_announcements_count|default(0) }}</div>
+                        <div class="text-indigo-100 text-sm">New Today</div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="flex-grow md:flex-grow-0 min-w-[180px]">
-        <label
-          for="officeFilter"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Office</label
-        >
-        <div class="relative">
-          <select
-            id="officeFilter"
-            class="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-          >
-            <option value="all">All Offices</option>
-            {% for office in offices %}
-            <option value="{{ office.id }}">{{ office.name }}</option>
-            {% endfor %}
-          </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-          >
-            <i class="fas fa-chevron-down text-xs"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex-grow md:flex-grow-0 min-w-[180px]">
-        <label
-          for="typeFilter"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Announcement Type</label
-        >
-        <div class="relative">
-          <select
-            id="typeFilter"
-            class="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-          >
-            <option value="all">All Types</option>
-            <option value="public">Public</option>
-            <option value="office">Office-specific</option>
-          </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-          >
-            <i class="fas fa-chevron-down text-xs"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex-grow md:flex-grow-0 self-end min-w-[120px]">
-        <button
-          id="applyFilters"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 w-full flex justify-center items-center"
-        >
-          <i class="fas fa-search mr-2"></i> Apply
-        </button>
-      </div>
-
-      <div class="flex-grow md:flex-grow-0 self-end min-w-[120px]">
-        <button
-          id="reset-filters"
-          class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 w-full flex justify-center items-center"
-        >
-          <i class="fas fa-redo-alt mr-2"></i> Reset
-        </button>
-      </div>
     </div>
-  </div>
 
-  <!-- Announcements Feed -->
-  <div id="announcements-container">
-    {% if announcements %}
-    <div class="space-y-6">
-      {% for announcement in announcements %}
-      <div
-        class="announcement-card bg-white shadow-md overflow-hidden relative border-l-4 {% if announcement.is_public %}border-green-500{% else %}border-blue-500{% endif %}"
-        data-office-id="{{ announcement.target_office_id }}"
-        data-is-public="{{ announcement.is_public|lower }}"
-        data-created-at="{{ announcement.created_at.strftime('%Y-%m-%d') }}"
-      >
-        <div class="p-5">
-          <!-- Author Information with Avatar -->
-          <div class="flex items-center mb-4">
-            <div
-              class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 mr-3"
-            >
-              {% if announcement.author.profile_pic %}
-              <img
-                src="{{ url_for('static', filename=announcement.author.profile_pic) }}"
-                alt="Profile"
-                class="h-10 w-10 object-cover"
-              />
-              {% else %}
-              <div
-                class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium border-2 border-white shadow-sm"
-              >
-                {{ announcement.author.first_name[0] }}{{
-                announcement.author.last_name[0] }}
-              </div>
-              {% endif %}
-            </div>            <div>
-              <div class="font-semibold text-gray-800">
-                {% if announcement.target_office %}
-                  {{ announcement.target_office.name }}
+    <div class="container mx-auto px-4 max-w-6xl">
+        <!-- Enhanced Search and Filter Section -->
+        <div class="search-filter-container rounded-2xl shadow-lg p-6 mb-8 relative">
+            <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+                <!-- Search Bar -->
+                <div class="flex-1 w-full lg:w-auto">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        <i class="fas fa-search mr-2 text-indigo-500"></i>Search Announcements
+                    </label>
+                    <div class="search-container group">
+                        <input
+                            type="text"
+                            id="announcement-search"
+                            placeholder="Search by title, content, or office..."
+                            class="search-input"
+                        />
+                        <div class="search-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                            <button type="button" id="clear-search" class="text-gray-400 hover:text-gray-600 hidden">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filter Pills -->
+            <div class="mt-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-filter mr-2 text-indigo-500"></i>Quick Filters
+                </label>
+                <div class="flex flex-wrap gap-3 mb-6">
+                    <button id="filter-all" class="filter-pill active px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm">
+                        <span><i class="fas fa-th-large mr-2"></i>All Announcements</span>
+                    </button>
+                    <button id="filter-new" class="filter-pill px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm">
+                        <span><i class="fas fa-star mr-2"></i>New</span>
+                    </button>
+                    <button id="filter-public" class="filter-pill px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm">
+                        <span><i class="fas fa-globe mr-2"></i>Public</span>
+                    </button>
+                    <button id="filter-office" class="filter-pill px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm">
+                        <span><i class="fas fa-building mr-2"></i>Office Specific</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Filters -->
+            <div class="border-t border-gray-200 pt-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label for="timeFilter" class="block text-sm font-medium text-gray-700 mb-2">Time Period</label>
+                        <div class="relative">
+                            <select id="timeFilter" class="w-full border border-gray-300 rounded-xl shadow-sm px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option value="all">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                                <i class="fas fa-chevron-down text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="officeFilter" class="block text-sm font-medium text-gray-700 mb-2">Office</label>
+                        <div class="relative">
+                            <select id="officeFilter" class="w-full border border-gray-300 rounded-xl shadow-sm px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option value="all">All Offices</option>
+                                {% for office in offices %}
+                                <option value="{{ office.id }}">{{ office.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                                <i class="fas fa-chevron-down text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="typeFilter" class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                        <div class="relative">
+                            <select id="typeFilter" class="w-full border border-gray-300 rounded-xl shadow-sm px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option value="all">All Types</option>
+                                <option value="public">Public</option>
+                                <option value="office">Office-specific</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                                <i class="fas fa-chevron-down text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-2">
+                        <button id="applyFilters" class="action-btn flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm">
+                            <i class="fas fa-search mr-2"></i>
+                            <span>Apply</span>
+                        </button>
+                        <button id="reset-filters" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-sm">
+                            <i class="fas fa-undo mr-2"></i>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modern Announcements Feed -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Latest Announcements</h2>
+                <div class="text-sm text-gray-500 flex items-center">
+                    <span id="announcement-count">{{ total_announcements_count|default(0) }}</span> announcements
+                </div>
+            </div>
+            
+            <div id="announcements-container">
+                {% if announcements %}
+                <div class="space-y-8">
+                    {% for announcement in announcements %}
+                    <div class="announcement-card fade-in-up rounded-2xl shadow-lg group" 
+                         data-office-id="{{ announcement.target_office_id|default('') }}"
+                         data-is-public="{{ announcement.is_public|lower }}"
+                         data-is-new="{{ announcement.is_new|lower }}"
+                         data-created-at="{{ announcement.created_at.strftime('%Y-%m-%d') }}">
+                        <div class="p-8">
+                            <!-- Enhanced Author Information -->
+                            <div class="flex items-start justify-between mb-6">
+                                <div class="flex items-center flex-1">
+                                    <div class="author-avatar w-14 h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 mr-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                                        {% if announcement.author.profile_pic %}
+                                        <img src="{{ url_for('static', filename=announcement.author.profile_pic) }}" 
+                                             alt="Profile" class="w-14 h-14 object-cover"/>
+                                        {% else %}
+                                        <div class="w-14 h-14 flex items-center justify-center text-white font-bold text-lg">
+                                            {{ announcement.author.first_name[0] }}{{ announcement.author.last_name[0] }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors duration-200">
+                                            {% if announcement.target_office %}
+                                                {{ announcement.target_office.name }}
+                                            {% else %}
+                                                University Administration
+                                            {% endif %}
+                                        </h4>
+                                        <div class="flex items-center text-sm text-gray-500 mb-2">
+                                            <i class="fas fa-clock mr-2"></i>
+                                            <span>{{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-2">
+                                            {% if announcement.is_public %}
+                                            <span class="status-badge public inline-flex items-center px-3 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-globe mr-1"></i>Public
+                                            </span>
+                                            {% else %}
+                                            <span class="status-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-building mr-1"></i>Office Specific
+                                            </span>
+                                            {% endif %}
+                                            
+                                            {% if announcement.is_new %}
+                                            <span class="status-badge new inline-flex items-center px-3 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-star mr-1"></i>New
+                                            </span>
+                                            {% endif %}
+                                            
+                                            {% if announcement.priority %}
+                                            <span class="status-badge priority inline-flex items-center px-3 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-exclamation mr-1"></i>Priority
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Action Menu -->
+                                <div class="flex items-center gap-2">
+                                    <button class="interactive-element w-10 h-10 rounded-full bg-gray-100 hover:bg-indigo-50 flex items-center justify-center transition-all duration-200 group">
+                                        <i class="far fa-bookmark text-gray-400 group-hover:text-indigo-500"></i>
+                                    </button>
+                                    <button class="interactive-element w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200">
+                                        <i class="fas fa-ellipsis-h text-gray-400"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Enhanced Title -->
+                            <h3 class="announcement-title text-2xl font-bold mb-4 leading-tight">
+                                {{ announcement.title }}
+                            </h3>
+                            
+                            <!-- Content Preview -->
+                            <div class="announcement-excerpt text-gray-700 mb-6 leading-relaxed text-lg">
+                                {{ announcement.content|safe|striptags|truncate(200) }}
+                            </div>
+                            
+                            <!-- Enhanced Image Gallery -->
+                            {% if announcement.images and announcement.images|length > 0 %}
+                            <div class="mb-6">
+                                {% set image_count = announcement.images|length %}
+                                {% if image_count == 1 %}
+                                <!-- Single Image Layout -->
+                                <div class="image-gallery">
+                                    <img src="{{ url_for('static', filename=announcement.images[0].image_path) }}" 
+                                         alt="Announcement image" 
+                                         class="w-full h-80 object-cover" 
+                                         loading="lazy"/>
+                                </div>
+                                {% elif image_count > 1 %}
+                                <!-- Multiple Images Layout -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    {% for image in announcement.images[:4] %}
+                                    <div class="image-gallery {% if loop.index == 1 and image_count > 2 %}col-span-2{% endif %}">
+                                        <img src="{{ url_for('static', filename=image.image_path) }}" 
+                                             alt="Announcement image" 
+                                             class="w-full h-48 {% if loop.index == 1 and image_count > 2 %}h-64{% endif %} object-cover" 
+                                             loading="lazy"/>
+                                        {% if loop.index == 4 and image_count > 4 %}
+                                        <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                                            <span class="text-white text-xl font-semibold">+{{ image_count - 4 }} more</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Enhanced Action Section -->
+                            <div class="flex items-center justify-between pt-6 border-t border-gray-100">
+                                <div class="flex items-center gap-6">
+                                    <button class="interactive-element flex items-center text-gray-500 hover:text-indigo-600 transition-colors duration-200">
+                                        <i class="far fa-heart mr-2"></i>
+                                        <span class="text-sm font-medium">Like</span>
+                                    </button>
+                                    <button class="interactive-element flex items-center text-gray-500 hover:text-indigo-600 transition-colors duration-200">
+                                        <i class="far fa-comment mr-2"></i>
+                                        <span class="text-sm font-medium">Comment</span>
+                                    </button>
+                                    <button class="interactive-element flex items-center text-gray-500 hover:text-indigo-600 transition-colors duration-200">
+                                        <i class="fas fa-share mr-2"></i>
+                                        <span class="text-sm font-medium">Share</span>
+                                    </button>
+                                </div>
+                                
+                                <a href="{{ url_for('student.view_announcement', announcement_id=announcement.id) }}" 
+                                   class="action-btn px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm flex items-center">
+                                    <span>Read Full Article</span>
+                                    <i class="fas fa-arrow-right ml-2"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Enhanced Loading Indicator -->
+                    <div id="loader" class="flex justify-center py-12 hidden">
+                        <div class="text-center">
+                            <div class="loading-spinner mx-auto mb-4"></div>
+                            <p class="text-gray-500 font-medium">Loading more announcements...</p>
+                        </div>
+                    </div>
+                </div>
                 {% else %}
-                  University Admin
+                <!-- Enhanced Empty State -->
+                <div class="empty-state rounded-2xl p-16 text-center">
+                    <div class="max-w-md mx-auto">
+                        <div class="w-24 h-24 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fas fa-bullhorn text-indigo-500 text-3xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-700 mb-4">No Announcements Yet</h3>
+                        <p class="text-gray-500 mb-8 text-lg leading-relaxed">
+                            There are currently no announcements to display. Check back later for updates from university offices and administration.
+                        </p>
+                        <button onclick="location.reload()" class="action-btn px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-lg">
+                            <i class="fas fa-sync-alt mr-2"></i>
+                            <span>Refresh Page</span>
+                        </button>
+                    </div>
+                </div>
                 {% endif %}
-              </div>
-              <div class="flex items-center text-sm text-gray-600">
-                <i class="fas fa-clock text-xs mr-1"></i>
-                <span>{{ announcement.created_at.strftime('%B %d, %Y') }}</span>
-                <span class="mx-2">•</span>
-                {% if announcement.is_public %}
-                <span
-                  class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center"
-                >
-                  <i class="fas fa-globe-asia text-xs mr-1"></i> Public
-                </span>
-                {% else %}
-                <span
-                  class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center"
-                >
-                  <i class="fas fa-building text-xs mr-1"></i>
-                  {% if announcement.target_office %} {{
-                  announcement.target_office.name }} {% else %} Office {% endif
-                  %}
-                </span>
-                {% endif %} {% if announcement.is_new %}
-                <span
-                  class="ml-2 bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center"
-                >
-                  <i class="fas fa-star text-xs mr-1"></i> New
-                </span>
-                {% endif %}
-              </div>
             </div>
-          </div>
-
-          <!-- Announcement Title with Larger Font -->
-          <h3 class="text-xl font-semibold text-gray-800 mb-3">
-            {{ announcement.title }}
-          </h3>
-
-          <!-- Announcement Content -->
-          <div class="announcement-excerpt prose max-w-none text-gray-700 mb-4">
-            {{ announcement.content|safe|striptags|truncate(150) }}
-          </div>
-
-          <!-- Announcement Images if available -->
-          {% if announcement.images and announcement.images|length > 0 %}
-          <div class="mt-4">
-            {% set image_count = announcement.images|length %} {% if image_count
-            == 1 %}
-            <!-- Single Image Layout -->
-            <div class="relative rounded-lg overflow-hidden">
-              <img
-                src="{{ url_for('static', filename=announcement.images[0].image_path) }}"
-                alt="Announcement image"
-                class="w-full h-64 sm:h-80 object-cover rounded-lg shadow-sm"
-                loading="lazy"
-              />
-            </div>
-            {% elif image_count > 1 %}
-            <!-- Multiple Images Layout -->
-            <div class="grid grid-cols-2 gap-2">
-              {% for image in announcement.images[:2] %}
-              <div class="relative rounded-lg overflow-hidden">
-                <img
-                  src="{{ url_for('static', filename=image.image_path) }}"
-                  alt="Announcement image"
-                  class="w-full h-48 object-cover rounded-lg shadow-sm"
-                  loading="lazy"
-                />
-              </div>
-              {% endfor %} {% if image_count > 2 %}
-              <div class="col-span-2 text-center mt-2 text-sm text-gray-500">
-                + {{ image_count - 2 }} more image(s)
-              </div>
-              {% endif %}
-            </div>
-            {% endif %}
-          </div>
-          {% endif %}
-
-          <!-- Read More Link -->
-          <div class="mt-4 pt-3 border-t border-gray-100 flex justify-end">
-            <a
-              href="{{ url_for('student.view_announcement', announcement_id=announcement.id) }}"
-              class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              Read More <i class="fas fa-chevron-right ml-2 text-xs"></i>
-            </a>
-          </div>
         </div>
-      </div>
-      {% endfor %}
 
-      <!-- Loading indicator for infinite scroll -->
-      <div id="loader" class="flex justify-center py-8 hidden">
-        <div class="loader-ring"></div>
-      </div>
+        <!-- Enhanced No Results Message -->
+        <div id="no-results" class="hidden">
+            <div class="empty-state rounded-2xl p-16 text-center">
+                <div class="max-w-md mx-auto">
+                    <div class="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-search text-gray-400 text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-700 mb-4">No Matching Announcements</h3>
+                    <p class="text-gray-500 mb-8 text-lg leading-relaxed">
+                        No announcements match your current search or filters. Try adjusting your criteria to find what you're looking for.
+                    </p>
+                    <button id="reset-filters-alt" class="action-btn px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-lg">
+                        <i class="fas fa-undo mr-2"></i>
+                        <span>Reset All Filters</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-    {% else %}
-    <!-- Empty state -->
-    <div class="bg-white rounded-lg shadow-md p-8 text-center">
-      <div class="text-indigo-400 mb-4">
-        <i class="fas fa-bullhorn fa-4x"></i>
-      </div>
-      <h3 class="text-xl font-medium text-gray-700 mb-2">
-        No Announcements Yet
-      </h3>
-      <p class="text-gray-500 max-w-md mx-auto">
-        There are currently no announcements to display. Check back later for
-        updates from university offices.
-      </p>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- No results message (initially hidden) -->
-  <div
-    id="no-results"
-    class="hidden bg-white rounded-lg shadow-md p-8 text-center mt-6"
-  >
-    <div class="text-indigo-400 mb-4">
-      <i class="fas fa-search fa-4x"></i>
-    </div>
-    <h3 class="text-xl font-medium text-gray-700 mb-2">
-      No Matching Announcements
-    </h3>
-    <p class="text-gray-500 max-w-md mx-auto">
-      No announcements match your current search or filters. Try adjusting your
-      criteria to find what you're looking for.
-    </p>
-    <button
-      id="reset-filters-alt"
-      class="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium shadow-sm hover:bg-indigo-700 transition-colors"
-    >
-      Reset Filters
-    </button>
-  </div>
 </div>
-{% endblock %} {% block scripts %}
+{% endblock %}
+
+{% block scripts %}
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    // Elements
+document.addEventListener("DOMContentLoaded", function () {
+    // DOM Elements
     const searchInput = document.getElementById("announcement-search");
+    const clearSearchBtn = document.getElementById("clear-search");
     const announcementCards = document.querySelectorAll(".announcement-card");
+    const announcementCount = document.getElementById("announcement-count");
     const noResults = document.getElementById("no-results");
     const container = document.getElementById("announcements-container");
     const resetBtn = document.getElementById("reset-filters");
@@ -405,270 +736,522 @@ KapiyuGuide{% endblock %} {% block extra_head %}
     const timeFilter = document.getElementById("timeFilter");
     const officeFilter = document.getElementById("officeFilter");
     const typeFilter = document.getElementById("typeFilter");
-
-    // Active filters state
-    let activeFilters = {
-      time: "all",
-      office: "all",
-      type: "all",
+    
+    // Filter Pills
+    const filterButtons = {
+        all: document.getElementById("filter-all"),
+        new: document.getElementById("filter-new"),
+        public: document.getElementById("filter-public"),
+        office: document.getElementById("filter-office")
     };
 
-    // Variables for infinite scroll
+    // State Management
+    let currentFilter = 'all';
+    let searchTimeout;
+    let activeFilters = {
+        time: "all",
+        office: "all",
+        type: "all",
+    };
+
+    // Pagination Variables
     let page = 1;
-    const cardsPerPage = 10;
+    const cardsPerPage = 5;
     let isLoading = false;
     let hasMoreContent = true;
     let displayedCards = [...announcementCards];
 
-    // Initially show only first set of cards
+    // Initialize
+    initializeAnimations();
     initializeCards();
+    setupEventListeners();
 
-    function initializeCards() {
-      // Hide all cards first
-      announcementCards.forEach((card, index) => {
-        if (index >= cardsPerPage) {
-          card.classList.add("hidden");
-        } else {
-          card.classList.remove("hidden");
-        }
-      });
-
-      // Update displayed cards array
-      displayedCards = Array.from(announcementCards).slice(0, cardsPerPage);
+    function initializeAnimations() {
+        const elements = document.querySelectorAll('.fade-in-up');
+        elements.forEach((el, index) => {
+            setTimeout(() => {
+                el.style.animationPlayState = 'running';
+            }, index * 100);
+        });
     }
 
-    // Function to filter announcements
-    function filterAnnouncements() {
-      const searchTerm = searchInput.value.toLowerCase();
-      let visibleCount = 0;
-      let filteredCards = [];
+    function initializeCards() {
+        // Don't hide cards initially, show all by default
+        announcementCards.forEach((card) => {
+            card.classList.remove("hidden");
+        });
+        
+        displayedCards = Array.from(announcementCards);
+        
+        // Only implement pagination if there are many cards
+        if (announcementCards.length > cardsPerPage) {
+            displayedCards = Array.from(announcementCards).slice(0, cardsPerPage);
+            hasMoreContent = true;
+            
+            // Hide cards beyond the first page
+            announcementCards.forEach((card, index) => {
+                if (index >= cardsPerPage) {
+                    card.classList.add("hidden");
+                }
+            });
+        } else {
+            hasMoreContent = false;
+        }
+        
+        if (hasMoreContent) {
+            loader.classList.remove("hidden");
+        } else {
+            loader.classList.add("hidden");
+        }
+    }
 
-      announcementCards.forEach((card) => {
+    function setupEventListeners() {
+        // Search functionality
+        searchInput.addEventListener("input", function () {
+            clearTimeout(searchTimeout);
+            const searchTerm = this.value.trim();
+            
+            if (searchTerm) {
+                clearSearchBtn.classList.remove('hidden');
+            } else {
+                clearSearchBtn.classList.add('hidden');
+            }
+            
+            searchTimeout = setTimeout(() => {
+                performSearch(searchTerm);
+            }, 300);
+        });
+
+        // Clear search
+        clearSearchBtn.addEventListener("click", function() {
+            searchInput.value = '';
+            this.classList.add('hidden');
+            performSearch('');
+            searchInput.focus();
+        });
+
+        // Filter Pills
+        Object.keys(filterButtons).forEach(key => {
+            if (filterButtons[key]) {
+                filterButtons[key].addEventListener("click", function() {
+                    setActiveFilter(this, key);
+                    applyQuickFilter(key);
+                });
+            }
+        });
+
+        // Advanced Filters
+        applyFiltersBtn.addEventListener("click", function () {
+            const icon = this.querySelector('i');
+            icon.classList.add('fa-spin');
+            
+            activeFilters.time = timeFilter.value;
+            activeFilters.office = officeFilter.value;
+            activeFilters.type = typeFilter.value;
+
+            setTimeout(() => {
+                filterAnnouncements();
+                icon.classList.remove('fa-spin');
+                showNotification('Filters applied successfully!', 'success');
+            }, 500);
+        });
+
+        // Reset functionality
+        resetBtn.addEventListener("click", resetFilters);
+        resetBtnAlt.addEventListener("click", resetFilters);
+
+        // Infinite scroll
+        window.addEventListener("scroll", throttle(handleScroll, 200));
+
+        // Interactive elements
+        setupInteractiveElements();
+    }
+
+    function performSearch(searchTerm) {
+        let visibleCount = 0;
+        const normalizedSearch = searchTerm.toLowerCase();
+        
+        announcementCards.forEach((card) => {
+            const title = card.querySelector("h3").textContent.toLowerCase();
+            const content = card.querySelector(".announcement-excerpt").textContent.toLowerCase();
+            const office = card.querySelector("h4").textContent.toLowerCase();
+
+            const isMatch = !searchTerm || 
+                           title.includes(normalizedSearch) ||
+                           content.includes(normalizedSearch) ||
+                           office.includes(normalizedSearch);
+
+            if (isMatch && shouldShowCard(card, currentFilter)) {
+                showCard(card);
+                visibleCount++;
+            } else {
+                hideCard(card);
+            }
+        });
+        
+        updateAnnouncementCount(visibleCount);
+        toggleNoResultsMessage(visibleCount === 0 && announcementCards.length > 0);
+    }
+
+    function applyQuickFilter(filterType) {
+        currentFilter = filterType;
+        let visibleCount = 0;
+        
+        announcementCards.forEach((card) => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const shouldShow = shouldShowCard(card, filterType) && 
+                             (searchTerm === '' || cardMatchesSearch(card, searchTerm));
+            
+            if (shouldShow) {
+                showCard(card);
+                visibleCount++;
+            } else {
+                hideCard(card);
+            }
+        });
+        
+        updateAnnouncementCount(visibleCount);
+        toggleNoResultsMessage(visibleCount === 0 && announcementCards.length > 0);
+    }
+
+    function filterAnnouncements() {
+        const searchTerm = searchInput.value.toLowerCase();
+        let visibleCount = 0;
+        let filteredCards = [];
+
+        announcementCards.forEach((card) => {
+            const title = card.querySelector("h3").textContent.toLowerCase();
+            const content = card.querySelector(".announcement-excerpt").textContent.toLowerCase();
+            const officeId = card.dataset.officeId;
+            const isPublic = card.dataset.isPublic === "true";
+            const createdAt = new Date(card.dataset.createdAt);
+            const office = card.querySelector("h4").textContent.toLowerCase();
+
+            // Search match
+            const matchesSearch = !searchTerm || 
+                                title.includes(searchTerm) ||
+                                content.includes(searchTerm) ||
+                                office.includes(searchTerm);
+
+            // Filter matches
+            const matchesOffice = activeFilters.office === "all" || officeId === activeFilters.office;
+            const matchesType = activeFilters.type === "all" ||
+                               (activeFilters.type === "public" && isPublic) ||
+                               (activeFilters.type === "office" && !isPublic);
+
+            // Date filter
+            let matchesDate = true;
+            const now = new Date();
+            if (activeFilters.time === "today") {
+                matchesDate = createdAt.toDateString() === now.toDateString();
+            } else if (activeFilters.time === "week") {
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(now.getDate() - 7);
+                matchesDate = createdAt >= oneWeekAgo;
+            } else if (activeFilters.time === "month") {
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(now.getMonth() - 1);
+                matchesDate = createdAt >= oneMonthAgo;
+            }
+
+            // Quick filter check
+            const matchesQuickFilter = shouldShowCard(card, currentFilter);
+
+            // Final match
+            const shouldShow = matchesSearch && matchesOffice && matchesType && 
+                             matchesDate && matchesQuickFilter;
+
+            if (shouldShow) {
+                showCard(card);
+                visibleCount++;
+                filteredCards.push(card);
+            } else {
+                hideCard(card);
+            }
+        });
+
+        // Reset pagination
+        page = 1;
+        displayedCards = filteredCards.slice(0, cardsPerPage);
+        hasMoreContent = filteredCards.length > cardsPerPage;
+
+        if (hasMoreContent) {
+            loader.classList.remove("hidden");
+        } else {
+            loader.classList.add("hidden");
+        }
+
+        updateAnnouncementCount(visibleCount);
+        toggleNoResultsMessage(visibleCount === 0 && announcementCards.length > 0);
+    }
+
+    function shouldShowCard(card, filterType) {
+        if (filterType === 'all') return true;
+        
+        const isNewAttr = card.dataset.isNew;
+        const isPublicAttr = card.dataset.isPublic;
+        const hasNewBadge = card.querySelector('.status-badge.new');
+        const hasPublicBadge = card.querySelector('.status-badge.public');
+        
+        switch (filterType) {
+            case 'new':
+                return isNewAttr === 'true' || hasNewBadge !== null;
+            case 'public':
+                return isPublicAttr === 'true' || hasPublicBadge !== null;
+            case 'office':
+                return isPublicAttr === 'false' || (isPublicAttr !== 'true' && !hasPublicBadge);
+            default:
+                return true;
+        }
+    }
+
+    function cardMatchesSearch(card, searchTerm) {
         const title = card.querySelector("h3").textContent.toLowerCase();
-        const content = card
-          .querySelector(".announcement-excerpt")
-          .textContent.toLowerCase();
+        const content = card.querySelector(".announcement-excerpt").textContent.toLowerCase();
+        const office = card.querySelector("h4").textContent.toLowerCase();
+        
+        return title.includes(searchTerm) ||
+               content.includes(searchTerm) ||
+               office.includes(searchTerm);
+    }
+
+    function setActiveFilter(button, filterType) {
+        Object.values(filterButtons).forEach(btn => {
+            if (btn) btn.classList.remove("active");
+        });
+        button.classList.add("active");
+    }
+
+    function showCard(card) {
+        card.style.display = "block";
+        card.style.opacity = "0";
+        card.style.transform = "translateY(20px)";
+        
+        requestAnimationFrame(() => {
+            card.style.transition = "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)";
+            card.style.opacity = "1";
+            card.style.transform = "translateY(0)";
+        });
+    }
+
+    function hideCard(card) {
+        card.style.transition = "all 0.3s ease";
+        card.style.opacity = "0";
+        card.style.transform = "translateY(-20px)";
+        
+        setTimeout(() => {
+            card.style.display = "none";
+        }, 300);
+    }
+
+    function updateAnnouncementCount(count) {
+        if (announcementCount) {
+            announcementCount.textContent = count;
+            announcementCount.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                announcementCount.style.transform = 'scale(1)';
+            }, 200);
+        }
+    }
+
+    function toggleNoResultsMessage(show) {
+        if (show) {
+            noResults.classList.remove('hidden');
+            container.classList.add('hidden');
+        } else {
+            noResults.classList.add('hidden');
+            container.classList.remove('hidden');
+        }
+    }
+
+    function resetFilters() {
+        searchInput.value = "";
+        clearSearchBtn.classList.add('hidden');
+        timeFilter.value = "all";
+        officeFilter.value = "all";
+        typeFilter.value = "all";
+        
+        activeFilters = { time: "all", office: "all", type: "all" };
+        currentFilter = 'all';
+        
+        setActiveFilter(filterButtons.all, 'all');
+        filterAnnouncements();
+        
+        showNotification('All filters have been reset', 'info');
+    }
+
+    function handleScroll() {
+        const scrollHeight = Math.max(
+            document.body.scrollHeight,
+            document.documentElement.scrollHeight
+        );
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const clientHeight = document.documentElement.clientHeight;
+
+        if (scrollTop + clientHeight >= scrollHeight - 300) {
+            loadMoreItems();
+        }
+    }
+
+    function loadMoreItems() {
+        if (isLoading || !hasMoreContent) return;
+
+        isLoading = true;
+        loader.classList.remove("hidden");
+
+        setTimeout(() => {
+            const allFilteredCards = Array.from(announcementCards).filter(card => {
+                return !card.classList.contains('hidden') || 
+                       (shouldShowCard(card, currentFilter) && 
+                        cardMatchesAdvancedFilters(card));
+            });
+
+            const nextPage = page + 1;
+            const startIndex = page * cardsPerPage;
+            const endIndex = startIndex + cardsPerPage;
+            const cardsToShow = allFilteredCards.slice(startIndex, endIndex);
+
+            cardsToShow.forEach((card) => {
+                showCard(card);
+                displayedCards.push(card);
+            });
+
+            page = nextPage;
+            hasMoreContent = endIndex < allFilteredCards.length;
+
+            if (!hasMoreContent) {
+                loader.classList.add("hidden");
+            }
+
+            isLoading = false;
+        }, 800);
+    }
+
+    function cardMatchesAdvancedFilters(card) {
         const officeId = card.dataset.officeId;
         const isPublic = card.dataset.isPublic === "true";
         const createdAt = new Date(card.dataset.createdAt);
         const now = new Date();
 
-        // Check search term
-        const matchesSearch =
-          !searchTerm ||
-          title.includes(searchTerm) ||
-          content.includes(searchTerm);
+        const matchesOffice = activeFilters.office === "all" || 
+                             (activeFilters.office && officeId && officeId === activeFilters.office);
+        const matchesType = activeFilters.type === "all" ||
+                           (activeFilters.type === "public" && isPublic) ||
+                           (activeFilters.type === "office" && !isPublic);
 
-        // Check office filter
-        const matchesOffice =
-          activeFilters.office === "all" || officeId === activeFilters.office;
-
-        // Check type filter
-        const matchesType =
-          activeFilters.type === "all" ||
-          (activeFilters.type === "public" && isPublic) ||
-          (activeFilters.type === "office" && !isPublic);
-
-        // Check date filter
         let matchesDate = true;
         if (activeFilters.time === "today") {
-          matchesDate = createdAt.toDateString() === now.toDateString();
+            matchesDate = createdAt.toDateString() === now.toDateString();
         } else if (activeFilters.time === "week") {
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(now.getDate() - 7);
-          matchesDate = createdAt >= oneWeekAgo;
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(now.getDate() - 7);
+            matchesDate = createdAt >= oneWeekAgo;
         } else if (activeFilters.time === "month") {
-          const oneMonthAgo = new Date();
-          oneMonthAgo.setMonth(now.getMonth() - 1);
-          matchesDate = createdAt >= oneMonthAgo;
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(now.getMonth() - 1);
+            matchesDate = createdAt >= oneMonthAgo;
         }
 
-        // Show or hide based on all filters
-        if (matchesSearch && matchesOffice && matchesType && matchesDate) {
-          filteredCards.push(card);
-          visibleCount++;
-        } else {
-          card.classList.add("hidden");
-        }
-      });
-
-      // Reset pagination when filters change
-      page = 1;
-
-      // Apply pagination to filtered cards
-      filteredCards.forEach((card, index) => {
-        if (index < cardsPerPage) {
-          card.classList.remove("hidden");
-        } else {
-          card.classList.add("hidden");
-        }
-      });
-
-      // Update displayed cards
-      displayedCards = filteredCards.slice(0, cardsPerPage);
-
-      // Update hasMoreContent flag
-      hasMoreContent = filteredCards.length > cardsPerPage;
-
-      // Show/hide loader
-      if (hasMoreContent) {
-        loader.classList.remove("hidden");
-      } else {
-        loader.classList.add("hidden");
-      }
-
-      // Show no results message if needed
-      if (visibleCount === 0 && announcementCards.length > 0) {
-        noResults.classList.remove("hidden");
-        container.firstElementChild?.classList.add("hidden");
-        loader.classList.add("hidden");
-      } else {
-        noResults.classList.add("hidden");
-        container.firstElementChild?.classList.remove("hidden");
-      }
+        return matchesOffice && matchesType && matchesDate;
     }
 
-    // Handle search input
-    searchInput.addEventListener("input", filterAnnouncements);
-
-    // Handle filter application
-    applyFiltersBtn.addEventListener("click", function () {
-      activeFilters.time = timeFilter.value;
-      activeFilters.office = officeFilter.value;
-      activeFilters.type = typeFilter.value;
-
-      filterAnnouncements();
-    });
-
-    // Handle reset functionality
-    function resetFilters() {
-      // Reset search input
-      searchInput.value = "";
-
-      // Reset filter dropdowns
-      timeFilter.value = "all";
-      officeFilter.value = "all";
-      typeFilter.value = "all";
-
-      // Reset active filters
-      activeFilters = {
-        time: "all",
-        office: "all",
-        type: "all",
-      };
-
-      // Apply filters
-      filterAnnouncements();
-    }
-
-    // Connect reset buttons
-    resetBtn.addEventListener("click", resetFilters);
-    resetBtnAlt.addEventListener("click", resetFilters);
-
-    // Implement infinite scrolling
-    function loadMoreItems() {
-      if (isLoading || !hasMoreContent) return;
-
-      isLoading = true;
-      loader.classList.remove("hidden");
-
-      // Simulate loading delay
-      setTimeout(() => {
-        const nextPage = page + 1;
-        const startIndex = page * cardsPerPage;
-        const endIndex = startIndex + cardsPerPage;
-
-        // Get all filtered cards that are currently hidden
-        const allFilteredCards = Array.from(announcementCards).filter(
-          (card) => {
-            const officeId = card.dataset.officeId;
-            const isPublic = card.dataset.isPublic === "true";
-            const createdAt = new Date(card.dataset.createdAt);
-            const now = new Date();
-            const searchTerm = searchInput.value.toLowerCase();
-            const title = card.querySelector("h3").textContent.toLowerCase();
-            const content = card
-              .querySelector(".announcement-excerpt")
-              .textContent.toLowerCase();
-
-            // Apply all current filters
-            const matchesSearch =
-              !searchTerm ||
-              title.includes(searchTerm) ||
-              content.includes(searchTerm);
-            const matchesOffice =
-              activeFilters.office === "all" ||
-              officeId === activeFilters.office;
-            const matchesType =
-              activeFilters.type === "all" ||
-              (activeFilters.type === "public" && isPublic) ||
-              (activeFilters.type === "office" && !isPublic);
-
-            // Check date filter
-            let matchesDate = true;
-            if (activeFilters.time === "today") {
-              matchesDate = createdAt.toDateString() === now.toDateString();
-            } else if (activeFilters.time === "week") {
-              const oneWeekAgo = new Date();
-              oneWeekAgo.setDate(now.getDate() - 7);
-              matchesDate = createdAt >= oneWeekAgo;
-            } else if (activeFilters.time === "month") {
-              const oneMonthAgo = new Date();
-              oneMonthAgo.setMonth(now.getMonth() - 1);
-              matchesDate = createdAt >= oneMonthAgo;
-            }
-
-            return matchesSearch && matchesOffice && matchesType && matchesDate;
-          }
-        );
-
-        // Get next page of cards
-        const cardsToShow = allFilteredCards.slice(startIndex, endIndex);
-
-        // Show these cards
-        cardsToShow.forEach((card) => {
-          card.classList.remove("hidden");
-          displayedCards.push(card);
+    function setupInteractiveElements() {
+        // Bookmark functionality
+        document.querySelectorAll('.fa-bookmark').forEach(bookmark => {
+            bookmark.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (this.classList.contains('far')) {
+                    this.classList.remove('far');
+                    this.classList.add('fas', 'text-indigo-500');
+                    showNotification('Announcement bookmarked', 'success');
+                } else {
+                    this.classList.remove('fas', 'text-indigo-500');
+                    this.classList.add('far');
+                    showNotification('Bookmark removed', 'info');
+                }
+                
+                // Animation
+                this.style.transform = 'scale(1.3)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 200);
+            });
+        });        // Like functionality
+        document.querySelectorAll('.fa-heart').forEach(heart => {
+            heart.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                if (this.classList.contains('far')) {
+                    this.classList.remove('far');
+                    this.classList.add('fas', 'text-red-500');
+                    showNotification('Liked!', 'success');
+                } else {
+                    this.classList.remove('fas', 'text-red-500');
+                    this.classList.add('far');
+                    showNotification('Like removed', 'info');
+                }
+                
+                // Animation
+                this.style.transform = 'scale(1.3)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 200);
+            });
         });
+    }
 
-        // Update state
-        page = nextPage;
-        hasMoreContent = endIndex < allFilteredCards.length;
-
-        // Hide loader if no more content
-        if (!hasMoreContent) {
-          loader.classList.add("hidden");
+    function throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
         }
-
-        isLoading = false;
-      }, 800); // Delay to simulate loading
     }
 
-    // Check if we need to load more items when user scrolls
-    window.addEventListener("scroll", () => {
-      // Calculate how far down the user has scrolled
-      const scrollHeight = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-      );
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
-      const clientHeight = document.documentElement.clientHeight;
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg transform translate-x-full transition-all duration-300 ${
+            type === 'success' ? 'bg-green-500 text-white' :
+            type === 'error' ? 'bg-red-500 text-white' :
+            'bg-blue-500 text-white'
+        }`;
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas ${type === 'success' ? 'fa-check' : type === 'error' ? 'fa-times' : 'fa-info'} mr-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+        });
+        
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
 
-      // If we've scrolled to near the bottom, load more items
-      if (scrollTop + clientHeight >= scrollHeight - 300) {
-        loadMoreItems();
-      }
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+        }
+        
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+            resetFilters();
+        }
     });
-
-    // Initialize by checking if we need to show the loader
-    if (announcementCards.length > cardsPerPage) {
-      hasMoreContent = true;
-      loader.classList.remove("hidden");
-    } else {
-      hasMoreContent = false;
-      loader.classList.add("hidden");
-    }
-  });
+});
 </script>
 {% endblock %}

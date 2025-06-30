@@ -1,23 +1,36 @@
-{% extends "office/office_base.html" %} {% block title %}Manage Student
-Inquiries - KapiyuGuide{% endblock %} {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-green-800">
-      Student Inquiries Management
-    </h1>
-    <div class="flex space-x-3">
-      <div class="relative">
+{% extends "office/office_base.html" %} 
+{% block title %}Manage Student Inquiries - KapiyuGuide{% endblock %} 
+{% block content %}
+
+<!-- Header Section with Enhanced Styling -->
+<div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl shadow-lg p-8 mb-8 border border-green-100">
+  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+    <div class="flex items-center space-x-4">
+      <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+        <i class="fas fa-comments text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 mb-1">
+          Student Inquiries Management
+        </h1>
+        <p class="text-gray-600">Monitor and respond to student inquiries efficiently</p>
+      </div>
+    </div>
+    
+    <!-- Enhanced Search and Filter Controls -->
+    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+      <div class="relative group">
         <input
           type="text"
           id="searchInput"
           placeholder="Search inquiries..."
-          class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          class="w-full sm:w-64 border-2 border-gray-200 rounded-xl px-4 py-3 pl-11 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md"
         />
-        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+        <i class="fas fa-search absolute left-4 top-4 text-gray-400 group-focus-within:text-green-500 transition-colors"></i>
       </div>
       <select
         id="statusFilter"
-        class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+        class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md min-w-0 sm:min-w-[140px]"
       >
         <option value="all">All Status</option>
         <option value="pending">Pending</option>
@@ -27,7 +40,7 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
       </select>
       <select
         id="concernFilter"
-        class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+        class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md min-w-0 sm:min-w-[140px]"
       >
         <option value="all">All Concerns</option>
         {% for concern_type in concern_types %}
@@ -36,147 +49,247 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
       </select>
     </div>
   </div>
+</div>
 
-  <!-- Stats cards -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <div class="flex items-center">
-        <div class="rounded-full bg-blue-100 p-3 mr-4">
-          <i class="fas fa-inbox text-blue-500"></i>
-        </div>
-        <div>
-          <h3 class="text-sm text-gray-500 uppercase">Total</h3>
-          <p class="text-xl font-semibold">{{ stats.total }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <div class="flex items-center">
-        <div class="rounded-full bg-yellow-100 p-3 mr-4">
-          <i class="fas fa-clock text-yellow-500"></i>
-        </div>
-        <div>
-          <h3 class="text-sm text-gray-500 uppercase">Pending</h3>
-          <p class="text-xl font-semibold">{{ stats.pending }}</p>
+<!-- Enhanced Stats Dashboard -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white border-2 border-blue-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-inbox text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Total Inquiries</h3>
+            <p class="text-2xl font-bold text-gray-800">{{ stats.total }}</p>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <div class="flex items-center">
-        <div class="rounded-full bg-green-100 p-3 mr-4">
-          <i class="fas fa-check-circle text-green-500"></i>
-        </div>
-        <div>
-          <h3 class="text-sm text-gray-500 uppercase">Resolved</h3>
-          <p class="text-xl font-semibold">{{ stats.resolved }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <div class="flex items-center">
-        <div class="rounded-full bg-purple-100 p-3 mr-4">
-          <i class="fas fa-sync text-purple-500"></i>
-        </div>
-        <div>
-          <h3 class="text-sm text-gray-500 uppercase">Response Rate</h3>
-          <p class="text-xl font-semibold">{{ stats.response_rate }}%</p>
-        </div>
+      <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+        <i class="fas fa-chart-line text-blue-500 text-xl"></i>
       </div>
     </div>
   </div>
 
-  <!-- Inquiry List Table -->
+  <div class="bg-white border-2 border-yellow-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-clock text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Pending</h3>
+            <p class="text-2xl font-bold text-gray-800">{{ stats.pending }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center">
+        <i class="fas fa-hourglass-half text-yellow-500 text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border-2 border-green-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-check-circle text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Resolved</h3>
+            <p class="text-2xl font-bold text-gray-800">{{ stats.resolved }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
+        <i class="fas fa-thumbs-up text-green-500 text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border-2 border-purple-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-sync text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Response Rate</h3>
+            <p class="text-2xl font-bold text-gray-800">{{ stats.response_rate }}%</p>
+          </div>
+        </div>
+      </div>
+      <div class="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center">
+        <i class="fas fa-tachometer-alt text-purple-500 text-xl"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Enhanced Inquiry Table -->
+<div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+  <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+      <i class="fas fa-list-alt mr-2 text-gray-600"></i>
+      Inquiry Management
+    </h2>
+  </div>
+  
   <div class="overflow-x-auto">
-    <table class="min-w-full bg-white">
-      <thead class="bg-gray-100">
+    <table class="min-w-full">
+      <thead class="bg-gradient-to-r from-gray-100 to-gray-200">
         <tr>
-          <th class="py-3 px-4 text-left">ID</th>
-          <th class="py-3 px-4 text-left">Subject</th>
-          <th class="py-3 px-4 text-left">Student</th>
-          <th class="py-3 px-4 text-left">Concerns</th>
-          <th class="py-3 px-4 text-left">Date</th>
-          <th class="py-3 px-4 text-left">Status</th>
-          <th class="py-3 px-4 text-left">Action</th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-hashtag text-gray-500"></i>
+              <span>ID</span>
+            </div>
+          </th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-envelope text-gray-500"></i>
+              <span>Subject</span>
+            </div>
+          </th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-user text-gray-500"></i>
+              <span>Student</span>
+            </div>
+          </th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-tags text-gray-500"></i>
+              <span>Concerns</span>
+            </div>
+          </th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-calendar text-gray-500"></i>
+              <span>Date</span>
+            </div>
+          </th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-info-circle text-gray-500"></i>
+              <span>Status</span>
+            </div>
+          </th>
+          <th class="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-cog text-gray-500"></i>
+              <span>Actions</span>
+            </div>
+          </th>
         </tr>
       </thead>
-      <tbody id="inquiryTable">
+      <tbody id="inquiryTable" class="bg-white divide-y divide-gray-100">
         {% for inquiry in inquiries %}
         <tr
-          class="border-b hover:bg-gray-50"
+          class="inquiry-row hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 {% if inquiry.status == 'pending' %}border-l-yellow-400 bg-yellow-50/30{% elif inquiry.status == 'in_progress' %}border-l-blue-400 bg-blue-50/30{% elif inquiry.status == 'resolved' %}border-l-green-400 bg-green-50/30{% else %}border-l-gray-400{% endif %}"
           data-inquiry-id="{{ inquiry.id }}"
         >
-          <td class="py-3 px-4">#{{ inquiry.id }}</td>
-          <td class="py-3 px-4">
-            <a
-              href="{{ url_for('office.view_inquiry', inquiry_id=inquiry.id) }}"
-              class="text-blue-600 hover:underline"
-              >{{ inquiry.subject }}</a
-            >
-            {% if inquiry.has_attachments() %}
-            <i
-              class="fas fa-paperclip text-gray-500 ml-1"
-              title="Has attachments"
-            ></i>
-            {% endif %}
-          </td>
-          <td class="py-3 px-4">
+          <td class="py-5 px-6 whitespace-nowrap">
             <div class="flex items-center">
-              <div
-                class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-2"
-              >
+              <div class="w-8 h-8 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
+                {{ inquiry.id }}
+              </div>
+            </div>
+          </td>
+          <td class="py-5 px-6">
+            <div class="flex items-center space-x-3">
+              <a
+                href="{{ url_for('office.view_inquiry', inquiry_id=inquiry.id) }}"
+                class="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors duration-200 max-w-xs truncate"
+                title="{{ inquiry.subject }}"
+              >{{ inquiry.subject }}</a>
+              {% if inquiry.has_attachments() %}
+              <div class="flex items-center">
+                <div class="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
+                  <i class="fas fa-paperclip text-orange-500 text-xs" title="Has attachments"></i>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </td>
+          <td class="py-5 px-6">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center shadow-md">
                 {% if inquiry.student.user.profile_pic %}
                 <img
                   src="{{ url_for('static', filename=inquiry.student.user.profile_pic) }}"
-                  class="w-8 h-8 rounded-full"
+                  class="w-10 h-10 rounded-full object-cover"
+                  alt="Profile"
                 />
                 {% else %}
-                <span class="text-gray-600"
-                  >{{ inquiry.student.user.first_name[0] }}{{
-                  inquiry.student.user.last_name[0] }}</span
-                >
+                <span class="text-white font-semibold text-sm">
+                  {{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}
+                </span>
                 {% endif %}
               </div>
-              <span>{{ inquiry.student.user.get_full_name() }}</span>
+              <div>
+                <div class="text-sm font-medium text-gray-900">
+                  {{ inquiry.student.user.get_full_name() }}
+                </div>
+                <div class="text-xs text-gray-500">Student</div>
+              </div>
             </div>
           </td>
-          <td class="py-3 px-4">
-            <div class="flex flex-wrap gap-1">
+          <td class="py-5 px-6">
+            <div class="flex flex-wrap gap-2">
               {% for concern in inquiry.concerns %}
-              <span
-                class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-800"
-              >
-                {{ concern.concern_type.name }} {% if
-                concern.other_specification %}
-                <span class="text-gray-500"
-                  >({{ concern.other_specification }})</span
-                >
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300 shadow-sm" data-concern-id="{{ concern.concern_type.id }}">
+                <i class="fas fa-tag mr-1 text-gray-500"></i>
+                {{ concern.concern_type.name }}
+                {% if concern.other_specification %}
+                <span class="text-gray-600 ml-1">({{ concern.other_specification }})</span>
                 {% endif %}
               </span>
               {% endfor %}
             </div>
           </td>
-          <td class="py-3 px-4">
-            {{ inquiry.created_at.strftime('%b %d, %Y') }}
+          <td class="py-5 px-6 whitespace-nowrap">
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-calendar-alt text-gray-400"></i>
+              <span class="text-sm text-gray-900 font-medium">
+                {{ inquiry.created_at.strftime('%b %d, %Y') }}
+              </span>
+            </div>
           </td>
-          <td class="py-3 px-4">
-            <span
-              class="px-2 py-1 text-xs rounded-full {% if inquiry.status == 'pending' %}bg-yellow-200 text-yellow-800 {% elif inquiry.status == 'in_progress' %}bg-blue-200 text-blue-800 {% elif inquiry.status == 'resolved' %}bg-green-200 text-green-800 {% else %}bg-gray-200 text-gray-800{% endif %}"
-            >
+          <td class="py-5 px-6 whitespace-nowrap">
+            <span class="inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md
+              {% if inquiry.status == 'pending' %}bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 animate-pulse
+              {% elif inquiry.status == 'in_progress' %}bg-gradient-to-r from-blue-400 to-blue-500 text-blue-900
+              {% elif inquiry.status == 'resolved' %}bg-gradient-to-r from-green-400 to-green-500 text-green-900
+              {% else %}bg-gradient-to-r from-gray-400 to-gray-500 text-gray-900{% endif %}">
+              {% if inquiry.status == 'pending' %}
+                <i class="fas fa-clock mr-1"></i>
+              {% elif inquiry.status == 'in_progress' %}
+                <i class="fas fa-spinner mr-1"></i>
+              {% elif inquiry.status == 'resolved' %}
+                <i class="fas fa-check-circle mr-1"></i>
+              {% else %}
+                <i class="fas fa-ban mr-1"></i>
+              {% endif %}
               {{ inquiry.status.replace('_', ' ').title() }}
             </span>
           </td>
-          <td class="py-3 px-4">
-            <div class="flex space-x-2">
+          <td class="py-5 px-6 whitespace-nowrap">
+            <div class="flex items-center space-x-3">
               <a
                 href="{{ url_for('office.view_inquiry', inquiry_id=inquiry.id) }}"
-                class="text-blue-600 hover:text-blue-800"
+                class="w-9 h-9 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center justify-center text-blue-600 hover:text-blue-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg"
                 title="View Details"
               >
                 <i class="fas fa-eye"></i>
               </a>
               <a
                 href="#"
-                class="text-green-600 hover:text-green-800 updateStatusBtn"
+                class="w-9 h-9 bg-green-100 hover:bg-green-200 rounded-lg flex items-center justify-center text-green-600 hover:text-green-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg updateStatusBtn"
                 data-inquiry-id="{{ inquiry.id }}"
                 title="Update Status"
               >
@@ -184,7 +297,7 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
               </a>
               <a
                 href="#"
-                class="text-red-600 hover:text-red-800 deleteInquiryBtn"
+                class="w-9 h-9 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-600 hover:text-red-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg deleteInquiryBtn"
                 data-inquiry-id="{{ inquiry.id }}"
                 title="Delete"
               >
@@ -195,51 +308,67 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="py-6 text-center text-gray-500">
-            No inquiries found
+          <td colspan="7" class="py-12 text-center">
+            <div class="flex flex-col items-center space-y-4">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-inbox text-gray-400 text-2xl"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-medium text-gray-900">No inquiries found</h3>
+                <p class="text-gray-500">There are no student inquiries to display.</p>
+              </div>
+            </div>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+</div>
 
-  <!-- Pagination -->
-  <div class="mt-6 flex justify-between items-center">
-    <div class="text-sm text-gray-500">
-      Showing <span class="font-medium">{{ inquiries|length }}</span> of
-      <span class="font-medium">{{ total_inquiries }}</span> inquiries
+<!-- Enhanced Pagination -->
+<div class="mt-8 bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+  <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+    <div class="flex items-center space-x-2 text-sm text-gray-600">
+      <i class="fas fa-info-circle text-gray-400"></i>
+      <span>Showing <span class="font-semibold text-gray-900">{{ inquiries|length }}</span> of <span class="font-semibold text-gray-900">{{ total_inquiries }}</span> inquiries</span>
     </div>
-    <div class="flex space-x-1">
+    <div class="flex items-center space-x-2">
       {% if pagination.has_prev %}
       <a
         href="{{ url_for('office.office_inquiries', page=pagination.prev_num) }}"
-        class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+        class="w-10 h-10 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-green-500 flex items-center justify-center text-gray-600 hover:text-green-600 transition-all duration-200 shadow-sm hover:shadow-md"
       >
         <i class="fas fa-chevron-left"></i>
       </a>
-      {% endif %} {% for page_num in pagination.iter_pages(left_edge=1,
-      right_edge=1, left_current=2, right_current=2) %} {% if page_num %} {% if
-      page_num == pagination.page %}
-      <a
-        href="{{ url_for('office.office_inquiries', page=page_num) }}"
-        class="px-4 py-2 border border-green-500 bg-green-500 text-white rounded-md"
-      >
-        {{ page_num }}
-      </a>
-      {% else %}
-      <a
-        href="{{ url_for('office.office_inquiries', page=page_num) }}"
-        class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-      >
-        {{ page_num }}
-      </a>
-      {% endif %} {% else %}
-      <span class="px-4 py-2">…</span>
-      {% endif %} {% endfor %} {% if pagination.has_next %}
+      {% endif %}
+      
+      {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page_num %}
+          {% if page_num == pagination.page %}
+          <a
+            href="{{ url_for('office.office_inquiries', page=page_num) }}"
+            class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg flex items-center justify-center font-bold shadow-lg"
+          >
+            {{ page_num }}
+          </a>
+          {% else %}
+          <a
+            href="{{ url_for('office.office_inquiries', page=page_num) }}"
+            class="w-10 h-10 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-green-500 flex items-center justify-center text-gray-600 hover:text-green-600 transition-all duration-200 shadow-sm hover:shadow-md"
+          >
+            {{ page_num }}
+          </a>
+          {% endif %}
+        {% else %}
+        <span class="w-10 h-10 flex items-center justify-center text-gray-400">…</span>
+        {% endif %}
+      {% endfor %}
+      
+      {% if pagination.has_next %}
       <a
         href="{{ url_for('office.office_inquiries', page=pagination.next_num) }}"
-        class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+        class="w-10 h-10 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-green-500 flex items-center justify-center text-gray-600 hover:text-green-600 transition-all duration-200 shadow-sm hover:shadow-md"
       >
         <i class="fas fa-chevron-right"></i>
       </a>
@@ -248,32 +377,38 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
   </div>
 </div>
 
-<!-- Status Update Modal -->
+<!-- Enhanced Status Update Modal -->
 <div
   id="statusUpdateModal"
-  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+  class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm"
 >
-  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-bold text-gray-900">Update Inquiry Status</h3>
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 transform transition-all duration-300">
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+          <i class="fas fa-edit text-white"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900">Update Inquiry Status</h3>
+      </div>
       <button
         type="button"
-        class="text-gray-400 hover:text-gray-500"
+        class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
         id="closeStatusModal"
       >
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <form id="updateStatusForm">
+    <form id="updateStatusForm" class="space-y-6">
       <input type="hidden" id="inquiryId" name="inquiry_id" />
-      <div class="mb-4">
-        <label for="status" class="block text-sm font-medium text-gray-700 mb-1"
-          >Status</label
-        >
+      <div>
+        <label for="status" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+          <i class="fas fa-flag mr-2 text-gray-500"></i>
+          Status
+        </label>
         <select
           id="status"
           name="status"
-          class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          class="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm"
         >
           <option value="pending">Pending</option>
           <option value="in_progress">In Progress</option>
@@ -281,32 +416,35 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
           <option value="closed">Closed</option>
         </select>
       </div>
-      <div class="mb-4">
+      <div>
         <label
           for="noteToStudent"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Add Note (Optional)</label
+          class="block text-sm font-semibold text-gray-700 mb-2 flex items-center"
         >
+          <i class="fas fa-sticky-note mr-2 text-gray-500"></i>
+          Add Note (Optional)
+        </label>
         <textarea
           id="noteToStudent"
           name="note"
-          rows="3"
-          class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-          placeholder="Add an optional note to the student"
+          rows="4"
+          class="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm resize-none"
+          placeholder="Add an optional note to the student..."
         ></textarea>
       </div>
-      <div class="flex justify-end space-x-3">
+      <div class="flex justify-end space-x-4 pt-4">
         <button
           type="button"
           id="cancelStatusUpdate"
-          class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
         >
+          <i class="fas fa-save mr-2"></i>
           Update Status
         </button>
       </div>
@@ -314,49 +452,65 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
   </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<!-- Enhanced Delete Confirmation Modal -->
 <div
   id="deleteConfirmModal"
-  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+  class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm"
 >
-  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-bold text-gray-900">Confirm Deletion</h3>
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 transform transition-all duration-300">
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
+          <i class="fas fa-exclamation-triangle text-white"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900">Confirm Deletion</h3>
+      </div>
       <button
         type="button"
-        class="text-gray-400 hover:text-gray-500"
+        class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
         id="closeDeleteModal"
       >
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <div class="mb-6">
-      <p class="text-gray-700">
-        Are you sure you want to delete this inquiry? This action cannot be
-        undone.
+    <div class="mb-8">
+      <div class="bg-red-50 rounded-xl p-4 mb-4">
+        <div class="flex items-center space-x-3">
+          <i class="fas fa-info-circle text-red-500"></i>
+          <p class="text-gray-700 font-medium">
+            Are you sure you want to delete this inquiry?
+          </p>
+        </div>
+      </div>
+      <p class="text-gray-600 text-sm">
+        This action cannot be undone and will permanently remove the inquiry from the system.
       </p>
     </div>
     <form id="deleteInquiryForm">
       <input type="hidden" id="deleteInquiryId" name="inquiry_id" />
-      <div class="flex justify-end space-x-3">
+      <div class="flex justify-end space-x-4">
         <button
           type="button"
           id="cancelDelete"
-          class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
         >
-          Delete
+          <i class="fas fa-trash mr-2"></i>
+          Delete Inquiry
         </button>
       </div>
     </form>
   </div>
 </div>
-{% endblock %} {% block extra_js %}
+
+{% endblock %} 
+
+{% block extra_js %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     // Status update modal functionality
@@ -387,6 +541,11 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
         const inquiryId = this.getAttribute("data-inquiry-id");
         inquiryIdInput.value = inquiryId;
         statusUpdateModal.classList.remove("hidden");
+        
+        // Add smooth entrance animation
+        setTimeout(() => {
+          statusUpdateModal.querySelector('div').classList.add('scale-100');
+        }, 10);
       });
     });
 
@@ -403,6 +562,12 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
     updateStatusForm.addEventListener("submit", function (e) {
       e.preventDefault();
       const formData = new FormData(this);
+
+      // Add loading state
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+      submitBtn.disabled = true;
 
       fetch("{{ url_for('office.update_inquiry_status') }}", {
         method: "POST",
@@ -438,6 +603,9 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
           );
         })
         .finally(() => {
+          // Reset button
+          submitBtn.innerHTML = originalText;
+          submitBtn.disabled = false;
           statusUpdateModal.classList.add("hidden");
         });
     });
@@ -466,6 +634,12 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
       e.preventDefault();
       const inquiryId = deleteInquiryIdInput.value;
 
+      // Add loading state
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+      submitBtn.disabled = true;
+
       fetch(
         `{{ url_for('office.delete_inquiry', inquiry_id=0) }}`.replace(
           "0",
@@ -486,7 +660,7 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
             // Show success message
             showFlashMessage("success", data.message);
 
-            // Remove the deleted inquiry from the UI
+            // Remove the deleted inquiry from the UI with animation
             const inquiryId = deleteInquiryIdInput.value;
             removeInquiryFromUI(inquiryId);
           } else {
@@ -504,19 +678,21 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
           );
         })
         .finally(() => {
+          // Reset button
+          submitBtn.innerHTML = originalText;
+          submitBtn.disabled = false;
           deleteConfirmModal.classList.add("hidden");
         });
     });
 
-    // Search and filter functionality
+    // Enhanced search and filter functionality
     function applyFilters() {
       const searchTerm = searchInput.value.toLowerCase();
       const statusValue = statusFilter.value;
       const concernValue = concernFilter.value;
 
-      const rows = document.querySelectorAll(
-        "#inquiryTable tr:not(:first-child)"
-      );
+      const rows = document.querySelectorAll("#inquiryTable .inquiry-row");
+      let visibleCount = 0;
 
       rows.forEach((row) => {
         const subjectCol = row.querySelector("td:nth-child(2)");
@@ -547,30 +723,50 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
 
         if (matchesSearch && matchesStatus && matchesConcern) {
           row.style.display = "";
+          row.style.opacity = "1";
+          visibleCount++;
         } else {
           row.style.display = "none";
+          row.style.opacity = "0";
         }
       });
+
+      // Update showing count
+      const showingElement = document.querySelector('.text-sm.text-gray-600 span:first-child');
+      if (showingElement) {
+        showingElement.textContent = visibleCount;
+      }
     }
 
-    searchInput.addEventListener("input", applyFilters);
+    // Add debounce to search input for better performance
+    let searchTimeout;
+    searchInput.addEventListener("input", function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 300);
+    });
+
     statusFilter.addEventListener("change", applyFilters);
     concernFilter.addEventListener("change", applyFilters);
 
-    // Helper function to show flash messages
+    // Enhanced flash message function
     function showFlashMessage(type, message) {
-      const flashContainer = document.querySelector(".flash-messages");
-      if (!flashContainer) return;
+      // Create flash container if it doesn't exist
+      let flashContainer = document.querySelector(".flash-messages");
+      if (!flashContainer) {
+        flashContainer = document.createElement("div");
+        flashContainer.className = "flash-messages fixed top-4 right-4 z-50";
+        document.body.appendChild(flashContainer);
+      }
 
       const messageDiv = document.createElement("div");
-      messageDiv.className = `flash-message relative border-l-4 p-4 mb-3 rounded shadow-md w-full mx-auto ${
+      messageDiv.className = `flash-message transform translate-x-full transition-all duration-500 ease-in-out relative border-l-4 p-4 mb-3 rounded-xl shadow-xl w-96 max-w-sm ${
         type === "success"
-          ? "border-green-500 bg-green-200 text-green-700"
+          ? "border-green-500 bg-gradient-to-r from-green-50 to-green-100 text-green-800"
           : type === "error"
-          ? "border-red-500 bg-red-200 text-red-700"
+          ? "border-red-500 bg-gradient-to-r from-red-50 to-red-100 text-red-800"
           : type === "warning"
-          ? "border-yellow-500 bg-yellow-200 text-yellow-700"
-          : "border-blue-500 bg-blue-50 text-blue-700"
+          ? "border-yellow-500 bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800"
+          : "border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800"
       }`;
 
       const icon =
@@ -583,21 +779,35 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
           : "fa-info-circle";
 
       messageDiv.innerHTML = `
-                <div class="flex items-center">
-                    <i class="fas ${icon} mr-2"></i>
-                    <span>${message}</span>
-                </div>
-                <button class="close-flash absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-full ${
+              type === "success" ? "bg-green-500" :
+              type === "error" ? "bg-red-500" :
+              type === "warning" ? "bg-yellow-500" : "bg-blue-500"
+            } flex items-center justify-center">
+              <i class="fas ${icon} text-white text-sm"></i>
+            </div>
+            <span class="font-medium">${message}</span>
+          </div>
+          <button class="close-flash w-6 h-6 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full flex items-center justify-center transition-all duration-200">
+            <i class="fas fa-times text-sm"></i>
+          </button>
+        </div>
+      `;
 
       flashContainer.appendChild(messageDiv);
+
+      // Slide in animation
+      setTimeout(() => {
+        messageDiv.classList.remove("translate-x-full");
+        messageDiv.classList.add("translate-x-0");
+      }, 100);
 
       // Add event listener to close button
       const closeBtn = messageDiv.querySelector(".close-flash");
       closeBtn.addEventListener("click", function () {
-        messageDiv.style.opacity = "0";
+        messageDiv.classList.add("translate-x-full");
         setTimeout(() => {
           messageDiv.remove();
         }, 500);
@@ -605,14 +815,16 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
 
       // Auto-dismiss after 5 seconds
       setTimeout(() => {
-        messageDiv.style.opacity = "0";
-        setTimeout(() => {
-          messageDiv.remove();
-        }, 500);
+        if (messageDiv.parentNode) {
+          messageDiv.classList.add("translate-x-full");
+          setTimeout(() => {
+            messageDiv.remove();
+          }, 500);
+        }
       }, 5000);
     }
 
-    // Helper function to update inquiry status in the UI
+    // Enhanced UI update function
     function updateInquiryStatusUI(inquiryId, newStatus) {
       const row = document.querySelector(
         `#inquiryTable tr[data-inquiry-id="${inquiryId}"]`
@@ -620,29 +832,120 @@ Inquiries - KapiyuGuide{% endblock %} {% block content %}
       if (row) {
         const statusCell = row.querySelector("td:nth-child(6) span");
         if (statusCell) {
-          statusCell.textContent = newStatus.replace("_", " ").title();
-          statusCell.className = `px-2 py-1 text-xs rounded-full ${
-            newStatus === "pending"
-              ? "bg-yellow-200 text-yellow-800"
-              : newStatus === "in_progress"
-              ? "bg-blue-200 text-blue-800"
-              : newStatus === "resolved"
-              ? "bg-green-200 text-green-800"
-              : "bg-gray-200 text-gray-800"
-          }`;
+          // Update status text and styling
+          const statusText = newStatus.replace("_", " ").split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          
+          // Update icon based on status
+          let icon = '';
+          if (newStatus === 'pending') {
+            icon = '<i class="fas fa-clock mr-1"></i>';
+            statusCell.className = 'inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 animate-pulse';
+          } else if (newStatus === 'in_progress') {
+            icon = '<i class="fas fa-spinner mr-1"></i>';
+            statusCell.className = 'inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-blue-400 to-blue-500 text-blue-900';
+          } else if (newStatus === 'resolved') {
+            icon = '<i class="fas fa-check-circle mr-1"></i>';
+            statusCell.className = 'inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-green-400 to-green-500 text-green-900';
+          } else {
+            icon = '<i class="fas fa-ban mr-1"></i>';
+            statusCell.className = 'inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-gray-400 to-gray-500 text-gray-900';
+          }
+          
+          statusCell.innerHTML = icon + statusText;
+          
+          // Update row border color
+          if (newStatus === 'pending') {
+            row.className = row.className.replace(/border-l-\w+-\d+/g, 'border-l-yellow-400');
+            row.className = row.className.replace(/bg-\w+-\d+\/\d+/g, 'bg-yellow-50/30');
+          } else if (newStatus === 'in_progress') {
+            row.className = row.className.replace(/border-l-\w+-\d+/g, 'border-l-blue-400');
+            row.className = row.className.replace(/bg-\w+-\d+\/\d+/g, 'bg-blue-50/30');
+          } else if (newStatus === 'resolved') {
+            row.className = row.className.replace(/border-l-\w+-\d+/g, 'border-l-green-400');
+            row.className = row.className.replace(/bg-\w+-\d+\/\d+/g, 'bg-green-50/30');
+          } else {
+            row.className = row.className.replace(/border-l-\w+-\d+/g, 'border-l-gray-400');
+            row.className = row.className.replace(/bg-\w+-\d+\/\d+/g, '');
+          }
+          
+          // Add a brief highlight animation
+          row.classList.add('animate-pulse');
+          setTimeout(() => {
+            row.classList.remove('animate-pulse');
+          }, 1000);
         }
       }
     }
 
-    // Helper function to remove inquiry from the UI
+    // Enhanced remove function with animation
     function removeInquiryFromUI(inquiryId) {
       const row = document.querySelector(
         `#inquiryTable tr[data-inquiry-id="${inquiryId}"]`
       );
       if (row) {
-        row.remove();
+        // Add fade-out animation
+        row.style.transition = 'all 0.5s ease-out';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(-100%)';
+        
+        setTimeout(() => {
+          row.remove();
+          
+          // Update the showing count
+          const remainingRows = document.querySelectorAll("#inquiryTable .inquiry-row").length;
+          const showingElement = document.querySelector('.text-sm.text-gray-600 span:first-child');
+          if (showingElement) {
+            showingElement.textContent = remainingRows;
+          }
+        }, 500);
       }
     }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Close modals with Escape key
+      if (e.key === 'Escape') {
+        if (!statusUpdateModal.classList.contains('hidden')) {
+          statusUpdateModal.classList.add('hidden');
+        }
+        if (!deleteConfirmModal.classList.contains('hidden')) {
+          deleteConfirmModal.classList.add('hidden');
+        }
+      }
+      
+      // Focus search with Ctrl+F or Cmd+F
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+    });
+
+    // Add row highlighting on hover for better UX
+    const inquiryRows = document.querySelectorAll('.inquiry-row');
+    inquiryRows.forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.01)';
+        this.style.transition = 'transform 0.2s ease-in-out';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.transform = 'scale(1)';
+      });
+    });
+
+    // Initialize tooltips for action buttons
+    const actionButtons = document.querySelectorAll('[title]');
+    actionButtons.forEach(button => {
+      button.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.1)';
+      });
+      
+      button.addEventListener('mouseleave', function() {
+        this.style.transform = 'scale(1)';
+      });
+    });
   });
 </script>
 {% endblock %}

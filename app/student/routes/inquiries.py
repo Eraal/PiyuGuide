@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from app.student import student_bp
 from app.models import (
     Inquiry, InquiryMessage, Student, User, Office, 
@@ -36,10 +36,10 @@ def save_attachment(file, folder_name):
 @login_required
 @role_required(['student'])
 def inquiries():
-    """View all inquiries submitted by the student"""
-    # Get query parameters for filtering
+    """View all inquiries submitted by the student"""    # Get query parameters for filtering
     status = request.args.get('status', 'all')
     office_id = request.args.get('office_id', 'all')
+    search = request.args.get('search', '').strip()
     page = request.args.get('page', 1, type=int)
     per_page = 10
     
@@ -55,7 +55,15 @@ def inquiries():
     
     # Apply office filter if provided
     if office_id != 'all':
-        query = query.filter(Inquiry.office_id == office_id)
+        query = query.filter(Inquiry.office_id == office_id)    # Apply search filter if provided
+    if search:
+        # Search in both subject and first message content
+        query = query.join(InquiryMessage, Inquiry.id == InquiryMessage.inquiry_id, isouter=True).filter(
+            or_(
+                Inquiry.subject.ilike(f'%{search}%'),
+                InquiryMessage.content.ilike(f'%{search}%')
+            )
+        ).distinct()
     
     # Order by most recent first
     query = query.order_by(desc(Inquiry.created_at))
@@ -91,8 +99,7 @@ def inquiries():
         action="Viewed inquiries list",
         timestamp=datetime.utcnow(),
         ip_address=request.remote_addr,
-        user_agent=request.user_agent.string
-    )
+        user_agent=request.user_agent.string    )
     db.session.add(log_entry)
     db.session.commit()
     
@@ -104,6 +111,7 @@ def inquiries():
         stats=stats,
         current_status=status,
         current_office=office_id,
+        current_search=search,
         unread_notifications_count=unread_notifications_count,
         notifications=notifications
     )

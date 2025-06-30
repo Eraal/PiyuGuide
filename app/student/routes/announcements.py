@@ -30,10 +30,18 @@ def announcements():
         (Announcement.target_office_id.in_(office_ids))
     ).order_by(desc(Announcement.created_at)).all()
     
-    # Mark recent announcements (less than 3 days old)
+    # Mark recent announcements (less than 3 days old) and calculate stats
     today = datetime.utcnow()
+    new_announcements_count = 0
+    
     for announcement in announcements:
-        announcement.is_new = (today - announcement.created_at).days < 3
+        is_new = (today - announcement.created_at).days < 3
+        announcement.is_new = is_new
+        if is_new:
+            new_announcements_count += 1
+    
+    # Get all offices for the filter dropdown
+    offices = Office.query.all()
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(
@@ -60,6 +68,9 @@ def announcements():
     return render_template(
         'student/announcements.html',
         announcements=announcements,
+        offices=offices,
+        new_announcements_count=new_announcements_count,
+        total_announcements_count=len(announcements),
         unread_notifications_count=unread_notifications_count,
         notifications=notifications
     )

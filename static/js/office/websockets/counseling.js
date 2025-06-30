@@ -1552,9 +1552,9 @@ async handleIceCandidate(candidate) {
         this.cleanup();
         this.hideEndSessionModal();
         
-        // Redirect to session summary or dashboard
+        // Redirect to session completion page
         setTimeout(() => {
-            window.location.href = '/office/counseling-sessions';
+            window.location.href = `/office/session-completed/${this.sessionId}`;
         }, 2000);
     }
     
@@ -1571,7 +1571,7 @@ async handleIceCandidate(candidate) {
         this.cleanup();
         
         setTimeout(() => {
-            window.location.href = '/office/counseling-sessions';
+            window.location.href = `/office/session-completed/${this.sessionId}`;
         }, 3000);
     }
     

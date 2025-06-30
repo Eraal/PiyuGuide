@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from app.student import student_bp
 from app.models import (
     CounselingSession, Student, User, Office, 
@@ -21,11 +21,16 @@ def counseling_sessions():
     
     # Get all sessions for this student
     sessions = CounselingSession.query.filter_by(
-        student_id=student.id
-    ).order_by(desc(CounselingSession.scheduled_at)).all()
+        student_id=student.id    ).order_by(desc(CounselingSession.scheduled_at)).all()
     
-    # Get all offices for scheduling
-    offices = Office.query.all()
+    # Get only offices that offer counseling services
+    # An office offers counseling if it either supports video OR has had counseling sessions
+    offices = Office.query.filter(
+        or_(
+            Office.supports_video == True,
+            Office.counseling_sessions.any()
+        )
+    ).all()
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(
@@ -37,7 +42,6 @@ def counseling_sessions():
     notifications = Notification.query.filter_by(
         user_id=current_user.id
     ).order_by(desc(Notification.created_at)).limit(5).all()
-    
     # Log this activity
     log_entry = StudentActivityLog(
         student_id=student.id,
@@ -49,12 +53,24 @@ def counseling_sessions():
     db.session.add(log_entry)
     db.session.commit()
     
+    # Calculate which sessions can be joined (within 15 minutes of scheduled time)
+    now = datetime.utcnow()
+    joinable_sessions = set()
+    for session in sessions:
+        if (session.status == 'confirmed' and session.is_video_session and 
+            session.scheduled_at <= now + timedelta(minutes=15) and 
+            session.scheduled_at >= now - timedelta(minutes=15)):
+            joinable_sessions.add(session.id)
+    
     return render_template(
         'student/counseling_sessions.html',
         sessions=sessions,
         offices=offices,
         unread_notifications_count=unread_notifications_count,
-        notifications=notifications
+        notifications=notifications,
+        now=now,
+        joinable_sessions=joinable_sessions,
+        timedelta=timedelta
     )
 
 @student_bp.route('/view-session/<int:session_id>')
@@ -180,19 +196,18 @@ def request_counseling_session():
     # Get the student record
     student = Student.query.filter_by(user_id=current_user.id).first_or_404()
     
-    # Get all offices for selecting where to schedule a session
-    offices = Office.query.all()
+    # Get only offices that offer counseling services
+    # An office offers counseling if it either supports video OR has had counseling sessions  
+    offices = Office.query.filter(
+        or_(
+            Office.supports_video == True,
+            Office.counseling_sessions.any()
+        )
+    ).all()
     
-    # Count offices that have counseling sessions (using the relationship)
-    # An office supports counseling if it has counseling_sessions relationship
-    counseling_offices = []
-    for office in offices:
-        # Consider an office as supporting counseling if it has the counseling_sessions relationship
-        # We can identify offices that support counseling by checking if they have been used for sessions before
-        # or by checking if they have counselors assigned
-        if hasattr(office, 'counseling_sessions'):
-            counseling_offices.append(office)
-    
+    # Filter offices that can offer counseling (either video or in-person)
+    # All offices in the filtered list above already offer counseling services
+    counseling_offices = offices
     counseling_offices_count = len(counseling_offices)
     
     # Get unread notifications count for navbar
@@ -515,9 +530,13 @@ def counseling_dashboard():
         'in_progress': len([s for s in all_sessions if s.status == 'in_progress']),
         'upcoming': len([s for s in all_sessions if s.status in ['pending', 'confirmed'] and s.scheduled_at > datetime.utcnow()])
     }
-    
-    # Get all offices for dropdown
-    offices = Office.query.all()
+      # Get only offices that offer counseling services for dropdown filter
+    offices = Office.query.filter(
+        db.or_(
+            Office.supports_video == True,
+            Office.counseling_sessions.any()
+        )
+    ).all()
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(
@@ -541,6 +560,15 @@ def counseling_dashboard():
     db.session.add(log_entry)
     db.session.commit()
     
+    # Calculate which sessions can be joined (within 15 minutes of scheduled time)
+    now = datetime.utcnow()
+    joinable_sessions = set()
+    for session in sessions_pagination.items:
+        if (session.status == 'confirmed' and session.is_video_session and 
+            session.scheduled_at <= now + timedelta(minutes=15) and 
+            session.scheduled_at >= now - timedelta(minutes=15)):
+            joinable_sessions.add(session.id)
+    
     return render_template(
         'student/counseling_dashboard.html',
         sessions=sessions_pagination.items,
@@ -551,5 +579,7 @@ def counseling_dashboard():
         current_office=office_filter,
         unread_notifications_count=unread_notifications_count,
         notifications=notifications,
-        now=datetime.utcnow()
+        now=now,
+        joinable_sessions=joinable_sessions,
+        timedelta=timedelta
     )

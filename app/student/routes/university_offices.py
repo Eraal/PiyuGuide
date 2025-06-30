@@ -23,6 +23,10 @@ def university_offices():
     # Get offices that support video counseling
     video_offices = [office for office in offices if office.supports_video]
     
+    # Calculate statistics
+    total_offices = len(offices)
+    video_services_count = len(video_offices)
+    
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(
         user_id=current_user.id,
@@ -49,6 +53,8 @@ def university_offices():
         'student/university_offices.html',
         offices=offices,
         video_offices=video_offices,
+        total_offices=total_offices,
+        video_services_count=video_services_count,
         unread_notifications_count=unread_notifications_count,
         notifications=notifications
     )

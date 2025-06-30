@@ -4,770 +4,805 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}KapiyuGuide - Student Portal{% endblock %}</title>
-    <!-- Enhanced CSS Libraries -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/customs.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Global CSRF token for AJAX requests -->
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <!-- Global CSRF token -->
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-
     {% block extra_head %}{% endblock %}
     <style>
-      :root {
-        --primary-blue: #1e40af;
-        --primary-light: #3b82f6;
-        --sidebar-bg: #ffffff;
-        --sidebar-text: #374151;
-        --sidebar-hover: rgba(59, 130, 246, 0.1);
-        --sidebar-active: rgba(59, 130, 246, 0.15);
-        --header-gradient: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        --shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      body {
+        font-family: 'Inter', sans-serif;
       }
 
-      /* Enhanced Sidebar Styles */
-      .sidebar-item {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        margin: 0.25rem 0;
-      }
-      
-      .sidebar-item:hover {
-        background-color: var(--sidebar-hover);
-        transform: translateX(4px);
-      }
-      
-      .sidebar-item.active {
-        background: var(--sidebar-active);
-        color: var(--primary-blue);
-        font-weight: 600;
-        border-left: 4px solid var(--primary-blue);
-        box-shadow: var(--shadow-soft);
-      }
-      
-      .sidebar-item.active::before {
-        content: '';
-        position: absolute;
-        right: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 8px;
-        height: 8px;
-        background: var(--primary-blue);
-        border-radius: 50%;
-      }
-
-      /* Profile Badge Animation */
-      .profile-badge {
-        position: relative;
-        transition: all 0.3s ease;
-      }
-      
-      .profile-badge:hover {
-        transform: scale(1.05);
-      }
-      
-      .profile-badge::after {
-        content: '';
-        position: absolute;
-        bottom: 2px;
-        right: 2px;
-        width: 12px;
-        height: 12px;
-        background: #10b981;
-        border-radius: 50%;
-        border: 3px solid white;
-        animation: pulse-green 2s infinite;
-      }
-      
-      @keyframes pulse-green {
-        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-      }      /* Enhanced Header */
-      .header-gradient {
-        background: var(--header-gradient);
-        backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        position: relative;
-      }
-
-      /* Notification Enhancements */
-      .notification-item {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-radius: 8px;
-        margin: 0.25rem 0;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .notification-item:hover {
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-        transform: translateX(4px);
-        box-shadow: var(--shadow-soft);
-      }
-      
-      .notification-item.unread {
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 197, 253, 0.05) 100%);
-        border-left: 4px solid var(--primary-light);
-        box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-      }
-      
-      .notification-item.unread::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, #3b82f6, #60a5fa);
-      }
-
-      .notification-close {
-        opacity: 0;
-        transition: all 0.2s ease;
-        transform: scale(0.8);
-      }
-      
-      .notification-item:hover .notification-close {
-        opacity: 1;
-        transform: scale(1);
-      }
-      
-      .notification-content {
-        word-break: break-word;
-      }
-      
-      .notification-preview {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }      /* Enhanced Dropdowns */
-      .dropdown-content {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: var(--shadow-strong);
-        border-radius: 12px;
-      }
-
-      /* Ensure dropdowns appear above all content */
-      #notificationsPanel,
-      #userMenu {
-        position: absolute !important;
-        z-index: 9999 !important;
-        background: white !important;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-      }
-
-      /* Ensure dropdown containers have proper stacking context */
-      #notificationsDropdown,
-      #userDropdown {
-        position: relative !important;
-        z-index: 1001 !important;
-      }
-
-      /* Create isolated stacking context for header */
-      header {
-        isolation: isolate;
-      }
-
-      /* Prevent main content from interfering with dropdowns */
-      main {
-        position: relative;
-        z-index: 1;
-      }
-
-      /* Ensure sidebar doesn't interfere */
-      aside {
-        position: relative;
-        z-index: 100;
-      }
-
-      /* Enhanced Flash Messages */
-      .flash-message {
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        opacity: 1;
-        transform: translateY(0);
-        box-shadow: var(--shadow-strong);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-      }
-      
-      .flash-message.entering {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      
-      .flash-message.leaving {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-
-      /* Icon Animation */
-      .nav-icon {
-        width: 1.5rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transition: all 0.3s ease;
-      }
-      
-      .sidebar-item:hover .nav-icon {
-        transform: scale(1.1);
-      }
-
-      /* Badge Pulse Animation */
-      .badge-pulse {
-        animation: badge-pulse 2s infinite;
-      }
-      
-      @keyframes badge-pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-      }      /* Mobile Responsiveness */
-      @media (max-width: 768px) {
-        .sidebar-item:hover {
-          transform: none;
-        }
-        
-        /* Ensure dropdowns work properly on mobile */
-        #notificationsPanel,
-        #userMenu {
-          position: fixed !important;
-          top: auto !important;
-          right: 1rem !important;
-          left: 1rem !important;
-          width: auto !important;
-          max-width: calc(100% - 2rem) !important;
-        }
-        
-        #notificationsPanel {
-          top: 4rem !important;
-        }
-        
-        #userMenu {
-          top: 4rem !important;
-        }
-      }
-
-      /* Scrollbar Styling */
-      .custom-scrollbar::-webkit-scrollbar {
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
         width: 6px;
       }
-      
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.05);
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
         border-radius: 3px;
       }
-      
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: rgba(59, 130, 246, 0.3);
-        border-radius: 3px;
-      }
-      
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: rgba(59, 130, 246, 0.5);
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
       }
 
-      /* Loading Animation */
-      .loading-pulse {
-        animation: loading-pulse 1.5s ease-in-out infinite;
+      /* Modern gradient backgrounds */
+      .navbar-gradient {
+        background: linear-gradient(135deg, #1e40af 0%, #3730a3 50%, #4338ca 100%);
+        box-shadow: 0 4px 20px rgba(30, 64, 175, 0.3);
       }
-      
-      @keyframes loading-pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
+
+      .sidebar-gradient {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border-right: 1px solid #e2e8f0;
+      }
+
+      .profile-card-gradient {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #eff6ff 100%);
+        border: 1px solid #93c5fd;
+      }
+
+      /* Enhanced sidebar styles */
+      .sidebar-item {
+        transition: all 0.3s ease;
+        border-radius: 0.5rem;
+        margin: 0.125rem 0.75rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .sidebar-item:hover {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
+      }
+
+      .active-nav {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white !important;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .active-nav:hover {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        transform: translateX(0);
+      }
+
+      /* Enhanced notification styles */
+      .notification-item {
+        transition: all 0.3s ease;
+      }
+      .notification-item:hover {
+        background-color: #f3f4f6;
+      }
+      .notification-item.unread {
+        border-left: 3px solid #3b82f6;
+        background-color: rgba(59, 130, 246, 0.05);
+      }
+      .notification-close {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .notification-item:hover .notification-close {
+        opacity: 1;
+      }
+      .notification-content {
+        word-break: break-word;
+      }      .notification-preview {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* Enhanced dropdown styles */
+      .dropdown {
+        position: relative;
+        display: inline-block;
+      }
+
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        background: white;
+        min-width: 200px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        z-index: 1000;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        backdrop-filter: blur(8px);
+      }
+
+      .dropdown:hover .dropdown-content {
+        display: block;
+        animation: fadeInUp 0.2s ease-out;
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Enhanced notification badge */
+      .notification-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        font-size: 10px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border-radius: 50%;
+        padding: 3px 6px;
+        font-weight: 600;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }      /* Shortcut cards styles */
+      .shortcut-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #0ea5e9;
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+      }
+
+      .shortcut-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(14, 165, 233, 0.25);
+        border-color: #0284c7;
+      }
+
+      .shortcut-card.inquiry-card {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-color: #f59e0b;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+      }
+
+      .shortcut-card.inquiry-card:hover {
+        border-color: #d97706;
+        box-shadow: 0 15px 35px rgba(245, 158, 11, 0.25);
+      }
+
+      .shortcut-card.counseling-card {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        border-color: #10b981;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+      }
+
+      .shortcut-card.counseling-card:hover {
+        border-color: #059669;
+        box-shadow: 0 15px 35px rgba(16, 185, 129, 0.25);
+      }
+
+      /* Enhanced shortcut icons */
+      .shortcut-icon {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+      }
+
+      .shortcut-card:hover .shortcut-icon {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      }
+
+      /* Quick stats styles */
+      .quick-stats {
+        background: linear-gradient(135deg, #fafafa 0%, #f4f4f5 100%);
+        border: 1px solid #e4e4e7;
+        border-radius: 1rem;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        transition: all 0.3s ease;
+      }
+
+      .quick-stats:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f4f4f5;
+      }
+
+      .stat-item:last-child {
+        border-bottom: none;
+      }
+
+      .stat-value {
+        font-weight: 700;
+        font-size: 1.1rem;
+      }
+
+      /* Counter badges */
+      .counter-badge {
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 1rem;
+        padding: 2px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .counter-red {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+      }
+
+      .counter-blue {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+      }
+
+      .counter-green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+      }
+
+      /* Profile section enhancements */
+      .profile-section {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #93c5fd;
+        border-radius: 1rem;
+        margin: 1rem;
+        padding: 1rem;
+        box-shadow: 0 4px 12px rgba(30, 64, 175, 0.1);
+      }
+
+      /* Navigation section headers */
+      .nav-section-header {
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.75rem 1rem 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(90deg, #f8fafc 0%, transparent 100%);
+      }
+
+      /* Status indicator improvements */
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+      }
+
+      .status-online {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        animation: statusPulse 2s infinite;
+      }
+
+      @keyframes statusPulse {
+        0%, 100% {
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 0 rgba(16, 185, 129, 0.7);
+        }
+        50% {
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(16, 185, 129, 0);
+        }
+      }
+
+      /* Main content area */
+      .main-content {
+        background: #f8fafc;
+        border-radius: 1rem 0 0 0;
+        overflow: hidden;
       }
     </style>
-  </head>  <!-- Enhanced Flash Messages Container -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="flash-messages fixed top-4 left-1/2 transform -translate-x-1/2 z-50 space-y-3 w-full max-w-md px-4">
-    {% for category, message in messages %}
-    <div class="flash-message border-0 p-4 rounded-xl shadow-xl {% if category == 'success' %}bg-gradient-to-r from-green-500 to-emerald-500 text-white {% elif category == 'error' %}bg-gradient-to-r from-red-500 to-rose-500 text-white {% elif category == 'warning' %}bg-gradient-to-r from-yellow-500 to-amber-500 text-white {% else %}bg-gradient-to-r from-blue-500 to-indigo-500 text-white{% endif %}">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center">
-          <!-- Enhanced Icons -->
-          {% if category == 'success' %}
-          <div class="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-            <i class="fas fa-check text-lg"></i>
-          </div>
-          {% elif category == 'error' %}
-          <div class="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-            <i class="fas fa-exclamation-triangle text-lg"></i>
-          </div>
-          {% elif category == 'warning' %}
-          <div class="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-            <i class="fas fa-exclamation-circle text-lg"></i>
-          </div>
-          {% else %}
-          <div class="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-            <i class="fas fa-info-circle text-lg"></i>
-          </div>
-          {% endif %}
-          <span class="font-medium">{{ message }}</span>
-        </div>
-        <button class="close-flash text-white hover:text-gray-200 bg-white bg-opacity-20 rounded-full p-1 w-8 h-8 flex items-center justify-center transition-all duration-200 hover:bg-opacity-30">
-          <i class="fas fa-times text-sm"></i>
-        </button>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-  {% endwith %}
-
-  <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex flex-col font-inter">    <!-- Enhanced Top Navigation Bar -->
-    <header class="header-gradient text-white shadow-2xl relative overflow-hidden z-10000">
-      <!-- Decorative Background Elements -->
-      <div class="absolute inset-0 opacity-10">
-        <div class="absolute top-0 left-1/4 w-96 h-96 bg-white rounded-full filter blur-3xl"></div>
-        <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-300 rounded-full filter blur-3xl"></div>
-      </div>
-      
-      <div class="container mx-auto px-4 relative z-20"><div class="flex justify-between items-center py-4">
+  </head>  <body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
+    <!-- Top Navigation Bar -->
+    <header class="navbar-gradient text-white shadow-md relative z-30">
+      <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center py-3">
           <div class="flex items-center space-x-4">
-            <!-- Mobile menu button with enhanced styling -->
+            <!-- Mobile menu button -->
             <button
               id="mobileMenuBtn"
-              class="md:hidden text-white focus:outline-none bg-white bg-opacity-20 rounded-lg p-2 hover:bg-opacity-30 transition-all duration-200"
+              class="md:hidden text-white focus:outline-none"
             >
               <i class="fas fa-bars text-xl"></i>
             </button>
 
-            <!-- Enhanced Logo Section -->
+            <!-- Logo -->
             <a
               href="{{ url_for('student.dashboard') }}"
-              class="flex items-center group"
+              class="flex items-center"
             >
-              <div class="bg-white bg-opacity-15 rounded-xl p-2 mr-3 group-hover:bg-opacity-25 transition-all duration-300">
-                <img
-                  src="/static/images/schoollogo.png"
-                  alt="KapiyuGuide Logo"
-                  class="h-8 w-8 filter drop-shadow-lg"
-                />
-              </div>
-              <div class="hidden md:block">
-                <span class="text-xl font-bold tracking-wide">KapiyuGuide</span>
-                <p class="text-blue-100 text-sm font-medium">Student Portal</p>
+              <img
+                src="/static/images/schoollogo.png"
+                alt="KapiyuGuide Logo"
+                class="h-10 w-10 rounded-full border-2 border-white/20 shadow-lg"
+              />
+              <div class="ml-3">
+                <span class="text-xl font-bold tracking-tight">KapiyuGuide</span>
+                <p class="text-sm text-blue-100 font-medium">Student Portal</p>
               </div>
             </a>
           </div>
 
-          <div class="flex items-center space-x-4">
-            <!-- Quick Action Buttons -->
-            <div class="hidden lg:flex items-center space-x-2">
-              <a
-                href="{{ url_for('student.university_offices') }}"
-                class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 group"
-              >
-                <i class="fas fa-plus text-sm group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-medium">New Inquiry</span>
-              </a>
-              <a
-                href="{{ url_for('student.request_counseling_session') }}"
-                class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 group"
-              >
-                <i class="fas fa-calendar-plus text-sm group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-medium">Book Session</span>
-              </a>
-            </div>            <!-- Enhanced Notifications Dropdown -->
-            <div class="relative z-1000" id="notificationsDropdown">
-              <button class="relative p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all duration-200 group">
-                <i class="fas fa-bell text-xl group-hover:scale-110 transition-transform"></i>
-                <span
-                  id="notificationBadge"
-                  class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold animate-pulse {% if unread_notifications_count == 0 %}hidden{% endif %}"
-                >
-                  {{ unread_notifications_count|default(0) }}
-                </span>
-              </button><!-- Enhanced Notifications Panel -->
+          <div class="flex items-center space-x-6">
+            <div class="hidden md:flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2 backdrop-blur-sm">
+              <i class="fas fa-user-graduate text-blue-200"></i>
+              <span class="text-sm font-medium">
+                Welcome, <span class="font-bold">{{ current_user.first_name }}!</span>
+              </span>
+            </div>
+
+            <!-- Notifications Dropdown -->
+            <div class="dropdown relative" id="notificationsDropdown">
+              <button class="text-white focus:outline-none relative">
+                <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-200">
+                  <i class="fas fa-bell text-lg"></i>
+                  {% if unread_notifications_count and unread_notifications_count > 0 %}
+                  <span class="notification-badge">{{ unread_notifications_count }}</span>
+                  {% endif %}
+                </div>
+              </button>
+
+              <!-- Notifications Panel -->
               <div
-                class="absolute right-0 mt-3 w-96 bg-white rounded-xl shadow-2xl overflow-hidden z-[9999] hidden border border-gray-200"
+                class="dropdown-content w-80 mt-2 text-gray-800"
                 id="notificationsPanel"
               >
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-white">
-                  <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-2">
-                      <i class="fas fa-bell"></i>
-                      <span class="font-semibold">Notifications</span>
+                <div
+                  class="px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 font-semibold border-b border-blue-200"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                      <i class="fas fa-bell mr-2 text-blue-600"></i>
+                      <span>Notifications</span>
                     </div>
                     <a
                       href="#"
-                      class="text-xs text-blue-100 hover:text-white bg-white bg-opacity-20 px-2 py-1 rounded-md transition-all duration-200"
+                      class="text-xs text-blue-600 hover:text-blue-800"
                       id="markAllAsRead"
-                      >Mark all read</a
+                      >Mark all as read</a
                     >
                   </div>
                 </div>
                 <div
-                  class="max-h-96 overflow-y-auto custom-scrollbar"
+                  class="max-h-96 overflow-y-auto"
                   id="notificationsContainer"
                 >
-                  {% if notifications %} 
-                  {% for notification in notifications %}
+                  {% if notifications %} {% for notification in notifications %}
                   <div
-                    class="notification-item p-4 border-b border-gray-100 {% if not notification.is_read %}unread{% endif %} cursor-pointer hover:bg-gray-50"
+                    class="notification-item p-3 border-b hover:bg-gray-50 {% if not notification.is_read %}unread{% endif %} cursor-pointer"
                     data-notification-id="{{ notification.id }}"
-                    {% if notification.inquiry_id %}
+                    {%
+                    if
+                    notification.inquiry_id
+                    %}
                     data-inquiry-id="{{ notification.inquiry_id }}"
-                    {% elif notification.announcement_id %}
+                    {%
+                    elif
+                    notification.announcement_id
+                    %}
                     data-announcement-id="{{ notification.announcement_id }}"
-                    {% endif %}
-                    {% if notification.source_office_id %}
+                    {%
+                    endif
+                    %}
+                    {%
+                    if
+                    notification.source_office_id
+                    %}
                     data-office-id="{{ notification.source_office_id }}"
-                    {% endif %}
+                    {%
+                    endif
+                    %}
                   >
-                    <div class="flex items-start space-x-3">
-                      <div class="flex-shrink-0">
-                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <i
-                            class="fas {% if notification.notification_type == 'inquiry_reply' %}fa-reply text-blue-600 {% elif notification.notification_type == 'announcement' %}fa-bullhorn text-orange-600 {% elif notification.notification_type == 'status_change' %}fa-sync text-green-600 {% else %}fa-info-circle text-gray-600{% endif %}"
-                          ></i>
-                        </div>
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0 pt-1">
+                        <i
+                          class="fas {% if notification.notification_type == 'inquiry_reply' %}fa-reply {% elif notification.notification_type == 'announcement' %}fa-bullhorn {% elif notification.notification_type == 'status_change' %}fa-sync {% else %}fa-info-circle{% endif %} text-blue-500"
+                        ></i>
                       </div>
-                      <div class="flex-grow min-w-0">
-                        <div class="text-sm font-semibold text-gray-900 mb-1">
-                          {% if notification.source_office %} 
-                          {% if notification.notification_type == 'inquiry_reply' %}
-                          {{ notification.source_office.name }} replied 
-                          {% elif notification.notification_type == 'announcement' %}
-                          New from {{ notification.source_office.name }} 
-                          {% elif notification.notification_type == 'status_change' %}
+                      <div class="ml-3 flex-grow notification-content">
+                        <div class="text-sm font-medium text-gray-900">
+                          {% if notification.source_office %} {% if
+                          notification.notification_type == 'inquiry_reply' %}
+                          {{ notification.source_office.name }} replied {% elif
+                          notification.notification_type == 'announcement' %}
+                          New Announcement from {{
+                          notification.source_office.name }} {% elif
+                          notification.notification_type == 'status_change' %}
                           {{ notification.source_office.name }} updated status
-                          {% else %} 
-                          {{ notification.title }} 
-                          {% endif %} 
-                          {% else %} 
-                          {{ notification.title }} 
-                          {% endif %}
+                          {% else %} {{ notification.title }} {% endif %} {%
+                          else %} {{ notification.title }} {% endif %}
                         </div>
-                        <div class="text-xs text-gray-600 notification-preview mb-2">
+                        <div
+                          class="text-xs text-gray-600 mt-1 notification-preview"
+                        >
                           {{ notification.message }}
                         </div>
-                        <div class="text-xs text-gray-400 flex items-center">
-                          <i class="far fa-clock mr-1"></i>
-                          {{ notification.created_at.strftime('%b %d, %Y %H:%M') }}
+                        <div class="text-xs text-gray-400 mt-1">
+                          {{ notification.created_at.strftime('%b %d, %Y %H:%M')
+                          }}
                         </div>
                       </div>
                       <button
-                        class="notification-close text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-all duration-200"
+                        class="notification-close text-gray-400 hover:text-gray-600 ml-2"
                         aria-label="Dismiss notification"
                       >
-                        <i class="fas fa-times text-sm"></i>
+                        <i class="fas fa-times"></i>
                       </button>
                     </div>
                   </div>
-                  {% endfor %} 
-                  {% else %}
-                  <div class="p-8 text-center text-gray-500">
-                    <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <i class="far fa-bell-slash text-gray-400 text-2xl"></i>
-                    </div>
-                    <p class="font-medium">No notifications yet</p>
-                    <p class="text-sm">You'll see updates from your inquiries here</p>
+                  {% endfor %} {% else %}
+                  <div class="p-3 text-center text-gray-500">
+                    <i class="far fa-bell-slash text-gray-300 text-lg mb-2"></i>
+                    <p>No notifications</p>
                   </div>
                   {% endif %}
                 </div>
-                <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                <div class="py-2 px-3 bg-gray-100 text-center">
                   <a
                     href="{{ url_for('student.notifications') }}"
-                    class="block text-center text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200"
+                    class="text-sm text-blue-600 hover:underline"
                     >View all notifications</a
                   >
                 </div>
               </div>
-            </div>            <!-- Enhanced User Dropdown -->
-            <div class="relative z-50" id="userDropdown">
-              <button class="flex items-center text-white focus:outline-none group">
-                <div class="profile-badge relative">
-                  <div class="h-10 w-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center border-2 border-white border-opacity-30 group-hover:border-opacity-50 transition-all duration-200">
-                    {% if current_user.profile_pic %}
-                    <img
-                      src="{{ current_user.profile_pic }}"
-                      alt="Profile"
-                      class="h-10 w-10 rounded-full object-cover"
-                    />
-                    {% else %}
-                    <span class="font-bold text-lg text-white">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
-                    {% endif %}
-                  </div>
+            </div>
+
+            <!-- User Dropdown -->
+            <div class="dropdown" id="userDropdown">
+              <button class="text-white focus:outline-none">
+                <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-200">
+                  {% if current_user.profile_pic %}
+                  <img
+                    src="{{ current_user.profile_pic }}"
+                    alt="Profile"
+                    class="w-full h-full rounded-full object-cover"
+                  />
+                  {% else %}
+                  <span class="font-medium text-sm">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
+                  {% endif %}
                 </div>
-                <div class="ml-3 hidden md:block text-left">
-                  <div class="font-semibold text-sm">{{ current_user.first_name }} {{ current_user.last_name }}</div>
-                  <div class="text-blue-100 text-xs">Student Account</div>
-                </div>
-                <i class="fas fa-chevron-down ml-2 text-sm group-hover:rotate-180 transition-transform duration-200"></i>
-              </button><!-- Enhanced User Dropdown Menu -->
-              <div
-                class="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-2xl overflow-hidden z-[9999] hidden border border-gray-200"
-                id="userMenu"
-              >
-                <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
-                  <div class="flex items-center space-x-3">
-                    <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                      {% if current_user.profile_pic %}
-                      <img
-                        src="{{ current_user.profile_pic }}"
-                        alt="Profile"
-                        class="h-12 w-12 rounded-full object-cover"
-                      />
-                      {% else %}
-                      <span class="font-bold text-blue-600">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
-                      {% endif %}
+              </button>
+
+              <!-- User Dropdown Menu -->
+              <div class="dropdown-content text-gray-800 mt-2" id="userMenu">
+                <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
+                  <div class="flex items-center">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold mr-3">
+                      {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
                     </div>
                     <div>
-                      <p class="font-semibold text-gray-900">{{ current_user.first_name }} {{ current_user.last_name }}</p>
-                      <p class="text-sm text-gray-600">{{ current_user.email }}</p>
+                      <div class="font-semibold text-gray-800">{{ current_user.first_name }} {{ current_user.last_name }}</div>
+                      <div class="text-xs text-gray-500">{{ current_user.role|replace('_', ' ')|title }}</div>
                     </div>
                   </div>
-                </div>
-                <div class="py-2">
-                  <a
-                    href="{{ url_for('student.dashboard') }}"
-                    class="flex items-center px-4 py-3 text-gray-800 hover:bg-blue-50 transition-colors duration-200 group"
-                  >
-                    <i class="fas fa-user-circle mr-3 text-blue-600 group-hover:scale-110 transition-transform"></i> 
-                    <span>My Profile</span>
-                  </a>
-                  <a
-                    href="{{ url_for('student.inquiries') }}"
-                    class="flex items-center px-4 py-3 text-gray-800 hover:bg-blue-50 transition-colors duration-200 group"
-                  >
-                    <i class="fas fa-cog mr-3 text-blue-600 group-hover:scale-110 transition-transform"></i> 
-                    <span>Account Settings</span>
-                  </a>
-                  <div class="border-t border-gray-200 my-1"></div>
-                  <a
-                    href="{{ url_for('auth.logout') }}"
-                    class="flex items-center px-4 py-3 text-red-600 hover:bg-red-50 transition-colors duration-200 group"
-                  >
-                    <i class="fas fa-sign-out-alt mr-3 group-hover:scale-110 transition-transform"></i> 
-                    <span>Logout</span>
-                  </a>
-                </div>
+                </div>                <a
+                  href="{{ url_for('student.profile') }}"
+                  class="block px-4 py-3 hover:bg-blue-50 transition-colors duration-200"
+                >
+                  <i class="fas fa-user-circle mr-3 text-blue-600"></i> My Profile
+                </a>
+                <a
+                  href="{{ url_for('student.account_settings') }}"
+                  class="block px-4 py-3 hover:bg-blue-50 transition-colors duration-200"
+                >
+                  <i class="fas fa-cog mr-3 text-gray-600"></i> Account Settings
+                </a>
+                <hr class="my-1">
+                <a
+                  href="{{ url_for('auth.logout') }}"
+                  class="block px-4 py-3 hover:bg-red-50 text-red-600 transition-colors duration-200"
+                >                  <i class="fas fa-sign-out-alt mr-3"></i> Logout
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </header>    <div class="flex flex-1 overflow-hidden">
-      <!-- Enhanced Sidebar - Desktop -->
-      <aside class="w-72 bg-white text-gray-800 hidden md:block shadow-xl border-r border-gray-200" id="sidebar">
-        <div class="h-full flex flex-col">
-          <!-- Enhanced Profile Section -->
-          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
-            <div class="flex items-center space-x-4">
-              <div class="relative">
-                <div class="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg border-4 border-white">
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar - Desktop -->
+      <aside class="sidebar-gradient w-72 flex-shrink-0 overflow-y-auto shadow-xl relative z-20" id="sidebar">
+        <div class="h-full flex flex-col">          <!-- Student Profile Section -->
+          <div class="profile-section">
+            <div class="flex items-center">
+              <div class="relative mr-4">
+                <div class="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg ring-2 ring-white ring-opacity-60">
                   {% if current_user.profile_pic %}
                   <img
                     src="{{ current_user.profile_pic }}"
-                    alt="Profile"
-                    class="h-16 w-16 rounded-full object-cover"
+                    alt="Profile Picture"
+                    class="w-full h-full object-cover"
                   />
                   {% else %}
-                  <span class="text-white font-bold text-2xl">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
+                  <div class="w-full h-full flex items-center justify-center text-white text-lg font-bold">
+                    {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                  </div>
                   {% endif %}
                 </div>
-                <!-- Status Indicator -->
-                <div class="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                <!-- Enhanced status indicator -->
+                <div
+                  class="status-indicator status-online"
+                  title="Online"
+                ></div>
               </div>
-              <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-lg text-gray-900 truncate">
+              <div class="flex-1">
+                <h3 class="font-bold text-gray-800 text-base">
                   {{ current_user.first_name }} {{ current_user.last_name }}
                 </h3>
-                <p class="text-sm text-gray-600 truncate">{{ current_user.email }}</p>
-                <div class="mt-2">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <p class="text-xs text-gray-500 mb-2">{{ current_user.email }}</p>
+                <div class="flex items-center space-x-2">
+                  <span class="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
                     <i class="fas fa-user-graduate mr-1"></i>
                     Student
+                  </span>
+                  <span class="bg-gradient-to-r from-green-400 to-green-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-sm" title="Active Status">
+                    <i class="fas fa-circle text-xs"></i>
                   </span>
                 </div>
               </div>
             </div>
-          </div>
+          </div><!-- Quick Action Shortcuts -->          <div class="px-4 py-4">
+            <div class="nav-section-header">
+              <i class="fas fa-rocket mr-2 text-blue-600"></i>
+              Quick Actions
+            </div>
+            <div class="space-y-2">
+              <!-- Submit Inquiry Shortcut -->              <a href="{{ url_for('student.university_offices') }}" class="shortcut-card inquiry-card p-3 block group">
+                <div class="flex items-center">
+                  <div class="shortcut-icon w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all duration-300">
+                    <i class="fas fa-question-circle text-sm"></i>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <h4 class="font-medium text-amber-800 text-sm group-hover:text-amber-900 transition-colors">Submit Inquiry</h4>
+                    <p class="text-xs text-amber-700 mt-0.5 group-hover:text-amber-800 transition-colors">Ask questions and get help</p>
+                  </div>
+                  <div class="text-amber-600 group-hover:text-amber-700 group-hover:translate-x-1 transition-all duration-300">
+                    <i class="fas fa-arrow-right text-sm"></i>
+                  </div>
+                </div>
+              </a><!-- Request Counseling Session Shortcut -->              <a href="{{ url_for('student.request_counseling_session') }}" class="shortcut-card counseling-card p-3 block group">
+                <div class="flex items-center">
+                  <div class="shortcut-icon w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all duration-300">
+                    <i class="fas fa-user-md text-sm"></i>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <h4 class="font-medium text-green-800 text-sm group-hover:text-green-900 transition-colors">Request Counseling</h4>
+                    <p class="text-xs text-green-700 mt-0.5 group-hover:text-green-800 transition-colors">Schedule counseling session</p>
+                  </div>
+                  <div class="text-green-600 group-hover:text-green-700 group-hover:translate-x-1 transition-all duration-300">
+                    <i class="fas fa-arrow-right text-sm"></i>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </div><!-- Navigation Links -->
+          <div class="flex-1 px-2">
+            <div class="nav-section-header">
+              <i class="fas fa-compass mr-2 text-indigo-600"></i>
+              Main Navigation
+            </div>
 
-          <!-- Enhanced Navigation -->
-          <div class="flex-1 overflow-y-auto custom-scrollbar p-4">
             <nav class="space-y-1">
-              <!-- Main Navigation Label -->
-              <div class="px-2 py-3">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Main Navigation</p>
-              </div>
-
               <a
                 href="{{ url_for('student.dashboard') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg transition-all duration-200 {% if request.endpoint == 'student.dashboard' %}active{% else %}text-gray-700 hover:bg-gray-50{% endif %}"
+                class="sidebar-item flex items-center px-4 py-3 group {% if request.endpoint == 'student.dashboard' %}active-nav{% else %}text-gray-700 hover:text-blue-700{% endif %}"
               >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-home"></i>
+                <div class="w-8 flex justify-center">
+                  <i class="fas fa-tachometer-alt text-lg group-hover:scale-110 transition-transform duration-200"></i>
                 </div>
-                <span class="font-medium">Dashboard</span>
+                <span class="ml-3 font-medium">Dashboard</span>
                 {% if request.endpoint == 'student.dashboard' %}
                 <span class="ml-auto">
-                  <i class="fas fa-circle text-xs"></i>
+                  <i class="fas fa-circle text-xs animate-pulse"></i>
                 </span>
                 {% endif %}
               </a>
 
               <a
                 href="{{ url_for('student.inquiries') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg transition-all duration-200 {% if request.endpoint == 'student.inquiries' %}active{% else %}text-gray-700 hover:bg-gray-50{% endif %}"
+                class="sidebar-item flex items-center px-4 py-3 group {% if request.endpoint == 'student.inquiries' %}active-nav{% else %}text-gray-700 hover:text-blue-700{% endif %}"
               >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-question-circle"></i>
+                <div class="w-8 flex justify-center">
+                  <i class="fas fa-question-circle text-lg group-hover:scale-110 transition-transform duration-200"></i>
                 </div>
-                <span class="font-medium">My Inquiries</span>
+                <span class="ml-3 font-medium">My Inquiries</span>
                 {% if pending_inquiries and pending_inquiries > 0 %}
-                <span class="ml-auto bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold badge-pulse">
+                <span class="ml-auto counter-badge counter-red animate-bounce">
                   {{ pending_inquiries }}
                 </span>
-                {% endif %}
-                {% if request.endpoint == 'student.inquiries' %}
+                {% elif request.endpoint == 'student.inquiries' %}
                 <span class="ml-auto">
-                  <i class="fas fa-circle text-xs"></i>
+                  <i class="fas fa-circle text-xs animate-pulse"></i>
                 </span>
                 {% endif %}
               </a>              <a
                 href="{{ url_for('student.counseling_dashboard') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg transition-all duration-200 {% if 'counseling' in request.endpoint %}active{% else %}text-gray-700 hover:bg-gray-50{% endif %}"
+                class="sidebar-item flex items-center px-4 py-3 group {% if request.endpoint == 'student.counseling_dashboard' %}active-nav{% else %}text-gray-700 hover:text-blue-700{% endif %}"
               >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-chart-line"></i>
+                <div class="w-8 flex justify-center">
+                  <i class="fas fa-video text-lg group-hover:scale-110 transition-transform duration-200"></i>
                 </div>
-                <span class="font-medium">My Counseling</span>
+                <span class="ml-3 font-medium">My Counseling</span>
                 {% if upcoming_sessions and upcoming_sessions > 0 %}
-                <span class="ml-auto bg-green-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold badge-pulse">
+                <span class="ml-auto counter-badge counter-blue animate-pulse">
                   {{ upcoming_sessions }}
                 </span>
-                {% endif %}
-                {% if 'counseling' in request.endpoint %}
+                {% elif request.endpoint == 'student.counseling_dashboard' %}
                 <span class="ml-auto">
-                  <i class="fas fa-circle text-xs"></i>
+                  <i class="fas fa-circle text-xs animate-pulse"></i>
                 </span>
                 {% endif %}
               </a>
-
-              
 
               <a
                 href="{{ url_for('student.announcements') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg transition-all duration-200 {% if request.endpoint == 'student.announcements' %}active{% else %}text-gray-700 hover:bg-gray-50{% endif %}"
+                class="sidebar-item flex items-center px-4 py-3 group {% if request.endpoint == 'student.announcements' %}active-nav{% else %}text-gray-700 hover:text-blue-700{% endif %}"
               >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-bullhorn"></i>
+                <div class="w-8 flex justify-center">
+                  <i class="fas fa-bullhorn text-lg group-hover:scale-110 transition-transform duration-200"></i>
                 </div>
-                <span class="font-medium">Announcements</span>
+                <span class="ml-3 font-medium">Announcements</span>
                 {% if request.endpoint == 'student.announcements' %}
                 <span class="ml-auto">
-                  <i class="fas fa-circle text-xs"></i>
+                  <i class="fas fa-circle text-xs animate-pulse"></i>
                 </span>
                 {% endif %}
               </a>
 
               <a
                 href="{{ url_for('student.university_offices') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg transition-all duration-200 {% if request.endpoint == 'student.university_offices' %}active{% else %}text-gray-700 hover:bg-gray-50{% endif %}"
+                class="sidebar-item flex items-center px-4 py-3 group {% if request.endpoint == 'student.university_offices' %}active-nav{% else %}text-gray-700 hover:text-blue-700{% endif %}"
               >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-building"></i>
+                <div class="w-8 flex justify-center">
+                  <i class="fas fa-building text-lg group-hover:scale-110 transition-transform duration-200"></i>
                 </div>
-                <span class="font-medium">University Offices</span>
+                <span class="ml-3 font-medium">University Offices</span>
                 {% if request.endpoint == 'student.university_offices' %}
                 <span class="ml-auto">
-                  <i class="fas fa-circle text-xs"></i>
+                  <i class="fas fa-circle text-xs animate-pulse"></i>
                 </span>
                 {% endif %}
               </a>
-
-              <!-- Divider -->
-              <div class="px-2 py-3">
-                <div class="border-t border-gray-200"></div>
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-3">Quick Actions</p>
-              </div>
-
-              <a
-                href="{{ url_for('student.university_offices') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group"
-              >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-plus-circle group-hover:text-blue-600"></i>
-                </div>
-                <span class="font-medium">Submit Inquiry</span>
-                <i class="fas fa-external-link-alt ml-auto text-xs opacity-50 group-hover:opacity-100"></i>
-              </a>
-
-              <a
-                href="{{ url_for('student.request_counseling_session') }}"
-                class="sidebar-item flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-700 transition-all duration-200 group"
-              >
-                <div class="nav-icon mr-3">
-                  <i class="fas fa-calendar-plus group-hover:text-green-600"></i>
-                </div>
-                <span class="font-medium">Book Session</span>
-                <i class="fas fa-external-link-alt ml-auto text-xs opacity-50 group-hover:opacity-100"></i>
-              </a>
             </nav>
-          </div>
-
-          <!-- Enhanced Footer Section -->
-          <div class="p-4 border-t border-gray-200 bg-gray-50">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-xs font-medium text-gray-600">Last Active</div>
-                <div class="text-xs text-gray-500">
-                  {% if current_user.last_activity %} 
-                  {{ current_user.last_activity.strftime('%b %d, %H:%M') }} 
-                  {% else %} 
-                  Welcome! 
-                  {% endif %}
-                </div>
+          </div>          <!-- Footer section -->
+          <div class="p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+            <div class="text-center">
+              <div class="text-xs text-gray-500 mb-2">
+                <i class="fas fa-clock mr-1"></i>
+                Last Login
               </div>
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span class="text-xs text-gray-500">Online</span>
+              <div class="text-sm text-gray-700 font-medium">
+                {% if current_user.last_activity %} 
+                {{ current_user.last_activity.strftime('%b %d, %Y') }}
+                <br>
+                <span class="text-xs text-gray-500">{{ current_user.last_activity.strftime('%I:%M %p') }}</span>
+                {% else %} 
+                <span class="text-blue-600">First Login</span>
+                {% endif %}
+              </div>
+              <div class="mt-3 pt-2 border-t border-gray-200">
+                <div class="flex items-center justify-center space-x-4 text-xs text-gray-400">
+                  <span title="Connected"><i class="fas fa-wifi text-green-500"></i></span>
+                  <span title="Version">v2.1.0</span>
+                  <span title="Support"><i class="fas fa-question-circle"></i></span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </aside>
-
-      <!-- Mobile Sidebar Overlay -->
+      </aside>      <!-- Mobile Sidebar Overlay -->
       <div
-        class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden transition-opacity duration-300"
+        class="fixed inset-0 bg-black opacity-50 z-20 hidden"
         id="sidebarOverlay"
       ></div>
 
-      <!-- Enhanced Main Content -->
-      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-        <div class="min-h-full">
-          <!-- Content Wrapper -->
-          <div class="container mx-auto px-4 py-6">
-            <!-- Flash Messages will appear here from the header -->
-            {% block content %}{% endblock %}
+      <!-- Main Content -->
+      <main class="flex-1 overflow-x-hidden overflow-y-auto main-content">
+        <div class="container mx-auto px-4 py-6">
+          <!-- Flash Messages -->
+          {% with messages = get_flashed_messages(with_categories=true) %} {% if
+          messages %} 
+          <div class="mb-6">
+            {% for category, message in messages %}
+            <div
+              class="mb-3 border-l-4 p-4 rounded-lg shadow-lg backdrop-blur-sm transition-all duration-300 {% if category == 'success' %}border-green-500 bg-gradient-to-r from-green-50 to-green-100 text-green-800 {% elif category == 'error' %}border-red-500 bg-gradient-to-r from-red-50 to-red-100 text-red-800 {% elif category == 'warning' %}border-yellow-500 bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 {% else %}border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800{% endif %}"
+              role="alert"
+            >
+              <div class="flex items-start">
+                <!-- Icon based on category -->
+                <div class="flex-shrink-0 mr-3 mt-0.5">
+                  {% if category == 'success' %}
+                  <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                    <i class="fas fa-check text-white text-xs"></i>
+                  </div>
+                  {% elif category == 'error' %}
+                  <div class="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                    <i class="fas fa-exclamation text-white text-xs"></i>
+                  </div>
+                  {% elif category == 'warning' %}
+                  <div class="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-white text-xs"></i>
+                  </div>
+                  {% else %}
+                  <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                    <i class="fas fa-info text-white text-xs"></i>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium">{{ message }}</p>
+                </div>
+                <button
+                  class="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                  onclick="this.parentElement.parentElement.remove()"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            {% endfor %}
           </div>
+          {% endif %} {% endwith %} 
+
+          <!-- Main Content Area -->
+          {% block content %}{% endblock %}
         </div>
       </main>
-    </div>    <!-- Audio for notifications -->
+    </div>
+
+    <!-- Audio for notifications -->
     <audio
       id="notificationSound"
       src="/static/sounds/notification.mp3"
       preload="auto"
-    ></audio>
-
-    <script>
+    ></audio>    <script>
       document.addEventListener("DOMContentLoaded", function () {
-        // Enhanced Mobile menu toggle with animations
+        // Mobile menu toggle
         const mobileMenuBtn = document.getElementById("mobileMenuBtn");
         const sidebar = document.getElementById("sidebar");
         const sidebarOverlay = document.getElementById("sidebarOverlay");
@@ -775,114 +810,75 @@
         mobileMenuBtn.addEventListener("click", function () {
           sidebar.classList.toggle("hidden");
           sidebar.classList.toggle("fixed");
-          sidebar.classList.toggle("z-40");
+          sidebar.classList.toggle("z-30");
           sidebar.classList.toggle("inset-y-0");
           sidebar.classList.toggle("left-0");
           sidebarOverlay.classList.toggle("hidden");
-          
-          // Add slide animation
-          if (!sidebar.classList.contains("hidden")) {
-            sidebar.style.transform = "translateX(-100%)";
-            setTimeout(() => {
-              sidebar.style.transform = "translateX(0)";
-              sidebar.style.transition = "transform 0.3s ease";
-            }, 10);
-          }
         });
 
         sidebarOverlay.addEventListener("click", function () {
-          sidebar.style.transform = "translateX(-100%)";
-          setTimeout(() => {
-            sidebar.classList.add("hidden");
-            sidebar.classList.remove("fixed", "z-40", "inset-y-0", "left-0");
-            sidebarOverlay.classList.add("hidden");
-            sidebar.style.transform = "";
-            sidebar.style.transition = "";
-          }, 300);
+          sidebar.classList.add("hidden");
+          sidebar.classList.remove("fixed", "z-30", "inset-y-0", "left-0");
+          sidebarOverlay.classList.add("hidden");
         });
 
-        // Enhanced dropdown toggles with improved UX
-        const userDropdownBtn = document.querySelector("#userDropdown button");
-        const userMenu = document.getElementById("userMenu");
-        const notificationsBtn = document.querySelector("#notificationsDropdown button");
-        const notificationsPanel = document.getElementById("notificationsPanel");
-
-        function toggleDropdown(dropdown, otherDropdown = null) {
-          const isHidden = dropdown.classList.contains("hidden");
+        // Dropdown functionality
+        const dropdowns = document.querySelectorAll('.dropdown');
+        
+        dropdowns.forEach(dropdown => {
+          const button = dropdown.querySelector('button');
+          const content = dropdown.querySelector('.dropdown-content');
           
-          // Close other dropdown if provided
-          if (otherDropdown && !otherDropdown.classList.contains("hidden")) {
-            otherDropdown.style.opacity = "0";
-            otherDropdown.style.transform = "translateY(-10px)";
-            setTimeout(() => {
-              otherDropdown.classList.add("hidden");
-              otherDropdown.style.opacity = "";
-              otherDropdown.style.transform = "";
-            }, 200);
+          if (button && content) {
+            button.addEventListener('click', function(e) {
+              e.stopPropagation();
+              
+              // Close other dropdowns
+              dropdowns.forEach(otherDropdown => {
+                if (otherDropdown !== dropdown) {
+                  const otherContent = otherDropdown.querySelector('.dropdown-content');
+                  if (otherContent) {
+                    otherContent.style.display = 'none';
+                  }
+                }
+              });
+              
+              // Toggle current dropdown
+              if (content.style.display === 'block') {
+                content.style.display = 'none';
+              } else {
+                content.style.display = 'block';
+              }
+            });
           }
-          
-          if (isHidden) {
-            dropdown.classList.remove("hidden");
-            dropdown.style.opacity = "0";
-            dropdown.style.transform = "translateY(-10px)";
-            setTimeout(() => {
-              dropdown.style.opacity = "1";
-              dropdown.style.transform = "translateY(0)";
-              dropdown.style.transition = "all 0.2s ease";
-            }, 10);
-          } else {
-            dropdown.style.opacity = "0";
-            dropdown.style.transform = "translateY(-10px)";
-            setTimeout(() => {
-              dropdown.classList.add("hidden");
-              dropdown.style.opacity = "";
-              dropdown.style.transform = "";
-              dropdown.style.transition = "";
-            }, 200);
-          }
-        }
-
-        userDropdownBtn.addEventListener("click", function (e) {
-          e.stopPropagation();
-          toggleDropdown(userMenu, notificationsPanel);
         });
 
-        notificationsBtn.addEventListener("click", function (e) {
-          e.stopPropagation();
-          toggleDropdown(notificationsPanel, userMenu);
-        });
-
-        // Enhanced outside click handling
-        document.addEventListener("click", function (event) {
-          if (!userDropdownBtn.contains(event.target) && !userMenu.contains(event.target)) {
-            if (!userMenu.classList.contains("hidden")) {
-              toggleDropdown(userMenu);
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+          dropdowns.forEach(dropdown => {
+            if (!dropdown.contains(e.target)) {
+              const content = dropdown.querySelector('.dropdown-content');
+              if (content) {
+                content.style.display = 'none';
+              }
             }
-          }
-
-          if (!notificationsBtn.contains(event.target) && !notificationsPanel.contains(event.target)) {
-            if (!notificationsPanel.classList.contains("hidden")) {
-              toggleDropdown(notificationsPanel);
-            }
-          }
+          });
         });
 
-        // Enhanced notification handling
+        // Handle notification clicks - redirect to inquiry
         const notificationItems = document.querySelectorAll(".notification-item");
         notificationItems.forEach((item) => {
           item.addEventListener("click", function (e) {
+            // Don't navigate if clicked on close button
             if (e.target.closest(".notification-close")) {
               return;
             }
 
+            // Get inquiry ID and navigate if available
             const inquiryId = this.dataset.inquiryId;
             const announcementId = this.dataset.announcementId;
-            
-            if (inquiryId || announcementId) {
-              // Add visual feedback
-              this.style.opacity = "0.7";
-              this.style.transform = "scale(0.98)";
-              
+            if (inquiryId) {
+              // Mark as read before navigating
               fetch(`/api/notifications/${this.dataset.notificationId}/dismiss`, {
                 method: "POST",
                 headers: {
@@ -891,33 +887,41 @@
                 },
               })
                 .then(() => {
-                  const url = inquiryId ? `/student/inquiry/${inquiryId}` : `/student/announcement/${announcementId}`;
-                  window.location.href = url;
+                  window.location.href = `/student/inquiry/${inquiryId}`;
                 })
                 .catch((error) => {
                   console.error("Error marking notification as read:", error);
-                  const url = inquiryId ? `/student/inquiry/${inquiryId}` : `/student/announcement/${announcementId}`;
-                  window.location.href = url;
+                  window.location.href = `/student/inquiry/${inquiryId}`;
+                });
+            } else if (announcementId) {
+              fetch(`/api/notifications/${this.dataset.notificationId}/dismiss`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+                },
+              })
+                .then(() => {
+                  window.location.href = `/student/announcement/${announcementId}`;
+                })
+                .catch((error) => {
+                  console.error("Error marking notification as read:", error);
+                  window.location.href = `/student/announcement/${announcementId}`;
                 });
             }
           });
         });
 
-        // Enhanced notification dismiss with smooth animations
+        // Handle notification dismiss buttons
         const closeButtons = document.querySelectorAll(".notification-close");
         closeButtons.forEach((button) => {
           button.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
-            
             const notificationItem = this.closest(".notification-item");
             const notificationId = notificationItem.dataset.notificationId;
 
-            // Immediate visual feedback
-            notificationItem.style.opacity = "0.5";
-            notificationItem.style.transform = "translateX(20px)";
-            notificationItem.style.transition = "all 0.3s ease";
-
+            // Mark as read in the database via fetch API
             fetch(`/api/notifications/${notificationId}/dismiss`, {
               method: "POST",
               headers: {
@@ -925,47 +929,64 @@
                 "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
               },
             })
-              .then((response) => response.json())
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error("Network response was not ok");
+                }
+                return response.json();
+              })
               .then((data) => {
                 if (data.success) {
-                  // Smooth removal animation
+                  // Remove the notification from UI
                   notificationItem.style.height = notificationItem.offsetHeight + "px";
-                  notificationItem.style.overflow = "hidden";
-                  
                   setTimeout(() => {
                     notificationItem.style.height = "0";
                     notificationItem.style.padding = "0";
                     notificationItem.style.margin = "0";
                     notificationItem.style.opacity = "0";
+                    notificationItem.style.overflow = "hidden";
                   }, 10);
 
+                  // Remove from DOM after animation completes
                   setTimeout(() => {
                     notificationItem.remove();
-                    updateNotificationBadge(-1);
-                    checkEmptyNotifications();
-                  }, 350);
+
+                    // Update badge count
+                    const badges = document.querySelectorAll(".notification-badge");
+                    badges.forEach(badge => {
+                      let count = parseInt(badge.textContent || "0");
+                      if (count > 0) {
+                        count--;
+                        if (count === 0) {
+                          badge.classList.add("hidden");
+                        } else {
+                          badge.textContent = count;
+                        }
+                      }
+                    });
+
+                    // Show "no notifications" message if this was the last one
+                    const container = document.getElementById("notificationsContainer");
+                    if (container && !container.querySelector(".notification-item")) {
+                      container.innerHTML = `
+                        <div class="p-3 text-center text-gray-500">
+                          <i class="far fa-bell-slash text-gray-300 text-lg mb-2"></i>
+                          <p>No notifications</p>
+                        </div>
+                      `;
+                    }
+                  }, 300);
                 }
               })
-              .catch((error) => {
-                console.error("Error dismissing notification:", error);
-                // Reset visual state on error
-                notificationItem.style.opacity = "";
-                notificationItem.style.transform = "";
-              });
+              .catch((error) => console.error("Error dismissing notification:", error));
           });
         });
 
-        // Enhanced mark all as read with better UX
+        // Mark all as read functionality
         const markAllAsReadBtn = document.getElementById("markAllAsRead");
         if (markAllAsReadBtn) {
           markAllAsReadBtn.addEventListener("click", function (e) {
             e.preventDefault();
-            
-            // Add loading state
-            const originalText = this.textContent;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Marking...';
-            this.style.pointerEvents = "none";
-
             fetch("/api/notifications/mark-all-read", {
               method: "POST",
               headers: {
@@ -973,192 +994,140 @@
                 "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
               },
             })
-              .then((response) => response.json())
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error("Network response was not ok");
+                }
+                return response.json();
+              })
               .then((data) => {
                 if (data.success) {
-                  // Visual feedback for all notifications
+                  // Update UI - remove 'unread' class from all notifications
                   document.querySelectorAll(".notification-item.unread").forEach((item) => {
                     item.classList.remove("unread");
-                    item.style.transform = "scale(0.98)";
-                    item.style.transition = "all 0.3s ease";
-                    setTimeout(() => {
-                      item.style.transform = "";
-                    }, 200);
                   });
 
-                  // Update badge
-                  const badge = document.getElementById("notificationBadge");
-                  if (badge) {
-                    badge.style.transform = "scale(0)";
-                    badge.style.transition = "transform 0.3s ease";
-                    setTimeout(() => {
-                      badge.classList.add("hidden");
-                      badge.style.transform = "";
-                    }, 300);
-                  }
+                  // Hide the badge counter
+                  const badges = document.querySelectorAll(".notification-badge");
+                  badges.forEach(badge => {
+                    badge.textContent = "0";
+                    badge.classList.add("hidden");
+                  });
 
-                  // Success feedback
-                  this.innerHTML = '<i class="fas fa-check mr-1"></i>Done!';
-                  this.style.background = "rgba(34, 197, 94, 0.2)";
-                  
+                  // Show confirmation feedback
+                  const container = document.getElementById("notificationsContainer");
+                  const feedbackDiv = document.createElement("div");
+                  feedbackDiv.className = "bg-green-50 text-green-700 text-xs text-center p-2 border-b border-green-100";
+                  feedbackDiv.innerText = "All notifications marked as read";
+                  container.prepend(feedbackDiv);
+
+                  // Remove the feedback after 2 seconds
                   setTimeout(() => {
-                    this.textContent = originalText;
-                    this.style.pointerEvents = "";
-                    this.style.background = "";
+                    feedbackDiv.style.opacity = "0";
+                    feedbackDiv.style.transition = "opacity 0.5s ease";
+                    setTimeout(() => feedbackDiv.remove(), 500);
                   }, 2000);
                 }
               })
-              .catch((error) => {
-                console.error("Error marking notifications as read:", error);
-                this.textContent = originalText;
-                this.style.pointerEvents = "";
-              });
+              .catch((error) => console.error("Error marking notifications as read:", error));
           });
         }
 
-        // Utility functions
-        function updateNotificationBadge(change) {
-          const badge = document.getElementById("notificationBadge");
-          if (badge) {
-            let count = parseInt(badge.textContent || "0");
-            count = Math.max(0, count + change);
-            
-            if (count === 0) {
-              badge.style.transform = "scale(0)";
-              setTimeout(() => {
-                badge.classList.add("hidden");
-                badge.style.transform = "";
-              }, 200);
-            } else {
-              badge.textContent = count;
-              badge.style.transform = "scale(1.2)";
-              setTimeout(() => {
-                badge.style.transform = "";
-              }, 200);
-            }
-          }
-        }
+        // WebSocket connection for real-time updates
+        const socket = io();
+        socket.on("connect", function () {
+          console.log("Connected to WebSocket");
+          socket.emit("join", { room: "student_room" });
+          socket.emit("join", { room: `student_{{ current_user.id }}` });
+        });
 
-        function checkEmptyNotifications() {
-          const container = document.getElementById("notificationsContainer");
-          if (container && !container.querySelector(".notification-item")) {
-            container.innerHTML = `
-              <div class="p-8 text-center text-gray-500 animate-fade-in">
-                <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <i class="far fa-bell-slash text-gray-400 text-2xl"></i>
-                </div>
-                <p class="font-medium">All caught up!</p>
-                <p class="text-sm">No new notifications</p>
-              </div>
-            `;
-          }
-        }
-
-        // Enhanced flash message handling
-        const closeFlashButtons = document.querySelectorAll(".close-flash");
-        closeFlashButtons.forEach((button) => {
-          button.addEventListener("click", function () {
-            const flashMessage = this.closest(".flash-message");
-            flashMessage.style.transform = "translateY(-20px)";
-            flashMessage.style.opacity = "0";
-            setTimeout(() => {
-              flashMessage.remove();
-            }, 300);
+        // Listen for notification events
+        socket.on("new_notification", function (data) {
+          // Update notification badge
+          const notificationBadges = document.querySelectorAll(".notification-badge");
+          notificationBadges.forEach(badge => {
+            let count = parseInt(badge.innerText || "0");
+            count += 1;
+            badge.innerText = count;
+            badge.classList.remove("hidden");
           });
-        });
 
-        // Auto-dismiss flash messages with staggered timing
-        const flashMessages = document.querySelectorAll(".flash-message");
-        flashMessages.forEach((message, index) => {
-          setTimeout(() => {
-            if (message.parentNode) {
-              message.style.transform = "translateY(-20px)";
-              message.style.opacity = "0";
-              setTimeout(() => {
-                if (message.parentNode) {
-                  message.remove();
-                }
-              }, 300);
-            }
-          }, 5000 + (index * 500)); // Stagger dismissal
-        });
-
-        // Add CSS animation classes
-        const style = document.createElement('style');
-        style.textContent = `
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in {
-            animation: fadeIn 0.5s ease-out;
-          }
-        `;
-        document.head.appendChild(style);
-
-        // Enhanced notification creation function for real-time updates
-        window.createNotificationElement = function(data) {
-          const iconClass = {
-            'inquiry_reply': 'fa-reply text-blue-600',
-            'announcement': 'fa-bullhorn text-orange-600', 
-            'status_change': 'fa-sync text-green-600'
-          }[data.notification_type] || 'fa-info-circle text-gray-600';
-
-          const title = data.source_office ? 
-            `${data.source_office.name} ${data.notification_type.replace('_', ' ')}` : 
-            data.title || 'New notification';
-
-          const messagePreview = data.message && data.message.length > 100 ? 
-            data.message.substring(0, 100) + "..." : 
-            data.message || "";
-
-          const notificationElement = document.createElement("div");
-          notificationElement.className = "notification-item p-4 border-b border-gray-100 unread cursor-pointer hover:bg-gray-50 animate-fade-in";
-          notificationElement.dataset.notificationId = data.id || "";
-
-          if (data.inquiry_id) notificationElement.dataset.inquiryId = data.inquiry_id;
-          if (data.announcement_id) notificationElement.dataset.announcementId = data.announcement_id;
-          if (data.source_office_id) notificationElement.dataset.officeId = data.source_office_id;
-
-          notificationElement.innerHTML = `
-            <div class="flex items-start space-x-3">
-              <div class="flex-shrink-0">
-                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <i class="fas ${iconClass}"></i>
-                </div>
-              </div>
-              <div class="flex-grow min-w-0">
-                <div class="text-sm font-semibold text-gray-900 mb-1">${title}</div>
-                <div class="text-xs text-gray-600 notification-preview mb-2">${messagePreview}</div>
-                <div class="text-xs text-gray-400 flex items-center">
-                  <i class="far fa-clock mr-1"></i>Just now
-                </div>
-              </div>
-              <button class="notification-close text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-all duration-200">
-                <i class="fas fa-times text-sm"></i>
-              </button>
-            </div>
-          `;
-
-          // Add event listeners to new notification
-          const closeBtn = notificationElement.querySelector(".notification-close");
-          // ... (add same event listeners as above)
-
-          // Insert at top of container
+          // Add notification to dropdown
           const container = document.getElementById("notificationsContainer");
           if (container) {
-            container.insertBefore(notificationElement, container.firstChild);
-            updateNotificationBadge(1);
-          }
+            const emptyMessage = container.querySelector(".text-center.text-gray-500");
+            if (emptyMessage) {
+              container.innerHTML = "";
+            }
 
-          // Play notification sound
-          const notificationSound = document.getElementById("notificationSound");
-          if (notificationSound) {
-            notificationSound.play().catch(e => console.warn("Could not play notification sound:", e));
-          }
+            // Determine appropriate icon and title based on notification type
+            let iconClass = "fa-info-circle";
+            let title = data.title || "";
 
-          return notificationElement;
-        };
+            if (data.notification_type === "inquiry_reply") {
+              iconClass = "fa-reply";
+              if (data.source_office && data.source_office.name) {
+                title = `${data.source_office.name} replied`;
+              } else if (data.office_name) {
+                title = `${data.office_name} replied`;
+              } else {
+                title = data.title || "Office replied";
+              }
+            } else if (data.notification_type === "announcement") {
+              iconClass = "fa-bullhorn";
+              if (data.source_office && data.source_office.name) {
+                title = `New Announcement from ${data.source_office.name}`;
+              } else {
+                title = data.title || "New Announcement";
+              }
+            } else if (data.notification_type === "status_change") {
+              iconClass = "fa-sync";
+              if (data.source_office && data.source_office.name) {
+                title = `${data.source_office.name} updated status`;
+              } else {
+                title = data.title || "Status Updated";
+              }
+            }
+
+            const messagePreview = data.message && data.message.length > 100 
+              ? data.message.substring(0, 100) + "..." 
+              : data.message || "";
+
+            const notificationElement = document.createElement("div");
+            notificationElement.className = "notification-item p-3 border-b hover:bg-gray-50 unread cursor-pointer";
+            notificationElement.dataset.notificationId = data.id || "";
+
+            if (data.inquiry_id) {
+              notificationElement.dataset.inquiryId = data.inquiry_id;
+            } else if (data.announcement_id) {
+              notificationElement.dataset.announcementId = data.announcement_id;
+            }
+
+            notificationElement.innerHTML = `
+              <div class="flex items-start">
+                <div class="flex-shrink-0 pt-1">
+                  <i class="fas ${iconClass} text-blue-500"></i>
+                </div>
+                <div class="ml-3 flex-grow notification-content">
+                  <div class="text-sm font-medium text-gray-900">${title}</div>
+                  <div class="text-xs text-gray-600 mt-1 notification-preview">${messagePreview}</div>
+                  <div class="text-xs text-gray-400 mt-1">Just now</div>
+                </div>
+                <button class="notification-close text-gray-400 hover:text-gray-600 ml-2" aria-label="Dismiss notification">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            `;
+
+            container.prepend(notificationElement);
+
+            // Play notification sound
+            const notificationSound = document.getElementById("notificationSound");
+            if (notificationSound) {
+              notificationSound.play().catch((e) => console.warn("Could not play notification sound:", e));
+            }
+          }
+        });
       });
     </script>
 

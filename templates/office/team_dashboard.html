@@ -3,187 +3,241 @@
 {% block title %}Team Dashboard | Office Portal{% endblock %}
 
 {% block content %}
-<div class="px-4 py-5 sm:px-6 max-w-7xl mx-auto">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Team Dashboard</h1>
-        <p class="mt-1 text-sm text-gray-600">
-            Manage your team, monitor activity, and coordinate workload distribution
-        </p>
-    </div>
-
-    <!-- Office Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-        <!-- Total Staff -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">Total Staff</p>
-                    <p class="text-2xl font-bold text-gray-800">{{ staff_data|length }}</p>
+<div class="container mx-auto px-4 py-6">
+    <!-- Enhanced Header Section -->
+    <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl shadow-lg p-8 mb-8 border border-green-100">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-users text-white text-xl"></i>
                 </div>
-                <div class="bg-green-100 p-3 rounded-full">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-1">Team Dashboard</h1>
+                    <p class="text-gray-600">Manage your team, monitor activity, and coordinate workload distribution</p>
+                </div>
+            </div>
+            
+            <!-- Enhanced Controls -->
+            <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <select id="sortTeamBy" class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md min-w-0 sm:min-w-[140px]">
+                    <option value="status">Sort by Status</option>
+                    <option value="activity">Sort by Activity</option>
+                    <option value="workload">Sort by Workload</option>
+                </select>
+                <button id="refreshTeamData" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+    </div>    <!-- Enhanced Office Stats Overview -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Staff Card -->
+        <div class="bg-white border-2 border-green-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-users text-green-500 text-sm"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700">Total Staff</p>
+                    </div>
+                    <p class="text-3xl font-bold text-green-600">{{ staff_data|length }}</p>
+                    <div class="mt-3">
+                        <span class="text-green-500 text-sm font-medium">{{ (staff_data|selectattr('is_online', 'equalto', true)|list|length) }} online</span>
+                        <span class="text-gray-500 text-sm ml-2">right now</span>
+                    </div>
+                </div>
+                <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <i class="fas fa-users text-green-500 text-xl"></i>
                 </div>
             </div>
-            <div class="mt-2 text-xs text-gray-500">
-                <span class="font-medium text-green-600">{{ (staff_data|selectattr('is_online', 'equalto', true)|list|length) }} online</span> right now
-            </div>
         </div>
 
-        <!-- Pending Inquiries -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
-            <div class="flex justify-between items-center">
+        <!-- Pending Inquiries Card -->
+        <div class="bg-white border-2 border-yellow-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Pending Inquiries</p>
-                    <p class="text-2xl font-bold text-gray-800">{{ pending_inquiries }}</p>
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-envelope text-yellow-500 text-sm"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700">Pending Inquiries</p>
+                    </div>
+                    <p class="text-3xl font-bold text-yellow-600">{{ pending_inquiries }}</p>
+                    <div class="mt-3">
+                        <span class="text-yellow-500 text-sm font-medium">{{ in_progress_inquiries }}</span>
+                        <span class="text-gray-500 text-sm ml-2">in progress</span>
+                    </div>
                 </div>
-                <div class="bg-yellow-100 p-3 rounded-full">
+                <div class="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <i class="fas fa-envelope text-yellow-500 text-xl"></i>
                 </div>
             </div>
-            <div class="mt-2 text-xs text-gray-500">
-                <span class="font-medium text-yellow-600">{{ in_progress_inquiries }}</span> currently in progress
-            </div>
         </div>
 
-        <!-- Upcoming Sessions -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-            <div class="flex justify-between items-center">
+        <!-- Upcoming Sessions Card -->
+        <div class="bg-white border-2 border-blue-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Upcoming Sessions</p>
-                    <p class="text-2xl font-bold text-gray-800">{{ upcoming_sessions }}</p>
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-blue-500 text-sm"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700">Upcoming Sessions</p>
+                    </div>
+                    <p class="text-3xl font-bold text-blue-600">{{ upcoming_sessions }}</p>
+                    <div class="mt-3">
+                        <span class="text-gray-500 text-sm">Out of</span>
+                        <span class="text-blue-500 text-sm font-medium ml-1">{{ total_sessions }}</span>
+                        <span class="text-gray-500 text-sm ml-1">total sessions</span>
+                    </div>
                 </div>
-                <div class="bg-blue-100 p-3 rounded-full">
+                <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <i class="fas fa-calendar-alt text-blue-500 text-xl"></i>
                 </div>
             </div>
-            <div class="mt-2 text-xs text-gray-500">
-                Out of <span class="font-medium text-blue-600">{{ total_sessions }}</span> total sessions
-            </div>
         </div>
 
-        <!-- Resolution Rate -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
-            <div class="flex justify-between items-center">
+        <!-- Resolution Rate Card -->
+        <div class="bg-white border-2 border-purple-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Resolution Rate</p>
-                    <p class="text-2xl font-bold text-gray-800">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chart-line text-purple-500 text-sm"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700">Resolution Rate</p>
+                    </div>
+                    <p class="text-3xl font-bold text-purple-600">
                         {% if total_inquiries > 0 %}
                             {{ ((resolved_inquiries / total_inquiries) * 100)|int }}%
                         {% else %}
                             0%
                         {% endif %}
                     </p>
+                    <div class="mt-3">
+                        <span class="text-purple-500 text-sm font-medium">{{ resolved_inquiries }}</span>
+                        <span class="text-gray-500 text-sm ml-2">inquiries resolved</span>
+                    </div>
                 </div>
-                <div class="bg-purple-100 p-3 rounded-full">
+                <div class="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <i class="fas fa-chart-line text-purple-500 text-xl"></i>
                 </div>
             </div>
-            <div class="mt-2 text-xs text-gray-500">
-                <span class="font-medium text-purple-600">{{ resolved_inquiries }}</span> inquiries resolved
-            </div>
         </div>
-    </div>
-
-    <!-- Main Content Grid -->
+    </div>    <!-- Enhanced Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Team Directory (2/3 width) -->
+        <!-- Enhanced Team Directory (2/3 width) -->
         <div class="lg:col-span-2 space-y-6">
-            <!-- Team Members Card -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="flex justify-between items-center px-6 py-4 border-b">
-                    <h2 class="text-lg font-semibold text-gray-800">Office Team</h2>
-                    <div>
-                        <select id="sortTeamBy" class="text-sm border-gray-300 rounded-md shadow-sm">
-                            <option value="status">Sort by Status</option>
-                            <option value="activity">Sort by Activity</option>
-                            <option value="workload">Sort by Workload</option>
-                        </select>
+            <!-- Enhanced Team Members Card -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-users mr-2 text-gray-600"></i>
+                            Office Team
+                        </h2>
+                        <div class="text-sm text-gray-600 bg-white px-3 py-1 rounded-lg border">
+                            <span class="font-medium">{{ staff_data|length }}</span> members
+                        </div>
                     </div>
                 </div>
                 
-                <div class="divide-y divide-gray-200" id="team-members-container">
+                <div class="divide-y divide-gray-100" id="team-members-container">
                     {% for staff in staff_data %}
-                    <div class="p-4 hover:bg-gray-50 transition-colors staff-card" id="staff-{{ staff.user.id }}" data-status="{{ 'online' if staff.is_online else 'offline' }}" data-activity="{{ staff.total_activity }}" data-workload="{{ staff.workload }}">
+                    <div class="p-6 hover:bg-gray-50 transition-all duration-200 staff-card group" id="staff-{{ staff.user.id }}" data-status="{{ 'online' if staff.is_online else 'offline' }}" data-activity="{{ staff.total_activity }}" data-workload="{{ staff.workload }}">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between">
-                            <!-- Staff Member Info -->
+                            <!-- Enhanced Staff Member Info -->
                             <div class="flex items-center mb-3 sm:mb-0">
                                 <div class="relative">
-                                    <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mr-4 overflow-hidden">
+                                    <div class="h-14 w-14 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center mr-4 overflow-hidden shadow-md">
                                         {% if staff.user.profile_pic %}
-                                        <img src="{{ url_for('static', filename=staff.user.profile_pic) }}" alt="{{ staff.user.get_full_name() }}" class="h-12 w-12 rounded-full object-cover">
+                                        <img src="{{ url_for('static', filename=staff.user.profile_pic) }}" alt="{{ staff.user.get_full_name() }}" class="h-14 w-14 rounded-full object-cover">
                                         {% else %}
-                                        <span class="text-green-600 font-medium text-lg">
+                                        <span class="text-white font-bold text-lg">
                                             {{ staff.user.first_name[0] }}{{ staff.user.last_name[0] }}
                                         </span>
                                         {% endif %}
                                     </div>
-                                    <div class="absolute bottom-0 right-0 h-3 w-3 rounded-full {% if staff.is_online %}bg-green-500{% else %}bg-gray-400{% endif %} border border-white status-indicator" title="{{ 'Online' if staff.is_online else 'Offline' }}"></div>
+                                    <div class="absolute -bottom-1 -right-2 h-4 w-4 rounded-full {% if staff.is_online %}bg-green-500{% else %}bg-gray-400{% endif %} border-2 border-white status-indicator shadow-md" title="{{ 'Online' if staff.is_online else 'Offline' }}"></div>
                                 </div>
                                 <div>
-                                    <h3 class="font-medium text-gray-900">{{ staff.user.get_full_name() }}</h3>
-                                    <div class="text-sm text-gray-500 flex items-center">
+                                    <h3 class="font-semibold text-gray-900 text-lg">{{ staff.user.get_full_name() }}</h3>
+                                    <div class="text-sm text-gray-500 flex items-center mt-1">
                                         {% if staff.is_online %}
-                                        <span class="inline-block h-2 w-2 rounded-full bg-green-500 mr-1"></span> Online
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                                            <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                            Online
+                                        </span>
                                         {% else %}
-                                        <span class="inline-block h-2 w-2 rounded-full bg-gray-400 mr-1"></span> 
-                                        {% if staff.last_login %}
-                                        Last seen {{ staff.last_login.strftime('%b %d, %H:%M') }}
-                                        {% else %}
-                                        Offline
-                                        {% endif %}
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                            <span class="w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
+                                            {% if staff.last_login %}
+                                            Last seen {{ staff.last_login.strftime('%b %d, %H:%M') }}
+                                            {% else %}
+                                            Offline
+                                            {% endif %}
+                                        </span>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- Activity Metrics -->
+                            <!-- Enhanced Activity Metrics -->
                             <div class="grid grid-cols-3 gap-3 w-full sm:w-auto">
-                                <div class="text-center px-2 py-1 bg-gray-50 rounded">
-                                    <div class="text-lg font-semibold text-gray-700">{{ staff.inquiries_handled }}</div>
-                                    <div class="text-xs text-gray-500">Inquiries</div>
+                                <div class="text-center px-3 py-2 bg-blue-50 rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors">
+                                    <div class="text-lg font-bold text-blue-600">{{ staff.inquiries_handled }}</div>
+                                    <div class="text-xs text-blue-500 font-medium">Inquiries</div>
                                 </div>
-                                <div class="text-center px-2 py-1 bg-gray-50 rounded">
-                                    <div class="text-lg font-semibold text-gray-700">{{ staff.sessions_count }}</div>
-                                    <div class="text-xs text-gray-500">Sessions</div>
+                                <div class="text-center px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 hover:bg-purple-100 transition-colors">
+                                    <div class="text-lg font-bold text-purple-600">{{ staff.sessions_count }}</div>
+                                    <div class="text-xs text-purple-500 font-medium">Sessions</div>
                                 </div>
-                                <div class="text-center px-2 py-1 rounded
-                                    {% if staff.workload == 'low' %}bg-green-50{% elif staff.workload == 'medium' %}bg-yellow-50{% else %}bg-red-50{% endif %}">
-                                    <div class="text-lg font-semibold 
-                                        {% if staff.workload == 'low' %}text-green-700{% elif staff.workload == 'medium' %}text-yellow-700{% else %}text-red-700{% endif %}">
+                                <div class="text-center px-3 py-2 rounded-xl border transition-colors
+                                    {% if staff.workload == 'low' %}bg-green-50 border-green-100 hover:bg-green-100{% elif staff.workload == 'medium' %}bg-yellow-50 border-yellow-100 hover:bg-yellow-100{% else %}bg-red-50 border-red-100 hover:bg-red-100{% endif %}">
+                                    <div class="text-lg font-bold 
+                                        {% if staff.workload == 'low' %}text-green-600{% elif staff.workload == 'medium' %}text-yellow-600{% else %}text-red-600{% endif %}">
                                         {{ staff.workload|capitalize }}
                                     </div>
-                                    <div class="text-xs text-gray-500">Workload</div>
+                                    <div class="text-xs font-medium
+                                        {% if staff.workload == 'low' %}text-green-500{% elif staff.workload == 'medium' %}text-yellow-500{% else %}text-red-500{% endif %}">Workload</div>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Expanded Details (Initially Hidden) -->
-                        <div class="mt-4 pt-3 border-t border-gray-100 staff-details hidden">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Current Activity</h4>
-                                    <ul class="space-y-2 text-sm">
-                                        <li class="flex justify-between">
+                        <!-- Enhanced Expanded Details -->
+                        <div class="mt-6 pt-4 border-t border-gray-100 staff-details hidden">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div class="bg-gray-50 rounded-xl p-4">
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                        <i class="fas fa-clock mr-2 text-gray-500"></i>
+                                        Current Activity
+                                    </h4>
+                                    <ul class="space-y-3 text-sm">
+                                        <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Pending Inquiries:</span>
-                                            <span class="font-medium">{{ staff.inquiries_pending }}</span>
+                                            <span class="font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">{{ staff.inquiries_pending }}</span>
                                         </li>
-                                        <li class="flex justify-between">
+                                        <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Upcoming Sessions:</span>
-                                            <span class="font-medium">{{ staff.upcoming_sessions }}</span>
+                                            <span class="font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">{{ staff.upcoming_sessions }}</span>
                                         </li>
-                                        <li class="flex justify-between">
+                                        <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Today's Sessions:</span>
-                                            <span class="font-medium">{{ staff.todays_sessions }}</span>
+                                            <span class="font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">{{ staff.todays_sessions }}</span>
                                         </li>
                                     </ul>
                                 </div>
-                                <div>
-                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Performance Metrics</h4>
-                                    <ul class="space-y-2 text-sm">
-                                        <li class="flex justify-between">
+                                <div class="bg-gray-50 rounded-xl p-4">
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                        <i class="fas fa-chart-bar mr-2 text-gray-500"></i>
+                                        Performance Metrics
+                                    </h4>
+                                    <ul class="space-y-3 text-sm">
+                                        <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Resolution Rate:</span>
-                                            <span class="font-medium">
+                                            <span class="font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-full" data-metric="completion-rate">
                                                 {% if staff.inquiries_handled > 0 %}
                                                     {{ ((staff.inquiries_resolved / staff.inquiries_handled) * 100)|int }}%
                                                 {% else %}
@@ -191,51 +245,62 @@
                                                 {% endif %}
                                             </span>
                                         </li>
-                                        <li class="flex justify-between">
+                                        <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Avg. Response Time:</span>
-                                            <span class="font-medium">{{ staff.avg_response_time }} min</span>
+                                            <span class="font-semibold text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full" data-metric="response-time">{{ staff.avg_response_time }} min</span>
                                         </li>
-                                        <li class="flex justify-between">
+                                        <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Monthly Activity:</span>
-                                            <span class="font-medium">{{ staff.monthly_activity }}</span>
+                                            <span class="font-semibold text-teal-600 bg-teal-100 px-2 py-1 rounded-full" data-metric="monthly-activity">{{ staff.monthly_activity }}</span>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
-                            <div class="mt-3 flex justify-end space-x-2">
-                                <button class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded-md">
+                            <div class="mt-4 flex justify-end space-x-3">
+                                <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-700 transition-all duration-200">
+                                    <i class="fas fa-comment mr-1"></i>
                                     Message
                                 </button>
-                                <button class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded-md">
+                                <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 transition-all duration-200">
+                                    <i class="fas fa-eye mr-1"></i>
                                     View Details
                                 </button>
                             </div>
                         </div>
                         
-                        <!-- Toggle Button -->
-                        <button class="w-full mt-2 text-sm text-center text-gray-500 hover:text-gray-700 toggle-details" data-staff-id="{{ staff.user.id }}">
-                            <span class="show-text">Show Details</span>
-                            <span class="hide-text hidden">Hide Details</span>
+                        <!-- Enhanced Toggle Button -->
+                        <button class="w-full mt-4 py-2 text-sm text-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200 toggle-details group-hover:bg-gray-100" data-staff-id="{{ staff.user.id }}">
+                            <span class="show-text flex items-center justify-center">
+                                <i class="fas fa-chevron-down mr-1"></i>
+                                Show Details
+                            </span>
+                            <span class="hide-text hidden flex items-center justify-center">
+                                <i class="fas fa-chevron-up mr-1"></i>
+                                Hide Details
+                            </span>
                         </button>
                     </div>
                     {% endfor %}
                 </div>
                 
-                <!-- No Staff Message if needed -->
+                <!-- Enhanced No Staff Message -->
                 {% if not staff_data %}
-                <div class="p-8 text-center text-gray-500">
-                    <i class="fas fa-users text-gray-300 text-4xl mb-2"></i>
-                    <p>No team members found for this office.</p>
+                <div class="p-12 text-center">
+                    <i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-500 mb-2">No team members found</h3>
+                    <p class="text-gray-400">Team members for this office will appear here.</p>
                 </div>
                 {% endif %}
-            </div>
-            
-            <!-- Workload Distribution Chart -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b">
-                    <h2 class="text-lg font-semibold text-gray-800">Workload Distribution</h2>
+            </div>            
+            <!-- Enhanced Workload Distribution Chart -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-chart-pie mr-2 text-gray-600"></i>
+                        Workload Distribution
+                    </h2>
                 </div>
-                <div class="p-4">
+                <div class="p-6">
                     <div id="workload-chart" class="h-64"
                          data-low="{{ staff_data|selectattr('workload', 'equalto', 'low')|list|length }}"
                          data-medium="{{ staff_data|selectattr('workload', 'equalto', 'medium')|list|length }}"
@@ -245,170 +310,429 @@
             </div>
         </div>
         
-        <!-- Sidebar Content (1/3 width) -->
+        <!-- Enhanced Sidebar Content (1/3 width) -->
         <div class="space-y-6">
-            <!-- Quick Actions Card -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b">
-                    <h2 class="text-lg font-semibold text-gray-800">Quick Actions</h2>
+            <!-- Enhanced Quick Actions Card -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-bolt mr-2 text-gray-600"></i>
+                        Quick Actions
+                    </h2>
                 </div>
-                <div class="p-4 space-y-3">
-                    <button id="updateStatusBtn" class="w-full bg-green-50 hover:bg-green-100 text-green-700 py-2 px-4 rounded-md border border-green-200 flex items-center justify-center transition-colors">
+                <div class="p-6 space-y-4">
+                    <button id="updateStatusBtn" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
                         <i class="fas fa-user-clock mr-2"></i>
                         Update My Status
                     </button>
                     
-                    <button id="reassignInquiryBtn" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-4 rounded-md border border-blue-200 flex items-center justify-center transition-colors">
+                    <button id="reassignInquiryBtn" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
                         <i class="fas fa-exchange-alt mr-2"></i>
                         Reassign Inquiry
                     </button>
                     
-                    <button id="postAnnouncementBtn" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 px-4 rounded-md border border-purple-200 flex items-center justify-center transition-colors">
+                    <button id="postAnnouncementBtn" class="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
                         <i class="fas fa-bullhorn mr-2"></i>
                         Post Team Announcement
                     </button>
                 </div>
             </div>
             
-            <!-- Recent Activity Card -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b">
-                    <h2 class="text-lg font-semibold text-gray-800">Recent Activity</h2>
-                </div>
-                <div class="divide-y divide-gray-100" id="activity-feed">
-                    {% for log in activity_logs %}
-                    <div class="p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0 mr-3">
-                                <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                    <i class="fas fa-history text-gray-500 text-sm"></i>
+            <!-- Enhanced Team Announcement Modal -->
+            <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-bullhorn text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900">Post Team Announcement</h3>
+                        </div>
+                        <button class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200" onclick="closeModal('announcementModal')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <form id="announcementForm" class="space-y-6">
+                            <div>
+                                <label for="announcementTitle" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-heading text-gray-500 mr-2"></i>
+                                    Announcement Title
+                                </label>
+                                <input type="text" id="announcementTitle" name="title" required 
+                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="Enter announcement title...">
+                            </div>
+                            
+                            <div>
+                                <label for="announcementContent" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-align-left text-gray-500 mr-2"></i>
+                                    Message Content
+                                </label>
+                                <textarea id="announcementContent" name="content" rows="4" required
+                                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                          placeholder="Enter your announcement message..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label for="announcementPriority" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-exclamation-triangle text-gray-500 mr-2"></i>
+                                    Priority Level
+                                </label>
+                                <select id="announcementPriority" name="priority" 
+                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    <option value="normal">Normal</option>
+                                    <option value="important">Important</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="announcementAudience" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-users text-gray-500 mr-2"></i>
+                                    Target Audience
+                                </label>
+                                <select id="announcementAudience" name="audience" 
+                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    <option value="office">Office Team Only</option>
+                                    <option value="public">Public (All Students)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <div class="flex items-start space-x-2">
+                                    <i class="fas fa-info-circle text-purple-500 mt-0.5"></i>
+                                    <div class="text-sm text-purple-700">
+                                        <p class="font-medium">Announcement Guidelines:</p>
+                                        <ul class="mt-1 list-disc list-inside space-y-1">
+                                            <li>Keep messages clear and concise</li>
+                                            <li>Use appropriate priority levels</li>
+                                            <li>Consider your target audience carefully</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
-                            <div>
-                                <p class="text-sm text-gray-800">{{ log.action }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {% if log.actor %}
-                                    By {{ log.actor.get_full_name() }} •
-                                    {% endif %}
-                                    {{ log.timestamp.strftime('%b %d, %H:%M') }}
-                                </p>
+                        </form>
+                        
+                        <div class="flex justify-end space-x-3 mt-8">
+                            <button class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md" onclick="closeModal('announcementModal')">
+                                Cancel
+                            </button>
+                            <button id="postAnnouncementConfirm" class="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                <i class="fas fa-bullhorn mr-2"></i>
+                                Post Announcement
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>            
+            <!-- Enhanced Team Performance with Dynamic Data -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-trophy mr-2 text-gray-600"></i>
+                            Team Performance
+                        </h2>
+                        <select id="performancePeriod" class="text-sm border border-gray-200 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="7">Last 7 days</option>
+                            <option value="30" selected>Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4" id="performance-metrics">
+                        <!-- Top Performer -->
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-xl border border-green-200">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-star text-green-500"></i>
+                                <span class="text-sm font-medium text-green-700">Top Performer</span>
                             </div>
+                            <span class="text-sm font-semibold text-green-600" id="top-performer">
+                                {% if staff_data and staff_data|length > 0 %}
+                                    {% set top_staff = staff_data|sort(attribute='total_activity', reverse=true)|first %}
+                                    {{ top_staff.user.get_full_name() }}
+                                {% else %}
+                                    No data available
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <!-- Average Response Time -->
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-clock text-blue-500"></i>
+                                <span class="text-sm font-medium text-blue-700">Avg Response Time</span>
+                            </div>
+                            <span class="text-sm font-semibold text-blue-600" id="avg-response-time">
+                                {% if staff_data and staff_data|length > 0 %}
+                                    {{ (staff_data|sum(attribute='avg_response_time') / staff_data|length)|int }} min
+                                {% else %}
+                                    -- min
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <!-- Resolution Rate -->
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-check-circle text-purple-500"></i>
+                                <span class="text-sm font-medium text-purple-700">Resolution Rate</span>
+                            </div>
+                            <span class="text-sm font-semibold text-purple-600" id="resolution-rate">
+                                {% if total_inquiries > 0 %}
+                                    {{ ((resolved_inquiries / total_inquiries) * 100)|int }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <!-- Team Satisfaction -->
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-smile text-yellow-500"></i>
+                                <span class="text-sm font-medium text-yellow-700">Team Satisfaction</span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-sm font-semibold text-yellow-600" id="satisfaction-score">4.5</span>
+                                <div class="flex space-x-1">
+                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
+                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
+                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
+                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
+                                    <i class="fas fa-star-half-alt text-yellow-500 text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Workload Balance -->
+                        <div class="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-gray-700">Workload Balance</span>
+                                <span class="text-xs text-gray-500" id="workload-status">Balanced</span>
+                            </div>
+                            <div class="flex space-x-1 h-2">
+                                <div class="bg-green-400 rounded-full flex-1" style="flex: {{ staff_data|selectattr('workload', 'equalto', 'low')|list|length }}"></div>
+                                <div class="bg-yellow-400 rounded-full flex-1" style="flex: {{ staff_data|selectattr('workload', 'equalto', 'medium')|list|length }}"></div>
+                                <div class="bg-red-400 rounded-full flex-1" style="flex: {{ staff_data|selectattr('workload', 'equalto', 'high')|list|length }}"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Low</span>
+                                <span>Medium</span>
+                                <span>High</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Trend Chart -->
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-semibold text-gray-700">Activity Trend</h3>
+                            <button id="refreshPerformance" class="text-xs text-green-600 hover:text-green-700 font-medium">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                        </div>
+                        <div id="performance-trend-chart" class="h-32">
+                            <!-- Mini chart will be inserted here -->
+                            <canvas id="performanceTrendCanvas" class="w-full h-full"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Activity Timeline -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-clock mr-2 text-gray-600"></i>
+                            Activity Timeline
+                        </h2>
+                        <button id="refreshActivity" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="max-h-96 overflow-y-auto" id="activity-timeline">
+                    {% for log in activity_logs %}
+                    <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-clipboard-list text-blue-500 text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900">{{ log.action }}</p>
+                            <p class="text-xs text-gray-500">
+                                {% if log.actor %}{{ log.actor.get_full_name() }} • {% endif %}
+                                {{ log.timestamp.strftime('%b %d, %H:%M') }}
+                            </p>
+                            {% if log.details %}
+                            <p class="text-xs text-gray-400 mt-1">{{ log.details }}</p>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
                     
                     {% if not activity_logs %}
-                    <div class="p-6 text-center text-gray-500">
-                        <i class="fas fa-history text-gray-300 text-2xl mb-2"></i>
-                        <p>No recent activity to display.</p>
+                    <div class="p-8 text-center">
+                        <i class="fas fa-history text-gray-300 text-3xl mb-3"></i>
+                        <p class="text-gray-500 font-medium">No recent activity</p>
+                        <p class="text-gray-400 text-sm">Team activity will appear here</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
-            
-            <!-- Team Performance -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b">
-                    <h2 class="text-lg font-semibold text-gray-800">Team Performance</h2>
-                </div>
-                <div class="p-4">
-                    <div id="performance-chart" class="h-64"
-                         data-resolved="{{ (staff_data|sum(attribute='inquiries_resolved') / staff_data|length)|int if staff_data else 0 }}"
-                         data-sessions="{{ (staff_data|sum(attribute='sessions_count') / staff_data|length)|int if staff_data else 0 }}"
-                         data-response-time="{{ (staff_data|sum(attribute='avg_response_time') / staff_data|length)|int if staff_data else 0 }}">
+                            <span class="text-sm font-semibold text-blue-600">
+                                {{ (staff_data|sum(attribute='avg_response_time') / staff_data|length)|int if staff_data and staff_data|length > 0 else 0 }} min
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-3 bg-purple-50 rounded-xl border border-purple-100">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-chart-line text-purple-500"></i>
+                                <span class="text-sm font-medium text-purple-700">Resolution Rate</span>
+                            </div>
+                            <span class="text-sm font-semibold text-purple-600">
+                                {% if total_inquiries > 0 %}
+                                    {{ ((resolved_inquiries / total_inquiries) * 100)|int }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Status Modal -->
-    <div id="statusModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">Update Your Status</h3>
-                <button class="text-gray-400 hover:text-gray-500" onclick="closeModal('statusModal')">
+    </div>    
+    <!-- Enhanced Status Modal -->
+    <div id="statusModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-user-clock text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">Update Your Status</h3>
+                </div>
+                <button class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200" onclick="closeModal('statusModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-5">
+            <div class="p-6">
                 <div class="space-y-3">
-                    <button class="w-full p-3 border rounded-lg text-left hover:bg-gray-50 flex items-center status-option" data-status="online">
-                        <div class="h-3 w-3 rounded-full bg-green-500 mr-3"></div>
+                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-green-500 hover:bg-green-50 flex items-center transition-all duration-200 status-option group" data-status="online">
+                        <div class="h-4 w-4 rounded-full bg-green-500 mr-3 group-hover:scale-110 transition-transform"></div>
                         <div>
-                            <span class="font-medium">Online</span>
+                            <span class="font-medium text-gray-900">Online</span>
                             <p class="text-sm text-gray-500">Available and actively responding</p>
                         </div>
                     </button>
                     
-                    <button class="w-full p-3 border rounded-lg text-left hover:bg-gray-50 flex items-center status-option" data-status="away">
-                        <div class="h-3 w-3 rounded-full bg-yellow-500 mr-3"></div>
+                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-yellow-500 hover:bg-yellow-50 flex items-center transition-all duration-200 status-option group" data-status="away">
+                        <div class="h-4 w-4 rounded-full bg-yellow-500 mr-3 group-hover:scale-110 transition-transform"></div>
                         <div>
-                            <span class="font-medium">Away</span>
+                            <span class="font-medium text-gray-900">Away</span>
                             <p class="text-sm text-gray-500">Temporarily unavailable</p>
                         </div>
                     </button>
                     
-                    <button class="w-full p-3 border rounded-lg text-left hover:bg-gray-50 flex items-center status-option" data-status="busy">
-                        <div class="h-3 w-3 rounded-full bg-red-500 mr-3"></div>
+                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-red-500 hover:bg-red-50 flex items-center transition-all duration-200 status-option group" data-status="busy">
+                        <div class="h-4 w-4 rounded-full bg-red-500 mr-3 group-hover:scale-110 transition-transform"></div>
                         <div>
-                            <span class="font-medium">Busy</span>
+                            <span class="font-medium text-gray-900">Busy</span>
                             <p class="text-sm text-gray-500">Do not disturb, in a meeting or session</p>
                         </div>
                     </button>
                     
-                    <button class="w-full p-3 border rounded-lg text-left hover:bg-gray-50 flex items-center status-option" data-status="offline">
-                        <div class="h-3 w-3 rounded-full bg-gray-500 mr-3"></div>
+                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-gray-500 hover:bg-gray-50 flex items-center transition-all duration-200 status-option group" data-status="offline">
+                        <div class="h-4 w-4 rounded-full bg-gray-500 mr-3 group-hover:scale-110 transition-transform"></div>
                         <div>
-                            <span class="font-medium">Appear Offline</span>
+                            <span class="font-medium text-gray-900">Appear Offline</span>
                             <p class="text-sm text-gray-500">Hide your online status</p>
                         </div>
+                    </button>
+                </div>
+                
+                <div class="mt-4">
+                    <label for="statusCustomMessage" class="block text-sm font-medium text-gray-700 mb-2">Custom Message (Optional)</label>
+                    <textarea id="statusCustomMessage" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Add a status message..."></textarea>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md" onclick="closeModal('statusModal')">
+                        Cancel
+                    </button>
+                    <button id="updateStatusConfirm" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                        Update Status
                     </button>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Reassign Modal -->
-    <div id="reassignModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">Reassign Inquiry</h3>
-                <button class="text-gray-400 hover:text-gray-500" onclick="closeModal('reassignModal')">
+    <!-- Enhanced Reassign Modal -->
+    <div id="reassignModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 transform transition-all duration-300">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-exchange-alt text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800">Reassign Inquiry</h3>
+                </div>
+                <button class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200" onclick="closeModal('reassignModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-5">
-                <form id="reassignForm" class="space-y-4">
-                    <div>
-                        <label for="inquirySelect" class="block text-sm font-medium text-gray-700 mb-1">Select Inquiry</label>
-                        <select id="inquirySelect" name="inquiry_id" class="w-full p-2 border border-gray-300 rounded-md">
-                            <option value="">Select an inquiry...</option>
-                            <!-- This would be populated via AJAX -->
-                        </select>
+            
+            <div class="space-y-6">
+                <div>
+                    <label for="inquirySelect" class="block text-sm font-medium text-gray-700 mb-2">Select Inquiry</label>
+                    <select id="inquirySelect" name="inquiry_id" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Loading inquiries...</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Choose the inquiry you want to reassign</p>
+                </div>
+                
+                <div>
+                    <label for="staffSelect" class="block text-sm font-medium text-gray-700 mb-2">Assign To</label>
+                    <select id="staffSelect" name="staff_id" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Select a team member...</option>
+                        {% for staff in staff_data %}
+                        <option value="{{ staff.user.id }}">
+                            {{ staff.user.get_full_name() }}
+                            {% if staff.is_online %}(Online - {{ staff.workload }} workload){% else %}(Offline){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Consider staff workload and availability</p>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-start space-x-2">
+                        <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                        <div class="text-sm text-blue-700">
+                            <p class="font-medium">Assignment Tips:</p>
+                            <ul class="mt-1 list-disc list-inside space-y-1">
+                                <li>Consider staff workload and availability</li>
+                                <li>Match inquiry type with staff expertise</li>
+                                <li>Online staff can respond immediately</li>
+                            </ul>
+                        </div>
                     </div>
-                    
-                    <div>
-                        <label for="staffSelect" class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
-                        <select id="staffSelect" name="staff_id" class="w-full p-2 border border-gray-300 rounded-md">
-                            <option value="">Select a team member...</option>
-                            {% for staff in staff_data %}
-                            <option value="{{ staff.user.id }}">{{ staff.user.get_full_name() }} 
-                                {% if staff.is_online %}(Online){% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="pt-3 flex justify-end space-x-3">
-                        <button type="button" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md" onclick="closeModal('reassignModal')">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">
-                            Reassign
-                        </button>
-                    </div>
-                </form>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-8">
+                <button class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md" onclick="closeModal('reassignModal')">
+                    Cancel
+                </button>
+                <button id="confirmReassign" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <i class="fas fa-check mr-2"></i>
+                    Assign Inquiry
+                </button>
             </div>
         </div>
     </div>
@@ -417,5 +741,1054 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-<script src="{{ url_for('static', filename='js/office/team_dashboard.js') }}"></script>
-{% endblock %} 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced team sorting functionality
+    const sortSelect = document.getElementById('sortTeamBy');
+    const teamContainer = document.getElementById('team-members-container');
+    const refreshBtn = document.getElementById('refreshTeamData');
+    
+    // Initialize workload chart
+    initializeWorkloadChart();
+    
+    // Enhanced sorting functionality
+    sortSelect.addEventListener('change', function() {
+        const sortBy = this.value;
+        const staffCards = Array.from(document.querySelectorAll('.staff-card'));
+        
+        staffCards.sort((a, b) => {
+            switch(sortBy) {
+                case 'status':
+                    const statusOrder = { 'online': 0, 'busy': 1, 'away': 2, 'offline': 3 };
+                    return statusOrder[a.dataset.status] - statusOrder[b.dataset.status];
+                case 'activity':
+                    return parseInt(b.dataset.activity) - parseInt(a.dataset.activity);
+                case 'workload':
+                    const workloadOrder = { 'high': 0, 'medium': 1, 'low': 2 };
+                    return workloadOrder[a.dataset.workload] - workloadOrder[b.dataset.workload];
+                default:
+                    return 0;
+            }
+        });
+        
+        // Add animation and reorder
+        staffCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(-20px)';
+            setTimeout(() => {
+                teamContainer.appendChild(card);
+                card.style.transition = 'all 0.3s ease-in-out';
+                card.style.opacity = '1';
+                card.style.transform = 'translateX(0)';
+            }, index * 50);
+        });
+    });
+    
+    // Enhanced refresh functionality with real API calls
+    refreshBtn.addEventListener('click', function() {
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Refreshing...';
+        this.disabled = true;
+        
+        // Fetch fresh data from APIs
+        Promise.all([
+            fetch('/office/api/team-data'),
+            fetch('/office/api/team-performance-metrics?days=7'),
+            fetch('/office/api/team-workload-analytics')
+        ])
+        .then(responses => Promise.all(responses.map(r => r.json())))
+        .then(([teamData, performanceData, workloadData]) => {
+            updateTeamDisplay(teamData, performanceData, workloadData);
+            showNotification('Team data refreshed successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Error refreshing team data:', error);
+            showNotification('Failed to refresh team data', 'error');
+        })
+        .finally(() => {
+            this.innerHTML = originalContent;
+            this.disabled = false;
+        });
+    });
+    
+    // Function to update team display with fresh data
+    function updateTeamDisplay(teamData, performanceData, workloadData) {
+        // Update online status indicators
+        teamData.staff_data.forEach(staff => {
+            const staffCard = document.getElementById(`staff-${staff.id}`);
+            if (staffCard) {
+                const statusIndicator = staffCard.querySelector('.status-indicator');
+                const statusBadge = staffCard.querySelector('.inline-flex');
+                
+                if (staff.is_online) {
+                    statusIndicator.classList.remove('bg-gray-400');
+                    statusIndicator.classList.add('bg-green-500');
+                    statusBadge.innerHTML = `
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                        Online
+                    `;
+                    statusBadge.className = statusBadge.className.replace('bg-gray-100 text-gray-700 border-gray-200', 'bg-green-100 text-green-700 border-green-200');
+                } else {
+                    statusIndicator.classList.remove('bg-green-500');
+                    statusIndicator.classList.add('bg-gray-400');
+                    statusBadge.innerHTML = `
+                        <span class="w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
+                        Offline
+                    `;
+                    statusBadge.className = statusBadge.className.replace('bg-green-100 text-green-700 border-green-200', 'bg-gray-100 text-gray-700 border-gray-200');
+                }
+                
+                // Update card dataset for sorting
+                staffCard.dataset.status = staff.is_online ? 'online' : 'offline';
+            }
+        });
+        
+        // Update performance metrics if available
+        if (performanceData && performanceData.performance_data) {
+            updatePerformanceDisplay(performanceData.performance_data);
+        }
+        
+        // Update workload data
+        if (workloadData) {
+            updateWorkloadDisplay(workloadData.workload_data);
+            updateWorkloadChart(workloadData.workload_distribution);
+        }
+    }
+    
+    // Function to update performance display
+    function updatePerformanceDisplay(performanceData) {
+        if (!performanceData || performanceData.length === 0) return;
+        
+        // Find top performer
+        const topPerformer = performanceData.reduce((prev, current) => 
+            (prev.responses_count + prev.completed_sessions) > (current.responses_count + current.completed_sessions) ? prev : current
+        );
+        
+        // Calculate averages
+        const avgResponseTime = performanceData.reduce((sum, staff) => sum + staff.avg_response_time, 0) / performanceData.length;
+        const avgCompletionRate = performanceData.reduce((sum, staff) => sum + staff.completion_rate, 0) / performanceData.length;
+        const avgSatisfaction = performanceData.reduce((sum, staff) => sum + staff.satisfaction_rating, 0) / performanceData.length;
+        
+        // Update DOM elements
+        document.getElementById('top-performer').textContent = topPerformer.name;
+        document.getElementById('avg-response-time').textContent = `${Math.round(avgResponseTime)} min`;
+        
+        // Update satisfaction rating
+        const satisfactionElement = document.getElementById('satisfaction-score');
+        if (satisfactionElement) {
+            satisfactionElement.textContent = avgSatisfaction.toFixed(1);
+        }
+        
+        // Update individual staff performance metrics in expanded details
+        performanceData.forEach(staff => {
+            const staffCard = document.getElementById(`staff-${staff.staff_id}`);
+            if (staffCard) {
+                const details = staffCard.querySelector('.staff-details');
+                if (details) {
+                    // Update response time
+                    const responseTimeElement = details.querySelector('[data-metric="response-time"]');
+                    if (responseTimeElement) {
+                        responseTimeElement.textContent = `${staff.avg_response_time} min`;
+                    }
+                    
+                    // Update completion rate
+                    const completionRateElement = details.querySelector('[data-metric="completion-rate"]');
+                    if (completionRateElement) {
+                        completionRateElement.textContent = `${Math.round(staff.completion_rate)}%`;
+                    }
+                    
+                    // Update monthly activity
+                    const monthlyActivityElement = details.querySelector('[data-metric="monthly-activity"]');
+                    if (monthlyActivityElement) {
+                        monthlyActivityElement.textContent = staff.responses_count + staff.completed_sessions;
+                    }
+                }
+            }
+        });
+        
+        // Update workload status
+        const workloadStatusElement = document.getElementById('workload-status');
+        if (workloadStatusElement) {
+            const highWorkloadCount = performanceData.filter(staff => staff.total_workload > 6).length;
+            const totalStaff = performanceData.length;
+            
+            if (highWorkloadCount === 0) {
+                workloadStatusElement.textContent = 'Well Balanced';
+                workloadStatusElement.className = 'text-xs text-green-600';
+            } else if (highWorkloadCount / totalStaff > 0.5) {
+                workloadStatusElement.textContent = 'Overloaded';
+                workloadStatusElement.className = 'text-xs text-red-600';
+            } else {
+                workloadStatusElement.textContent = 'Manageable';
+                workloadStatusElement.className = 'text-xs text-yellow-600';
+            }
+        }
+    }
+    
+    // Function to update workload display
+    function updateWorkloadDisplay(workloadData) {
+        workloadData.forEach(staff => {
+            const staffCard = document.getElementById(`staff-${staff.staff_id}`);
+            if (staffCard) {
+                const workloadCard = staffCard.querySelector('[data-metric="workload"]');
+                if (workloadCard) {
+                    // Update workload level
+                    workloadCard.className = workloadCard.className.replace(
+                        /bg-(green|yellow|red)-50 border-(green|yellow|red)-100 hover:bg-(green|yellow|red)-100/g,
+                        `bg-${staff.workload_color}-50 border-${staff.workload_color}-100 hover:bg-${staff.workload_color}-100`
+                    );
+                    
+                    const workloadValue = workloadCard.querySelector('.text-lg');
+                    workloadValue.textContent = staff.workload_level.charAt(0).toUpperCase() + staff.workload_level.slice(1);
+                    workloadValue.className = workloadValue.className.replace(
+                        /text-(green|yellow|red)-600/g,
+                        `text-${staff.workload_color}-600`
+                    );
+                    
+                    const workloadLabel = workloadCard.querySelector('.text-xs');
+                    workloadLabel.className = workloadLabel.className.replace(
+                        /text-(green|yellow|red)-500/g,
+                        `text-${staff.workload_color}-500`
+                    );
+                }
+                
+                // Update dataset for sorting
+                staffCard.dataset.workload = staff.workload_level;
+                staffCard.dataset.activity = staff.total_workload;
+            }
+        });
+    }
+    
+    // Function to update workload chart
+    function updateWorkloadChart(distribution) {
+        const chartElement = document.getElementById('workload-chart');
+        if (chartElement && window.workloadChart) {
+            window.workloadChart.data.datasets[0].data = [
+                distribution.low,
+                distribution.medium,
+                distribution.high
+            ];
+            window.workloadChart.update();
+        }
+    }
+    
+    // Function to update activity timeline
+    function updateActivityTimeline(timelineData) {
+        const timelineContainer = document.getElementById('activity-timeline');
+        if (!timelineContainer) return;
+        
+        const timelineHTML = timelineData.slice(0, 10).map(activity => `
+            <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <div class="flex-shrink-0 w-8 h-8 bg-${activity.color}-100 rounded-full flex items-center justify-center">
+                    <i class="${activity.icon} text-${activity.color}-500 text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900">${activity.action}</p>
+                    <p class="text-xs text-gray-500">${activity.actor} • ${formatTimeAgo(activity.timestamp)}</p>
+                    ${activity.details ? `<p class="text-xs text-gray-400 mt-1">${activity.details}</p>` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        timelineContainer.innerHTML = timelineHTML;
+    }
+    
+    // Helper function to format time ago
+    function formatTimeAgo(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diffMs = now - time;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return `${diffDays}d ago`;
+    }
+    
+    // Load initial dynamic data
+    function loadInitialData() {
+        loadPerformanceMetrics();
+        loadWorkloadAnalytics();
+        loadActivityTimeline();
+    }
+    
+    // Function to load performance metrics
+    function loadPerformanceMetrics(days = 7) {
+        fetch(`/office/api/team-performance-metrics?days=${days}`)
+            .then(response => response.json())
+            .then(data => {
+                updatePerformanceDisplay(data.performance_data);
+            })
+            .catch(error => {
+                console.error('Error loading performance metrics:', error);
+            });
+    }
+    
+    // Function to load workload analytics
+    function loadWorkloadAnalytics() {
+        fetch('/office/api/team-workload-analytics')
+            .then(response => response.json())
+            .then(data => {
+                updateWorkloadChart(data.workload_distribution);
+                updateWorkloadDisplay(data.workload_data);
+            })
+            .catch(error => {
+                console.error('Error loading workload analytics:', error);
+            });
+    }
+    
+    // Function to load activity timeline
+    function loadActivityTimeline() {
+        fetch('/office/api/team-activity-timeline')
+            .then(response => response.json())
+            .then(data => {
+                updateActivityTimeline(data.timeline_data);
+            })
+            .catch(error => {
+                console.error('Error loading activity timeline:', error);
+            });
+    }
+    
+    // Load initial data when page loads
+    loadInitialData();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        loadWorkloadAnalytics();
+        loadActivityTimeline();
+    }, 30000);
+    
+    // Enhanced toggle details functionality
+    document.querySelectorAll('.toggle-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const staffId = this.dataset.staffId;
+            const staffCard = document.getElementById(`staff-${staffId}`);
+            const details = staffCard.querySelector('.staff-details');
+            const showText = this.querySelector('.show-text');
+            const hideText = this.querySelector('.hide-text');
+            
+            if (details.classList.contains('hidden')) {
+                details.classList.remove('hidden');
+                details.style.opacity = '0';
+                details.style.maxHeight = '0';
+                details.style.transition = 'all 0.3s ease-in-out';
+                
+                setTimeout(() => {
+                    details.style.opacity = '1';
+                    details.style.maxHeight = '500px';
+                }, 10);
+                
+                showText.classList.add('hidden');
+                hideText.classList.remove('hidden');
+            } else {
+                details.style.opacity = '0';
+                details.style.maxHeight = '0';
+                
+                setTimeout(() => {
+                    details.classList.add('hidden');
+                }, 300);
+                
+                showText.classList.remove('hidden');
+                hideText.classList.add('hidden');
+            }
+        });
+    });
+    
+    // Enhanced modal functionality
+    const modals = ['statusModal', 'reassignModal', 'announcementModal'];
+    
+    // Status modal functionality
+    document.getElementById('updateStatusBtn').addEventListener('click', function() {
+        document.getElementById('statusModal').classList.remove('hidden');
+    });
+    
+    // Status option selection
+    document.querySelectorAll('.status-option').forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove previous selection
+            document.querySelectorAll('.status-option').forEach(opt => {
+                opt.classList.remove('ring-2', 'ring-green-500');
+            });
+            
+            // Add selection to current option
+            this.classList.add('ring-2', 'ring-green-500');
+            
+            // Store selected status
+            this.dataset.selected = 'true';
+        });
+    });
+    
+    // Status update confirmation with real API call
+    document.getElementById('updateStatusConfirm').addEventListener('click', function() {
+        const selectedOption = document.querySelector('.status-option[data-selected="true"]');
+        if (selectedOption) {
+            const status = selectedOption.dataset.status;
+            const customMessage = document.getElementById('statusCustomMessage')?.value || '';
+            const originalContent = this.innerHTML;
+            
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+            this.disabled = true;
+            
+            // Make API call to update status
+            fetch('/office/api/staff-status-update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    status: status,
+                    custom_message: customMessage
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    closeModal('statusModal');
+                    // Refresh team data to show updated status
+                    refreshTeamData();
+                } else {
+                    showNotification(data.error || 'Failed to update status', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                showNotification('Failed to update status', 'error');
+            })
+            .finally(() => {
+                this.innerHTML = originalContent;
+                this.disabled = false;
+            });
+        } else {
+            showNotification('Please select a status', 'warning');
+        }
+    });
+    
+    // Other quick action buttons with real functionality
+    document.getElementById('reassignInquiryBtn').addEventListener('click', function() {
+        // Load pending inquiries
+        loadPendingInquiries();
+        document.getElementById('reassignModal').classList.remove('hidden');
+    });
+    
+    // Function to load pending inquiries for reassignment
+    function loadPendingInquiries() {
+        fetch('/office/api/pending-inquiries')
+            .then(response => response.json())
+            .then(data => {
+                const inquirySelect = document.getElementById('inquirySelect');
+                if (inquirySelect && data.inquiries) {
+                    inquirySelect.innerHTML = '<option value="">Select an inquiry...</option>';
+                    data.inquiries.forEach(inquiry => {
+                        const option = document.createElement('option');
+                        option.value = inquiry.id;
+                        option.textContent = `#${inquiry.id} - ${inquiry.subject} (${inquiry.status})`;
+                        inquirySelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading inquiries:', error);
+                showNotification('Failed to load inquiries', 'error');
+            });
+    }
+    
+    // Handle inquiry assignment
+    document.getElementById('confirmReassign')?.addEventListener('click', function() {
+        const inquiryId = document.getElementById('inquirySelect')?.value;
+        const staffId = document.getElementById('staffSelect')?.value;
+        
+        if (!inquiryId || !staffId) {
+            showNotification('Please select both an inquiry and a staff member', 'warning');
+            return;
+        }
+        
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Assigning...';
+        this.disabled = true;
+        
+        fetch('/office/api/assign-inquiry', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                inquiry_id: inquiryId,
+                staff_id: staffId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                closeModal('reassignModal');
+                refreshTeamData();
+            } else {
+                showNotification(data.error || 'Failed to assign inquiry', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error assigning inquiry:', error);
+            showNotification('Failed to assign inquiry', 'error');
+        })
+        .finally(() => {
+            this.innerHTML = originalContent;
+            this.disabled = false;
+        });
+    });
+    
+    document.getElementById('postAnnouncementBtn').addEventListener('click', function() {
+        document.getElementById('announcementModal').classList.remove('hidden');
+    });
+    
+    // Handle announcement posting
+    document.getElementById('postAnnouncementConfirm').addEventListener('click', function() {
+        const title = document.getElementById('announcementTitle').value.trim();
+        const content = document.getElementById('announcementContent').value.trim();
+        const priority = document.getElementById('announcementPriority').value;
+        const audience = document.getElementById('announcementAudience').value;
+        
+        if (!title || !content) {
+            showNotification('Please fill in all required fields', 'warning');
+            return;
+        }
+        
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Posting...';
+        this.disabled = true;
+        
+        fetch('/office/api/post-team-announcement', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                priority: priority,
+                audience: audience
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                closeModal('announcementModal');
+                // Clear form
+                document.getElementById('announcementForm').reset();
+            } else {
+                showNotification(data.error || 'Failed to post announcement', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error posting announcement:', error);
+            showNotification('Failed to post announcement', 'error');
+        })
+        .finally(() => {
+            this.innerHTML = originalContent;
+            this.disabled = false;
+        });
+    });
+    
+    // Performance period change handler
+    document.getElementById('performancePeriod')?.addEventListener('change', function() {
+        const days = this.value;
+        loadPerformanceMetrics(days);
+    });
+    
+    // Performance refresh button
+    document.getElementById('refreshPerformance')?.addEventListener('click', function() {
+        const days = document.getElementById('performancePeriod').value;
+        loadPerformanceMetrics(days);
+    });
+    
+    // Activity refresh button
+    document.getElementById('refreshActivity')?.addEventListener('click', function() {
+        loadActivityTimeline();
+    });
+    
+    // Initialize performance trend chart
+    function initializePerformanceTrendChart() {
+        const canvas = document.getElementById('performanceTrendCanvas');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Sample data - replace with real data from API
+        const data = {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Inquiries Handled',
+                data: [12, 15, 18, 14, 16, 13, 11],
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        };
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: false
+                    },
+                    y: {
+                        display: false
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 2
+                    }
+                }
+            }
+        });
+    }
+    
+    // Call the trend chart initialization
+    initializePerformanceTrendChart();
+    
+    // Enhanced notification system
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-xl border-l-4 transform translate-x-full transition-all duration-500 ease-in-out ${
+            type === 'success' ? 'bg-green-50 border-green-500 text-green-800' :
+            type === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-800' :
+            type === 'error' ? 'bg-red-50 border-red-500 text-red-800' :
+            'bg-blue-50 border-blue-500 text-blue-800'
+        }`;
+        
+        notification.innerHTML = `
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i>
+                <span class="font-medium">${message}</span>
+                <button class="ml-4 text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Slide in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => notification.remove(), 500);
+        }, 5000);
+    }
+    
+    // Global modal close function
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.add('hidden');
+        
+        // Reset status selection
+        if (modalId === 'statusModal') {
+            document.querySelectorAll('.status-option').forEach(opt => {
+                opt.classList.remove('ring-2', 'ring-green-500');
+                opt.removeAttribute('data-selected');
+            });
+        }
+    };
+    
+    // Close modals on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (!modal.classList.contains('hidden')) {
+                    closeModal(modalId);
+                }
+            });
+        }
+    });
+    
+    // Workload chart initialization
+    function initializeWorkloadChart() {
+        const chartElement = document.getElementById('workload-chart');
+        if (!chartElement) return;
+        
+        const lowCount = parseInt(chartElement.dataset.low || 0);
+        const mediumCount = parseInt(chartElement.dataset.medium || 0);
+        const highCount = parseInt(chartElement.dataset.high || 0);
+        
+        // Create canvas for chart
+        const canvas = document.createElement('canvas');
+        canvas.id = 'workloadChartCanvas';
+        chartElement.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        window.workloadChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Workload', 'Medium Workload', 'High Workload'],
+                datasets: [{
+                    data: [lowCount, mediumCount, highCount],
+                    backgroundColor: [
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(251, 191, 36, 0.8)',
+                        'rgba(239, 68, 68, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgb(34, 197, 94)',
+                        'rgb(251, 191, 36)',
+                        'rgb(239, 68, 68)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Enhanced notification function
+    function showNotification(message, type = 'info', duration = 5000) {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-20 right-4 z-50 max-w-sm bg-white border-l-4 rounded-lg shadow-lg transform translate-x-full transition-all duration-300 ease-out`;
+        
+        // Add type-specific styling
+        switch (type) {
+            case 'success':
+                notification.classList.add('border-green-500');
+                break;
+            case 'error':
+                notification.classList.add('border-red-500');
+                break;
+            case 'warning':
+                notification.classList.add('border-yellow-500');
+                break;
+            default:
+                notification.classList.add('border-blue-500');
+        }
+        
+        notification.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas ${getNotificationIcon(type)} text-${getNotificationColor(type)}-500"></i>
+                    </div>
+                    <div class="ml-3 w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-900">${message}</p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex">
+                        <button class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500" onclick="this.parentElement.parentElement.parentElement.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, duration);
+    }
+    
+    function getNotificationIcon(type) {
+        switch (type) {
+            case 'success': return 'fa-check-circle';
+            case 'error': return 'fa-exclamation-circle';
+            case 'warning': return 'fa-exclamation-triangle';
+            default: return 'fa-info-circle';
+        }
+    }
+    
+    function getNotificationColor(type) {
+        switch (type) {
+            case 'success': return 'green';
+            case 'error': return 'red';
+            case 'warning': return 'yellow';
+            default: return 'blue';
+        }
+    }
+
+    // Quick Actions Implementation
+    
+    // Update Status Functionality
+    document.getElementById('updateStatusBtn').addEventListener('click', function() {
+        document.getElementById('statusModal').classList.remove('hidden');
+    });
+    
+    // Status option selection
+    document.querySelectorAll('.status-option').forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove previous selection
+            document.querySelectorAll('.status-option').forEach(opt => {
+                opt.classList.remove('ring-2', 'ring-green-500', 'ring-yellow-500', 'ring-red-500', 'ring-gray-500');
+                opt.removeAttribute('data-selected');
+            });
+            
+            // Add selection to clicked option
+            const status = this.dataset.status;
+            let ringColor = 'ring-green-500';
+            switch(status) {
+                case 'away': ringColor = 'ring-yellow-500'; break;
+                case 'busy': ringColor = 'ring-red-500'; break;
+                case 'offline': ringColor = 'ring-gray-500'; break;
+            }
+            
+            this.classList.add('ring-2', ringColor);
+            this.setAttribute('data-selected', 'true');
+        });
+    });
+    
+    // Confirm status update
+    document.getElementById('updateStatusConfirm').addEventListener('click', function() {
+        const selectedStatus = document.querySelector('.status-option[data-selected="true"]');
+        const customMessage = document.getElementById('statusCustomMessage').value;
+        
+        if (!selectedStatus) {
+            showNotification('Please select a status', 'warning');
+            return;
+        }
+        
+        const status = selectedStatus.dataset.status;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Show loading state
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+        this.disabled = true;
+        
+        fetch('/office/api/update-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                status: status,
+                message: customMessage
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Status updated successfully!', 'success');
+                closeModal('statusModal');
+                // Update UI to reflect new status
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message || 'Failed to update status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating status:', error);
+            showNotification('Failed to update status', 'error');
+        })
+        .finally(() => {
+            this.innerHTML = 'Update Status';
+            this.disabled = false;
+        });
+    });
+    
+    // Reassign Inquiry Functionality
+    document.getElementById('reassignInquiryBtn').addEventListener('click', function() {
+        document.getElementById('reassignModal').classList.remove('hidden');
+        loadInquiries();
+    });
+    
+    // Load inquiries for reassignment
+    function loadInquiries() {
+        const inquirySelect = document.getElementById('inquirySelect');
+        inquirySelect.innerHTML = '<option value="">Loading inquiries...</option>';
+        
+        fetch('/office/api/assignable-inquiries')
+        .then(response => response.json())
+        .then(data => {
+            inquirySelect.innerHTML = '<option value="">Select an inquiry...</option>';
+            if (data.inquiries && data.inquiries.length > 0) {
+                data.inquiries.forEach(inquiry => {
+                    const option = document.createElement('option');
+                    option.value = inquiry.id;
+                    option.textContent = `#${inquiry.id} - ${inquiry.subject} (${inquiry.status})`;
+                    inquirySelect.appendChild(option);
+                });
+            } else {
+                inquirySelect.innerHTML = '<option value="">No inquiries available for reassignment</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading inquiries:', error);
+            inquirySelect.innerHTML = '<option value="">Error loading inquiries</option>';
+        });
+    }
+    
+    // Confirm reassignment
+    document.getElementById('confirmReassign').addEventListener('click', function() {
+        const inquiryId = document.getElementById('inquirySelect').value;
+        const staffId = document.getElementById('staffSelect').value;
+        
+        if (!inquiryId || !staffId) {
+            showNotification('Please select both an inquiry and a staff member', 'warning');
+            return;
+        }
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Show loading state
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Reassigning...';
+        this.disabled = true;
+        
+        fetch('/office/api/reassign-inquiry', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                inquiry_id: inquiryId,
+                staff_id: staffId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Inquiry reassigned successfully!', 'success');
+                closeModal('reassignModal');
+                // Refresh the page to update workload data
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message || 'Failed to reassign inquiry', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error reassigning inquiry:', error);
+            showNotification('Failed to reassign inquiry', 'error');
+        })
+        .finally(() => {
+            this.innerHTML = '<i class="fas fa-check mr-2"></i>Assign Inquiry';
+            this.disabled = false;
+        });
+    });
+    
+    // Post Announcement Functionality
+    document.getElementById('postAnnouncementBtn').addEventListener('click', function() {
+        document.getElementById('announcementModal').classList.remove('hidden');
+    });
+    
+    // Confirm announcement posting
+    document.getElementById('postAnnouncementConfirm').addEventListener('click', function() {
+        const form = document.getElementById('announcementForm');
+        const formData = new FormData(form);
+        
+        const title = formData.get('title');
+        const content = formData.get('content');
+        const priority = formData.get('priority');
+        const audience = formData.get('audience');
+        
+        if (!title || !content) {
+            showNotification('Please fill in all required fields', 'warning');
+            return;
+        }
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Show loading state
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Posting...';
+        this.disabled = true;
+        
+        fetch('/office/api/post-announcement', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                priority: priority,
+                audience: audience
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Announcement posted successfully!', 'success');
+                closeModal('announcementModal');
+                // Clear form
+                form.reset();
+                // Refresh to show new announcement
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message || 'Failed to post announcement', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error posting announcement:', error);
+            showNotification('Failed to post announcement', 'error');
+        })
+        .finally(() => {
+            this.innerHTML = '<i class="fas fa-bullhorn mr-2"></i>Post Announcement';
+            this.disabled = false;
+        });
+    });
+    
+    // Toggle staff details functionality
+    document.querySelectorAll('.toggle-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const staffId = this.dataset.staffId;
+            const staffCard = document.getElementById(`staff-${staffId}`);
+            const details = staffCard.querySelector('.staff-details');
+            const showText = this.querySelector('.show-text');
+            const hideText = this.querySelector('.hide-text');
+            
+            if (details.classList.contains('hidden')) {
+                details.classList.remove('hidden');
+                showText.classList.add('hidden');
+                hideText.classList.remove('hidden');
+            } else {
+                details.classList.add('hidden');
+                showText.classList.remove('hidden');
+                hideText.classList.add('hidden');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 from app.office import office_bp
 from app.office.routes.office_dashboard import get_office_context
+from app.utils import role_required
 import uuid
 import os
 from flask_apscheduler import APScheduler
@@ -375,7 +376,7 @@ def end_video_session(session_id):
     
     # Update session status
     session.status = 'completed'
-    session.session_ended_at = datetime.utcnow()
+    session.ended_at = datetime.utcnow()
     
     # Update participation record
     participation = SessionParticipation.query.filter_by(
@@ -429,7 +430,78 @@ def end_video_session(session_id):
     
     db.session.commit()
     
-    return jsonify({'status': 'success', 'message': 'Session ended successfully'})
+    # Check if this is an AJAX request or form submission
+    if request.headers.get('Content-Type') == 'application/json' or request.is_json:
+        return jsonify({
+            'status': 'success', 
+            'message': 'Session ended successfully',
+            'redirect_url': url_for('office.session_completed', session_id=session_id)
+        })
+    else:
+        # Direct form submission - redirect to session completion page
+        flash('Session ended successfully!', 'success')
+        return redirect(url_for('office.session_completed', session_id=session_id))
+
+
+@office_bp.route('/video-session/<int:session_id>/complete', methods=['POST', 'GET'])
+@login_required
+def complete_session(session_id):
+    """Complete a counseling session and redirect to completion page"""
+    if current_user.role != 'office_admin':
+        flash('Access denied. You do not have permission to complete this session.', 'error')
+        return redirect(url_for('main.index'))
+    
+    session = CounselingSession.query.get_or_404(session_id)
+    
+    # Check if the session belongs to the current user's office
+    if session.office_id != current_user.office_admin.office_id:
+        flash('Access denied. You do not have permission to complete this session.', 'error')
+        return redirect(url_for('office.video_counseling'))
+    
+    # Check if counselor is assigned to this session or allow any office admin to complete
+    if session.counselor_id and session.counselor_id != current_user.id:
+        flash('Access denied. You are not assigned as the counselor for this session.', 'error')
+        return redirect(url_for('office.video_counseling'))
+    
+    # If no counselor assigned, assign current user
+    if not session.counselor_id:
+        session.counselor_id = current_user.id
+    
+    # Update session status and end time
+    session.status = 'completed'
+    session.ended_at = datetime.utcnow()
+    
+    # Get notes from form if provided
+    if request.method == 'POST':
+        notes = request.form.get('notes', '')
+        if notes:
+            if session.notes:
+                session.notes += f"\n\nSession completion notes: {notes}"
+            else:
+                session.notes = notes
+    
+    # Log activity
+    AuditLog.log_action(
+        actor=current_user,
+        action="Completed counseling session",
+        target_type="counseling_session",
+        target_id=session_id,
+        status='completed',
+        office=current_user.office_admin.office,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string
+    )
+    
+    try:
+        db.session.commit()
+        flash('Session completed successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error completing session: {str(e)}', 'error')
+        return redirect(url_for('office.video_counseling'))
+    
+    # Redirect to session completion page
+    return redirect(url_for('office.session_completed', session_id=session_id))
 
 
 @office_bp.route('/video-session/<int:session_id>/update-status', methods=['POST'])
@@ -684,18 +756,18 @@ def save_session_notes(session_id):
 @office_bp.route('/sessions/<int:session_id>/notes', methods=['POST'])
 @login_required
 def update_session_notes(session_id):
-    """Save notes for a counseling session during or after the call"""
+    """Update session notes during or after a session"""
     if current_user.role != 'office_admin':
-        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
     
-    session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+    session = CounselingSession.query.get_or_404(session_id)
     
-    # Check if counselor is assigned to this session or if admin belongs to the office
-    if (session.counselor_id != current_user.id and 
-        session.office_id != current_user.office_admin.office_id):
-        return jsonify({'success': False, 'message': 'You do not have permission to edit notes for this session'}), 403
+    # Check if the session belongs to the current user's office
+    if session.office_id != current_user.office_admin.office_id:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     try:
+        # Get notes from JSON request or form data
         data = request.get_json()
         notes = data.get('notes', '') if data else request.form.get('notes', '')
         
@@ -724,3 +796,220 @@ def update_session_notes(session_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error saving notes: {str(e)}'}), 500
+
+
+@office_bp.route('/session-completed/<int:session_id>')
+@login_required
+def session_completed(session_id):
+    """Display session completion page with summary and options"""
+    if current_user.role != 'office_admin':
+        flash('Access denied. You do not have permission to view this page.', 'error')
+        return redirect(url_for('main.index'))
+    
+    # Get the session
+    session = CounselingSession.query.get_or_404(session_id)
+    
+    # Check if the session belongs to the current user's office
+    if session.office_id != current_user.office_admin.office_id:
+        flash('Access denied. You do not have permission to view this session.', 'error')
+        return redirect(url_for('office.video_counseling'))
+    
+    # Calculate session duration if session is completed
+    session_duration = None
+    if session.status == 'completed' and session.started_at and session.ended_at:
+        duration_seconds = (session.ended_at - session.started_at).total_seconds()
+        session_duration = {
+            'hours': int(duration_seconds // 3600),
+            'minutes': int((duration_seconds % 3600) // 60),
+            'seconds': int(duration_seconds % 60)
+        }
+    
+    # Get session statistics
+    session_stats = {
+        'scheduled_at': session.scheduled_at,
+        'started_at': session.started_at,
+        'ended_at': session.ended_at,
+        'duration': session_duration,
+        'meeting_link': session.meeting_link,
+        'notes': session.notes or '',
+        'status': session.status
+    }
+    
+    # Get student information
+    student = session.student
+    
+    # Get session recordings if any (placeholder for future implementation)
+    recordings = []
+    
+    # Get related inquiries from the same student to this office
+    related_inquiries = Inquiry.query.filter_by(
+        student_id=session.student_id,
+        office_id=session.office_id
+    ).order_by(desc(Inquiry.created_at)).limit(5).all()
+    
+    # Get previous sessions with this student
+    previous_sessions = CounselingSession.query.filter(
+        CounselingSession.student_id == session.student_id,
+        CounselingSession.office_id == session.office_id,
+        CounselingSession.id != session_id,
+        CounselingSession.status == 'completed'
+    ).order_by(desc(CounselingSession.scheduled_at)).limit(5).all()
+    
+    # Log the view activity
+    AuditLog.log_action(
+        actor=current_user,
+        action="Viewed session completion page",
+        target_type="counseling_session",
+        target_id=session_id,
+        status="success",
+        office=current_user.office_admin.office,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string
+    )
+    
+    # Get context data for the base template
+    context = get_office_context()
+    
+    return render_template('office/session_completed.html',
+                         session=session,
+                         session_stats=session_stats,
+                         student=student,
+                         recordings=recordings,
+                         related_inquiries=related_inquiries,
+                         previous_sessions=previous_sessions,
+                         **context)
+
+
+@office_bp.route('/session-completed/<int:session_id>/download-summary', methods=['GET'])
+@login_required
+def download_session_summary(session_id):
+    """Download session summary as PDF or text file"""
+    if current_user.role != 'office_admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    session = CounselingSession.query.get_or_404(session_id)
+    
+    # Check if the session belongs to the current user's office
+    if session.office_id != current_user.office_admin.office_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    # Generate session summary content
+    summary_content = f"""
+SESSION SUMMARY
+==============
+
+Session ID: {session.id}
+Student: {session.student.user.first_name} {session.student.user.last_name}
+Student ID: {session.student.student_id}
+Office: {session.office.name}
+Counselor: {current_user.first_name} {current_user.last_name}
+
+Session Details:
+- Scheduled: {session.scheduled_at.strftime('%Y-%m-%d %H:%M:%S')}
+- Started: {session.started_at.strftime('%Y-%m-%d %H:%M:%S') if session.started_at else 'N/A'}
+- Ended: {session.ended_at.strftime('%Y-%m-%d %H:%M:%S') if session.ended_at else 'N/A'}
+- Status: {session.status.title()}
+- Type: {'Video Session' if session.is_video_session else 'In-Person Session'}
+
+Duration: {
+    f"{int((session.ended_at - session.started_at).total_seconds() // 3600)}h {int(((session.ended_at - session.started_at).total_seconds() % 3600) // 60)}m"
+    if session.started_at and session.ended_at else 'N/A'
+}
+
+Session Notes:
+{session.notes or 'No notes recorded'}
+
+Meeting Link: {session.meeting_link or 'N/A'}
+
+Generated on: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+Generated by: {current_user.first_name} {current_user.last_name}
+"""
+    
+    # Create response
+    response = Response(
+        summary_content,
+        mimetype='text/plain',
+        headers={
+            'Content-Disposition': f'attachment; filename=session_summary_{session_id}.txt'
+        }
+    )
+    
+    # Log the download activity
+    AuditLog.log_action(
+        actor=current_user,
+        action="Downloaded session summary",
+        target_type="counseling_session",
+        target_id=session_id,
+        status="success",
+        office=current_user.office_admin.office,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string
+    )
+    
+    return response
+
+
+@office_bp.route('/session-completed/<int:session_id>/schedule-followup', methods=['POST'])
+@login_required
+def schedule_followup(session_id):
+    """Schedule a follow-up session"""
+    if current_user.role != 'office_admin':
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    session = CounselingSession.query.get_or_404(session_id)
+    
+    # Check if the session belongs to the current user's office
+    if session.office_id != current_user.office_admin.office_id:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    try:
+        data = request.get_json()
+        scheduled_datetime_str = data.get('scheduled_datetime')
+        session_type = data.get('session_type', 'video')  # 'video' or 'in_person'
+        notes = data.get('notes', '')
+        
+        if not scheduled_datetime_str:
+            return jsonify({'success': False, 'message': 'Scheduled datetime is required'}), 400
+        
+        # Parse the datetime
+        try:
+            scheduled_datetime = datetime.fromisoformat(scheduled_datetime_str.replace('Z', '+00:00'))
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid datetime format'}), 400
+        
+        # Create new follow-up session
+        followup_session = CounselingSession(
+            student_id=session.student_id,
+            office_id=session.office_id,
+            scheduled_at=scheduled_datetime,
+            is_video_session=(session_type == 'video'),
+            status='pending',
+            notes=f"Follow-up session from Session #{session.id}\n\n{notes}",
+            meeting_link=str(uuid.uuid4()) if session_type == 'video' else None
+        )
+        
+        db.session.add(followup_session)
+        
+        # Log activity
+        AuditLog.log_action(
+            actor=current_user,
+            action="Scheduled follow-up session",
+            target_type="counseling_session",
+            target_id=followup_session.id,
+            status="success",
+            office=current_user.office_admin.office,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Follow-up session scheduled successfully',
+            'session_id': followup_session.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error scheduling follow-up: {str(e)}'}), 500

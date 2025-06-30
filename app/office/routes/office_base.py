@@ -1,7 +1,7 @@
 from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
-from app.models import Inquiry, CounselingSession, Student, User, OfficeAdmin, Announcement
+from app.models import Inquiry, CounselingSession, Student, User, OfficeAdmin, Announcement, Notification
 from app.utils import role_required
 from .office_dashboard import get_dashboard_stats, get_chart_data
 from app.office import office_bp
@@ -65,20 +65,15 @@ def dashboard():
     ).count()
     
     # Count of unread notifications
-    unread_notifications_count = 0
-    # You should replace this with actual notification counting logic
-    # For example:
-    # unread_notifications_count = Notification.query.filter_by(
-    #     user_id=current_user.id, 
-    #     is_read=False
-    # ).count()
+    unread_notifications_count = Notification.query.filter_by(
+        user_id=current_user.id, 
+        is_read=False
+    ).count()
     
-    # Get notifications for dropdown - replace with your actual model/logic
-    notifications = []
-    # For example:
-    # notifications = Notification.query.filter_by(
-    #     user_id=current_user.id
-    # ).order_by(Notification.created_at.desc()).limit(5).all()
+    # Get recent notifications for dropdown
+    notifications = Notification.query.filter_by(
+        user_id=current_user.id
+    ).order_by(Notification.created_at.desc()).limit(5).all()
     
     return render_template('office/office_dashboard.html', 
                           stats=stats,

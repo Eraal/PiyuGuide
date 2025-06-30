@@ -3,307 +3,754 @@
 
 {% block extra_head %}
 <style>
-    .tab-active {
-        color: #3b82f6;
-        border-bottom: 2px solid #3b82f6;
+  /* Action Buttons */
+  .action-button {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+  
+  .action-button:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  /* Enhanced Stats Cards */
+  .stats-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--border-color, #e2e8f0) 0%, var(--border-color, #e2e8f0) 100%);
+  }
+  
+  .stats-card.orange::before { background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%); }
+  .stats-card.blue::before { background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%); }
+  .stats-card.yellow::before { background: linear-gradient(90deg, #eab308 0%, #ca8a04 100%); }
+  .stats-card.green::before { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+  
+  /* Inquiry Cards */
+  .inquiry-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .inquiry-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: #cbd5e1;
+  }
+  
+  .inquiry-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--status-color, #e2e8f0);
+  }
+  
+  /* Status Colors */
+  .inquiry-card.status-pending::before { background: linear-gradient(180deg, #f59e0b 0%, #f97316 100%); }
+  .inquiry-card.status-in_progress::before { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); }
+  .inquiry-card.status-resolved::before { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
+  .inquiry-card.status-reopened::before { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
+  
+  /* Enhanced Status Badges */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .status-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.6s;
+  }
+  
+  .status-badge:hover::before {
+    left: 100%;
+  }
+  
+  .status-pending {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+  }
+  
+  .status-in_progress {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 1px solid #3b82f6;
+  }
+  
+  .status-resolved {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    border: 1px solid #10b981;
+  }
+  
+  .status-reopened {
+    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+    color: #5b21b6;
+    border: 1px solid #8b5cf6;
+  }
+  
+  /* Filter Section */
+  .filter-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    backdrop-filter: blur(10px);
+  }
+  
+  /* Enhanced Form Controls */
+  .modern-select {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .modern-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: #ffffff;
+  }
+  
+  /* Office Cards */
+  .office-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .office-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    border-color: #cbd5e1;
+  }
+  
+  .office-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+  }
+  
+  /* Floating Action Button */
+  .fab {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);
+    transition: all 0.3s ease;
+  }
+  
+  .fab:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 15px 30px -5px rgba(59, 130, 246, 0.6);
+  }
+  
+  /* Page Header */
+  .page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+    opacity: 0.3;
+  }
+  
+  /* Priority Indicators */
+  .priority-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+  }
+  
+  .priority-high { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+  .priority-medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+  .priority-low { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+  
+  /* Animations */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
     }
-    .tab-inactive {
-        color: #6b7280;
-        border-bottom: 2px solid transparent;
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-    .attachment-preview {
-        max-width: 100px;
-        max-height: 100px;
-    }
-    .inquiry-status-pending { 
-        background-color: #fef3c7; 
-        color: #92400e; 
-    }
-    .inquiry-status-in_progress { 
-        background-color: #dbeafe; 
-        color: #1e40af; 
-    }
-    .inquiry-status-resolved { 
-        background-color: #d1fae5; 
-        color: #065f46; 
-    }
-    .inquiry-status-reopened { 
-        background-color: #ede9fe; 
-        color: #5b21b6; 
-    }
-    .stats-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stats-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    }
-    .office-card {
-        transition: all 0.3s ease;
-    }
-    .office-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    }
-    .filter-section {
-        opacity: 0.97;
-    }
+  }
+  
+  .slide-in-up {
+    animation: slideInUp 0.4s ease-out;
+  }
+  
+  @keyframes pulse-border {
+    0%, 100% { border-color: #e2e8f0; }
+    50% { border-color: #3b82f6; }
+  }
+  
+  .pulse-border {
+    animation: pulse-border 2s infinite;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-6">
-    <!-- Page Header -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-800">My Inquiries</h1>
-            <p class="text-gray-600">Submit and track inquiries to different university offices</p>
-        </div>
-        <div class="mt-4 md:mt-0">
-            <button id="newInquiryBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center transition-all duration-300 transform hover:scale-105">
-                <i class="fas fa-plus-circle mr-2"></i>
-                <span>New Inquiry</span>
-            </button>
+<!-- Enhanced Page Header -->
+<div class="page-header text-white py-8 mb-8 rounded-2xl">
+    <div class="relative z-10 px-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">My Inquiries</h1>
+                <p class="text-white/80 text-lg">Submit and track inquiries to different university offices</p>                <div class="flex items-center mt-3 text-white/70">
+                    <i class="fas fa-clock mr-2"></i>
+                    <span class="text-sm">Last updated: <span id="last-updated">Now</span></span>
+                </div>
+            </div>
+            <div class="mt-6 md:mt-0">
+                <button id="newInquiryBtn" class="fab text-white px-6 py-3 rounded-xl flex items-center font-semibold text-sm">
+                    <i class="fas fa-plus-circle mr-2"></i>
+                    <span>New Inquiry</span>
+                </button>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Stats and Filters Section -->
-    <div class="mb-8">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <!-- Stats Cards -->
-            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+<!-- Enhanced Stats Section -->
+<div class="mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Total Inquiries -->
+        <div class="stats-card orange rounded-2xl p-6 slide-in-up" style="animation-delay: 0.1s">
+            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Total Inquiries</p>
-                    <h3 class="text-2xl font-bold text-gray-800">{{ stats.total }}</h3>
+                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Total Inquiries</p>
+                    <h3 class="text-3xl font-bold text-gray-800">{{ stats.total }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">All time submissions</p>
                 </div>
-                <div class="bg-blue-100 p-3 rounded-full">
-                    <i class="fas fa-inbox text-blue-600 text-xl"></i>
-                </div>
-            </div>
-            
-            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">Pending</p>
-                    <h3 class="text-2xl font-bold text-yellow-600">{{ stats.pending }}</h3>
-                </div>
-                <div class="bg-yellow-100 p-3 rounded-full">
-                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
-                </div>
-            </div>
-            
-            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">In Progress</p>
-                    <h3 class="text-2xl font-bold text-blue-600">{{ stats.in_progress }}</h3>
-                </div>
-                <div class="bg-blue-100 p-3 rounded-full">
-                    <i class="fas fa-spinner text-blue-600 text-xl"></i>
-                </div>
-            </div>
-            
-            <div class="stats-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">Resolved</p>
-                    <h3 class="text-2xl font-bold text-green-600">{{ stats.resolved }}</h3>
-                </div>
-                <div class="bg-green-100 p-3 rounded-full">
-                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                <div class="bg-orange-100 p-4 rounded-2xl">
+                    <i class="fas fa-inbox text-orange-600 text-2xl"></i>
                 </div>
             </div>
         </div>
         
-        <!-- Filter Section -->
-        <div class="filter-section bg-white rounded-xl shadow-sm mt-4 p-5">
-            <h2 class="text-lg font-semibold text-gray-800 mb-3">Filter Inquiries</h2>
-            <form action="{{ url_for('student.inquiries') }}" method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Pending -->
+        <div class="stats-card yellow rounded-2xl p-6 slide-in-up" style="animation-delay: 0.2s">
+            <div class="flex items-center justify-between">
                 <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select id="status" name="status" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                        <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
-                        <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
-                        <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                        <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
-                        <option value="reopened" {% if current_status == 'reopened' %}selected{% endif %}>Reopened</option>
-                    </select>
+                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Pending</p>
+                    <h3 class="text-3xl font-bold text-yellow-600">{{ stats.pending }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Awaiting response</p>
                 </div>
+                <div class="bg-yellow-100 p-4 rounded-2xl">
+                    <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- In Progress -->
+        <div class="stats-card blue rounded-2xl p-6 slide-in-up" style="animation-delay: 0.3s">
+            <div class="flex items-center justify-between">
                 <div>
-                    <label for="office_id" class="block text-sm font-medium text-gray-700 mb-1">Office</label>
-                    <select id="office_id" name="office_id" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                        <option value="all" {% if current_office == 'all' %}selected{% endif %}>All Offices</option>
-                        {% for office in offices %}
-                        <option value="{{ office.id }}" {% if current_office|int == office.id %}selected{% endif %}>{{ office.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">In Progress</p>
+                    <h3 class="text-3xl font-bold text-blue-600">{{ stats.in_progress }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Being handled</p>
                 </div>
-                <div class="flex items-end">
-                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200">
-                        <i class="fas fa-filter mr-2"></i> Apply Filters
-                    </button>
+                <div class="bg-blue-100 p-4 rounded-2xl">
+                    <i class="fas fa-spinner text-blue-600 text-2xl"></i>
                 </div>
-            </form>
+            </div>
+        </div>
+        
+        <!-- Resolved -->
+        <div class="stats-card green rounded-2xl p-6 slide-in-up" style="animation-delay: 0.4s">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Resolved</p>
+                    <h3 class="text-3xl font-bold text-green-600">{{ stats.resolved }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Successfully completed</p>
+                </div>
+                <div class="bg-green-100 p-4 rounded-2xl">
+                    <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Inquiries Table -->
-    <div class="bg-white rounded-xl shadow-sm mb-8">
-        <div class="border-b">
-            <div class="flex overflow-x-auto">
-                <a href="{{ url_for('student.inquiries') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'all' %}tab-active{% else %}tab-inactive{% endif %}">
-                    All
-                </a>
-                <a href="{{ url_for('student.inquiries', status='pending') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'pending' %}tab-active{% else %}tab-inactive{% endif %}">
-                    Pending
-                </a>
-                <a href="{{ url_for('student.inquiries', status='in_progress') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'in_progress' %}tab-active{% else %}tab-inactive{% endif %}">
-                    In Progress
-                </a>
-                <a href="{{ url_for('student.inquiries', status='resolved') }}" class="px-6 py-4 inline-block text-center {% if current_status == 'resolved' %}tab-active{% else %}tab-inactive{% endif %}">
-                    Resolved
-                </a>
-            </div>
+<!-- Enhanced Filter Section -->
+<div class="filter-section rounded-2xl p-6 mb-8 slide-in-up" style="animation-delay: 0.5s">    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+            <i class="fas fa-filter mr-3 text-blue-600"></i>
+            Filter & Search
+            {% if current_status != 'all' or current_office != 'all' or current_search %}
+            <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                Filters Active
+            </span>
+            {% endif %}
+        </h2>
+        <button id="refreshBtn" class="text-gray-500 hover:text-blue-600 transition-colors duration-200">
+            <i id="refresh-icon" class="fas fa-sync-alt text-lg"></i>
+        </button>
+    </div>
+    <form action="{{ url_for('student.inquiries') }}" method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+            <label for="status" class="block text-sm font-semibold text-gray-700 mb-2">Status Filter</label>
+            <select id="status" name="status" class="modern-select w-full px-4 py-3 rounded-xl focus:outline-none">
+                <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+                <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="reopened" {% if current_status == 'reopened' %}selected{% endif %}>Reopened</option>
+            </select>
         </div>
-
-        {% if inquiries %}
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200" id="inquiries-table">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Subject
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Office
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Action
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for inquiry in inquiries %}
-                    <tr class="hover:bg-gray-50 transition-colors duration-150" data-inquiry-id="{{ inquiry.id }}">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900 truncate max-w-[200px]">
-                                {{ inquiry.subject }}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-500">
-                                {{ inquiry.office.name }}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="inquiry-status px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full inquiry-status-{{ inquiry.status }}">
-                                {{ inquiry.status|replace('_', ' ')|title }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-500">
-                                {{ inquiry.created_at.strftime('%b %d, %Y') }}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}" class="text-blue-600 hover:text-blue-800 transition-colors duration-150">
-                                <i class="fas fa-eye mr-1"></i> View
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div>
+            <label for="office_id" class="block text-sm font-semibold text-gray-700 mb-2">Office Filter</label>
+            <select id="office_id" name="office_id" class="modern-select w-full px-4 py-3 rounded-xl focus:outline-none">
+                <option value="all" {% if current_office == 'all' %}selected{% endif %}>All Offices</option>
+                {% for office in offices %}
+                <option value="{{ office.id }}" {% if current_office|int == office.id %}selected{% endif %}>{{ office.name }}</option>
+                {% endfor %}
+            </select>
+        </div>        <div>
+            <label for="search" class="block text-sm font-semibold text-gray-700 mb-2">Search Keywords</label>
+            <input type="text" id="search" name="search" placeholder="Search subjects..." 
+                   value="{{ current_search or '' }}"
+                   class="modern-select w-full px-4 py-3 rounded-xl focus:outline-none">
+        </div>        <div class="flex items-end space-x-3">
+            <button type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center justify-center font-semibold">
+                <i class="fas fa-search mr-2"></i> Apply Filters
+            </button>
+            {% if current_status != 'all' or current_office != 'all' or current_search %}
+            <a href="{{ url_for('student.inquiries') }}" 
+               class="px-6 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all duration-200 flex items-center justify-center font-semibold">
+                <i class="fas fa-times mr-2"></i> Clear
+            </a>
+            {% endif %}
         </div>
-
-        <!-- Pagination Controls -->
-        {% if pagination.pages > 1 %}
-        <div class="px-6 py-4 bg-gray-50 border-t flex justify-between items-center rounded-b-xl">
-            <div>
-                <span class="text-sm text-gray-700">
-                    Showing <span class="font-medium">{{ pagination.page }}</span> of <span class="font-medium">{{ pagination.pages }}</span> pages
-                </span>
+    </form>
+</div><!-- Enhanced Inquiries Display -->
+{% if inquiries %}
+<div class="mb-8">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+            <i class="fas fa-list-alt mr-3 text-blue-600"></i>
+            Your Inquiries
+        </h2>
+        <div class="flex items-center text-sm text-gray-500">
+            <i class="fas fa-info-circle mr-2"></i>
+            Showing {{ inquiries|length }} of {{ stats.total }} inquiries
+        </div>
+    </div>
+    
+    <!-- Inquiries Grid -->
+    <div class="grid grid-cols-1 gap-6">
+        {% for inquiry in inquiries %}
+        <div class="inquiry-card status-{{ inquiry.status }} rounded-2xl p-6 slide-in-up" 
+             style="animation-delay: {{ loop.index * 0.1 }}s"
+             onclick="window.location.href='{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}'">
+            
+            <!-- Header -->
+            <div class="flex items-start justify-between mb-4">                <div class="flex-1">
+                    <div class="flex items-center mb-2">
+                        <span class="priority-indicator priority-medium"></span>
+                        <h3 class="text-lg font-bold text-gray-800 truncate">{{ inquiry.subject }}</h3>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-500 space-x-4">
+                        <span class="flex items-center">
+                            <i class="fas fa-building mr-1"></i>
+                            {{ inquiry.office.name }}
+                        </span>                        <span class="flex items-center">
+                            <i class="fas fa-calendar mr-1"></i>
+                            {{ inquiry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <span class="status-badge status-{{ inquiry.status }}">
+                        {% if inquiry.status == 'pending' %}
+                            <i class="fas fa-clock mr-1"></i>
+                        {% elif inquiry.status == 'in_progress' %}
+                            <i class="fas fa-spinner mr-1"></i>
+                        {% elif inquiry.status == 'resolved' %}
+                            <i class="fas fa-check-circle mr-1"></i>
+                        {% elif inquiry.status == 'reopened' %}
+                            <i class="fas fa-redo mr-1"></i>
+                        {% endif %}
+                        {{ inquiry.status|replace('_', ' ')|title }}
+                    </span>
+                    
+                    <!-- Message Count -->
+                    {% if inquiry.messages %}
+                    <div class="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-600">
+                        <i class="fas fa-comments mr-1"></i>
+                        {{ inquiry.messages|length }} messages
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="flex items-center space-x-2">
-                {% if pagination.has_prev %}
-                <a href="{{ url_for('student.inquiries', page=pagination.prev_num, status=current_status, office_id=current_office) }}" class="px-3 py-1 border rounded text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-150">
-                    <i class="fas fa-chevron-left mr-1"></i> Previous
-                </a>
+              <!-- Content Preview -->
+            <div class="mb-4">
+                {% if inquiry.messages and inquiry.messages|length > 0 %}
+                <p class="text-gray-700 line-clamp-2">{{ inquiry.messages[0].content|truncate(120) }}</p>
                 {% else %}
-                <span class="px-3 py-1 border rounded text-sm text-gray-400 cursor-not-allowed">
-                    <i class="fas fa-chevron-left mr-1"></i> Previous
-                </span>
-                {% endif %}
-
-                {% if pagination.has_next %}
-                <a href="{{ url_for('student.inquiries', page=pagination.next_num, status=current_status, office_id=current_office) }}" class="px-3 py-1 border rounded text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-150">
-                    Next <i class="fas fa-chevron-right ml-1"></i>
-                </a>
-                {% else %}
-                <span class="px-3 py-1 border rounded text-sm text-gray-400 cursor-not-allowed">
-                    Next <i class="fas fa-chevron-right ml-1"></i>
-                </span>
+                <p class="text-gray-500 italic line-clamp-2">No message content available</p>
                 {% endif %}
             </div>
+            
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                    {% if inquiry.concern_types %}
+                    <span class="flex items-center">
+                        <i class="fas fa-tag mr-1"></i>
+                        {{ inquiry.concern_types[0].name }}
+                        {% if inquiry.concern_types|length > 1 %}+{{ inquiry.concern_types|length - 1 }}{% endif %}
+                    </span>
+                    {% endif %}
+                    
+                    {% if inquiry.attachments %}
+                    <span class="flex items-center">
+                        <i class="fas fa-paperclip mr-1"></i>
+                        {{ inquiry.attachments|length }} attachment{{ 's' if inquiry.attachments|length > 1 else '' }}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <button class="action-button px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                            onclick="event.stopPropagation(); window.location.href='{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}'">
+                        <i class="fas fa-eye mr-1"></i> View Details
+                    </button>
+                </div>
+            </div>
         </div>
-        {% endif %}
+        {% endfor %}
+    </div>
+    
+    <!-- Enhanced Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="mt-8 flex items-center justify-between">
+        <div class="text-sm text-gray-700">
+            Showing page <span class="font-semibold">{{ pagination.page }}</span> of 
+            <span class="font-semibold">{{ pagination.pages }}</span>
+            ({{ stats.total }} total inquiries)
+        </div>
+        <div class="flex items-center space-x-2">            {% if pagination.has_prev %}
+            <a href="{{ url_for('student.inquiries', page=pagination.prev_num, status=current_status, office_id=current_office, search=current_search) }}" 
+               class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 flex items-center">
+                <i class="fas fa-chevron-left mr-1"></i> Previous
+            </a>
+            {% else %}
+            <span class="px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-400 cursor-not-allowed flex items-center">
+                <i class="fas fa-chevron-left mr-1"></i> Previous
+            </span>
+            {% endif %}
 
-        {% else %}
-        <div class="py-16 text-center">
-            <i class="fas fa-inbox text-gray-400 text-5xl mb-4"></i>
-            <h3 class="text-xl font-medium text-gray-700">No inquiries found</h3>
-            <p class="text-gray-500 mt-1">You haven't submitted any inquiries yet or none match your current filters</p>
-            <button id="emptyNewInquiryBtn" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105">
+            <!-- Page Numbers -->
+            {% for page_num in pagination.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != pagination.page %}
+                    <a href="{{ url_for('student.inquiries', page=page_num, status=current_status, office_id=current_office, search=current_search) }}" 
+                       class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
+                        {{ page_num }}
+                    </a>
+                    {% else %}
+                    <span class="px-3 py-2 bg-blue-600 border border-blue-600 rounded-lg text-sm text-white font-semibold">
+                        {{ page_num }}
+                    </span>
+                    {% endif %}
+                {% else %}
+                <span class="px-3 py-2 text-gray-400">...</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <a href="{{ url_for('student.inquiries', page=pagination.next_num, status=current_status, office_id=current_office, search=current_search) }}" 
+               class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 flex items-center">
+                Next <i class="fas fa-chevron-right ml-1"></i>
+            </a>
+            {% else %}
+            <span class="px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-400 cursor-not-allowed flex items-center">
+                Next <i class="fas fa-chevron-right ml-1"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<!-- Enhanced Empty State -->
+<div class="text-center py-16">
+    <div class="max-w-md mx-auto">
+        <div class="bg-gray-100 rounded-full p-8 inline-block mb-6">
+            <i class="fas fa-inbox text-gray-400 text-6xl"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-3">No inquiries found</h3>        <p class="text-gray-600 mb-6">
+            {% if current_status != 'all' or current_office != 'all' or current_search %}
+            No inquiries match your current filters. Try adjusting your search criteria.
+            {% else %}
+            You haven't submitted any inquiries yet. Get started by submitting your first inquiry to a university office.
+            {% endif %}
+        </p>
+        <div class="space-y-3">
+            {% if current_status != 'all' or current_office != 'all' or current_search %}
+            <a href="{{ url_for('student.inquiries') }}" 
+               class="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 font-semibold">
+                <i class="fas fa-times mr-2"></i> Clear Filters
+            </a>
+            {% endif %}
+            <button id="emptyNewInquiryBtn" 
+                    class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold ml-3">
                 <i class="fas fa-plus-circle mr-2"></i> Submit New Inquiry
             </button>
         </div>
-        {% endif %}
     </div>
-
-    <!-- University Offices Section -->
-    <div class="mb-6" id="offices-section">
-        <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-            <i class="fas fa-building mr-2 text-blue-600"></i>
+</div>
+{% endif %}<!-- Enhanced University Offices Section -->
+<div class="mb-8" id="offices-section">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+            <i class="fas fa-building mr-3 text-blue-600"></i>
             University Offices
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for office in offices %}
-            <div class="office-card bg-white rounded-xl shadow-sm">
-                <div class="p-6">
-                    <div class="flex items-start">
-                        <div class="rounded-full p-3 bg-blue-100 text-blue-600">
-                            <i class="fas fa-building text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <h3 class="text-lg font-medium text-gray-900">{{ office.name }}</h3>
-                            <p class="text-sm text-gray-500 mt-1">{{ office.description|truncate(100) }}</p>
-                        </div>
+        <p class="text-gray-600 text-sm">Click on any office to submit a new inquiry</p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for office in offices %}
+        <div class="office-card rounded-2xl overflow-hidden slide-in-up" style="animation-delay: {{ loop.index * 0.1 }}s">
+            <div class="p-6">
+                <!-- Office Header -->
+                <div class="flex items-start mb-4">
+                    <div class="bg-blue-100 rounded-2xl p-4 mr-4">
+                        <i class="fas fa-building text-blue-600 text-2xl"></i>
                     </div>
-                    <div class="mt-4 flex justify-between items-center">
-                        <span class="text-xs text-gray-500">
-                            {% if office.supports_video %}
-                            <i class="fas fa-video text-green-500 mr-1"></i> Video Counseling Available
-                            {% endif %}
-                        </span>
-                        <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}" class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md transition-colors duration-200">
-                            Submit Inquiry <i class="fas fa-chevron-right ml-1 text-xs"></i>
-                        </a>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">{{ office.name }}</h3>
+                        <p class="text-sm text-gray-600 line-clamp-2">{{ office.description|truncate(80) }}</p>
                     </div>
                 </div>
+                
+                <!-- Office Features -->
+                <div class="flex items-center justify-between mb-4 text-xs">
+                    <div class="flex items-center space-x-3">
+                        {% if office.supports_video %}
+                        <span class="flex items-center bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                            <i class="fas fa-video mr-1"></i> Video Support
+                        </span>
+                        {% endif %}
+                        
+                        {% if office.email %}
+                        <span class="flex items-center bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                            <i class="fas fa-envelope mr-1"></i> Email
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Office Stats -->
+                <div class="bg-gray-50 rounded-xl p-3 mb-4">
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Your Inquiries</p>
+                            <p class="text-lg font-bold text-gray-800">
+                                {{ inquiries|selectattr('office.id', 'equalto', office.id)|list|length }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Response Time</p>
+                            <p class="text-lg font-bold text-blue-600">~24h</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Button -->
+                <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}" 
+                   class="block w-full text-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Submit Inquiry
+                </a>
             </div>
-            {% endfor %}
         </div>
+        {% endfor %}
     </div>
+</div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // New Inquiry button - scroll to offices section
+        // Enhanced refresh functionality with animation
+        const refreshBtn = document.getElementById('refreshBtn');
+        const refreshIcon = document.getElementById('refresh-icon');
+        let isRefreshing = false;
+
+        function updateLastUpdated() {
+            const now = new Date();
+            const timeString = now.toTimeString().slice(0, 5);
+            document.getElementById('last-updated').textContent = timeString;
+        }
+
+        // Auto-refresh stats every 2 minutes
+        setInterval(function() {
+            if (!isRefreshing) {
+                updateLastUpdated();
+            }
+        }, 120000);
+
+        // Manual refresh functionality
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                refreshData();
+            });
+        }
+
+        function refreshData() {
+            if (isRefreshing) return;
+            
+            isRefreshing = true;
+            refreshIcon.classList.add('refresh-animation');
+            
+            // Simulate data refresh
+            setTimeout(function() {
+                isRefreshing = false;
+                refreshIcon.classList.remove('refresh-animation');
+                updateLastUpdated();
+                showNotification('Inquiries data refreshed successfully', 'success');
+            }, 1000);
+        }
+
+        // Enhanced notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' : 
+                type === 'error' ? 'bg-red-500 text-white' : 
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Enhanced hover effects for inquiry cards
+        const inquiryCards = document.querySelectorAll('.inquiry-card');
+        inquiryCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px) scale(1.02)';
+                this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Enhanced hover effects for stats cards
+        const statsCards = document.querySelectorAll('.stats-card');
+        statsCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px) scale(1.02)';
+                this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Enhanced hover effects for office cards
+        const officeCards = document.querySelectorAll('.office-card');
+        officeCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-6px) scale(1.02)';
+                this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Scroll to offices section functionality
         const newInquiryBtn = document.getElementById('newInquiryBtn');
         const emptyNewInquiryBtn = document.getElementById('emptyNewInquiryBtn');
         const officesSection = document.getElementById('offices-section');
@@ -316,10 +763,10 @@
             });
             
             // Add a highlight effect to draw attention
-            officesSection.classList.add('animate-pulse');
+            officesSection.classList.add('pulse-border');
             setTimeout(() => {
-                officesSection.classList.remove('animate-pulse');
-            }, 1500);
+                officesSection.classList.remove('pulse-border');
+            }, 3000);
         }
         
         if (newInquiryBtn) {
@@ -334,7 +781,165 @@
                 e.preventDefault();
                 scrollToOffices();
             });
+        }        // Filter form enhancements
+        const filterForm = document.querySelector('form[action*="inquiries"]');
+        const filterSelects = document.querySelectorAll('.modern-select');
+        const searchInput = document.getElementById('search');
+        const applyFiltersBtn = filterForm.querySelector('button[type="submit"]');
+        
+        // Add loading state to form submission
+        if (filterForm && applyFiltersBtn) {
+            filterForm.addEventListener('submit', function(e) {
+                // Add loading state to button
+                applyFiltersBtn.disabled = true;
+                applyFiltersBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Applying Filters...';
+                
+                // Add loading state to form elements
+                filterSelects.forEach(select => {
+                    select.style.opacity = '0.6';
+                    select.disabled = true;
+                });
+                
+                if (searchInput) {
+                    searchInput.style.opacity = '0.6';
+                    searchInput.disabled = true;
+                }
+            });
         }
+          // Enhanced search functionality with debouncing
+        if (searchInput) {
+            let searchTimeout;
+            
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const searchValue = this.value.trim();
+                
+                // Add visual feedback while typing
+                if (searchValue.length > 0) {
+                    this.style.borderColor = '#3b82f6';
+                    this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                } else {
+                    this.style.borderColor = '#e2e8f0';
+                    this.style.boxShadow = 'none';
+                }
+                
+                // Reset border after typing stops
+                searchTimeout = setTimeout(() => {
+                    if (searchValue.length === 0) {
+                        this.style.borderColor = '#e2e8f0';
+                        this.style.boxShadow = 'none';
+                    }
+                }, 1000);
+            });
+            
+            // Allow Enter key to submit form
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    filterForm.submit();
+                }
+            });
+            
+            // Clear search with Escape key
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    this.value = '';
+                    this.style.borderColor = '#e2e8f0';
+                    this.style.boxShadow = 'none';
+                    this.blur();
+                }
+            });
+        }
+
+        // Status badge animations
+        const statusBadges = document.querySelectorAll('.status-badge');
+        statusBadges.forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.transition = 'all 0.2s ease';
+            });
+            
+            badge.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // Action button enhancements
+        const actionButtons = document.querySelectorAll('.action-button');
+        actionButtons.forEach(button => {
+            button.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.transition = 'all 0.2s ease';
+            });
+            
+            button.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // Initialize animations for elements
+        const animatedElements = document.querySelectorAll('.slide-in-up');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        });
+
+        animatedElements.forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Update timestamps dynamically
+        function updateTimestamps() {
+            const timestamps = document.querySelectorAll('[data-timestamp]');
+            timestamps.forEach(timestamp => {
+                const time = new Date(timestamp.dataset.timestamp);
+                const now = new Date();
+                const diff = now - time;
+                
+                // Update relative time display
+                if (diff < 60000) {
+                    timestamp.textContent = 'Just now';
+                } else if (diff < 3600000) {
+                    timestamp.textContent = Math.floor(diff / 60000) + ' minutes ago';
+                } else if (diff < 86400000) {
+                    timestamp.textContent = Math.floor(diff / 3600000) + ' hours ago';
+                }
+            });
+        }
+
+        // Update timestamps every minute
+        setInterval(updateTimestamps, 60000);        // Highlight search terms in results
+        function highlightSearchTerms() {
+            const searchTerm = searchInput ? searchInput.value.trim() : '';
+            if (searchTerm.length > 0) {
+                const inquiryCards = document.querySelectorAll('.inquiry-card');
+                inquiryCards.forEach(card => {
+                    const textElements = card.querySelectorAll('h3, p');
+                    textElements.forEach(element => {
+                        const text = element.textContent;
+                        if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                            const regex = new RegExp(`(${searchTerm})`, 'gi');
+                            const highlightedText = text.replace(regex, '<mark class="bg-yellow-200 rounded px-1">$1</mark>');
+                            element.innerHTML = highlightedText;
+                        }
+                    });
+                });
+            }
+        }
+        
+        // Apply highlighting on page load if search term exists
+        if (searchInput && searchInput.value.trim().length > 0) {
+            highlightSearchTerms();
+        }
+
+        console.log('Enhanced inquiries page loaded successfully');
     });
 </script>
 {% endblock %}

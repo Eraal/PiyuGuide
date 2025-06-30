@@ -1,0 +1,332 @@
+{% extends "student/student_base.html" %}
+{% block title %}My Profile - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  .profile-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .profile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .stats-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #93c5fd;
+    transition: all 0.3s ease;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(59, 130, 246, 0.2);
+  }
+
+  .activity-item {
+    transition: all 0.2s ease;
+  }
+
+  .activity-item:hover {
+    background-color: #f8fafc;
+    transform: translateX(4px);
+  }
+
+  .profile-avatar {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .info-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-left: 4px solid #3b82f6;
+  }
+
+  .activity-icon {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .activity-icon.inquiry {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+
+  .activity-icon.session {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  }
+
+  .activity-icon.profile {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge-active {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .badge-pending {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .badge-resolved {
+    background-color: #ecfdf5;
+    color: #065f46;
+  }
+
+  .badge-completed {
+    background-color: #ede9fe;
+    color: #5b21b6;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <!-- Page Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">My Profile</h1>
+      <p class="text-gray-600">Manage your personal information and view your activity</p>
+    </div>
+    <div class="mt-4 md:mt-0">
+      <a
+        href="{{ url_for('student.account_settings') }}"
+        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+      >
+        <i class="fas fa-cog mr-2"></i>
+        Account Settings
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Profile Information Panel -->
+    <div class="lg:col-span-1">
+      <div class="profile-card rounded-xl p-6">
+        <!-- Profile Avatar and Basic Info -->
+        <div class="text-center mb-6">
+          <div class="profile-avatar w-24 h-24 rounded-full mx-auto flex items-center justify-center text-white text-2xl font-bold mb-4">
+            {% if current_user.profile_pic %}
+              <img
+                src="{{ current_user.profile_pic }}"
+                alt="Profile Picture"
+                class="w-full h-full rounded-full object-cover"
+              />
+            {% else %}
+              {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+            {% endif %}
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 mb-1">
+            {{ current_user.first_name }} {% if current_user.middle_name %}{{ current_user.middle_name }} {% endif %}{{ current_user.last_name }}
+          </h2>
+          <p class="text-gray-600 mb-2">{{ current_user.role|replace('_', ' ')|title }}</p>
+          {% if student.student_number %}
+          <p class="text-sm text-gray-500">Student ID: {{ student.student_number }}</p>
+          {% endif %}
+          <span class="badge badge-active mt-2">
+            <i class="fas fa-circle w-2 h-2 mr-2"></i>
+            Active
+          </span>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="info-section rounded-lg p-4 mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <i class="fas fa-address-card mr-2 text-blue-600"></i>
+            Contact Information
+          </h3>
+          <div class="space-y-3">
+            <div class="flex items-start">
+              <i class="fas fa-envelope w-5 h-5 text-gray-400 mt-1 mr-3"></i>
+              <div>
+                <p class="text-sm font-medium text-gray-700">Email</p>
+                <p class="text-sm text-gray-600">{{ current_user.email }}</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <i class="fas fa-calendar-alt w-5 h-5 text-gray-400 mt-1 mr-3"></i>
+              <div>
+                <p class="text-sm font-medium text-gray-700">Member Since</p>
+                <p class="text-sm text-gray-600">{{ current_user.created_at.strftime('%B %d, %Y') }}</p>
+              </div>
+            </div>
+            {% if current_user.last_activity %}
+            <div class="flex items-start">
+              <i class="fas fa-clock w-5 h-5 text-gray-400 mt-1 mr-3"></i>
+              <div>
+                <p class="text-sm font-medium text-gray-700">Last Activity</p>
+                <p class="text-sm text-gray-600">{{ current_user.last_activity.strftime('%B %d, %Y at %I:%M %p') }}</p>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Video Call Preferences -->
+        <div class="info-section rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <i class="fas fa-video mr-2 text-purple-600"></i>
+            Video Preferences
+          </h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-700">Notifications</span>
+              <span class="badge {% if current_user.video_call_notifications %}badge-active{% else %}badge-pending{% endif %}">
+                {% if current_user.video_call_notifications %}Enabled{% else %}Disabled{% endif %}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-700">Email Reminders</span>
+              <span class="badge {% if current_user.video_call_email_reminders %}badge-active{% else %}badge-pending{% endif %}">
+                {% if current_user.video_call_email_reminders %}Enabled{% else %}Disabled{% endif %}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-700">Video Quality</span>
+              <span class="badge badge-active">{{ current_user.preferred_video_quality|title }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Panel -->
+    <div class="lg:col-span-2">
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Inquiries Stats -->
+        <div class="stats-card rounded-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Inquiries</h3>
+            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <i class="fas fa-question-circle text-orange-600 text-xl"></i>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Total Submitted</span>
+              <span class="text-2xl font-bold text-gray-900">{{ total_inquiries }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Pending</span>
+              <span class="badge badge-pending">{{ pending_inquiries }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Resolved</span>
+              <span class="badge badge-resolved">{{ resolved_inquiries }}</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <a
+              href="{{ url_for('student.inquiries') }}"
+              class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+            >
+              View All Inquiries
+              <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Counseling Sessions Stats -->
+        <div class="stats-card rounded-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Counseling Sessions</h3>
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <i class="fas fa-user-friends text-purple-600 text-xl"></i>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Total Sessions</span>
+              <span class="text-2xl font-bold text-gray-900">{{ total_sessions }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Completed</span>
+              <span class="badge badge-completed">{{ completed_sessions }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Upcoming</span>
+              <span class="badge badge-pending">{{ upcoming_sessions }}</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <a
+              href="{{ url_for('student.counseling_sessions') }}"
+              class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+            >
+              View All Sessions
+              <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="profile-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+            <i class="fas fa-history mr-2 text-green-600"></i>
+            Recent Activity
+          </h3>
+          {% if recent_activities|length > 0 %}
+          <span class="text-sm text-gray-500">Last {{ recent_activities|length }} activities</span>
+          {% endif %}
+        </div>
+
+        {% if recent_activities %}
+        <div class="space-y-3">          {% for activity in recent_activities %}
+          <div class="activity-item flex items-start p-3 rounded-lg border border-gray-100">
+            <div class="activity-icon {% if 'inquiry' in activity.action.lower() %}inquiry{% elif 'session' in activity.action.lower() or 'counseling' in activity.action.lower() %}session{% elif 'profile' in activity.action.lower() or 'settings' in activity.action.lower() %}profile{% endif %} w-8 h-8 rounded-full flex items-center justify-center mr-3 mt-1">
+              {% if 'inquiry' in activity.action.lower() %}
+                <i class="fas fa-question-circle text-white text-sm"></i>
+              {% elif 'session' in activity.action.lower() or 'counseling' in activity.action.lower() %}
+                <i class="fas fa-user-friends text-white text-sm"></i>
+              {% elif 'profile' in activity.action.lower() or 'settings' in activity.action.lower() %}
+                <i class="fas fa-user text-white text-sm"></i>
+              {% else %}
+                <i class="fas fa-circle text-white text-sm"></i>
+              {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900">{{ activity.action }}</p>
+              <p class="text-xs text-gray-500 mt-1">
+                {{ activity.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
+              </p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-history text-gray-400 text-xl"></i>
+          </div>
+          <p class="text-gray-500 text-sm">No recent activity to display</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add any interactive features here
+    console.log('Profile page loaded');
+  });
+</script>
+{% endblock %}

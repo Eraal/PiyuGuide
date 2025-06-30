@@ -1,0 +1,439 @@
+{% extends "office/office_base.html" %} 
+{% block title %}Activity Logs - KapiyuGuide{% endblock %} 
+{% block content %}
+
+<!-- Header Section with Enhanced Styling -->
+<div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl shadow-lg p-8 mb-8 border border-indigo-100">
+  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+    <div class="flex items-center space-x-4">
+      <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+        <i class="fas fa-history text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 mb-1">
+          Office Activity Logs
+        </h1>
+        <p class="text-gray-600">Monitor all office activities and system interactions</p>
+      </div>
+    </div>
+    
+    <!-- Enhanced Export and Filter Controls -->
+    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+      <button
+        onclick="exportLogs()"
+        class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+      >
+        <i class="fas fa-download"></i>
+        <span>Export CSV</span>
+      </button>
+      <button
+        onclick="refreshLogs()"
+        class="border-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50 px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2"
+      >
+        <i class="fas fa-sync-alt"></i>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-500 mb-1">Total Activities</p>
+        <p class="text-2xl font-bold text-gray-900">{{ stats.total_activities }}</p>
+      </div>
+      <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+        <i class="fas fa-chart-line text-white text-lg"></i>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center text-sm text-green-600">
+      <i class="fas fa-arrow-up mr-1"></i>
+      <span>All time</span>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-500 mb-1">Successful</p>
+        <p class="text-2xl font-bold text-green-600">{{ stats.successful_actions }}</p>
+      </div>
+      <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+        <i class="fas fa-check-circle text-white text-lg"></i>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center text-sm text-green-600">
+      <i class="fas fa-check mr-1"></i>
+      <span>{{ ((stats.successful_actions / stats.total_activities) * 100) | round(1) if stats.total_activities > 0 else 0 }}% success rate</span>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-500 mb-1">Failed</p>
+        <p class="text-2xl font-bold text-red-600">{{ stats.failed_actions }}</p>
+      </div>
+      <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+        <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center text-sm text-red-600">
+      <i class="fas fa-times mr-1"></i>
+      <span>{{ ((stats.failed_actions / stats.total_activities) * 100) | round(1) if stats.total_activities > 0 else 0 }}% failure rate</span>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-500 mb-1">Unique Users</p>
+        <p class="text-2xl font-bold text-indigo-600">{{ stats.unique_users }}</p>
+      </div>
+      <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+        <i class="fas fa-users text-white text-lg"></i>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center text-sm text-indigo-600">
+      <i class="fas fa-user mr-1"></i>
+      <span>Active users</span>
+    </div>
+  </div>
+</div>
+
+<!-- Enhanced Filters Section -->
+<div class="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+  <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+    <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Date Range Filter -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+        <select
+          id="dateRangeFilter"
+          class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+          onchange="applyFilters()"
+        >
+          <option value="1d" {{ 'selected' if current_date_range == '1d' else '' }}>Last 24 Hours</option>
+          <option value="7d" {{ 'selected' if current_date_range == '7d' else '' }}>Last 7 Days</option>
+          <option value="30d" {{ 'selected' if current_date_range == '30d' else '' }}>Last 30 Days</option>
+          <option value="90d" {{ 'selected' if current_date_range == '90d' else '' }}>Last 90 Days</option>
+        </select>
+      </div>
+
+      <!-- Action Filter -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
+        <select
+          id="actionFilter"
+          class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+          onchange="applyFilters()"
+        >
+          <option value="all" {{ 'selected' if current_action_filter == 'all' else '' }}>All Actions</option>
+          {% for action in actions %}
+          <option value="{{ action }}" {{ 'selected' if current_action_filter == action else '' }}>{{ action }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Actor Type Filter -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Actor Type</label>
+        <select
+          id="actorTypeFilter"
+          class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+          onchange="applyFilters()"
+        >
+          <option value="all" {{ 'selected' if current_actor_type == 'all' else '' }}>All Users</option>
+          <option value="student" {{ 'selected' if current_actor_type == 'student' else '' }}>Students</option>
+          <option value="office_admin" {{ 'selected' if current_actor_type == 'office_admin' else '' }}>Office Admins</option>
+          <option value="super_admin" {{ 'selected' if current_actor_type == 'super_admin' else '' }}>Super Admins</option>
+          <option value="system" {{ 'selected' if current_actor_type == 'system' else '' }}>System</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Clear Filters Button -->
+    <div class="w-full lg:w-auto">
+      <button
+        onclick="clearFilters()"
+        class="w-full lg:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+      >
+        <i class="fas fa-times"></i>
+        <span>Clear Filters</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Logs Table -->
+<div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+    <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <i class="fas fa-list text-indigo-600"></i>
+      Activity Timeline
+    </h3>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actor</th>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+          <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        {% for log in logs %}
+        <tr class="hover:bg-gray-50 transition-colors duration-150 cursor-pointer" onclick="viewLogDetails('{{ log.id }}', '{{ log.type }}')">
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-gray-900">
+              {{ log.timestamp.strftime('%Y-%m-%d') }}
+            </div>
+            <div class="text-xs text-gray-500">
+              {{ log.timestamp.strftime('%H:%M:%S') }}
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-8 w-8">
+                <div class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+                  {% if log.actor_role == 'student' %}
+                    <i class="fas fa-user-graduate text-white text-xs"></i>
+                  {% elif log.actor_role == 'office_admin' %}
+                    <i class="fas fa-user-tie text-white text-xs"></i>
+                  {% elif log.actor_role == 'super_admin' %}
+                    <i class="fas fa-user-shield text-white text-xs"></i>
+                  {% else %}
+                    <i class="fas fa-cog text-white text-xs"></i>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">{{ log.actor_name }}</div>
+                <div class="text-xs text-gray-500">{{ log.actor_role.replace('_', ' ').title() }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-gray-900">{{ log.action }}</div>
+            {% if log.type == 'login' and log.details.session_duration %}
+            <div class="text-xs text-gray-500">Duration: {{ log.details.session_duration }}</div>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              {% if log.target_type == 'inquiry' %}bg-blue-100 text-blue-800
+              {% elif log.target_type == 'counseling_session' %}bg-green-100 text-green-800
+              {% elif log.target_type == 'user' %}bg-purple-100 text-purple-800
+              {% elif log.target_type == 'authentication' %}bg-yellow-100 text-yellow-800
+              {% else %}bg-gray-100 text-gray-800{% endif %}">
+              {{ log.target_type.replace('_', ' ').title() if log.target_type else 'N/A' }}
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            {% if log.status == 'success' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <i class="fas fa-check-circle mr-1"></i>
+              Success
+            </span>
+            {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <i class="fas fa-exclamation-circle mr-1"></i>
+              Failed
+            </span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            {{ log.ip_address or 'N/A' }}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <button class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+              <i class="fas fa-eye mr-1"></i>
+              View
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="px-6 py-12 text-center">
+            <div class="flex flex-col items-center justify-center text-gray-500">
+              <i class="fas fa-history text-4xl mb-4 text-gray-300"></i>
+              <h3 class="text-lg font-medium mb-2">No Activity Logs Found</h3>
+              <p class="text-sm">No activities match your current filters. Try adjusting the date range or clearing filters.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if pagination.pages > 1 %}
+  <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+    <div class="flex items-center justify-between">
+      <div class="text-sm text-gray-700">
+        Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }} to 
+        {{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }} 
+        of {{ pagination.total }} results
+      </div>
+      <div class="flex items-center space-x-2">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('office.office_activity_logs', page=pagination.prev_num, action=current_action_filter, date_range=current_date_range, actor_type=current_actor_type) }}" 
+           class="bg-white border border-gray-300 text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150">
+          Previous
+        </a>
+        {% endif %}
+        
+        {% for page_num in range(1, pagination.pages + 1) %}
+          {% if page_num == pagination.page %}
+          <span class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium">{{ page_num }}</span>
+          {% elif page_num <= 3 or page_num > pagination.pages - 3 or (page_num >= pagination.page - 1 and page_num <= pagination.page + 1) %}
+          <a href="{{ url_for('office.office_activity_logs', page=page_num, action=current_action_filter, date_range=current_date_range, actor_type=current_actor_type) }}" 
+             class="bg-white border border-gray-300 text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150">
+            {{ page_num }}
+          </a>
+          {% elif page_num == 4 and pagination.page > 5 %}
+          <span class="text-gray-500 px-2">...</span>
+          {% elif page_num == pagination.pages - 3 and pagination.page < pagination.pages - 4 %}
+          <span class="text-gray-500 px-2">...</span>
+          {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+        <a href="{{ url_for('office.office_activity_logs', page=pagination.next_num, action=current_action_filter, date_range=current_date_range, actor_type=current_actor_type) }}" 
+           class="bg-white border border-gray-300 text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150">
+          Next
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Log Details Modal -->
+<div id="logDetailsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+  <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-2xl bg-white">
+    <div class="flex items-center justify-between pb-4 border-b">
+      <h3 class="text-xl font-semibold text-gray-900">Activity Log Details</h3>
+      <button onclick="closeLogDetails()" class="text-gray-400 hover:text-gray-600 transition-colors duration-150">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+    
+    <div id="logDetailsContent" class="py-6">
+      <!-- Content will be loaded here -->
+    </div>
+    
+    <div class="flex justify-end pt-4 border-t">
+      <button onclick="closeLogDetails()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors duration-150">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function applyFilters() {
+  const dateRange = document.getElementById('dateRangeFilter').value;
+  const action = document.getElementById('actionFilter').value;
+  const actorType = document.getElementById('actorTypeFilter').value;
+  
+  const params = new URLSearchParams();
+  params.set('date_range', dateRange);
+  params.set('action', action);
+  params.set('actor_type', actorType);
+  
+  window.location.href = `{{ url_for('office.office_activity_logs') }}?${params.toString()}`;
+}
+
+function clearFilters() {
+  window.location.href = `{{ url_for('office.office_activity_logs') }}`;
+}
+
+function refreshLogs() {
+  window.location.reload();
+}
+
+function exportLogs() {
+  const dateRange = document.getElementById('dateRangeFilter').value;
+  const action = document.getElementById('actionFilter').value;
+  const actorType = document.getElementById('actorTypeFilter').value;
+  
+  const params = new URLSearchParams();
+  params.set('date_range', dateRange);
+  params.set('action', action);
+  params.set('actor_type', actorType);
+  
+  window.open(`{{ url_for('office.export_activity_logs') }}?${params.toString()}`, '_blank');
+}
+
+function viewLogDetails(logId, logType) {
+  const modal = document.getElementById('logDetailsModal');
+  const content = document.getElementById('logDetailsContent');
+  
+  // Show loading state
+  content.innerHTML = `
+    <div class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+    </div>
+  `;
+  
+  modal.classList.remove('hidden');
+  
+  // Simulate loading details (you can implement an API endpoint for this)
+  setTimeout(() => {
+    content.innerHTML = `
+      <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Log ID</label>
+            <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">${logId}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Log Type</label>
+            <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">${logType}</p>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Additional Details</label>
+          <p class="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+            Detailed information about this activity would be displayed here, including any relevant metadata, 
+            request details, and system information.
+          </p>
+        </div>
+      </div>
+    `;
+  }, 1000);
+}
+
+function closeLogDetails() {
+  document.getElementById('logDetailsModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('logDetailsModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeLogDetails();
+  }
+});
+
+// Auto-refresh every 30 seconds
+setInterval(function() {
+  // Only refresh if no modal is open
+  if (document.getElementById('logDetailsModal').classList.contains('hidden')) {
+    refreshLogs();
+  }
+}, 30000);
+</script>
+
+{% endblock %}
