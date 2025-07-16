@@ -259,76 +259,156 @@ class VideoCounselingClient {
     }
     
     async initializeMedia() {
-        console.log('Requesting media access...');
+        console.log('🎥 Requesting media access...');
         this.updateConnectionStatus('Requesting camera and microphone access...', 'info');
         
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia is not supported in this browser');
+        }
+        
+        // First, let's check what devices are available (without permissions)
         try {
-            // Start with more permissive constraints to ensure compatibility
-            const basicConstraints = {
-                video: {
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 },
-                    frameRate: { ideal: 30, min: 15 }
-                },
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                    sampleRate: 44100
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoInputs = devices.filter(device => device.kind === 'videoinput');
+            const audioInputs = devices.filter(device => device.kind === 'audioinput');
+            
+            console.log('📱 Devices detected before permission:');
+            console.log(`  - Video inputs: ${videoInputs.length}`);
+            console.log(`  - Audio inputs: ${audioInputs.length}`);
+            
+            if (videoInputs.length === 0 && audioInputs.length === 0) {
+                throw new Error('No media devices detected on this system');
+            }
+        } catch (enumError) {
+            console.warn('⚠️ Could not enumerate devices:', enumError);
+        }
+        
+        // Check current permissions if supported
+        if (navigator.permissions) {
+            try {
+                const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+                const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+                
+                console.log('🔐 Current permissions:');
+                console.log(`  - Camera: ${cameraPermission.state}`);
+                console.log(`  - Microphone: ${microphonePermission.state}`);
+                
+                if (cameraPermission.state === 'denied' && microphonePermission.state === 'denied') {
+                    throw new Error('Both camera and microphone permissions are denied');
                 }
+            } catch (permError) {
+                console.warn('⚠️ Could not check permissions:', permError);
+            }
+        }
+        
+        try {
+            // Start with the most basic constraints possible
+            let constraints = {
+                video: true,
+                audio: true
             };
             
-            this.localStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
-            console.log('Media access granted successfully');
+            console.log('🎬 Requesting media with basic constraints first:', constraints);
             
-            // Verify we have both audio and video tracks
+            try {
+                // Try basic constraints first
+                this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Media access granted with basic constraints');
+            } catch (basicError) {
+                console.log('⚠️ Basic constraints failed, trying video only...', basicError);
+                
+                // Try video only
+                try {
+                    constraints = { video: true, audio: false };
+                    this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    console.log('✅ Video-only access granted');
+                    this.isAudioEnabled = false;
+                } catch (videoError) {
+                    console.log('⚠️ Video only failed, trying audio only...', videoError);
+                    
+                    // Try audio only
+                    try {
+                        constraints = { video: false, audio: true };
+                        this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                        console.log('✅ Audio-only access granted');
+                        this.isVideoEnabled = false;
+                    } catch (audioError) {
+                        console.error('❌ All media access attempts failed');
+                        console.error('Final error details:', {
+                            basic: basicError.name + ': ' + basicError.message,
+                            video: videoError.name + ': ' + videoError.message,
+                            audio: audioError.name + ': ' + audioError.message
+                        });
+                        throw basicError; // Throw the original error
+                    }
+                }
+            }
+            
+            console.log('🎵 Local stream tracks:', this.localStream.getTracks());
+            
+            // Verify we have the expected tracks
             const videoTracks = this.localStream.getVideoTracks();
             const audioTracks = this.localStream.getAudioTracks();
             
-            console.log('Video tracks:', videoTracks.length);
-            console.log('Audio tracks:', audioTracks.length);
+            console.log('✅ Video tracks:', videoTracks.length);
+            console.log('✅ Audio tracks:', audioTracks.length);
             
+            // Update enabled states based on what we actually got
             if (videoTracks.length === 0) {
-                console.warn('No video track available');
+                console.warn('⚠️ No video track available');
                 this.isVideoEnabled = false;
             }
             
             if (audioTracks.length === 0) {
-                console.warn('No audio track available');
+                console.warn('⚠️ No audio track available');
                 this.isAudioEnabled = false;
             }
             
-            // Set track states based on initial preferences
+            // Set track states based on current preferences
             videoTracks.forEach(track => {
                 track.enabled = this.isVideoEnabled;
+                console.log('Video track enabled:', track.enabled);
             });
             
             audioTracks.forEach(track => {
                 track.enabled = this.isAudioEnabled;
+                console.log('Audio track enabled:', track.enabled);
             });
             
-            // Attach to waiting room video element first
+            // Attach to waiting room video element
             const waitingRoomVideo = document.getElementById('waitingRoomVideo');
-            if (waitingRoomVideo) {
+            if (waitingRoomVideo && videoTracks.length > 0) {
+                console.log('✅ Attaching stream to waiting room video');
                 waitingRoomVideo.srcObject = this.localStream;
                 waitingRoomVideo.muted = true;
                 
                 waitingRoomVideo.onloadedmetadata = () => {
                     waitingRoomVideo.play().catch(e => {
-                        console.warn('Failed to play waiting room video:', e);
+                        console.warn('Error playing waiting room video:', e);
                     });
                 };
+                
+                // Force play if metadata is already loaded
+                if (waitingRoomVideo.readyState >= 2) {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video on ready state:', e);
+                    });
+                }
+            } else {
+                console.warn('⚠️ Waiting room video element not found or no video tracks');
             }
             
             // Also attach to main local video element if it exists
             const localVideo = document.getElementById('localVideo');
-            if (localVideo) {
+            if (localVideo && videoTracks.length > 0) {
+                console.log('✅ Attaching stream to local video');
                 localVideo.srcObject = this.localStream;
                 localVideo.muted = true;
                 
                 localVideo.onloadedmetadata = () => {
                     localVideo.play().catch(e => {
-                        console.warn('Failed to play local video:', e);
+                        console.warn('Error playing local video:', e);
                     });
                 };
             }
@@ -340,47 +420,82 @@ class VideoCounselingClient {
             this.updateAllMediaButtons();
             this.updateVideoPlaceholder();
             
-            this.updateConnectionStatus('Camera and microphone ready', 'success');
+            // Show success message
+            let statusMessage = 'Media ready: ';
+            if (videoTracks.length > 0 && audioTracks.length > 0) {
+                statusMessage += 'Camera and microphone';
+            } else if (videoTracks.length > 0) {
+                statusMessage += 'Camera only';
+            } else if (audioTracks.length > 0) {
+                statusMessage += 'Microphone only';
+            } else {
+                statusMessage += 'No media devices';
+            }
+            
+            this.updateConnectionStatus(statusMessage, 'success');
+            console.log('✅ Media initialization completed successfully');
             
         } catch (error) {
-            console.error('Failed to access media devices:', error);
+            console.error('❌ Failed to access media devices:', error);
             this.handleMediaError(error);
         }
     }
     
     async populateDeviceList() {
         try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
+            console.log('Populating device list after media access...');
             
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            const audioDevices = devices.filter(device => device.kind === 'audioinput');
+            // Check if media access has been granted
+            if (!this.localStream) {
+                console.warn('Cannot populate device list - no media access yet');
+                return;
+            }
+            
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            console.log('Available devices:', devices);
+            
+            const videoDevices = devices.filter(device => 
+                device.kind === 'videoinput' && device.label // Only include devices with labels
+            );
+            const audioDevices = devices.filter(device => 
+                device.kind === 'audioinput' && device.label // Only include devices with labels
+            );
+            
+            console.log('Video devices found:', videoDevices.length);
+            console.log('Audio devices found:', audioDevices.length);
             
             // Populate camera select
             const cameraSelect = document.getElementById('cameraSelect');
-            if (cameraSelect) {
+            if (cameraSelect && videoDevices.length > 0) {
                 cameraSelect.innerHTML = '';
-                videoDevices.forEach(device => {
+                videoDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.textContent = device.label || `Camera ${cameraSelect.options.length + 1}`;
+                    option.textContent = device.label || `Camera ${index + 1}`;
                     cameraSelect.appendChild(option);
                 });
+                console.log('Camera select populated with', videoDevices.length, 'devices');
+            } else {
+                console.warn('Camera select element not found or no video devices available');
             }
             
             // Populate microphone select
             const micSelect = document.getElementById('microphoneSelect');
-            if (micSelect) {
+            if (micSelect && audioDevices.length > 0) {
                 micSelect.innerHTML = '';
-                audioDevices.forEach(device => {
+                audioDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.textContent = device.label || `Microphone ${micSelect.options.length + 1}`;
+                    option.textContent = device.label || `Microphone ${index + 1}`;
                     micSelect.appendChild(option);
                 });
+                console.log('Microphone select populated with', audioDevices.length, 'devices');
+            } else {
+                console.warn('Microphone select element not found or no audio devices available');
             }
             
         } catch (error) {
-            console.error('Error enumerating devices:', error);
+            console.error('Error populating device list:', error);
         }
     }
     
@@ -1229,16 +1344,48 @@ class VideoCounselingClient {
     
     handleMediaError(error) {
         let message = 'Failed to access camera or microphone';
+        let solution = '';
         
-        if (error.name === 'NotAllowedError') {
-            message = 'Camera and microphone access denied. Please allow permissions and refresh.';
-        } else if (error.name === 'NotFoundError') {
-            message = 'No camera or microphone found. Please connect a device.';
-        } else if (error.name === 'NotReadableError') {
-            message = 'Camera or microphone is already in use by another application.';
+        console.error('❌ Media error:', error);
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            message = 'Camera and microphone access denied';
+            solution = 'Please click "Allow" when prompted for camera/microphone permissions and refresh the page.';
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            message = 'No camera or microphone found';
+            solution = 'Please connect a camera and/or microphone to your computer and refresh the page.';
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            message = 'Camera or microphone is already in use';
+            solution = 'Please close other applications using your camera/microphone and refresh the page.';
+        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+            message = 'Camera or microphone settings not supported';
+            solution = 'Your device does not support the required media settings. Please try with a different device.';
+        } else if (error.name === 'SecurityError') {
+            message = 'Security error accessing media devices';
+            solution = 'Please ensure you are using HTTPS and your browser supports media access.';
+        } else if (error.name === 'AbortError') {
+            message = 'Media access was aborted';
+            solution = 'Please try again and allow access to your camera and microphone.';
+        } else {
+            message = `Media access error: ${error.message || error.name || 'Unknown error'}`;
+            solution = 'Please check your camera and microphone connections and refresh the page.';
         }
         
-        this.showError(message);
+        this.updateConnectionStatus(message, 'error');
+        this.showError(`${message}. ${solution}`);
+        
+        // Set media states to disabled
+        this.isAudioEnabled = false;
+        this.isVideoEnabled = false;
+        this.updateAllMediaButtons();
+        this.updateVideoPlaceholder();
+        
+        // Show a helpful message to user about the specific issue
+        console.log('💡 Troubleshooting suggestions:');
+        console.log('1. Check browser permissions for camera/microphone');
+        console.log('2. Ensure no other applications are using the camera/microphone');
+        console.log('3. Try refreshing the page');
+        console.log('4. Check if camera/microphone is properly connected');
     }
     
     handleDisconnection() {
@@ -2024,6 +2171,58 @@ class VideoCounselingClient {
         this.switchTab('info');
         
         console.log('=== END TAB DEBUGGING ===');
+    }
+    
+    async retryWithBasicConstraints() {
+        console.log('Retrying with basic media constraints...');
+        try {
+            const basicConstraints = {
+                video: true,
+                audio: true
+            };
+            
+            this.localStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+            console.log('Basic media access granted');
+            
+            // Attach to video elements
+            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
+            if (waitingRoomVideo) {
+                waitingRoomVideo.srcObject = this.localStream;
+                waitingRoomVideo.muted = true;
+                
+                waitingRoomVideo.onloadedmetadata = () => {
+                    waitingRoomVideo.play().catch(e => {
+                        console.warn('Error playing waiting room video after retry:', e);
+                    });
+                };
+            }
+            
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo) {
+                localVideo.srcObject = this.localStream;
+                localVideo.muted = true;
+                
+                localVideo.onloadedmetadata = () => {
+                    localVideo.play().catch(e => {
+                        console.warn('Error playing local video after retry:', e);
+                    });
+                };
+            }
+            
+            this.isAudioEnabled = true;
+            this.isVideoEnabled = true;
+            
+            // Populate device list after successful retry
+            await this.populateDeviceList();
+            
+            this.updateAllMediaButtons();
+            this.updateVideoPlaceholder();
+            this.updateConnectionStatus('Camera and microphone ready (basic mode)', 'success');
+            
+        } catch (retryError) {
+            console.error('Failed to access media with basic constraints:', retryError);
+            this.handleMediaError(retryError);
+        }
     }
 }
 
