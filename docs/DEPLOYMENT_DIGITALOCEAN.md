@@ -48,6 +48,13 @@ sudo certbot --nginx -d example.com -d www.example.com
 
 - Replace `example.com` in the config and certbot command.
 - Ensure `/opt/piyuguide/static/` exists (copy from repo or symlink).
+- To allow image/file uploads when creating campuses, set a higher body size. The provided Nginx config includes:
+  
+	`client_max_body_size 20M;`
+  
+	in both the port 80 and 443 server blocks. After editing, run `sudo nginx -t && sudo systemctl reload nginx`.
+
+Optional (Flask app limit): Flask also enforces `MAX_CONTENT_LENGTH` (default 16MB in `app/__init__.py`). If your uploads exceed 16MB, raise it to match Nginx (e.g., 20MB) and redeploy.
 
 ## 6) Flask-SocketIO scaling (optional)
 When you scale Gunicorn workers or instances, configure a message queue (Redis):

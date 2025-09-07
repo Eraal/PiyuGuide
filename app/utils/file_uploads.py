@@ -11,8 +11,8 @@ ALLOWED_EXTENSIONS = {
 	'txt', 'csv'
 }
 
-# Maximum file size in bytes (default ~15MB)
-MAX_FILE_SIZE = 15 * 1024 * 1024
+# Maximum file size in bytes (default ~20MB to match server limits)
+MAX_FILE_SIZE = 20 * 1024 * 1024
 
 
 def allowed_file(filename: str) -> bool:

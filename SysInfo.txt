@@ -32,3 +32,8 @@ http://localhost:5000/super-admin/login
 [Credentials removed from repo. Use environment variables or seeded users in a secure way. Rotate any previously exposed passwords.]
 
 ## LAST ACTIVITY VIDEO COUNSELIG SESSION
+
+ON DEPLOYMENT COMMAND
+
+cd /opt/piyuguide
+source venv/bin/activate

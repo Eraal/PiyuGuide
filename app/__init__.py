@@ -30,7 +30,8 @@ def create_app():
     # Set file upload folder and allowed extensions
     app.config['UPLOAD_FOLDER'] = str(root_path / 'static' / 'uploads')
     app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # max file size 16MB
+    # Match Nginx client_max_body_size (20M) to avoid mismatched limits
+    app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # max file size 20MB
 
     db.init_app(app)
     # Configure Socket.IO using app config
