@@ -3,920 +3,183 @@
 
 {% block extra_head %}
 <style>
-    /* Modern Page Header */
-    .announcement-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .announcement-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-        opacity: 0.3;
-    }
+    /* Minimal, clean post layout */
+    body { background-color: #f5f7fb; }
+    .post-wrapper { max-width: 760px; margin: 24px auto 64px; padding: 0 16px; }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; color: #475569; text-decoration: none; font-weight: 500; }
+    .back-link:hover { color: #111827; }
 
-    /* Enhanced Content Cards */
-    .content-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px solid #e2e8f0;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .content-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
-        transform: scaleX(0);
-        transition: transform 0.3s ease;
-    }
-    
-    .content-card:hover::before {
-        transform: scaleX(1);
-    }
+    .post-card { background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(15,23,42,0.06); border: 1px solid #e6eaf0; }
+    .post-body { padding: 20px; }
 
-    /* Enhanced Image Gallery */
-    .image-gallery {
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-    }
-    
-    .image-gallery:hover {
-        transform: scale(1.02);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    }
+    .post-header { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #eef2f7; display: inline-flex; align-items: center; justify-content: center; color: #334155; font-weight: 700; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .author { display: flex; flex-direction: column; }
+    .author .name { font-weight: 700; color: #0f172a; }
+    .author .meta { color: #64748b; font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 9999px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
 
-    .gallery-image {
-        aspect-ratio: 16/9;
-        object-fit: cover;
-        border-radius: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    
-    .gallery-image::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(45deg, transparent 0%, rgba(59, 130, 246, 0.1) 100%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    .gallery-image:hover::after {
-        opacity: 1;
-    }
-    
-    .gallery-image:hover {
-        transform: scale(1.05);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-    }
+    .post-title { font-size: 1.5rem; line-height: 1.4; font-weight: 800; color: #0f172a; margin: 8px 0 8px; }
 
-    /* Enhanced Modal */
-    .img-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        backdrop-filter: blur(8px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-        opacity: 0;
-        visibility: hidden;
-        z-index: 50;
-    }
+    .post-content { color: #1f2937; font-size: 1.05rem; line-height: 1.8; }
+    .post-content p { margin: 0 0 1rem; }
+    .post-content h2 { font-size: 1.25rem; margin: 1.25rem 0 0.5rem; color: #0f172a; font-weight: 700; }
+    .post-content h3 { font-size: 1.1rem; margin: 1rem 0 0.25rem; color: #111827; font-weight: 700; }
+    .post-content ul, .post-content ol { padding-left: 1.25rem; margin: 0 0 1rem; }
 
-    .img-overlay.active {
-        opacity: 1;
-        visibility: visible;
-    }
+    /* Media */
+    .media { margin-top: 12px; border-radius: 12px; overflow: hidden; }
+    .media-single img { width: 100%; height: 420px; object-fit: cover; cursor: pointer; display: block; }
+    .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .media-grid img { width: 100%; height: 260px; object-fit: cover; cursor: pointer; border-radius: 10px; }
 
-    .overlay-img {
-        max-width: 90%;
-        max-height: 80vh;
-        border-radius: 12px;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-        transition: transform 0.3s ease;
-    }
+    /* Footer meta */
+    .footer { padding: 14px 20px; border-top: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; color: #64748b; font-size: 0.9rem; }
 
-    .overlay-controls {
-        margin-top: 2rem;
-        display: flex;
-        gap: 1rem;
-    }
+    /* Lightbox */
+    .lb { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .lb.show { display: flex; }
+    .lb img { max-width: 92%; max-height: 85vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .lb-btn { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); display: grid; place-items: center; cursor: pointer; }
+    .lb-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+    .lb-nav button { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; }
 
-    .overlay-btn {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-    }
-
-    .overlay-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: scale(1.1);
-    }
-
-    .overlay-close {
-        position: absolute;
-        top: 2rem;
-        right: 2rem;
-        background: rgba(0, 0, 0, 0.3);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-    }
-
-    .overlay-close:hover {
-        background: rgba(0, 0, 0, 0.6);
-        transform: scale(1.1);
-    }
-
-    /* Enhanced Typography */
-    .content-block {
-        font-size: 1.125rem;
-        line-height: 1.8;
-        color: #374151;
-    }
-
-    .content-block p {
-        margin-bottom: 1.5rem;
-    }
-
-    .content-block h2 {
-        font-size: 1.875rem;
-        font-weight: 700;
-        margin-top: 3rem;
-        margin-bottom: 1.5rem;
-        color: #1f2937;
-        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .content-block h3 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        color: #1f2937;
-    }
-
-    .content-block ul,
-    .content-block ol {
-        margin-left: 2rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .content-block li {
-        margin-bottom: 0.75rem;
-        position: relative;
-    }
-
-    .content-block ul li::before {
-        content: '•';
-        color: #3b82f6;
-        font-weight: bold;
-        position: absolute;
-        left: -1.5rem;
-    }
-
-    /* Enhanced Badges */
-    .status-badge {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #0ea5e9;
-        color: #0369a1;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        padding: 0.5rem 1rem;
-        border-radius: 9999px;
-        font-weight: 500;
-        font-size: 0.875rem;
-    }
-    
-    .status-badge.public {
-        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-        border-color: #22c55e;
-        color: #166534;
-    }
-    
-    .status-badge.office {
-        background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-        border-color: #8b5cf6;
-        color: #6b21a8;
-    }
-    
-    .status-badge.new {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border-color: #f59e0b;
-        color: #92400e;
-    }
-    
-    .status-badge:hover {
-        transform: scale(1.05);
-    }
-
-    /* Author Badge Enhancement */
-    .author-badge {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 0.75rem 1.5rem;
-        border-radius: 9999px;
-        transition: all 0.3s ease;
-    }
-    
-    .author-badge:hover {
-        background: rgba(255, 255, 255, 0.25);
-        transform: translateY(-2px);
-    }
-
-    /* Action Buttons */
-    .action-btn {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #0ea5e9;
-        color: #0369a1;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .action-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-        transform: scaleX(0);
-        transition: transform 0.3s ease;
-        z-index: 0;
-    }
-    
-    .action-btn:hover::before {
-        transform: scaleX(1);
-    }
-    
-    .action-btn:hover {
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);
-    }
-    
-    .action-btn span,
-    .action-btn i {
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Back Button */
-    .back-btn {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border: 1px solid #e2e8f0;
-        color: #374151;
-        transition: all 0.3s ease;
-        padding: 0.75rem 1.5rem;
-        border-radius: 12px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        font-weight: 500;
-    }
-    
-    .back-btn:hover {
-        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        color: #1f2937;
-        text-decoration: none;
-    }
-
-    /* Animations */
-    .fade-in-up {
-        animation: fadeInUp 0.6s ease-out forwards;
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    
-    @keyframes fadeInUp {
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .slide-in-right {
-        animation: slideInRight 0.5s ease-out forwards;
-        opacity: 0;
-        transform: translateX(30px);
-    }
-    
-    @keyframes slideInRight {
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-
-    /* Responsive Design */
     @media (max-width: 768px) {
-        .announcement-header {
-            padding: 2rem 1rem;
-        }
-        
-        .content-block {
-            font-size: 1rem;
-        }
-        
-        .overlay-img {
-            max-width: 95%;
-            max-height: 70vh;
-        }
-        
-        .overlay-close {
-            top: 1rem;
-            right: 1rem;
-            width: 40px;
-            height: 40px;
-        }
-        
-        .overlay-btn {
-            width: 40px;
-            height: 40px;
-        }
+        .post-body { padding: 16px; }
+        .media-single img { height: 260px; }
+        .media-grid img { height: 180px; }
     }
 </style>
-{% endblock %} {% block content %}
-<div class="min-h-screen bg-gray-50">
-    <!-- Enhanced Back Button -->
-    <div class="container mx-auto px-4 pt-8 pb-4">
-        <a href="{{ url_for('student.announcements') }}" class="back-btn fade-in-up">
-            <i class="fas fa-arrow-left mr-2"></i>
-            <span>Back to Announcements</span>
-        </a>
-    </div>
+{% endblock %}
+{% block content %}
+<div class="post-wrapper">
+    <a class="back-link" href="{{ url_for('student.announcements') }}">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back to announcements</span>
+    </a>
 
-    <!-- Modern Announcement Header -->
-    <div class="announcement-header py-16 px-4 mb-8 text-white relative">
-        <div class="container mx-auto relative z-10">
-            <div class="max-w-4xl mx-auto">
-                <!-- Enhanced Metadata Section -->
-                <div class="flex flex-wrap items-center gap-4 mb-6 slide-in-right">
-                    {% if announcement.is_public %}
-                    <span class="status-badge public">
-                        <i class="fas fa-globe mr-2"></i>
-                        <span>Public Announcement</span>
-                    </span>
+    <article class="post-card" aria-label="Announcement">
+        <div class="post-body">
+            <header class="post-header">
+                <div class="avatar">
+                    {% if announcement.author and announcement.author.profile_pic %}
+                        <img src="{{ url_for('static', filename=announcement.author.profile_pic) }}" alt="Author avatar" />
                     {% else %}
-                    <span class="status-badge office">
-                        <i class="fas fa-building mr-2"></i>
-                        <span>Office Announcement</span>
-                    </span>
+                        <span>{{ (announcement.author.first_name[0] ~ announcement.author.last_name[0]) if announcement.author else 'A' }}</span>
                     {% endif %}
-
-                    {% if not announcement.is_public and announcement.target_office %}
-                    <span class="status-badge">
-                        <i class="fas fa-map-marker-alt mr-2"></i>
-                        <span>{{ announcement.target_office.name }}</span>
-                    </span>
-                    {% endif %}
-
-                    {% if announcement.is_new %}
-                    <span class="status-badge new">
-                        <i class="fas fa-star mr-2"></i>
-                        <span>New</span>
-                    </span>
-                    {% endif %}
-
-                    <span class="status-badge">
-                        <i class="fas fa-calendar mr-2"></i>
-                        <span>{{ announcement.created_at.strftime('%B %d, %Y') }}</span>
-                    </span>
                 </div>
-
-                <!-- Enhanced Title -->
-                <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight fade-in-up">
-                    {{ announcement.title }}
-                </h1>
-
-                <!-- Enhanced Author Information -->
-                <div class="author-badge fade-in-up">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 rounded-full overflow-hidden bg-white bg-opacity-20 mr-4">
-                            {% if announcement.author.profile_pic %}
-                            <img src="{{ url_for('static', filename=announcement.author.profile_pic) }}" 
-                                 alt="Author" class="w-12 h-12 object-cover"/>
-                            {% else %}
-                            <div class="w-12 h-12 flex items-center justify-center text-white font-bold">
-                                {{ announcement.author.first_name[0] }}{{ announcement.author.last_name[0] }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        <div>
-                            <div class="font-semibold text-lg">
-                                {{ announcement.author.first_name }} {{ announcement.author.last_name }}
-                            </div>
-                            <div class="text-indigo-100 text-sm">
-                                {% if announcement.target_office %}
-                                    {{ announcement.target_office.name }}
-                                {% else %}
-                                    University Administration
-                                {% endif %}
-                            </div>
-                        </div>
+                <div class="author">
+                    <div class="name">
+                        {% if announcement.author %}
+                            {{ announcement.author.first_name }} {{ announcement.author.last_name }}
+                        {% else %}
+                            Announcement
+                        {% endif %}
+                    </div>
+                    <div class="meta">
+                        {% if announcement.target_office %}
+                            <span class="pill"><i class="fas fa-building"></i> {{ announcement.target_office.name }}</span>
+                        {% else %}
+                            <span class="pill"><i class="fas fa-globe"></i> Public</span>
+                        {% endif %}
+                        <span>•</span>
+                        <time datetime="{{ (announcement.created_at or '') }}">{{ announcement.created_at|dt12 if announcement.created_at else '' }}</time>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
+            </header>
 
-    <!-- Enhanced Main Content -->
-    <div class="container mx-auto px-4 pb-16">
-        <div class="max-w-4xl mx-auto">
-            <!-- Content Card -->
-            <div class="content-card rounded-2xl shadow-lg p-8 mb-8 fade-in-up">
-                <!-- Main Content -->
-                <div class="content-block prose prose-lg max-w-none">
-                    {{ announcement.content|safe }}
-                </div>
-
-                <!-- Enhanced Image Gallery -->
-                {% if announcement.images and announcement.images|length > 0 %}
-                <div class="mt-12 pt-8 border-t border-gray-200">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                        <i class="fas fa-images mr-3 text-indigo-500"></i>
-                        Image Gallery
-                        <span class="ml-3 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                            {{ announcement.images|length }} image{{ 's' if announcement.images|length != 1 else '' }}
-                        </span>
-                    </h3>
-                    
-                    {% if announcement.images|length == 1 %}
-                    <!-- Single Image Layout -->
-                    <div class="image-gallery mb-6">
-                        <img src="{{ url_for('static', filename=announcement.images[0].image_path) }}" 
-                             alt="Announcement image"
-                             class="w-full h-96 object-cover cursor-pointer gallery-image"
-                             onclick="openImageModal(0)"/>
-                    </div>
-                    {% else %}
-                    <!-- Multiple Images Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                        {% for image in announcement.images %}
-                        <div class="image-gallery">
-                            <img src="{{ url_for('static', filename=image.image_path) }}" 
-                                 alt="Announcement image {{ loop.index }}"
-                                 class="w-full h-64 object-cover cursor-pointer gallery-image"
-                                 onclick="openImageModal({{ loop.index0 }})"/>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-                <!-- Enhanced Action Section -->
-                <div class="mt-12 pt-8 border-t border-gray-200">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                        <div class="flex items-center gap-6">
-                            <button class="action-btn px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm flex items-center">
-                                <i class="far fa-heart mr-2"></i>
-                                <span>Like</span>
-                            </button>
-                            <button class="action-btn px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm flex items-center">
-                                <i class="far fa-bookmark mr-2"></i>
-                                <span>Save</span>
-                            </button>
-                            <button class="action-btn px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-sm flex items-center">
-                                <i class="fas fa-share mr-2"></i>
-                                <span>Share</span>
-                            </button>
-                        </div>
-                        
-                        <div class="text-sm text-gray-500 flex items-center">
-                            <i class="fas fa-clock mr-2"></i>
-                            <span>Published {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Related Actions Card -->
-            <div class="content-card rounded-2xl shadow-lg p-8 fade-in-up">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                    <i class="fas fa-compass mr-3 text-indigo-500"></i>
-                    Quick Actions
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <a href="{{ url_for('student.announcements') }}" 
-                       class="action-btn p-4 rounded-xl font-medium transition-all duration-300 shadow-sm text-center block">
-                        <i class="fas fa-list mb-2 text-lg block"></i>
-                        <span>All Announcements</span>
-                    </a>
-                    
-                    {% if announcement.target_office %}
-                    <a href="{{ url_for('student.view_office_detail', office_id=announcement.target_office.id) }}" 
-                       class="action-btn p-4 rounded-xl font-medium transition-all duration-300 shadow-sm text-center block">
-                        <i class="fas fa-building mb-2 text-lg block"></i>
-                        <span>Visit Office</span>
-                    </a>
-                    {% endif %}
-                    
-                    <a href="{{ url_for('student.submit_inquiry', office_id=announcement.target_office.id if announcement.target_office else '') }}" 
-                       class="action-btn p-4 rounded-xl font-medium transition-all duration-300 shadow-sm text-center block">
-                        <i class="fas fa-question-circle mb-2 text-lg block"></i>
-                        <span>Ask Question</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Enhanced Image Modal -->
-    <div id="imageModal" class="img-overlay">
-        <button class="overlay-close" onclick="closeImageModal()">
-            <i class="fas fa-times"></i>
-        </button>
-        
-        <img id="modalImage" src="" alt="Full size image" class="overlay-img"/>
-        
-        <div class="overlay-controls">
-            <button class="overlay-btn" onclick="previousImage()" id="prevBtn">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="overlay-btn" onclick="downloadImage()" id="downloadBtn">
-                <i class="fas fa-download"></i>
-            </button>
-            <button class="overlay-btn" onclick="nextImage()" id="nextBtn">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
-        
-        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white text-center">
-            <div id="imageCounter" class="bg-black bg-opacity-50 px-4 py-2 rounded-full text-sm"></div>
-        </div>
-    </div>
-</div>
-          <span class="badge-pill bg-gray-100 text-gray-800">
-            <i class="fas fa-building mr-1"></i> {{
-            announcement.target_office.name }}
-          </span>
-          {% endif %}
-
-          <span class="badge-pill bg-gray-100 text-gray-800">
-            <i class="far fa-calendar-alt mr-1"></i> {{
-            announcement.created_at.strftime('%B %d, %Y') }}
-          </span>
-        </div>
-
-        <!-- Title -->
-        <h1 class="text-3xl md:text-4xl font-bold mb-6">
-          {{ announcement.title }}
-        </h1>
-
-        <!-- Author info -->
-        <div class="flex items-center">
-          <div class="author-badge">
-            {% if announcement.author.profile_pic %}
-            <img
-              src="{{ announcement.author.profile_pic }}"
-              class="h-10 w-10 rounded-full object-cover"
-              alt="{{ announcement.author.first_name }}"
-            />
-            {% else %}
-            <div
-              class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-500"
-            >
-              {{ announcement.author.first_name[0] }}{{
-              announcement.author.last_name[0] }}
-            </div>
+            {% if announcement.title %}
+            <h1 class="post-title">{{ announcement.title }}</h1>
             {% endif %}
-            <div class="ml-3">
-              <div class="font-medium">
-                {{ announcement.author.first_name }} {{
-                announcement.author.last_name }}
-              </div>
-              <div class="text-xs text-blue-100 opacity-80">
-                {{ announcement.author.role|title }}
-              </div>
+
+            <div class="post-content">
+                {{ announcement.content|safe }}
             </div>
-          </div>
+
+            {% if announcement.images and announcement.images|length > 0 %}
+                <div class="media">
+                    {% if announcement.images|length == 1 %}
+                        <div class="media-single">
+                            <img class="gallery" data-index="0" src="{{ url_for('static', filename=announcement.images[0].image_path) }}" alt="Announcement image" />
+                        </div>
+                    {% else %}
+                        <div class="media-grid">
+                            {% for image in announcement.images %}
+                                <img class="gallery" data-index="{{ loop.index0 }}" src="{{ url_for('static', filename=image.image_path) }}" alt="Announcement image {{ loop.index }}" />
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Main Content -->
-  <div class="container mx-auto px-4 pb-16">
-    <div class="max-w-3xl mx-auto">
-      <!-- Main image if available -->
-      {% if announcement.images|length > 0 %}
-      <div class="mb-8">
-        <img
-          src="{{ announcement.images[0].image_path }}"
-          alt="{{ announcement.title }}"
-          class="main-image shadow-md"
-          id="main-image"
-        />
-      </div>
-      {% endif %}
-
-      <!-- Content -->
-      <div class="bg-white rounded-lg shadow-sm p-6 md:p-8 mb-8">
-        <div class="content-block prose max-w-none">
-          {{ announcement.content|safe }}
+        <div class="footer">
+            <div><i class="fas fa-clock"></i> {{ announcement.created_at|dt12 if announcement.created_at else '' }}</div>
+            <div><a class="back-link" href="{{ url_for('student.announcements') }}"><i class="fas fa-list"></i> All announcements</a></div>
         </div>
-      </div>
+    </article>
 
-      <!-- Image gallery if there are multiple images -->
-      {% if announcement.images|length > 1 %}
-      <div class="bg-white rounded-lg shadow-sm p-6 md:p-8">
-        <h3 class="text-lg font-semibold mb-4 text-gray-800">Image Gallery</h3>
-        <div class="announcement-image-gallery">
-          {% for image in announcement.images %}
-          <img
-            src="{{ image.image_path }}"
-            alt="{{ image.caption or 'Announcement image ' ~ loop.index }}"
-            class="gallery-image shadow-sm"
-            data-index="{{ loop.index0 }}"
-          />
-          {% endfor %}
+    <!-- Lightbox -->
+    <div id="lb" class="lb" aria-hidden="true">
+        <button class="lb-btn" type="button" aria-label="Close" onclick="lbClose()"><i class="fas fa-times"></i></button>
+        <div class="lb-nav" aria-hidden="true">
+            <button id="lbPrev" type="button" onclick="lbPrev()"><i class="fas fa-chevron-left"></i></button>
+            <button id="lbNext" type="button" onclick="lbNext()"><i class="fas fa-chevron-right"></i></button>
         </div>
-      </div>
-      {% endif %}
+        <img id="lbImg" alt="Preview" />
     </div>
-  </div>
-
-  <!-- Image viewer overlay (hidden by default) -->
-  <div class="img-overlay fixed inset-0" id="imageOverlay">
-    <img src="" alt="" class="overlay-img" id="overlayImage" />
-    <div class="overlay-controls">
-      <button class="overlay-btn" id="prevBtn">
-        <i class="fas fa-chevron-left"></i>
-      </button>
-      <button class="overlay-btn" id="nextBtn">
-        <i class="fas fa-chevron-right"></i>
-      </button>
-    </div>
-    <button class="overlay-close" id="closeOverlay">
-      <i class="fas fa-times"></i>
-    </button>
-  </div>
 </div>
-{% endblock %} {% block scripts %}
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    // Initialize animations
-    initializeAnimations();
-    
-    // Initialize interactive elements
-    setupInteractiveElements();
+    // Minimal lightbox for gallery images
+    let lbIndex = 0;
+    let lbImages = [];
 
-    function initializeAnimations() {
-        const elements = document.querySelectorAll('.fade-in-up, .slide-in-right');
-        elements.forEach((el, index) => {
-            setTimeout(() => {
-                el.style.animationPlayState = 'running';
-            }, index * 100);
-        });
+    function lbCollect() {
+        lbImages = Array.from(document.querySelectorAll('img.gallery')).map(i => i.src);
     }
-
-    function setupInteractiveElements() {
-        // Like functionality
-        const likeBtn = document.querySelector('.fa-heart').parentElement;
-        likeBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const icon = this.querySelector('.fa-heart');
-            
-            if (icon.classList.contains('far')) {
-                icon.classList.remove('far');
-                icon.classList.add('fas', 'text-red-500');
-                showNotification('Announcement liked!', 'success');
-            } else {
-                icon.classList.remove('fas', 'text-red-500');
-                icon.classList.add('far');
-                showNotification('Like removed', 'info');
-            }
-            
-            // Animation
-            icon.style.transform = 'scale(1.3)';
-            setTimeout(() => {
-                icon.style.transform = 'scale(1)';
-            }, 200);
-        });
-
-        // Bookmark functionality
-        const bookmarkBtn = document.querySelector('.fa-bookmark').parentElement;
-        bookmarkBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const icon = this.querySelector('.fa-bookmark');
-            
-            if (icon.classList.contains('far')) {
-                icon.classList.remove('far');
-                icon.classList.add('fas', 'text-indigo-500');
-                showNotification('Announcement saved!', 'success');
-            } else {
-                icon.classList.remove('fas', 'text-indigo-500');
-                icon.classList.add('far');
-                showNotification('Bookmark removed', 'info');
-            }
-            
-            // Animation
-            icon.style.transform = 'scale(1.3)';
-            setTimeout(() => {
-                icon.style.transform = 'scale(1)';
-            }, 200);
-        });
-
-        // Share functionality
-        const shareBtn = document.querySelector('.fa-share').parentElement;
-        shareBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: document.title,
-                    url: window.location.href
-                }).then(() => {
-                    showNotification('Shared successfully!', 'success');
-                }).catch(() => {
-                    fallbackShare();
-                });
-            } else {
-                fallbackShare();
-            }
-        });
+    function lbOpen(idx) {
+        if (lbImages.length === 0) lbCollect();
+        if (lbImages.length === 0) return;
+        lbIndex = Math.max(0, Math.min(idx, lbImages.length - 1));
+        const lb = document.getElementById('lb');
+        const img = document.getElementById('lbImg');
+        img.src = lbImages[lbIndex];
+        lb.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        const navPrev = document.getElementById('lbPrev');
+        const navNext = document.getElementById('lbNext');
+        const showNav = lbImages.length > 1;
+        navPrev.style.display = showNav ? 'inline-flex' : 'none';
+        navNext.style.display = showNav ? 'inline-flex' : 'none';
     }
+    function lbClose() {
+        const lb = document.getElementById('lb');
+        lb.classList.remove('show');
+        document.body.style.overflow = 'auto';
+    }
+    function lbPrev() { if (lbImages.length) { lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length; document.getElementById('lbImg').src = lbImages[lbIndex]; } }
+    function lbNext() { if (lbImages.length) { lbIndex = (lbIndex + 1) % lbImages.length; document.getElementById('lbImg').src = lbImages[lbIndex]; } }
 
-    function fallbackShare() {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                showNotification('Link copied to clipboard!', 'success');
+    document.addEventListener('click', function(e) {
+        const lb = document.getElementById('lb');
+        if (e.target === lb) lbClose();
+    });
+    document.addEventListener('keydown', function(e){
+        const lb = document.getElementById('lb');
+        if (!lb.classList.contains('show')) return;
+        if (e.key === 'Escape') lbClose();
+        if (e.key === 'ArrowLeft' && lbImages.length > 1) lbPrev();
+        if (e.key === 'ArrowRight' && lbImages.length > 1) lbNext();
+    });
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('img.gallery').forEach(img => {
+            img.addEventListener('click', (ev) => {
+                const idx = parseInt(ev.currentTarget.getAttribute('data-index') || '0', 10);
+                lbOpen(idx);
             });
-        } else {
-            showNotification('Sharing not supported', 'error');
-        }
-    }
-
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg transform translate-x-full transition-all duration-300 ${
-            type === 'success' ? 'bg-green-500 text-white' :
-            type === 'error' ? 'bg-red-500 text-white' :
-            'bg-blue-500 text-white'
-        }`;
-        notification.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas ${type === 'success' ? 'fa-check' : type === 'error' ? 'fa-times' : 'fa-info'} mr-2"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        requestAnimationFrame(() => {
-            notification.style.transform = 'translateX(0)';
         });
-        
-        setTimeout(() => {
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
-});
-
-// Image Modal Functions
-{% if announcement.images|length > 0 %}
-let currentImageIndex = 0;
-const images = [
-    {% for image in announcement.images %}
-        '{{ url_for("static", filename=image.image_path) }}',
-    {% endfor %}
-];
-
-function openImageModal(index) {
-    currentImageIndex = index;
-    const modal = document.getElementById('imageModal');
-    const modalImage = document.getElementById('modalImage');
-    const counter = document.getElementById('imageCounter');
-    
-    modalImage.src = images[currentImageIndex];
-    counter.textContent = `${currentImageIndex + 1} of ${images.length}`;
-    
-    // Show/hide navigation buttons
-    document.getElementById('prevBtn').style.display = images.length > 1 ? 'flex' : 'none';
-    document.getElementById('nextBtn').style.display = images.length > 1 ? 'flex' : 'none';
-    
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeImageModal() {
-    const modal = document.getElementById('imageModal');
-    modal.classList.remove('active');
-    document.body.style.overflow = 'auto';
-}
-
-function previousImage() {
-    currentImageIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1;
-    updateModalImage();
-}
-
-function nextImage() {
-    currentImageIndex = currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0;
-    updateModalImage();
-}
-
-function updateModalImage() {
-    const modalImage = document.getElementById('modalImage');
-    const counter = document.getElementById('imageCounter');
-    
-    modalImage.style.opacity = '0';
-    
-    setTimeout(() => {
-        modalImage.src = images[currentImageIndex];
-        counter.textContent = `${currentImageIndex + 1} of ${images.length}`;
-        modalImage.style.opacity = '1';
-    }, 150);
-}
-
-function downloadImage() {
-    const link = document.createElement('a');
-    link.href = images[currentImageIndex];
-    link.download = `announcement-image-${currentImageIndex + 1}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showNotification('Image download started!', 'success');
-}
-
-// Keyboard navigation
-document.addEventListener('keydown', function(e) {
-    const modal = document.getElementById('imageModal');
-    if (modal.classList.contains('active')) {
-        switch(e.key) {
-            case 'Escape':
-                closeImageModal();
-                break;
-            case 'ArrowLeft':
-                if (images.length > 1) previousImage();
-                break;
-            case 'ArrowRight':
-                if (images.length > 1) nextImage();
-                break;
-        }
-    }
-});
-
-// Close modal when clicking outside image
-document.getElementById('imageModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeImageModal();
-    }
-});
-{% endif %}
+    });
 </script>
 {% endblock %}

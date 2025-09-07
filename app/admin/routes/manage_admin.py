@@ -5,9 +5,11 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import func, or_, desc
 from app.admin import admin_bp
+from app.utils.decorators import campus_access_required
 
 @admin_bp.route('/manage-admins')
 @login_required
+@campus_access_required
 def manage_admins():
     """
     View all admin accounts (super_admin only)
@@ -24,6 +26,9 @@ def manage_admins():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     
+    # Restrict to current campus
+    campus_id = getattr(current_user, 'campus_id', None)
+
     # Base query for office admins with joins to users and offices
     query = db.session.query(
         User, OfficeAdmin, Office
@@ -34,6 +39,10 @@ def manage_admins():
     ).filter(
         User.role == 'office_admin'
     )
+    
+    # Filter by campus (only admins within this campus)
+    if campus_id:
+        query = query.filter(Office.campus_id == campus_id)
     
     # Apply filters
     if search_query:
@@ -61,7 +70,7 @@ def manage_admins():
     # Order by created date (most recent first)
     query = query.order_by(desc(User.created_at))
     
-    # Get total count for pagination
+    # Get total count for pagination (with current filters)
     total_count = query.count()
     
     # Apply pagination
@@ -79,14 +88,24 @@ def manage_admins():
             'email': user.email,
             'office_id': office.id,
             'office_name': office.name,
+            'is_online': user.is_online,
             'is_active': user.is_active,
             'account_locked': user.account_locked,
             'created_at': user.created_at,
             'last_activity': user.last_activity
         })
     
-    # Get all offices for filter dropdown
-    offices = Office.query.all()
+    # Compute campus-wide metrics (not affected by page filters)
+    base_campus_query = db.session.query(User).join(OfficeAdmin, User.id == OfficeAdmin.user_id).join(Office, OfficeAdmin.office_id == Office.id).filter(User.role == 'office_admin')
+    if campus_id:
+        base_campus_query = base_campus_query.filter(Office.campus_id == campus_id)
+
+    total_admin_count = base_campus_query.count()
+    online_admin_count = base_campus_query.filter(User.is_online == True).count()
+    locked_admin_count = base_campus_query.filter(User.account_locked == True).count()
+
+    # Get offices for this campus for filter dropdown and reassign modal
+    offices = Office.query.filter_by(campus_id=campus_id).all() if campus_id else []
     
     # Log the action
     log = SuperAdminActivityLog(
@@ -104,6 +123,9 @@ def manage_admins():
         pagination=pagination,
         offices=offices,
         total_count=total_count,
+    total_admin_count=total_admin_count,
+    online_admin_count=online_admin_count,
+    locked_admin_count=locked_admin_count,
         search_query=search_query,
         office_id=office_id,
         status=status
@@ -286,6 +308,7 @@ def delete_admin(admin_id):
 
 @admin_bp.route('/admin/<int:admin_id>/reassign', methods=['POST'])
 @login_required
+@campus_access_required
 def reassign_admin(admin_id):
     """Reassign admin to a different office"""
     if current_user.role != 'super_admin':
@@ -295,10 +318,13 @@ def reassign_admin(admin_id):
     if not new_office_id:
         return jsonify({'error': 'Office ID is required'}), 400
     
-    # Verify the office exists
+    # Verify the office exists and belongs to current campus
+    campus_id = getattr(current_user, 'campus_id', None)
     office = Office.query.get(new_office_id)
     if not office:
         return jsonify({'error': 'Office not found'}), 404
+    if campus_id and office.campus_id != campus_id:
+        return jsonify({'error': 'Cannot assign to an office outside your campus'}), 403
     
     # Get the admin
     admin = User.query.filter_by(id=admin_id, role='office_admin').first()
@@ -312,6 +338,12 @@ def reassign_admin(admin_id):
     old_office_id = office_admin.office_id
     old_office = Office.query.get(old_office_id)
     
+    # Ensure the admin currently belongs to this campus as well
+    if campus_id:
+        current_office = Office.query.get(office_admin.office_id)
+        if current_office and current_office.campus_id != campus_id:
+            return jsonify({'error': 'You cannot manage admins outside your campus'}), 403
+
     # Update the office assignment
     office_admin.office_id = new_office_id
     

@@ -143,5 +143,37 @@ def manage_concern_types():
                     except Exception as e:
                         db.session.rollback()
                         flash(f'An error occurred: {str(e)}', 'error')
+        
+        elif action == 'auto_reply':
+            # Update auto-reply settings for a concern type
+            concern_id = request.form.get('concern_id')
+            concern = ConcernType.query.get(concern_id)
+            if not concern:
+                flash('Concern type not found.', 'error')
+            else:
+                enabled_str = request.form.get('auto_reply_enabled', 'false')
+                message = (request.form.get('auto_reply_message') or '').strip()
+                enabled = enabled_str in ['true', 'on', '1', 'yes']
+
+                concern.auto_reply_enabled = enabled
+                concern.auto_reply_message = message if enabled else None
+
+                # Log action
+                SuperAdminActivityLog.log_action(
+                    super_admin=current_user,
+                    action="Updated auto-reply",
+                    target_type="concern_type",
+                    details=f"Auto-reply {'enabled' if enabled else 'disabled'} for concern '{concern.name}'",
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string
+                )
+
+                try:
+                    db.session.commit()
+                    flash('Auto-reply settings updated.', 'success')
+                    return redirect(url_for('admin.manage_concern_types'))
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'An error occurred: {str(e)}', 'error')
     
     return render_template('admin/concern_types.html', concern_types=concern_types)

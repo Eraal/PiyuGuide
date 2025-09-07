@@ -28,6 +28,10 @@
                     <i class="fas fa-sync-alt"></i>
                     <span>Refresh</span>
                 </button>
+                <button id="openAddAdminModal" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Office Admin</span>
+                </button>
             </div>
         </div>
     </div>    <!-- Enhanced Office Stats Overview -->
@@ -42,9 +46,9 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Total Staff</p>
                     </div>
-                    <p class="text-3xl font-bold text-green-600">{{ staff_data|length }}</p>
+                    <p id="total-staff-count" class="text-3xl font-bold text-green-600">{{ staff_data|length }}</p>
                     <div class="mt-3">
-                        <span class="text-green-500 text-sm font-medium">{{ (staff_data|selectattr('is_online', 'equalto', true)|list|length) }} online</span>
+                        <span class="text-green-500 text-sm font-medium"><span id="online-count">{{ (staff_data|selectattr('is_online', 'equalto', true)|list|length) }}</span> online</span>
                         <span class="text-gray-500 text-sm ml-2">right now</span>
                     </div>
                 </div>
@@ -64,9 +68,9 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Pending Inquiries</p>
                     </div>
-                    <p class="text-3xl font-bold text-yellow-600">{{ pending_inquiries }}</p>
+                    <p id="pending-inquiries-count" class="text-3xl font-bold text-yellow-600">{{ pending_inquiries }}</p>
                     <div class="mt-3">
-                        <span class="text-yellow-500 text-sm font-medium">{{ in_progress_inquiries }}</span>
+                        <span id="in-progress-count" class="text-yellow-500 text-sm font-medium">{{ in_progress_inquiries }}</span>
                         <span class="text-gray-500 text-sm ml-2">in progress</span>
                     </div>
                 </div>
@@ -86,10 +90,10 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Upcoming Sessions</p>
                     </div>
-                    <p class="text-3xl font-bold text-blue-600">{{ upcoming_sessions }}</p>
+                    <p id="upcoming-sessions-count" class="text-3xl font-bold text-blue-600">{{ upcoming_sessions }}</p>
                     <div class="mt-3">
                         <span class="text-gray-500 text-sm">Out of</span>
-                        <span class="text-blue-500 text-sm font-medium ml-1">{{ total_sessions }}</span>
+                        <span id="total-sessions-count" class="text-blue-500 text-sm font-medium ml-1">{{ total_sessions }}</span>
                         <span class="text-gray-500 text-sm ml-1">total sessions</span>
                     </div>
                 </div>
@@ -109,7 +113,7 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Resolution Rate</p>
                     </div>
-                    <p class="text-3xl font-bold text-purple-600">
+                    <p id="resolution-rate-percent" class="text-3xl font-bold text-purple-600">
                         {% if total_inquiries > 0 %}
                             {{ ((resolved_inquiries / total_inquiries) * 100)|int }}%
                         {% else %}
@@ -117,7 +121,7 @@
                         {% endif %}
                     </p>
                     <div class="mt-3">
-                        <span class="text-purple-500 text-sm font-medium">{{ resolved_inquiries }}</span>
+                        <span id="resolved-inquiries-count" class="text-purple-500 text-sm font-medium">{{ resolved_inquiries }}</span>
                         <span class="text-gray-500 text-sm ml-2">inquiries resolved</span>
                     </div>
                 </div>
@@ -187,14 +191,14 @@
                             <!-- Enhanced Activity Metrics -->
                             <div class="grid grid-cols-3 gap-3 w-full sm:w-auto">
                                 <div class="text-center px-3 py-2 bg-blue-50 rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors">
-                                    <div class="text-lg font-bold text-blue-600">{{ staff.inquiries_handled }}</div>
+                                    <div class="text-lg font-bold text-blue-600" data-metric="inquiries-handled">{{ staff.inquiries_handled }}</div>
                                     <div class="text-xs text-blue-500 font-medium">Inquiries</div>
                                 </div>
                                 <div class="text-center px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 hover:bg-purple-100 transition-colors">
-                                    <div class="text-lg font-bold text-purple-600">{{ staff.sessions_count }}</div>
+                                    <div class="text-lg font-bold text-purple-600" data-metric="sessions-count">{{ staff.sessions_count }}</div>
                                     <div class="text-xs text-purple-500 font-medium">Sessions</div>
                                 </div>
-                                <div class="text-center px-3 py-2 rounded-xl border transition-colors
+                                <div data-metric="workload" class="text-center px-3 py-2 rounded-xl border transition-colors
                                     {% if staff.workload == 'low' %}bg-green-50 border-green-100 hover:bg-green-100{% elif staff.workload == 'medium' %}bg-yellow-50 border-yellow-100 hover:bg-yellow-100{% else %}bg-red-50 border-red-100 hover:bg-red-100{% endif %}">
                                     <div class="text-lg font-bold 
                                         {% if staff.workload == 'low' %}text-green-600{% elif staff.workload == 'medium' %}text-yellow-600{% else %}text-red-600{% endif %}">
@@ -217,15 +221,15 @@
                                     <ul class="space-y-3 text-sm">
                                         <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Pending Inquiries:</span>
-                                            <span class="font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">{{ staff.inquiries_pending }}</span>
+                                            <span class="font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full" data-metric="pending-inquiries">{{ staff.inquiries_pending }}</span>
                                         </li>
                                         <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Upcoming Sessions:</span>
-                                            <span class="font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">{{ staff.upcoming_sessions }}</span>
+                                            <span class="font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded-full" data-metric="upcoming-sessions">{{ staff.upcoming_sessions }}</span>
                                         </li>
                                         <li class="flex justify-between items-center">
                                             <span class="text-gray-600">Today's Sessions:</span>
-                                            <span class="font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">{{ staff.todays_sessions }}</span>
+                                            <span class="font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full" data-metric="todays-sessions">{{ staff.todays_sessions }}</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -256,16 +260,7 @@
                                     </ul>
                                 </div>
                             </div>
-                            <div class="mt-4 flex justify-end space-x-3">
-                                <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-700 transition-all duration-200">
-                                    <i class="fas fa-comment mr-1"></i>
-                                    Message
-                                </button>
-                                <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 transition-all duration-200">
-                                    <i class="fas fa-eye mr-1"></i>
-                                    View Details
-                                </button>
-                            </div>
+                            <!-- Action buttons removed per request -->
                         </div>
                         
                         <!-- Enhanced Toggle Button -->
@@ -310,123 +305,9 @@
             </div>
         </div>
         
-        <!-- Enhanced Sidebar Content (1/3 width) -->
+        <!-- Sidebar (1/3 width) -->
         <div class="space-y-6">
-            <!-- Enhanced Quick Actions Card -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fas fa-bolt mr-2 text-gray-600"></i>
-                        Quick Actions
-                    </h2>
-                </div>
-                <div class="p-6 space-y-4">
-                    <button id="updateStatusBtn" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
-                        <i class="fas fa-user-clock mr-2"></i>
-                        Update My Status
-                    </button>
-                    
-                    <button id="reassignInquiryBtn" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
-                        <i class="fas fa-exchange-alt mr-2"></i>
-                        Reassign Inquiry
-                    </button>
-                    
-                    <button id="postAnnouncementBtn" class="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
-                        <i class="fas fa-bullhorn mr-2"></i>
-                        Post Team Announcement
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Enhanced Team Announcement Modal -->
-            <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
-                    <div class="flex justify-between items-center p-6 border-b border-gray-200">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-bullhorn text-white"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-gray-900">Post Team Announcement</h3>
-                        </div>
-                        <button class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200" onclick="closeModal('announcementModal')">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="p-6">
-                        <form id="announcementForm" class="space-y-6">
-                            <div>
-                                <label for="announcementTitle" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-heading text-gray-500 mr-2"></i>
-                                    Announcement Title
-                                </label>
-                                <input type="text" id="announcementTitle" name="title" required 
-                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                       placeholder="Enter announcement title...">
-                            </div>
-                            
-                            <div>
-                                <label for="announcementContent" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-align-left text-gray-500 mr-2"></i>
-                                    Message Content
-                                </label>
-                                <textarea id="announcementContent" name="content" rows="4" required
-                                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                          placeholder="Enter your announcement message..."></textarea>
-                            </div>
-                            
-                            <div>
-                                <label for="announcementPriority" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-exclamation-triangle text-gray-500 mr-2"></i>
-                                    Priority Level
-                                </label>
-                                <select id="announcementPriority" name="priority" 
-                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                    <option value="normal">Normal</option>
-                                    <option value="important">Important</option>
-                                    <option value="urgent">Urgent</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="announcementAudience" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-users text-gray-500 mr-2"></i>
-                                    Target Audience
-                                </label>
-                                <select id="announcementAudience" name="audience" 
-                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                    <option value="office">Office Team Only</option>
-                                    <option value="public">Public (All Students)</option>
-                                </select>
-                            </div>
-                            
-                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                                <div class="flex items-start space-x-2">
-                                    <i class="fas fa-info-circle text-purple-500 mt-0.5"></i>
-                                    <div class="text-sm text-purple-700">
-                                        <p class="font-medium">Announcement Guidelines:</p>
-                                        <ul class="mt-1 list-disc list-inside space-y-1">
-                                            <li>Keep messages clear and concise</li>
-                                            <li>Use appropriate priority levels</li>
-                                            <li>Consider your target audience carefully</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                        
-                        <div class="flex justify-end space-x-3 mt-8">
-                            <button class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md" onclick="closeModal('announcementModal')">
-                                Cancel
-                            </button>
-                            <button id="postAnnouncementConfirm" class="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                                <i class="fas fa-bullhorn mr-2"></i>
-                                Post Announcement
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>            
-            <!-- Enhanced Team Performance with Dynamic Data -->
+            <!-- Team Performance -->
             <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <div class="flex justify-between items-center">
@@ -489,23 +370,7 @@
                             </span>
                         </div>
                         
-                        <!-- Team Satisfaction -->
-                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-smile text-yellow-500"></i>
-                                <span class="text-sm font-medium text-yellow-700">Team Satisfaction</span>
-                            </div>
-                            <div class="flex items-center space-x-1">
-                                <span class="text-sm font-semibold text-yellow-600" id="satisfaction-score">4.5</span>
-                                <div class="flex space-x-1">
-                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
-                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
-                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
-                                    <i class="fas fa-star text-yellow-500 text-xs"></i>
-                                    <i class="fas fa-star-half-alt text-yellow-500 text-xs"></i>
-                                </div>
-                            </div>
-                        </div>
+                        
                         
                         <!-- Workload Balance -->
                         <div class="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
@@ -513,10 +378,10 @@
                                 <span class="text-sm font-medium text-gray-700">Workload Balance</span>
                                 <span class="text-xs text-gray-500" id="workload-status">Balanced</span>
                             </div>
-                            <div class="flex space-x-1 h-2">
-                                <div class="bg-green-400 rounded-full flex-1" style="flex: {{ staff_data|selectattr('workload', 'equalto', 'low')|list|length }}"></div>
-                                <div class="bg-yellow-400 rounded-full flex-1" style="flex: {{ staff_data|selectattr('workload', 'equalto', 'medium')|list|length }}"></div>
-                                <div class="bg-red-400 rounded-full flex-1" style="flex: {{ staff_data|selectattr('workload', 'equalto', 'high')|list|length }}"></div>
+                            <div class="flex space-x-1 h-2" id="workload-balance-bars">
+                                <div id="bar-low" class="bg-green-400 rounded-full flex-1"></div>
+                                <div id="bar-medium" class="bg-yellow-400 rounded-full flex-1"></div>
+                                <div id="bar-high" class="bg-red-400 rounded-full flex-1"></div>
                             </div>
                             <div class="flex justify-between text-xs text-gray-500 mt-1">
                                 <span>Low</span>
@@ -541,205 +406,12 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Enhanced Activity Timeline -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                            <i class="fas fa-clock mr-2 text-gray-600"></i>
-                            Activity Timeline
-                        </h2>
-                        <button id="refreshActivity" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
-                    </div>
-                </div>
-                <div class="max-h-96 overflow-y-auto" id="activity-timeline">
-                    {% for log in activity_logs %}
-                    <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 transition-colors">
-                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-clipboard-list text-blue-500 text-sm"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900">{{ log.action }}</p>
-                            <p class="text-xs text-gray-500">
-                                {% if log.actor %}{{ log.actor.get_full_name() }} • {% endif %}
-                                {{ log.timestamp.strftime('%b %d, %H:%M') }}
-                            </p>
-                            {% if log.details %}
-                            <p class="text-xs text-gray-400 mt-1">{{ log.details }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                    
-                    {% if not activity_logs %}
-                    <div class="p-8 text-center">
-                        <i class="fas fa-history text-gray-300 text-3xl mb-3"></i>
-                        <p class="text-gray-500 font-medium">No recent activity</p>
-                        <p class="text-gray-400 text-sm">Team activity will appear here</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-                            <span class="text-sm font-semibold text-blue-600">
-                                {{ (staff_data|sum(attribute='avg_response_time') / staff_data|length)|int if staff_data and staff_data|length > 0 else 0 }} min
-                            </span>
-                        </div>
-                        
-                        <div class="flex justify-between items-center p-3 bg-purple-50 rounded-xl border border-purple-100">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-chart-line text-purple-500"></i>
-                                <span class="text-sm font-medium text-purple-700">Resolution Rate</span>
-                            </div>
-                            <span class="text-sm font-semibold text-purple-600">
-                                {% if total_inquiries > 0 %}
-                                    {{ ((resolved_inquiries / total_inquiries) * 100)|int }}%
-                                {% else %}
-                                    0%
-                                {% endif %}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>    
-    <!-- Enhanced Status Modal -->
-    <div id="statusModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
-            <div class="flex justify-between items-center p-6 border-b border-gray-200">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-user-clock text-white"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900">Update Your Status</h3>
-                </div>
-                <button class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200" onclick="closeModal('statusModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="p-6">
-                <div class="space-y-3">
-                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-green-500 hover:bg-green-50 flex items-center transition-all duration-200 status-option group" data-status="online">
-                        <div class="h-4 w-4 rounded-full bg-green-500 mr-3 group-hover:scale-110 transition-transform"></div>
-                        <div>
-                            <span class="font-medium text-gray-900">Online</span>
-                            <p class="text-sm text-gray-500">Available and actively responding</p>
-                        </div>
-                    </button>
-                    
-                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-yellow-500 hover:bg-yellow-50 flex items-center transition-all duration-200 status-option group" data-status="away">
-                        <div class="h-4 w-4 rounded-full bg-yellow-500 mr-3 group-hover:scale-110 transition-transform"></div>
-                        <div>
-                            <span class="font-medium text-gray-900">Away</span>
-                            <p class="text-sm text-gray-500">Temporarily unavailable</p>
-                        </div>
-                    </button>
-                    
-                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-red-500 hover:bg-red-50 flex items-center transition-all duration-200 status-option group" data-status="busy">
-                        <div class="h-4 w-4 rounded-full bg-red-500 mr-3 group-hover:scale-110 transition-transform"></div>
-                        <div>
-                            <span class="font-medium text-gray-900">Busy</span>
-                            <p class="text-sm text-gray-500">Do not disturb, in a meeting or session</p>
-                        </div>
-                    </button>
-                    
-                    <button class="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:border-gray-500 hover:bg-gray-50 flex items-center transition-all duration-200 status-option group" data-status="offline">
-                        <div class="h-4 w-4 rounded-full bg-gray-500 mr-3 group-hover:scale-110 transition-transform"></div>
-                        <div>
-                            <span class="font-medium text-gray-900">Appear Offline</span>
-                            <p class="text-sm text-gray-500">Hide your online status</p>
-                        </div>
-                    </button>
-                </div>
-                
-                <div class="mt-4">
-                    <label for="statusCustomMessage" class="block text-sm font-medium text-gray-700 mb-2">Custom Message (Optional)</label>
-                    <textarea id="statusCustomMessage" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Add a status message..."></textarea>
-                </div>
-                
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md" onclick="closeModal('statusModal')">
-                        Cancel
-                    </button>
-                    <button id="updateStatusConfirm" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                        Update Status
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Enhanced Reassign Modal -->
-    <div id="reassignModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 transform transition-all duration-300">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-exchange-alt text-white"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-800">Reassign Inquiry</h3>
-                </div>
-                <button class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200" onclick="closeModal('reassignModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="space-y-6">
-                <div>
-                    <label for="inquirySelect" class="block text-sm font-medium text-gray-700 mb-2">Select Inquiry</label>
-                    <select id="inquirySelect" name="inquiry_id" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <option value="">Loading inquiries...</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">Choose the inquiry you want to reassign</p>
-                </div>
-                
-                <div>
-                    <label for="staffSelect" class="block text-sm font-medium text-gray-700 mb-2">Assign To</label>
-                    <select id="staffSelect" name="staff_id" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <option value="">Select a team member...</option>
-                        {% for staff in staff_data %}
-                        <option value="{{ staff.user.id }}">
-                            {{ staff.user.get_full_name() }}
-                            {% if staff.is_online %}(Online - {{ staff.workload }} workload){% else %}(Offline){% endif %}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">Consider staff workload and availability</p>
-                </div>
-                
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div class="flex items-start space-x-2">
-                        <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                        <div class="text-sm text-blue-700">
-                            <p class="font-medium">Assignment Tips:</p>
-                            <ul class="mt-1 list-disc list-inside space-y-1">
-                                <li>Consider staff workload and availability</li>
-                                <li>Match inquiry type with staff expertise</li>
-                                <li>Online staff can respond immediately</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex justify-end space-x-3 mt-8">
-                <button class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md" onclick="closeModal('reassignModal')">
-                    Cancel
-                </button>
-                <button id="confirmReassign" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                    <i class="fas fa-check mr-2"></i>
-                    Assign Inquiry
-                </button>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -747,6 +419,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortSelect = document.getElementById('sortTeamBy');
     const teamContainer = document.getElementById('team-members-container');
     const refreshBtn = document.getElementById('refreshTeamData');
+    const openAddAdminModalBtn = document.getElementById('openAddAdminModal');
     
     // Initialize workload chart
     initializeWorkloadChart();
@@ -784,21 +457,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Enhanced refresh functionality with real API calls
+    // Enhanced refresh functionality with real API calls (hardened)
     refreshBtn.addEventListener('click', function() {
         const originalContent = this.innerHTML;
         this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Refreshing...';
         this.disabled = true;
+        const days = document.getElementById('performancePeriod')?.value || 7;
         
         // Fetch fresh data from APIs
         Promise.all([
             fetch('/office/api/team-data'),
-            fetch('/office/api/team-performance-metrics?days=7'),
+            fetch(`/office/api/team-performance-metrics?days=${days}`),
             fetch('/office/api/team-workload-analytics')
         ])
-        .then(responses => Promise.all(responses.map(r => r.json())))
+        .then(responses => {
+            // Fail fast on any non-OK response
+            const bad = responses.find(r => !r.ok);
+            if (bad) {
+                throw new Error(`Request failed (HTTP ${bad.status})`);
+            }
+            return Promise.all(responses.map(r => r.json()));
+        })
         .then(([teamData, performanceData, workloadData]) => {
+            // Defensive defaults
+            teamData = teamData || { staff_data: [], pending_inquiries: 0, in_progress_inquiries: 0 };
+            performanceData = performanceData || { performance_data: [] };
+            workloadData = workloadData || { workload_data: [], workload_distribution: { low:0, medium:0, high:0 } };
+
             updateTeamDisplay(teamData, performanceData, workloadData);
+            // Update top summary cards
+            updateTopCards(teamData, performanceData.performance_data || [], workloadData);
             showNotification('Team data refreshed successfully!', 'success');
         })
         .catch(error => {
@@ -813,34 +501,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to update team display with fresh data
     function updateTeamDisplay(teamData, performanceData, workloadData) {
-        // Update online status indicators
-        teamData.staff_data.forEach(staff => {
+        // Update online status indicators (guarded)
+        (teamData.staff_data || []).forEach(staff => {
             const staffCard = document.getElementById(`staff-${staff.id}`);
-            if (staffCard) {
-                const statusIndicator = staffCard.querySelector('.status-indicator');
-                const statusBadge = staffCard.querySelector('.inline-flex');
-                
-                if (staff.is_online) {
-                    statusIndicator.classList.remove('bg-gray-400');
-                    statusIndicator.classList.add('bg-green-500');
+            if (!staffCard) return;
+            const statusIndicator = staffCard.querySelector('.status-indicator');
+            const statusBadge = staffCard.querySelector('.inline-flex');
+            if (staff.is_online) {
+                if (statusIndicator) { statusIndicator.classList.remove('bg-gray-400'); statusIndicator.classList.add('bg-green-500'); }
+                if (statusBadge) {
                     statusBadge.innerHTML = `
                         <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
                         Online
                     `;
                     statusBadge.className = statusBadge.className.replace('bg-gray-100 text-gray-700 border-gray-200', 'bg-green-100 text-green-700 border-green-200');
-                } else {
-                    statusIndicator.classList.remove('bg-green-500');
-                    statusIndicator.classList.add('bg-gray-400');
+                }
+            } else {
+                if (statusIndicator) { statusIndicator.classList.remove('bg-green-500'); statusIndicator.classList.add('bg-gray-400'); }
+                if (statusBadge) {
                     statusBadge.innerHTML = `
                         <span class="w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
                         Offline
                     `;
                     statusBadge.className = statusBadge.className.replace('bg-green-100 text-green-700 border-green-200', 'bg-gray-100 text-gray-700 border-gray-200');
                 }
-                
-                // Update card dataset for sorting
-                staffCard.dataset.status = staff.is_online ? 'online' : 'offline';
             }
+            // Update card dataset for sorting
+            staffCard.dataset.status = staff.is_online ? 'online' : 'offline';
         });
         
         // Update performance metrics if available
@@ -867,17 +554,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calculate averages
         const avgResponseTime = performanceData.reduce((sum, staff) => sum + staff.avg_response_time, 0) / performanceData.length;
         const avgCompletionRate = performanceData.reduce((sum, staff) => sum + staff.completion_rate, 0) / performanceData.length;
-        const avgSatisfaction = performanceData.reduce((sum, staff) => sum + staff.satisfaction_rating, 0) / performanceData.length;
+    const avgSatisfaction = performanceData.reduce((sum, staff) => sum + (staff.satisfaction_rating || 0), 0) / performanceData.length;
         
         // Update DOM elements
-        document.getElementById('top-performer').textContent = topPerformer.name;
-        document.getElementById('avg-response-time').textContent = `${Math.round(avgResponseTime)} min`;
+    const tp = document.getElementById('top-performer');
+    if (tp) tp.textContent = topPerformer.name;
+    const art = document.getElementById('avg-response-time');
+    if (art) art.textContent = `${Math.round(avgResponseTime)} min`;
         
-        // Update satisfaction rating
-        const satisfactionElement = document.getElementById('satisfaction-score');
-        if (satisfactionElement) {
-            satisfactionElement.textContent = avgSatisfaction.toFixed(1);
-        }
+    // Team Satisfaction UI removed per requirements
         
         // Update individual staff performance metrics in expanded details
         performanceData.forEach(staff => {
@@ -903,26 +588,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         monthlyActivityElement.textContent = staff.responses_count + staff.completed_sessions;
                     }
                 }
+                // Update top-of-card quick metrics
+                const inquiriesHandledEl = staffCard.querySelector('[data-metric="inquiries-handled"]');
+                if (inquiriesHandledEl && typeof staff.inquiries_handled === 'number') {
+                    inquiriesHandledEl.textContent = staff.inquiries_handled;
+                }
+                const sessionsCountEl = staffCard.querySelector('[data-metric="sessions-count"]');
+                if (sessionsCountEl && typeof staff.completed_sessions === 'number') {
+                    sessionsCountEl.textContent = staff.completed_sessions;
+                }
             }
         });
         
-        // Update workload status
-        const workloadStatusElement = document.getElementById('workload-status');
-        if (workloadStatusElement) {
-            const highWorkloadCount = performanceData.filter(staff => staff.total_workload > 6).length;
-            const totalStaff = performanceData.length;
-            
-            if (highWorkloadCount === 0) {
-                workloadStatusElement.textContent = 'Well Balanced';
-                workloadStatusElement.className = 'text-xs text-green-600';
-            } else if (highWorkloadCount / totalStaff > 0.5) {
-                workloadStatusElement.textContent = 'Overloaded';
-                workloadStatusElement.className = 'text-xs text-red-600';
-            } else {
-                workloadStatusElement.textContent = 'Manageable';
-                workloadStatusElement.className = 'text-xs text-yellow-600';
-            }
-        }
+    // Workload status handled in updateWorkloadChart using distribution
     }
     
     // Function to update workload display
@@ -955,6 +633,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update dataset for sorting
                 staffCard.dataset.workload = staff.workload_level;
                 staffCard.dataset.activity = staff.total_workload;
+                // Update details counts
+                const details = staffCard.querySelector('.staff-details');
+                if (details) {
+                    const p = details.querySelector('[data-metric="pending-inquiries"]');
+                    if (p) p.textContent = staff.pending_inquiries;
+                    const u = details.querySelector('[data-metric="upcoming-sessions"]');
+                    if (u) u.textContent = staff.upcoming_sessions;
+                    const t = details.querySelector('[data-metric\="todays-sessions\"]');
+                    if (t && typeof staff.todays_sessions === 'number') t.textContent = staff.todays_sessions;
+                }
             }
         });
     }
@@ -970,49 +658,90 @@ document.addEventListener('DOMContentLoaded', function() {
             ];
             window.workloadChart.update();
         }
+        // Update workload status label based on distribution
+        const workloadStatusElement = document.getElementById('workload-status');
+        if (workloadStatusElement && distribution) {
+            const total = (distribution.low || 0) + (distribution.medium || 0) + (distribution.high || 0);
+            const highRatio = total > 0 ? (distribution.high || 0) / total : 0;
+            if (total === 0 || highRatio === 0) {
+                workloadStatusElement.textContent = 'Well Balanced';
+                workloadStatusElement.className = 'text-xs text-green-600';
+            } else if (highRatio > 0.5) {
+                workloadStatusElement.textContent = 'Overloaded';
+                workloadStatusElement.className = 'text-xs text-red-600';
+            } else {
+                workloadStatusElement.textContent = 'Manageable';
+                workloadStatusElement.className = 'text-xs text-yellow-600';
+            }
+        }
+        // Update workload balance bars
+        const bars = {
+            low: document.getElementById('bar-low'),
+            medium: document.getElementById('bar-medium'),
+            high: document.getElementById('bar-high')
+        };
+        if (bars.low && bars.medium && bars.high) {
+            const total = (distribution.low || 0) + (distribution.medium || 0) + (distribution.high || 0);
+            const lowFlex = total > 0 ? distribution.low : 1;
+            const mediumFlex = total > 0 ? distribution.medium : 1;
+            const highFlex = total > 0 ? distribution.high : 1;
+            bars.low.style.flex = String(lowFlex);
+            bars.medium.style.flex = String(mediumFlex);
+            bars.high.style.flex = String(highFlex);
+        }
     }
     
-    // Function to update activity timeline
-    function updateActivityTimeline(timelineData) {
-        const timelineContainer = document.getElementById('activity-timeline');
-        if (!timelineContainer) return;
-        
-        const timelineHTML = timelineData.slice(0, 10).map(activity => `
-            <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                <div class="flex-shrink-0 w-8 h-8 bg-${activity.color}-100 rounded-full flex items-center justify-center">
-                    <i class="${activity.icon} text-${activity.color}-500 text-sm"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900">${activity.action}</p>
-                    <p class="text-xs text-gray-500">${activity.actor} • ${formatTimeAgo(activity.timestamp)}</p>
-                    ${activity.details ? `<p class="text-xs text-gray-400 mt-1">${activity.details}</p>` : ''}
-                </div>
-            </div>
-        `).join('');
-        
-        timelineContainer.innerHTML = timelineHTML;
+    // Update top summary cards helper
+    function updateTopCards(teamData, performanceData, workloadData) {
+        // Staff summary
+        const totalStaff = (teamData?.staff_data || []).length;
+        const onlineStaff = (teamData?.staff_data || []).filter(s => s.is_online).length;
+        const totalEl = document.getElementById('total-staff-count');
+        const onlineEl = document.getElementById('online-count');
+        if (totalEl) totalEl.textContent = totalStaff;
+        if (onlineEl) onlineEl.textContent = onlineStaff;
+
+        // Inquiries summary
+        if (teamData) {
+            const pendingEl = document.getElementById('pending-inquiries-count');
+            const inProgEl = document.getElementById('in-progress-count');
+            if (pendingEl && typeof teamData.pending_inquiries === 'number') pendingEl.textContent = teamData.pending_inquiries;
+            if (inProgEl && typeof teamData.in_progress_inquiries === 'number') inProgEl.textContent = teamData.in_progress_inquiries;
+        }
+
+        // Sessions summary
+        const totalSessions = (performanceData || []).reduce((sum, s) => sum + (s.total_sessions || 0), 0);
+        const upcomingSessions = (workloadData.workload_data || []).reduce((sum, s) => sum + (s.upcoming_sessions || 0), 0);
+        const totalSessionsEl = document.getElementById('total-sessions-count');
+        const upcomingSessionsEl = document.getElementById('upcoming-sessions-count');
+        if (totalSessionsEl) totalSessionsEl.textContent = totalSessions;
+        if (upcomingSessionsEl) upcomingSessionsEl.textContent = upcomingSessions;
+
+        // Resolution summary
+        const resolved = (performanceData || []).reduce((sum, s) => sum + (s.inquiries_resolved || 0), 0);
+        const handled = (performanceData || []).reduce((sum, s) => sum + (s.inquiries_handled || 0), 0);
+        const rate = handled > 0 ? Math.round((resolved / handled) * 100) : 0;
+        const rateEl = document.getElementById('resolution-rate-percent');
+        const resolvedEl = document.getElementById('resolved-inquiries-count');
+        if (rateEl) rateEl.textContent = `${rate}%`;
+        if (resolvedEl) resolvedEl.textContent = resolved;
     }
     
-    // Helper function to format time ago
-    function formatTimeAgo(timestamp) {
-        const now = new Date();
-        const time = new Date(timestamp);
-        const diffMs = now - time;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-        
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return `${diffDays}d ago`;
+    // Helper to resolve staff card element by common id fields
+    function findStaffCard(staff) {
+        const candidates = [staff.user_id, staff.staff_id, staff.id];
+        for (const id of candidates) {
+            if (id == null) continue;
+            const el = document.getElementById(`staff-${id}`);
+            if (el) return el;
+        }
+        return null;
     }
     
     // Load initial dynamic data
     function loadInitialData() {
-        loadPerformanceMetrics();
-        loadWorkloadAnalytics();
-        loadActivityTimeline();
+    loadPerformanceMetrics();
+    loadWorkloadAnalytics();
     }
     
     // Function to load performance metrics
@@ -1040,25 +769,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // Function to load activity timeline
-    function loadActivityTimeline() {
-        fetch('/office/api/team-activity-timeline')
-            .then(response => response.json())
-            .then(data => {
-                updateActivityTimeline(data.timeline_data);
-            })
-            .catch(error => {
-                console.error('Error loading activity timeline:', error);
-            });
-    }
-    
     // Load initial data when page loads
     loadInitialData();
     
     // Auto-refresh every 30 seconds
     setInterval(() => {
-        loadWorkloadAnalytics();
-        loadActivityTimeline();
+        refreshBtn.click();
     }, 30000);
     
     // Enhanced toggle details functionality
@@ -1097,205 +813,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Enhanced modal functionality
-    const modals = ['statusModal', 'reassignModal', 'announcementModal'];
-    
-    // Status modal functionality
-    document.getElementById('updateStatusBtn').addEventListener('click', function() {
-        document.getElementById('statusModal').classList.remove('hidden');
-    });
-    
-    // Status option selection
-    document.querySelectorAll('.status-option').forEach(option => {
-        option.addEventListener('click', function() {
-            // Remove previous selection
-            document.querySelectorAll('.status-option').forEach(opt => {
-                opt.classList.remove('ring-2', 'ring-green-500');
-            });
-            
-            // Add selection to current option
-            this.classList.add('ring-2', 'ring-green-500');
-            
-            // Store selected status
-            this.dataset.selected = 'true';
-        });
-    });
-    
-    // Status update confirmation with real API call
-    document.getElementById('updateStatusConfirm').addEventListener('click', function() {
-        const selectedOption = document.querySelector('.status-option[data-selected="true"]');
-        if (selectedOption) {
-            const status = selectedOption.dataset.status;
-            const customMessage = document.getElementById('statusCustomMessage')?.value || '';
-            const originalContent = this.innerHTML;
-            
-            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
-            this.disabled = true;
-            
-            // Make API call to update status
-            fetch('/office/api/staff-status-update', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    status: status,
-                    custom_message: customMessage
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                    closeModal('statusModal');
-                    // Refresh team data to show updated status
-                    refreshTeamData();
-                } else {
-                    showNotification(data.error || 'Failed to update status', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error updating status:', error);
-                showNotification('Failed to update status', 'error');
-            })
-            .finally(() => {
-                this.innerHTML = originalContent;
-                this.disabled = false;
-            });
-        } else {
-            showNotification('Please select a status', 'warning');
-        }
-    });
-    
-    // Other quick action buttons with real functionality
-    document.getElementById('reassignInquiryBtn').addEventListener('click', function() {
-        // Load pending inquiries
-        loadPendingInquiries();
-        document.getElementById('reassignModal').classList.remove('hidden');
-    });
-    
-    // Function to load pending inquiries for reassignment
-    function loadPendingInquiries() {
-        fetch('/office/api/pending-inquiries')
-            .then(response => response.json())
-            .then(data => {
-                const inquirySelect = document.getElementById('inquirySelect');
-                if (inquirySelect && data.inquiries) {
-                    inquirySelect.innerHTML = '<option value="">Select an inquiry...</option>';
-                    data.inquiries.forEach(inquiry => {
-                        const option = document.createElement('option');
-                        option.value = inquiry.id;
-                        option.textContent = `#${inquiry.id} - ${inquiry.subject} (${inquiry.status})`;
-                        inquirySelect.appendChild(option);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error loading inquiries:', error);
-                showNotification('Failed to load inquiries', 'error');
-            });
-    }
-    
-    // Handle inquiry assignment
-    document.getElementById('confirmReassign')?.addEventListener('click', function() {
-        const inquiryId = document.getElementById('inquirySelect')?.value;
-        const staffId = document.getElementById('staffSelect')?.value;
-        
-        if (!inquiryId || !staffId) {
-            showNotification('Please select both an inquiry and a staff member', 'warning');
-            return;
-        }
-        
-        const originalContent = this.innerHTML;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Assigning...';
-        this.disabled = true;
-        
-        fetch('/office/api/assign-inquiry', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                inquiry_id: inquiryId,
-                staff_id: staffId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(data.message, 'success');
-                closeModal('reassignModal');
-                refreshTeamData();
-            } else {
-                showNotification(data.error || 'Failed to assign inquiry', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error assigning inquiry:', error);
-            showNotification('Failed to assign inquiry', 'error');
-        })
-        .finally(() => {
-            this.innerHTML = originalContent;
-            this.disabled = false;
-        });
-    });
-    
-    document.getElementById('postAnnouncementBtn').addEventListener('click', function() {
-        document.getElementById('announcementModal').classList.remove('hidden');
-    });
-    
-    // Handle announcement posting
-    document.getElementById('postAnnouncementConfirm').addEventListener('click', function() {
-        const title = document.getElementById('announcementTitle').value.trim();
-        const content = document.getElementById('announcementContent').value.trim();
-        const priority = document.getElementById('announcementPriority').value;
-        const audience = document.getElementById('announcementAudience').value;
-        
-        if (!title || !content) {
-            showNotification('Please fill in all required fields', 'warning');
-            return;
-        }
-        
-        const originalContent = this.innerHTML;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Posting...';
-        this.disabled = true;
-        
-        fetch('/office/api/post-team-announcement', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                title: title,
-                content: content,
-                priority: priority,
-                audience: audience
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(data.message, 'success');
-                closeModal('announcementModal');
-                // Clear form
-                document.getElementById('announcementForm').reset();
-            } else {
-                showNotification(data.error || 'Failed to post announcement', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error posting announcement:', error);
-            showNotification('Failed to post announcement', 'error');
-        })
-        .finally(() => {
-            this.innerHTML = originalContent;
-            this.disabled = false;
-        });
-    });
-    
+    // Removed Quick Actions and modals; no related JS needed
     // Performance period change handler
     document.getElementById('performancePeriod')?.addEventListener('change', function() {
         const days = this.value;
@@ -1304,13 +822,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Performance refresh button
     document.getElementById('refreshPerformance')?.addEventListener('click', function() {
-        const days = document.getElementById('performancePeriod').value;
+        const days = document.getElementById('performancePeriod')?.value || 7;
         loadPerformanceMetrics(days);
-    });
-    
-    // Activity refresh button
-    document.getElementById('refreshActivity')?.addEventListener('click', function() {
-        loadActivityTimeline();
     });
     
     // Initialize performance trend chart
@@ -1412,7 +925,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    // Close modals on escape key
+    // Close modals on escape key (guard against undefined list)
+    const modals = Array.from(document.querySelectorAll('[id$="Modal"]')).map(m => m.id);
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             modals.forEach(modalId => {
@@ -1474,321 +988,129 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Enhanced notification function
-    function showNotification(message, type = 'info', duration = 5000) {
-        const notification = document.createElement('div');
-        notification.className = `fixed top-20 right-4 z-50 max-w-sm bg-white border-l-4 rounded-lg shadow-lg transform translate-x-full transition-all duration-300 ease-out`;
-        
-        // Add type-specific styling
-        switch (type) {
-            case 'success':
-                notification.classList.add('border-green-500');
-                break;
-            case 'error':
-                notification.classList.add('border-red-500');
-                break;
-            case 'warning':
-                notification.classList.add('border-yellow-500');
-                break;
-            default:
-                notification.classList.add('border-blue-500');
-        }
-        
-        notification.innerHTML = `
-            <div class="p-4">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <i class="fas ${getNotificationIcon(type)} text-${getNotificationColor(type)}-500"></i>
-                    </div>
-                    <div class="ml-3 w-0 flex-1">
-                        <p class="text-sm font-medium text-gray-900">${message}</p>
-                    </div>
-                    <div class="ml-4 flex-shrink-0 flex">
-                        <button class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500" onclick="this.parentElement.parentElement.parentElement.parentElement.remove()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+    // End cleanup of removed features
+    
+    // Add Office Admin Modal logic
+    const addAdminModal = createAddAdminModal();
+    if (openAddAdminModalBtn) {
+        openAddAdminModalBtn.addEventListener('click', () => {
+            addAdminModal.open();
+        });
+    }
+    
+    function createAddAdminModal() {
+        // Build modal container once and attach to body
+        const modal = document.createElement('div');
+        modal.id = 'addOfficeAdminModal';
+        modal.className = 'fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm';
+        modal.innerHTML = `
+            <div class="absolute inset-0 bg-black bg-opacity-40" data-close></div>
+            <div class="relative mx-4 w-full max-w-xl">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between shadow-lg">
+                    <h3 class="text-lg font-bold flex items-center"><i class="fas fa-user-plus mr-2"></i> Add Office Admin</h3>
+                    <button class="p-2 rounded-full hover:bg-white/10" title="Close" data-close><i class="fas fa-times"></i></button>
+                </div>
+                <div class="bg-white rounded-b-xl shadow-xl p-6 border border-gray-100">
+                    <form id="addOfficeAdminForm" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                <input name="first_name" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                <input name="last_name" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input name="email" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="name@example.com" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
+                                <input name="password" type="password" minlength="8" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <p class="text-xs text-gray-400 mt-1">Min 8 characters</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                                <input name="confirm_password" type="password" minlength="8" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <div id="add-admin-error" class="text-sm text-red-600"></div>
+                            <div class="flex gap-3">
+                                <button type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50" data-close>Cancel</button>
+                                <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow">Add Admin</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         `;
-        
-        document.body.appendChild(notification);
-        
-        // Animate in
-        setTimeout(() => {
-            notification.classList.remove('translate-x-full');
-        }, 100);
-        
-        // Auto-remove after duration
-        setTimeout(() => {
-            notification.classList.add('translate-x-full');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
-        }, duration);
-    }
-    
-    function getNotificationIcon(type) {
-        switch (type) {
-            case 'success': return 'fa-check-circle';
-            case 'error': return 'fa-exclamation-circle';
-            case 'warning': return 'fa-exclamation-triangle';
-            default: return 'fa-info-circle';
-        }
-    }
-    
-    function getNotificationColor(type) {
-        switch (type) {
-            case 'success': return 'green';
-            case 'error': return 'red';
-            case 'warning': return 'yellow';
-            default: return 'blue';
-        }
-    }
+        document.body.appendChild(modal);
 
-    // Quick Actions Implementation
-    
-    // Update Status Functionality
-    document.getElementById('updateStatusBtn').addEventListener('click', function() {
-        document.getElementById('statusModal').classList.remove('hidden');
-    });
-    
-    // Status option selection
-    document.querySelectorAll('.status-option').forEach(option => {
-        option.addEventListener('click', function() {
-            // Remove previous selection
-            document.querySelectorAll('.status-option').forEach(opt => {
-                opt.classList.remove('ring-2', 'ring-green-500', 'ring-yellow-500', 'ring-red-500', 'ring-gray-500');
-                opt.removeAttribute('data-selected');
-            });
-            
-            // Add selection to clicked option
-            const status = this.dataset.status;
-            let ringColor = 'ring-green-500';
-            switch(status) {
-                case 'away': ringColor = 'ring-yellow-500'; break;
-                case 'busy': ringColor = 'ring-red-500'; break;
-                case 'offline': ringColor = 'ring-gray-500'; break;
-            }
-            
-            this.classList.add('ring-2', ringColor);
-            this.setAttribute('data-selected', 'true');
+        // Close handlers
+        modal.querySelectorAll('[data-close]').forEach(btn => {
+            btn.addEventListener('click', () => close());
         });
-    });
-    
-    // Confirm status update
-    document.getElementById('updateStatusConfirm').addEventListener('click', function() {
-        const selectedStatus = document.querySelector('.status-option[data-selected="true"]');
-        const customMessage = document.getElementById('statusCustomMessage').value;
-        
-        if (!selectedStatus) {
-            showNotification('Please select a status', 'warning');
-            return;
-        }
-        
-        const status = selectedStatus.dataset.status;
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        // Show loading state
-        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
-        this.disabled = true;
-        
-        fetch('/office/api/update-status', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                status: status,
-                message: customMessage
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('Status updated successfully!', 'success');
-                closeModal('statusModal');
-                // Update UI to reflect new status
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showNotification(data.message || 'Failed to update status', 'error');
+
+        // Submit handler
+        const form = modal.querySelector('#addOfficeAdminForm');
+        const errorBox = modal.querySelector('#add-admin-error');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.textContent = '';
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const prev = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+            const formData = new FormData(form);
+            const payload = Object.fromEntries(formData.entries());
+            if ((payload.password || '') !== (payload.confirm_password || '')) {
+                errorBox.textContent = 'Passwords do not match.';
+                submitBtn.disabled = false; submitBtn.innerHTML = prev; return;
             }
-        })
-        .catch(error => {
-            console.error('Error updating status:', error);
-            showNotification('Failed to update status', 'error');
-        })
-        .finally(() => {
-            this.innerHTML = 'Update Status';
-            this.disabled = false;
-        });
-    });
-    
-    // Reassign Inquiry Functionality
-    document.getElementById('reassignInquiryBtn').addEventListener('click', function() {
-        document.getElementById('reassignModal').classList.remove('hidden');
-        loadInquiries();
-    });
-    
-    // Load inquiries for reassignment
-    function loadInquiries() {
-        const inquirySelect = document.getElementById('inquirySelect');
-        inquirySelect.innerHTML = '<option value="">Loading inquiries...</option>';
-        
-        fetch('/office/api/assignable-inquiries')
-        .then(response => response.json())
-        .then(data => {
-            inquirySelect.innerHTML = '<option value="">Select an inquiry...</option>';
-            if (data.inquiries && data.inquiries.length > 0) {
-                data.inquiries.forEach(inquiry => {
-                    const option = document.createElement('option');
-                    option.value = inquiry.id;
-                    option.textContent = `#${inquiry.id} - ${inquiry.subject} (${inquiry.status})`;
-                    inquirySelect.appendChild(option);
+            try {
+                const res = await fetch('/office/api/add-office-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({
+                        first_name: payload.first_name?.trim(),
+                        last_name: payload.last_name?.trim(),
+                        email: payload.email?.trim(),
+                        password: payload.password
+                    })
                 });
-            } else {
-                inquirySelect.innerHTML = '<option value="">No inquiries available for reassignment</option>';
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.error) {
+                    throw new Error(data.error || 'Failed to create office admin');
+                }
+                showNotification('Office admin created successfully.', 'success');
+                // Reload to render the new staff card
+                setTimeout(() => { window.location.reload(); }, 800);
+            } catch (err) {
+                errorBox.textContent = err.message;
+                showNotification(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = prev;
             }
-        })
-        .catch(error => {
-            console.error('Error loading inquiries:', error);
-            inquirySelect.innerHTML = '<option value="">Error loading inquiries</option>';
         });
+
+        function open() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function close() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            form.reset();
+            errorBox.textContent = '';
+        }
+        return { open, close };
     }
-    
-    // Confirm reassignment
-    document.getElementById('confirmReassign').addEventListener('click', function() {
-        const inquiryId = document.getElementById('inquirySelect').value;
-        const staffId = document.getElementById('staffSelect').value;
-        
-        if (!inquiryId || !staffId) {
-            showNotification('Please select both an inquiry and a staff member', 'warning');
-            return;
-        }
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        // Show loading state
-        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Reassigning...';
-        this.disabled = true;
-        
-        fetch('/office/api/reassign-inquiry', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                inquiry_id: inquiryId,
-                staff_id: staffId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('Inquiry reassigned successfully!', 'success');
-                closeModal('reassignModal');
-                // Refresh the page to update workload data
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showNotification(data.message || 'Failed to reassign inquiry', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error reassigning inquiry:', error);
-            showNotification('Failed to reassign inquiry', 'error');
-        })
-        .finally(() => {
-            this.innerHTML = '<i class="fas fa-check mr-2"></i>Assign Inquiry';
-            this.disabled = false;
-        });
-    });
-    
-    // Post Announcement Functionality
-    document.getElementById('postAnnouncementBtn').addEventListener('click', function() {
-        document.getElementById('announcementModal').classList.remove('hidden');
-    });
-    
-    // Confirm announcement posting
-    document.getElementById('postAnnouncementConfirm').addEventListener('click', function() {
-        const form = document.getElementById('announcementForm');
-        const formData = new FormData(form);
-        
-        const title = formData.get('title');
-        const content = formData.get('content');
-        const priority = formData.get('priority');
-        const audience = formData.get('audience');
-        
-        if (!title || !content) {
-            showNotification('Please fill in all required fields', 'warning');
-            return;
-        }
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        // Show loading state
-        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Posting...';
-        this.disabled = true;
-        
-        fetch('/office/api/post-announcement', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                title: title,
-                content: content,
-                priority: priority,
-                audience: audience
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('Announcement posted successfully!', 'success');
-                closeModal('announcementModal');
-                // Clear form
-                form.reset();
-                // Refresh to show new announcement
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showNotification(data.message || 'Failed to post announcement', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error posting announcement:', error);
-            showNotification('Failed to post announcement', 'error');
-        })
-        .finally(() => {
-            this.innerHTML = '<i class="fas fa-bullhorn mr-2"></i>Post Announcement';
-            this.disabled = false;
-        });
-    });
-    
-    // Toggle staff details functionality
-    document.querySelectorAll('.toggle-details').forEach(button => {
-        button.addEventListener('click', function() {
-            const staffId = this.dataset.staffId;
-            const staffCard = document.getElementById(`staff-${staffId}`);
-            const details = staffCard.querySelector('.staff-details');
-            const showText = this.querySelector('.show-text');
-            const hideText = this.querySelector('.hide-text');
-            
-            if (details.classList.contains('hidden')) {
-                details.classList.remove('hidden');
-                showText.classList.add('hidden');
-                hideText.classList.remove('hidden');
-            } else {
-                details.classList.add('hidden');
-                showText.classList.remove('hidden');
-                hideText.classList.add('hidden');
-            }
-        });
-    });
 });
 </script>
 {% endblock %}

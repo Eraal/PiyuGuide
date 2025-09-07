@@ -2,108 +2,213 @@
 
 {% block content %}
 
-<div class="flex items-center mb-6">
-    <i class="fas fa-user-edit mr-2 text-blue-800"></i>
-    <h2 class="text-xl font-bold">Edit Student Profile</h2>
-</div>
-<div class="bg-white rounded-lg shadow-md p-6">
-    <div class="flex justify-between items-center mb-6">
-        <div class="flex items-center">
-            <div class="h-16 w-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-                <span class="text-2xl font-bold text-gray-500">{{ student.user.first_name[0] }}{{ student.user.last_name[0] }}</span>
-            </div>
-            <div>
-                <h3 class="text-lg font-bold">{{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}</h3>
-                <p class="text-gray-600">{{ student.user.email }}</p>
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if student.user.is_active else 'bg-red-100 text-red-800' }}">
-                    {{ 'Active' if student.user.is_active else 'Inactive' }}
-                </span>
-            </div>
-        </div>
-        <div>
-            <button onclick="toggleStudentStatus({{ student.id }}, {{ 0 if student.user.is_active else 1 }})" 
-                class="{% if student.user.is_active %}bg-red-500 hover:bg-red-600{% else %}bg-blue-500 hover:bg-blue-600{% endif %} text-white px-4 py-2 rounded-md">
-                {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
-            </button>
-        </div>
+<!-- Header / Breadcrumb -->
+<div class="mb-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('admin.student_manage') }}" class="text-sm text-gray-500 hover:text-blue-700 inline-flex items-center gap-2">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+            Back to Students
+        </a>
     </div>
+    <div class="text-sm text-gray-400">Edit Student Profile</div>
+  
+    <!-- optional right space -->
+    <div class="w-32 hidden md:block"></div>
+  
+    <!-- Save Bar (mobile quick action) -->
+</div>
 
-    <form method="POST" action="{{ url_for('admin.view_student', student_id=student.id) }}">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Personal Information Section -->
-            <div class="bg-gray-50 p-4 rounded-md">
-                <h4 class="text-md font-semibold mb-4 text-gray-700">Personal Information</h4>
-                
-                <div class="mb-4">
-                    <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                    <input type="text" id="first_name" name="first_name" value="{{ student.user.first_name }}" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+<!-- Profile Header Card -->
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+    <div class="px-5 py-5 md:px-6 md:py-6 bg-gradient-to-r from-blue-50 to-blue-100/70">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-4 min-w-0">
+                <div class="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center shadow-sm">
+                    <span class="text-2xl md:text-3xl font-semibold tracking-wide">{{ student.user.first_name[0] }}{{ student.user.last_name[0] }}</span>
                 </div>
-                
-                <div class="mb-4">
-                    <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                    <input type="text" id="middle_name" name="middle_name" value="{{ student.user.middle_name or '' }}" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                
-                <div class="mb-4">
-                    <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                    <input type="text" id="last_name" name="last_name" value="{{ student.user.last_name }}" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-            </div>
-            
-            <!-- Account Information Section -->
-            <div class="bg-gray-50 p-4 rounded-md">
-                <h4 class="text-md font-semibold mb-4 text-gray-700">Account Information</h4>
-                
-                <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input type="email" id="email" name="email" value="{{ student.user.email }}" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date Registered</label>
-                    <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
-                        {{ student.user.created_at.strftime('%B %d, %Y %I:%M %p') }}
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-lg md:text-xl font-semibold text-gray-900 truncate">{{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}</h3>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded-full {{ 'bg-green-100 text-green-700' if student.user.is_active else 'bg-red-100 text-red-700' }}">
+                            {{ 'Active' if student.user.is_active else 'Inactive' }}
+                        </span>
                     </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Login</label>
-                    <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
-                        {% if student.last_login %}
-                            {{ student.last_login.strftime('%B %d, %Y %I:%M %p') }}
-                        {% else %}
-                            Never
+                    <p class="text-sm text-gray-600 truncate">{{ student.user.email }}</p>
+                    <div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                        {% if student.student_number %}<span class="inline-flex items-center gap-1"><i class="fa-solid fa-id-card text-gray-400"></i> <strong class="font-medium">Student #:</strong> {{ student.student_number }}</span>{% endif %}
+                        {% if student.department_name %}
+                            <span class="inline-flex items-center gap-1"><i class="fa-solid fa-building text-gray-400"></i> {{ student.department_name }}{% if student.year_level %} • {{ student.year_level }}{% endif %}{% if student.section %} • Sec {{ student.section }}{% endif %}</span>
                         {% endif %}
                     </div>
                 </div>
-                
-                <div class="mt-6">
-                    <h4 class="text-md font-semibold mb-2 text-gray-700">Password Management</h4>
-                    <div class="flex items-center">
-                        <button type="submit" name="reset_password" value="1" 
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md"
-                                onclick="return confirm('Are you sure you want to reset this student\'s password? A new 4-digit password will be generated.')">
-                            Reset Password
-                        </button>
-                        <span class="ml-2 text-sm text-gray-600">Generates a new 4-digit password</span>
-                    </div>
-                </div>
+            </div>
+                    <div class="flex items-center gap-2">
+                        <button id="toggle-student-status-btn" data-student-id="{{ student.id }}" data-next-status="{{ 0 if student.user.is_active else 1 }}"
+                                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition
+                                {% if student.user.is_active %} bg-red-50 text-red-700 border-red-200 hover:bg-red-100 {% else %} bg-blue-600 text-white border-blue-600 hover:bg-blue-700 {% endif %}">
+                    <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                    {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
+                </button>
             </div>
         </div>
-        
-        <!-- Action Buttons -->
-        <div class="mt-6 flex justify-end">
-            <a href="{{ url_for('admin.student_manage') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md mr-2">Cancel</a>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Save Changes</button>
-        </div>
-    </form>
+    </div>
 </div>
 
+<!-- Edit Form + Side Info -->
+<form method="POST" action="{{ url_for('admin.view_student', student_id=student.id) }}" class="relative">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left/Main: Editable fields -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Personal Information -->
+            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h4 class="text-sm font-semibold text-gray-800">Personal Information</h4>
+                    <p class="text-xs text-gray-500 mt-0.5">Basic identity details used across the system.</p>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="first_name" class="block text-xs font-medium text-gray-600 mb-1.5">First Name</label>
+                        <input type="text" id="first_name" name="first_name" value="{{ student.user.first_name }}" required
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                    <div>
+                        <label for="middle_name" class="block text-xs font-medium text-gray-600 mb-1.5">Middle Name</label>
+                        <input type="text" id="middle_name" name="middle_name" value="{{ student.user.middle_name or '' }}"
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                    <div>
+                        <label for="last_name" class="block text-xs font-medium text-gray-600 mb-1.5">Last Name</label>
+                        <input type="text" id="last_name" name="last_name" value="{{ student.user.last_name }}" required
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                </div>
+            </section>
+
+            <!-- Academic / Enrollment Information -->
+            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h4 class="text-sm font-semibold text-gray-800">Academic Information</h4>
+                    <p class="text-xs text-gray-500 mt-0.5">Student enrollment details for identification and grouping.</p>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="student_number" class="block text-xs font-medium text-gray-600 mb-1.5">Student Number</label>
+                        <input type="text" id="student_number" name="student_number" value="{{ student.student_number or '' }}"
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                    <div>
+                        <label for="department_id" class="block text-xs font-medium text-gray-600 mb-1.5">Department</label>
+                        <select id="department_id" name="department_id"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                            <option value="">— Select Department —</option>
+                            {% for d in departments %}
+                                <option value="{{ d.id }}" {% if student.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="year_level" class="block text-xs font-medium text-gray-600 mb-1.5">Year Level</label>
+                        <input type="text" id="year_level" name="year_level" value="{{ student.year_level or '' }}" placeholder="e.g., 1st Year, 2nd Year"
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                    <div>
+                        <label for="section" class="block text-xs font-medium text-gray-600 mb-1.5">Section</label>
+                        <input type="text" id="section" name="section" value="{{ student.section or '' }}" placeholder="e.g., A, B, CS-1"
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                </div>
+            </section>
+
+            <!-- Account & Contact -->
+            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h4 class="text-sm font-semibold text-gray-800">Account & Contact</h4>
+                    <p class="text-xs text-gray-500 mt-0.5">Used for communications and login.</p>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="email" class="block text-xs font-medium text-gray-600 mb-1.5">Email Address</label>
+                        <input type="email" id="email" name="email" value="{{ student.user.email }}" required
+                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                        <p class="text-[11px] text-gray-400 mt-1">We'll send important updates to this address.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right/Side: Read-only + Security -->
+        <aside class="space-y-6">
+            <!-- Activity / meta -->
+            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h4 class="text-sm font-semibold text-gray-800">Account Activity</h4>
+                </div>
+                <div class="p-5 space-y-3 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500">Date Registered</span>
+                        <span class="font-medium text-gray-800">{{ student.user.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500">Last Login</span>
+                        <span class="font-medium text-gray-800">{% if student.user.last_activity %}{{ student.user.last_activity.strftime('%b %d, %Y %I:%M %p') }}{% else %}Never{% endif %}</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Password Management -->
+            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800">Password Management</h4>
+                        <p class="text-xs text-gray-500 mt-0.5">Reset to a system-generated 4-digit password.</p>
+                    </div>
+                    <i class="fa-solid fa-key text-gray-300"></i>
+                </div>
+                <div class="p-5">
+                    <button type="submit" name="reset_password" value="1"
+                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border border-yellow-300 text-yellow-800 bg-yellow-50 hover:bg-yellow-100"
+                                    onclick="return confirm('Are you sure you want to reset this student\'s password? A new 4-digit password will be generated.')">
+                        <i class="fa-solid fa-rotate"></i>
+                        Reset Password
+                    </button>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <!-- Sticky Action Bar -->
+    <div class="mt-6 sticky bottom-0 z-10">
+        <div class="bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border border-gray-200 rounded-2xl shadow-sm px-4 py-3 flex items-center justify-between">
+            <div class="hidden md:flex items-center text-xs text-gray-500 gap-2">
+                <i class="fa-regular fa-floppy-disk"></i>
+                Review changes before saving.
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ url_for('admin.student_manage') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200">Cancel</a>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm">
+                    <i class="fa-solid fa-check"></i>
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
 
 <script src="/static/js/admin/view_student.js"></script>
+<script>
+    (function(){
+        const btn = document.getElementById('toggle-student-status-btn');
+        if (btn) {
+            btn.addEventListener('click', function(e){
+                e.preventDefault();
+                const id = parseInt(btn.getAttribute('data-student-id'), 10);
+                const next = parseInt(btn.getAttribute('data-next-status'), 10);
+                if (!Number.isNaN(id) && !Number.isNaN(next) && typeof window.toggleStudentStatus === 'function') {
+                    window.toggleStudentStatus(id, next);
+                }
+            });
+        }
+    })();
+    </script>
 {% endblock %}

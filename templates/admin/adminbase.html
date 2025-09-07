@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}KapiyuGuide Admin{% endblock %}</title>
+    <title>{% block title %}{{ current_campus_name }} - Campus Admin{% endblock %}</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -29,6 +29,13 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <style>
+      /* Theme variables */
+      :root {
+        --admin-primary: {{ campus_theme.colors.primary if campus_theme else '#1e40af' }};
+        --admin-secondary: {{ campus_theme.colors.secondary if campus_theme else '#3b82f6' }};
+        --admin-accent: {{ campus_theme.colors.accent if campus_theme else '#60a5fa' }};
+      }
+
       /* Enhanced sidebar styling */
       .sidebar-item {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -44,15 +51,17 @@
       }
       
       .active-nav {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        background: linear-gradient(135deg, var(--admin-secondary), var(--admin-primary));
         color: white !important;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
       }
       
       .active-nav:hover {
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        background: linear-gradient(135deg, var(--admin-primary), #1d4ed8);
         transform: translateX(0);
-      }      /* Enhanced dropdown styling */
+      }
+
+      /* Enhanced dropdown styling */
       .dropdown {
         position: relative;
         display: inline-block;
@@ -188,9 +197,11 @@
       .sidebar-section:first-child {
         border-top: none;
         margin-top: 8px;
-      }      /* Enhanced topbar */
+      }
+
+      /* Enhanced topbar */
       .topbar-solid {
-        background: #1e40af;
+        background: var(--admin-primary);
         border-bottom: 1px solid #1e3a8a;
       }
 
@@ -219,6 +230,79 @@
 
       .sidebar-scroll::-webkit-scrollbar-thumb:hover {
         background: #9ca3af;
+      }
+
+      /* ===================== */
+      /* Campus Admin Notifications (Dropdown & Toast) */
+      /* ===================== */
+    /* Notification bell wrapper: remove perspective (was creating its own stacking context)
+      and raise z-index so dropdown can layer above subsequent flex layout */
+    #campus-ann-bell-wrapper { position: relative; /* establish containing block */ z-index: 1000; }
+
+      #campus-ann-dropdown {
+        --drop-bg: #ffffff;
+        --line-color: #e5e7eb;
+        backdrop-filter: saturate(1.2) blur(8px);
+        box-shadow: 0 8px 24px -4px rgba(17,24,39,0.15), 0 4px 12px -2px rgba(17,24,39,0.08);
+        transform-origin: top right;
+        opacity: 0;
+        transform: translateY(-8px) scale(.96);
+        transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .32s cubic-bezier(.4,0,.2,1);
+        z-index: 1100; /* ensure it sits above other interface elements */
+      }
+      #campus-ann-dropdown.open { opacity: 1; transform: translateY(0) scale(1); }
+      #campus-ann-dropdown.closing { opacity: 0; transform: translateY(-6px) scale(.95); pointer-events:none; }
+
+      #campus-ann-dropdown .gradient-border { position:relative; }
+      #campus-ann-dropdown .gradient-border:before {
+        content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; background:linear-gradient(135deg, var(--admin-secondary), var(--admin-primary)); mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; -webkit-mask-composite: destination-out;
+      }
+
+      .campus-ann-item { position:relative; display:flex; gap:.75rem; }
+      .campus-ann-item .icon-pill { flex-shrink:0; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:600; letter-spacing:.5px; }
+      .campus-ann-item.unread .icon-pill:after { content:""; position:absolute; top:4px; right:4px; width:9px; height:9px; border-radius:50%; background:linear-gradient(135deg,#34d399,#059669); box-shadow:0 0 0 2px #fff; }
+      .campus-ann-item .ann-body { flex:1; min-width:0; }
+      .campus-ann-item .ann-title { font-weight:600; font-size:.78rem; line-height:1.1rem; color:#1f2937; letter-spacing:.3px; }
+      .campus-ann-item .ann-msg { font-size:.67rem; color:#4b5563; line-height:1rem; margin-top:2px; }
+      .campus-ann-item .ann-meta { font-size:.6rem; color:#9ca3af; margin-top:4px; display:flex; align-items:center; gap:4px; text-transform:uppercase; font-weight:500; letter-spacing:.5px; }
+  /* spacing handled by padding; reserved for potential future gap styling */
+      .campus-ann-item:before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:0 3px 3px 0; opacity:.9; background:var(--accent-bar,#3b82f6); }
+      .campus-ann-item.type-info { --accent-bar:#3b82f6; }
+      .campus-ann-item.type-success { --accent-bar:#10b981; }
+      .campus-ann-item.type-warning { --accent-bar:#f59e0b; }
+      .campus-ann-item.type-error { --accent-bar:#ef4444; }
+      .campus-ann-item.unread { background:linear-gradient(90deg, rgba(59,130,246,0.07), rgba(59,130,246,0)); }
+      .campus-ann-item:hover { background:linear-gradient(90deg, rgba(59,130,246,0.12), rgba(59,130,246,0.02)); }
+      .campus-ann-scroll { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
+      .campus-ann-scroll::-webkit-scrollbar { width:6px; }
+      .campus-ann-scroll::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
+      .campus-ann-empty { padding:3.5rem 1.25rem; text-align:center; }
+      .campus-ann-empty i { opacity:.35; }
+
+      /* Toast system */
+      .toast-zone { position:fixed; top:5rem; right:1.25rem; display:flex; flex-direction:column; gap:.75rem; z-index:70; width:clamp(260px, 30vw, 380px); pointer-events:none; }
+      .toast { position:relative; background:#ffffff; border-radius:18px; padding:.9rem 1rem 1rem 1rem; box-shadow:0 10px 25px -5px rgba(17,24,39,0.18), 0 4px 10px -3px rgba(17,24,39,0.08); display:flex; gap:.85rem; transform:translateX(40px) scale(.96); opacity:0; animation:toastIn .55s cubic-bezier(.68,-0.55,.27,1.55) forwards; border:1px solid #e5e7eb; backdrop-filter:saturate(1.2) blur(6px); pointer-events:auto; }
+      .toast.closing { animation:toastOut .35s ease forwards; }
+      .toast:before { content:""; position:absolute; inset:0; border-radius:inherit; padding:1px; background:linear-gradient(135deg,var(--bar-color,#3b82f6),var(--bar-color-alt,#1e40af)); -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite: exclude; opacity:0.65; }
+      .toast .toast-icon-wrapper { position:relative; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.05rem; font-weight:600; box-shadow:0 4px 12px -2px rgba(0,0,0,.2); }
+      .toast.type-info { --bar-color:#3b82f6; --bar-color-alt:#2563eb; }
+      .toast.type-success { --bar-color:#10b981; --bar-color-alt:#059669; }
+      .toast.type-warning { --bar-color:#f59e0b; --bar-color-alt:#d97706; }
+      .toast.type-error { --bar-color:#ef4444; --bar-color-alt:#dc2626; }
+      .toast .toast-content { flex:1; min-width:0; }
+      .toast .toast-title { font-weight:600; font-size:.85rem; color:#111827; letter-spacing:.3px; }
+      .toast .toast-message { font-size:.7rem; color:#374151; margin-top:2px; line-height:1.05rem; }
+      .toast button.toast-close { position:absolute; top:6px; right:6px; width:30px; height:30px; border-radius:12px; background:rgba(0,0,0,0.05); color:#4b5563; display:flex; align-items:center; justify-content:center; font-size:.75rem; transition:all .2s; }
+      .toast button.toast-close:hover { background:rgba(0,0,0,0.12); color:#111827; }
+      .toast .progress-bar { position:absolute; left:8px; right:8px; bottom:6px; height:4px; border-radius:2px; overflow:hidden; background:#e5e7eb; }
+      .toast .progress-fill { height:100%; width:100%; transform-origin:left; animation:toastProgress linear forwards; background:linear-gradient(90deg,var(--bar-color,#3b82f6),var(--bar-color-alt,#1e40af)); }
+      @keyframes toastIn { 0% { opacity:0; transform:translateX(50px) scale(.9); } 60% { opacity:1; transform:translateX(-4px) scale(1.02); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+      @keyframes toastOut { 0% { opacity:1; transform:translateX(0) scale(1); } 100% { opacity:0; transform:translateX(40px) scale(.9); } }
+      @keyframes toastProgress { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+      .toast-enter-from { opacity:0; transform:translateY(-10px) scale(.95); }
+      .toast-focus-ring:focus-visible { outline:3px solid var(--bar-color,#3b82f6); outline-offset:3px; }
+      @media (prefers-reduced-motion: reduce) {
+        .toast, #campus-ann-dropdown { transition:none; animation:none; transform:none !important; }
       }
     </style>
   </head>
@@ -253,25 +337,67 @@
   </div>
   {% endif %} {% endwith %}  <body class="bg-gray-50 flex flex-col h-screen">
     <!-- Enhanced Top Navigation Bar -->
-    <nav class="topbar-solid text-white shadow-lg">
+  <nav class="text-white shadow-lg" style="background: var(--admin-primary); border-bottom: 1px solid var(--admin-primary);">
       <div class="flex justify-between items-center px-6 py-4">
         <!-- Logo and Brand -->
         <div class="flex items-center space-x-3">
           <div class="flex items-center bg-white/10 rounded-xl p-2">
             <img
-              src="{{ url_for('static', filename='images/schoollogo.png') }}"
-              alt="KapiyuGuide Logo"
+              src="{{ campus_logo_url or brand_logo_url }}"
+              alt="Campus Logo"
               class="h-8 w-8"
             />
           </div>
           <div>
-            <span class="font-bold text-xl tracking-wide">KapiyuGuide</span>
-            <div class="text-xs text-blue-100 font-medium">Admin Portal</div>
+            <span class="font-bold text-xl tracking-wide">{{ current_campus_name }}</span>
+            <div class="text-xs text-blue-100 font-medium">Campus Admin Portal</div>
           </div>
         </div>
 
         <!-- User Profile Section -->
         <div class="flex items-center space-x-4">
+          <!-- Campus Admin Notifications -->
+          {% if current_user.role == 'super_admin' %}
+          <div class="relative" id="campus-ann-bell-wrapper">
+            <button id="campus-ann-bell" class="group relative w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30">
+              <i class="fas fa-bell text-lg text-white transition-transform group-hover:scale-110"></i>
+              <span id="campus-ann-badge" class="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] leading-[18px] rounded-full text-center font-semibold shadow {% if campus_unread_notifications_count == 0 %}hidden{% endif %}">{{ campus_unread_notifications_count }}</span>
+            </button>
+            <div id="campus-ann-dropdown" class="absolute right-0 mt-3 w-[430px] bg-white/95 rounded-2xl border border-gray-200 z-50 overflow-hidden hidden">
+              <div class="px-5 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100/70 backdrop-blur-sm border-b border-gray-200/70">
+                <div class="font-semibold text-gray-800 flex items-center gap-2 text-sm tracking-wide"><span class="relative inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow"><i class="fas fa-bell"></i></span><span>Notifications</span></div>
+                <div class="flex items-center gap-3">
+                  <button id="campus-ann-refresh" class="text-xs px-2.5 py-1.5 rounded-lg bg-white/70 hover:bg-white text-blue-700 font-medium shadow-sm border border-blue-100 transition">Refresh</button>
+                  <button id="campus-ann-mark-all" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition">Mark all read</button>
+                </div>
+              </div>
+              <div id="campus-ann-list" class="campus-ann-scroll max-h-96 overflow-y-auto divide-y divide-transparent">
+                {% if campus_sidebar_notifications %}
+                  {% for n in campus_sidebar_notifications %}
+                  <a href="{{ n.link or url_for('admin.announcement') }}" data-id="{{ n.id }}" class="campus-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}" data-title="{{ n.title|e }}" data-message="{{ n.message|e }}">
+                    <div class="icon-pill bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+                    <div class="ann-body">
+                      <div class="ann-title">{{ n.title }}</div>
+                      <div class="ann-msg line-clamp-2">{{ n.message }}</div>
+                      <div class="ann-meta"><i class="fas fa-clock"></i>{{ n.created_at.strftime('%b %d, %H:%M') }}</div>
+                    </div>
+                  </a>
+                  {% endfor %}
+                {% else %}
+                <div class="campus-ann-empty text-gray-500 text-sm">
+                  <i class="fas fa-bell-slash text-3xl mb-3 block"></i>
+                  <p class="font-medium">No announcements yet</p>
+                  <p class="text-xs mt-1 text-gray-400">You're all caught up!</p>
+                </div>
+                {% endif %}
+              </div>
+              <div class="border-t border-gray-100/80 bg-gray-50/60 backdrop-blur-sm flex items-center justify-between px-5 py-3">
+                <a href="{{ url_for('admin.announcement') }}" class="text-[11px] tracking-wide font-semibold text-blue-700 hover:text-blue-900 uppercase flex items-center gap-1">View All <i class="fas fa-arrow-right text-[10px]"></i></a>
+                <span class="text-[10px] text-gray-400 font-medium select-none">Real-time updates</span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
           <!-- Welcome Message -->
           <div class="hidden md:flex flex-col items-end">
             <div class="text-sm font-medium text-blue-100">
@@ -290,9 +416,9 @@
               onclick="toggleProfileDropdown()"
             >
               <div class="w-11 h-11 rounded-full overflow-hidden bg-white/20 flex items-center justify-center border-2 border-white/30 hover:border-white/50 transition-all duration-300">
-                {% if current_user.profile_pic %}
+                {% if current_user.profile_pic_path %}
                 <img
-                  src="{{ url_for('static', filename='uploads/profile_pics/' + current_user.profile_pic) }}"
+                  src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"
                   alt="Profile Picture"
                   class="w-full h-full object-cover"
                 />
@@ -343,13 +469,13 @@
       <!-- Enhanced Sidebar Navigation -->
       <aside class="bg-white w-64 flex-shrink-0 shadow-xl border-r border-gray-200 sidebar-scroll overflow-y-auto">
         <!-- Admin Profile Section -->
-        <div class="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-6 text-white">
+  <div class="p-6 text-white" style="background: linear-gradient(135deg, var(--admin-secondary), var(--admin-primary));">
           <div class="flex items-center space-x-3">
             <div class="relative">
               <div class="w-12 h-12 rounded-xl overflow-hidden bg-white/20 border-2 border-white/30 flex items-center justify-center backdrop-blur-sm">
-                {% if current_user.profile_pic %}
+                {% if current_user.profile_pic_path %}
                 <img
-                  src="{{ url_for('static', filename='uploads/profile_pics/' + current_user.profile_pic) }}"
+                  src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"
                   alt="Profile Picture"
                   class="w-full h-full object-cover"
                 />
@@ -366,7 +492,7 @@
                 {{ current_user.first_name }} {{ current_user.last_name }}
               </h3>
               <span class="text-xs text-blue-100 capitalize">
-                {{ current_user.role|replace('_', ' ') }}
+                Campus Admin
               </span>
             </div>
           </div>
@@ -415,6 +541,21 @@
             {% endif %}
           </a>
           {% endif %}
+
+          <a
+            href="{{ url_for('admin.manage_departments') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.manage_departments' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-layer-group"></i>
+            </div>
+            <span>Departments</span>
+            {% if request.endpoint == 'admin.manage_departments' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
 
           <a
             href="{{ url_for('admin.student_manage') }}"
@@ -563,14 +704,14 @@
           </a>
 
           <a
-            href="{{ url_for('admin.account_settings') }}"
-            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.account_settings' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+            href="{{ url_for('admin.system_customization') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.system_customization' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
           >
             <div class="nav-icon mr-3">
-              <i class="fas fa-user-cog"></i>
+              <i class="fas fa-sliders-h"></i>
             </div>
-            <span>Account Settings</span>
-            {% if request.endpoint == 'admin.account_settings' %}
+            <span>System Settings</span>
+            {% if request.endpoint == 'admin.system_customization' %}
             <span class="ml-auto">
               <i class="fas fa-circle text-xs opacity-75"></i>
             </span>
@@ -721,6 +862,169 @@
       });
     </script>
 
+    <!-- Socket.IO client (already included earlier for office; include if missing) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+    (function(){
+      if (typeof io === 'undefined') return;
+      if (!window.location.pathname.startsWith('/admin')) return;
+      const role = '{{ current_user.role }}';
+      if (role !== 'super_admin') return; // Only campus admins
+
+      // Elements
+      const bellBtn = document.getElementById('campus-ann-bell');
+      const dropdown = document.getElementById('campus-ann-dropdown');
+      const list = document.getElementById('campus-ann-list');
+      const badge = document.getElementById('campus-ann-badge');
+      const markAll = document.getElementById('campus-ann-mark-all');
+      const refreshBtn = document.getElementById('campus-ann-refresh');
+
+      // Toast zone
+      let toastZone = document.querySelector('.toast-zone');
+      if(!toastZone){
+        toastZone = document.createElement('div');
+        toastZone.className = 'toast-zone';
+        document.body.appendChild(toastZone);
+      }
+
+      function escapeHtml(str){
+        return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+      }
+      function incrementBadge(){
+        if (!badge) return; let n = parseInt(badge.textContent||'0'); n+=1; badge.textContent=String(n); badge.classList.remove('hidden');
+      }
+      function buildAnnElement(data){
+        const a = document.createElement('a');
+        a.href = `/admin/admin_announcement#ann-${data.announcement_id}`;
+        a.className = 'campus-ann-item unread px-4 py-3 transition-colors';
+        a.dataset.id = data.announcement_id;
+        a.innerHTML = `
+          <div class="icon-pill bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+          <div class="ann-body">
+            <div class="ann-title">${escapeHtml(data.title)}</div>
+            <div class="ann-msg line-clamp-2">From ${escapeHtml(data.author)}${data.updated ? ' (Updated)' : ''}</div>
+            <div class="ann-meta"><i class="fas fa-clock"></i>${new Date(data.timestamp).toLocaleString()}</div>
+          </div>`;
+        return a;
+      }
+      function prependAnnouncement(data){
+        if(!list) return; const el = buildAnnElement(data); list.prepend(el); el.classList.add('unread');
+      }
+
+      // Toast
+      function showToast({title='Notification', message='', type='info', duration=6000}){
+        const t = document.createElement('div');
+        t.className = `toast type-${type}`;
+        t.setAttribute('role','alert');
+        t.setAttribute('aria-live','polite');
+        const iconMap = { info:'fa-bell', success:'fa-check', warning:'fa-exclamation', error:'fa-times' };
+        const icon = iconMap[type] || iconMap.info;
+        t.innerHTML = `
+          <div class="toast-icon-wrapper" style="background:linear-gradient(135deg,var(--bar-color),var(--bar-color-alt));"><i class="fa-solid ${icon}"></i></div>
+          <div class="toast-content">
+            <div class="toast-title">${escapeHtml(title)}</div>
+            <div class="toast-message">${escapeHtml(message)}</div>
+          </div>
+          <button class="toast-close" aria-label="Close notification">&times;</button>
+          <div class="progress-bar"><div class="progress-fill" style="animation-duration:${duration}ms"></div></div>`;
+        const close = ()=>{ if(t.classList.contains('closing')) return; t.classList.add('closing'); setTimeout(()=>t.remove(),340); };
+        t.querySelector('.toast-close').addEventListener('click', close);
+        setTimeout(close, duration+200);
+        toastZone.appendChild(t);
+        return t;
+      }
+
+      // Dropdown open/close with animation
+      function openDropdown(){
+        if(!dropdown || dropdown.classList.contains('open')) return;
+        dropdown.classList.remove('hidden','closing');
+        requestAnimationFrame(()=>dropdown.classList.add('open'));
+      }
+      function closeDropdown(){
+        if(!dropdown || dropdown.classList.contains('hidden')) return;
+        dropdown.classList.add('closing');
+        dropdown.classList.remove('open');
+        setTimeout(()=>dropdown.classList.add('hidden'),220);
+      }
+
+      if(bellBtn){
+        bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.contains('open')?closeDropdown():openDropdown(); });
+        document.addEventListener('click', (e)=>{ if(dropdown && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) closeDropdown(); });
+        document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDropdown(); });
+      }
+
+      if(markAll){
+        markAll.addEventListener('click', async ()=>{
+          try {
+            const res = await fetch('/admin/api/notifications/mark-all-campus-announcements-read', {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
+            if(!res.ok){
+              showToast({title:'Error', message:'Server did not accept request.', type:'error'});
+              return;
+            }
+            const data = await res.json();
+            if(data.error){
+              showToast({title:'Error', message:data.error, type:'error'});
+              return;
+            }
+            const remaining = data.unread_remaining ?? 0;
+            if(badge){
+              if(remaining <= 0){
+                badge.textContent = '0';
+                badge.classList.add('hidden');
+              } else {
+                badge.textContent = String(remaining);
+                badge.classList.remove('hidden');
+              }
+            }
+            // Remove unread highlighting
+            list.querySelectorAll('.campus-ann-item.unread').forEach(a=>a.classList.remove('unread'));
+            showToast({title:'All read', message:`${data.updated||0} announcements marked as read.`, type:'success', duration:3000});
+          } catch(err){
+            showToast({title:'Error', message:'Failed to update.', type:'error'});
+          }
+        });
+      }
+      if(refreshBtn){
+        refreshBtn.addEventListener('click', async ()=>{
+          try {
+            const res = await fetch('/admin/api/notifications/campus-announcements');
+            if(res.ok){
+              const data = await res.json();
+              list.innerHTML = '';
+              if(data.length){
+                data.forEach(n=>{
+                  const a = document.createElement('a');
+                  a.href = n.link || "{{ url_for('admin.announcement') }}";
+                  a.className = 'campus-ann-item px-4 py-3 transition-colors '+(n.is_read?'' : 'unread');
+                  a.innerHTML = `<div class="icon-pill bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div><div class="ann-body"><div class="ann-title">${escapeHtml(n.title)}</div><div class="ann-msg line-clamp-2">${escapeHtml(n.message)}</div><div class="ann-meta"><i class="fas fa-clock"></i>${n.created_at}</div></div>`;
+                  list.appendChild(a);
+                });
+              } else {
+                list.innerHTML = '<div class="campus-ann-empty text-gray-500 text-sm"><i class="fas fa-bell-slash text-3xl mb-3 block"></i><p class="font-medium">No announcements</p><p class="text-xs mt-1 text-gray-400">Nothing new right now.</p></div>';
+              }
+              showToast({title:'Refreshed', message:'Latest announcements loaded.', type:'info', duration:2500});
+            }
+          } catch(e){ showToast({title:'Error', message:'Could not refresh.', type:'error'}); }
+        });
+      }
+
+      // Socket handling
+      try {
+        const socket = io('/campus-admin', {transports:['websocket']});
+        socket.on('campus_announcement', function(data){
+          if (parseInt(data.author_id) === parseInt('{{ current_user.id }}')) return; // ignore own
+          incrementBadge();
+            prependAnnouncement(data);
+            showToast({
+              title: 'New Announcement',
+              message: data.title,
+              type: 'info',
+              duration: 7000
+            });
+        });
+      } catch(e) { /* ignore */ }
+    })();
+    </script>
     {% block extra_js %} {% endblock %}
   </body>
 </html>

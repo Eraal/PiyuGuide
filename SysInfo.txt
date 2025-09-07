@@ -1,0 +1,35 @@
+## SYSTEM INFORMATION FOR AI USES.
+
+System has 4 Modules Super Admin(University Wide Admin), Campus Admin(Admin), Office Admin/Staff and Student
+Super Admin Flow(Univ Wide Admin), Specific URL to Access Login Page for his Authentication
+Campus Admin Flow, Select Campus on PiyuGuide Landing Page > Login to its Campus Admin Account to Campus He Select
+Office Admin Flow, Select Campus and Login to his Office Account
+System Flow(Student) - Landing Page of PiyuGuide with Campus Selection > Student Select Campus > Direct to Specific Campus > Landing Page of that campus with Login&Registration
+
+## MAIN FEATURE ##
+
+Inquiry System with Websocket Realtime Communication
+Counseling with WebRTC and Websocket
+
+## HOW TO RUN THIS SYSTEM
+
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force;
+.\env\Scripts\activate
+python run.py
+
+## COMMIT TO GITHUB REPO
+
+git remote -v
+git add .
+giy commit -m "Description"
+git push origin master
+git status
+
+## SUPER ADMIN LOGIN PAGE
+
+http://localhost:5000/super-admin/login
+
+superadmin@admin.com
+admin
+
+## LAST ACTIVITY VIDEO COUNSELIG SESSION

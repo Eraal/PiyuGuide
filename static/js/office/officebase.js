@@ -123,8 +123,129 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 300);
         }, 5000);
     });
+
+    // Start presence heartbeat for office admins
+    startOfficeHeartbeat();
+
+    // Initialize Concern Types dropdown reliably
+    try { initConcernTypesDropdown(); } catch (_) {}
 });
 
 // Export functions for global use
 window.showNotification = showNotification;
 window.updateNotificationCount = updateNotificationCount;
+
+// --- Presence Heartbeat ---
+function startOfficeHeartbeat() {
+    // Avoid running on non-office pages without the base template
+    // Also allow tests: guard on presence of connection/status nodes but don't require them
+    const connectionEl = document.getElementById('office-connection-status');
+    const statusEl = document.getElementById('staff-status-indicator');
+
+    // Expose a global flag so templates can avoid simulated status changes
+    try { window.__officePresenceHeartbeatActive = true; } catch (_) {}
+
+    let consecutiveFailures = 0;
+    const maxFailuresBeforeOffline = 3;
+    const intervalMs = 60000; // 60s heartbeat
+
+    function setConnectedUI(isConnected) {
+        if (connectionEl) {
+            connectionEl.className = 'connection-indicator ' + (isConnected ? 'connection-online' : 'connection-offline');
+            connectionEl.title = isConnected ? 'Connected to presence service' : 'Disconnected from presence service';
+        }
+        if (statusEl) {
+            statusEl.className = 'status-indicator ' + (isConnected ? 'status-online' : 'status-offline');
+            statusEl.title = isConnected ? 'Online' : 'Offline';
+        }
+    }
+
+    async function ping() {
+        try {
+            const res = await fetch('/office/api/heartbeat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // CSRF token header will be auto-added in templates that override XHR open; for fetch, include if meta exists
+                    'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')) || ''
+                },
+                body: JSON.stringify({ ts: Date.now() })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            // Success
+            consecutiveFailures = 0;
+            setConnectedUI(true);
+        } catch (e) {
+            consecutiveFailures += 1;
+            if (consecutiveFailures >= maxFailuresBeforeOffline) {
+                setConnectedUI(false);
+            }
+            // Keep trying silently
+        }
+    }
+
+    // Kick off immediately, then on interval
+    ping();
+    setInterval(ping, intervalMs);
+}
+
+// Concern Types dropdown (sidebar) robust initializer
+function initConcernTypesDropdown() {
+    const dropdown = document.getElementById('concernDropdown');
+    const icon = document.getElementById('concernDropdownIcon');
+    if (!dropdown || !icon) return;
+    const button = icon.closest('button');
+    if (!button) return;
+
+    // Prevent duplicate listeners
+    if (button.__concernDropdownInit) return;
+    button.__concernDropdownInit = true;
+
+    function setExpanded(expanded) {
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        if (icon) icon.style.transform = expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const willOpen = dropdown.classList.contains('hidden');
+        dropdown.classList.toggle('hidden');
+        setExpanded(willOpen);
+    });
+
+    // Keyboard support
+    button.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const willOpen = dropdown.classList.contains('hidden');
+            dropdown.classList.toggle('hidden');
+            setExpanded(willOpen);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (dropdown.classList.contains('hidden')) return;
+        if (!button.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+            setExpanded(false);
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
+            setExpanded(false);
+        }
+    });
+
+    // Auto-open when current page marks one of the links active (bg-green-50)
+    try {
+        const activeLink = dropdown.querySelector('a.bg-green-50');
+        if (activeLink) {
+            dropdown.classList.remove('hidden');
+            setExpanded(true);
+        }
+    } catch (_) {}
+}

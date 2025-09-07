@@ -19,7 +19,7 @@
             
             <!-- Enhanced Status and Refresh Controls -->
             <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                <div class="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-200 min-w-0 sm:min-w-[200px]">
+                <div class="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-200 min-w-0 sm:min-w-52">
                     <div class="flex items-center space-x-2">
                         <i class="fas fa-sync-alt text-green-500 text-sm"></i>
                         <span class="text-sm text-gray-600">
@@ -166,8 +166,13 @@
                             <tr class="hover:bg-gray-50 transition-colors duration-200">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center shadow-md">
+                                        {% set stu_avatar_url = inquiry.student.user.profile_pic_path and url_for('static', filename=inquiry.student.user.profile_pic_path) %}
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center shadow-md">
+                                            {% if stu_avatar_url %}
+                                            <img src="{{ stu_avatar_url }}?v={{ inquiry.student.user.profile_pic or '' }}" alt="Profile" class="h-10 w-10 object-cover" />
+                                            {% else %}
                                             <span class="text-sm font-bold text-white">{{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}</span>
+                                            {% endif %}
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-semibold text-gray-900">{{ inquiry.student.user.get_full_name() }}</div>
@@ -230,6 +235,92 @@
             </div>
         </div>        <!-- Enhanced Right Sidebar Content -->
         <div class="space-y-6">
+            <!-- Most Frequent Concerns Widget -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-gray-600"></i>
+                        Most Frequent Concerns
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-1">Last 30 days</p>
+                </div>
+                <div class="p-6">
+                    {% if most_frequent_concerns %}
+                        <div class="space-y-5">
+                            {% for concern in most_frequent_concerns %}
+                            <div class="relative bg-gradient-to-r from-gray-50 to-white rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all duration-300 group">
+                                <!-- Ranking Badge -->
+                                <div class="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-gradient-to-r 
+                                    {% if loop.index == 1 %}from-yellow-400 to-yellow-500 shadow-yellow-300{% elif loop.index == 2 %}from-gray-400 to-gray-500 shadow-gray-300{% elif loop.index == 3 %}from-amber-500 to-amber-600 shadow-amber-300{% else %}from-indigo-400 to-indigo-500 shadow-indigo-300{% endif %}
+                                    flex items-center justify-center shadow-lg border-2 border-white">
+                                    <span class="text-sm font-bold text-white">{{ loop.index }}</span>
+                                </div>
+                                
+                                <!-- Content Container -->
+                                <div class="ml-4 pr-2">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="flex-1 mr-4">
+                                            <h3 class="text-base font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors duration-200">{{ concern.name }}</h3>
+                                            {% if concern.description %}
+                                            <p class="text-sm text-gray-600 mt-1 leading-relaxed">{{ concern.description[:50] }}{% if concern.description|length > 50 %}...{% endif %}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-right flex-shrink-0">
+                                            <div class="bg-indigo-100 rounded-lg px-3 py-1 mb-1">
+                                                <span class="text-lg font-bold text-indigo-700">{{ concern.frequency }}</span>
+                                            </div>
+                                            <span class="text-xs text-gray-500 font-medium">{{ concern.percentage }}% of total</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Enhanced Progress Bar -->
+                                    <div class="relative">
+                                        <div class="w-full bg-gray-200 rounded-full h-3 shadow-inner">
+                                            <div class="bg-gradient-to-r 
+                                                {% if loop.index == 1 %}from-yellow-400 to-yellow-500{% elif loop.index == 2 %}from-gray-400 to-gray-500{% elif loop.index == 3 %}from-amber-500 to-amber-600{% else %}from-indigo-400 to-indigo-500{% endif %}
+                                                h-3 rounded-full transition-all duration-500 ease-out shadow-sm" 
+                                                style="width: 0%;" data-percentage="{{ concern.percentage }}">
+                                            </div>
+                                        </div>
+                                        <!-- Percentage Label on Progress Bar -->
+                                        <div class="absolute right-2 top-0 bottom-0 flex items-center">
+                                            <span class="text-xs font-bold text-white drop-shadow-sm">{{ concern.percentage }}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Enhanced View All Button -->
+                        <div class="mt-6 pt-4 border-t border-gray-200">
+                            <a href="{{ url_for('office.office_reports') }}" 
+                               class="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm group">
+                                <i class="fas fa-chart-line mr-2 group-hover:scale-110 transition-transform"></i>
+                                <span>View Detailed Reports</span>
+                                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-12">
+                            <div class="w-16 h-16 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-chart-bar text-gray-400 text-xl"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-600 mb-2">No Concerns Data</h3>
+                            <p class="text-gray-500 text-sm leading-relaxed">Student concern data will appear here once inquiries are submitted to your office.</p>
+                            <div class="mt-4 flex justify-center">
+                                <div class="bg-blue-50 rounded-lg px-4 py-2 border border-blue-200">
+                                    <p class="text-blue-700 text-xs font-medium">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Data updates every 24 hours
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
             <!-- Enhanced Upcoming Sessions -->
             <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -249,8 +340,13 @@
                     <div class="mb-4 last:mb-0 p-4 border-2 rounded-xl transition-all duration-200 hover:shadow-md {% if session.status == 'pending' %}border-yellow-200 bg-yellow-50 hover:bg-yellow-100{% elif session.status == 'in_progress' %}border-blue-200 bg-blue-50 hover:bg-blue-100{% else %}border-gray-200 bg-gray-50 hover:bg-gray-100{% endif %}">
                         <div class="flex justify-between items-start mb-3">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center shadow-md">
+                                {% set sess_avatar_url = session.student.user.profile_pic_path and url_for('static', filename=session.student.user.profile_pic_path) %}
+                                <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center shadow-md">
+                                    {% if sess_avatar_url %}
+                                    <img src="{{ sess_avatar_url }}?v={{ session.student.user.profile_pic or '' }}" alt="Profile" class="h-10 w-10 object-cover" />
+                                    {% else %}
                                     <span class="text-sm font-bold text-white">{{ session.student.user.first_name[0] }}{{ session.student.user.last_name[0] }}</span>
+                                    {% endif %}
                                 </div>
                                 <div>
                                     <p class="font-semibold text-gray-800">{{ session.student.user.get_full_name() }}</p>
@@ -388,16 +484,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Provide chart data safely via JSON script tag to avoid inline template parsing inside JS literals
+    const chartDataEl = document.getElementById('chart-data');
+    const chartPayload = chartDataEl ? JSON.parse(chartDataEl.textContent) : { labels: [], inquiries: [], sessions: [] };
     // Enhanced Activity Chart with modern styling
     const ctx = document.getElementById('activityChart').getContext('2d');
     const activityChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {{ chart_data.labels|tojson }},
+        labels: chartPayload.labels,
             datasets: [
                 {
                     label: 'Inquiries',
-                    data: {{ chart_data.inquiries|tojson }},
+            data: chartPayload.inquiries,
                     borderColor: 'rgb(249, 115, 22)',
                     backgroundColor: 'rgba(249, 115, 22, 0.1)',
                     tension: 0.4,
@@ -413,7 +512,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 {
                     label: 'Counseling Sessions',
-                    data: {{ chart_data.sessions|tojson }},
+                    data: chartPayload.sessions,
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4,
@@ -565,6 +664,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up auto-refresh timer (every 2 minutes)
     setInterval(refreshDashboardData, 120000);
 
+    // Animate progress bars for concerns using data-percentage
+    document.querySelectorAll('[data-percentage]').forEach(bar => {
+        const pct = parseFloat(bar.getAttribute('data-percentage')) || 0;
+        // delay to allow paint then animate
+        requestAnimationFrame(() => {
+            bar.style.width = pct + '%';
+        });
+    });
+
     // Enhanced data animation function
     function updateDataWithAnimation(selector, newValue) {
         const element = document.querySelector(selector);
@@ -709,5 +817,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 100);
 });
-</script>
+    </script>
+    <script id="chart-data" type="application/json">{{ {
+        'labels': chart_data.labels,
+        'inquiries': chart_data.inquiries,
+        'sessions': chart_data.sessions
+    } | tojson }}</script>
 {% endblock %}

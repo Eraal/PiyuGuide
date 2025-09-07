@@ -1,75 +1,95 @@
 {% extends "student/student_base.html" %} {% block title %}Request Counseling
 Session - KapiyuGuide{% endblock %} {% block extra_head %}
 <style>
-  /* Custom styles for counseling session request form */
-  .full-width-container {
+  /* ==========================================================
+     Redesigned Counseling Request Wizard
+     Goals: full-screen utilization, reduced vertical scroll,
+     clearer hierarchy, modern minimalist aesthetic.
+     ========================================================== */
+
+  /* Root layout inside base container */
+  .wizard-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
     width: 100%;
-    max-width: 100%;
-    padding: 0 2rem;
+    margin: 0 auto;
+    max-width: 1600px;
   }
 
-  .content-wrapper {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-
+  /* Full-height responsive grid (>=1280px) */
   @media (min-width: 1280px) {
-    .content-wrapper {
-      grid-template-columns: 320px 1fr;
+    .wizard-shell {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      align-items: start;
+      gap: 2rem;
+      min-height: calc(100vh - 11rem); /* accounts for header + base padding */
     }
   }
 
-  .side-panel {
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  /* Sidebar */
+  .wizard-sidebar {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);
     border-radius: 1rem;
-    padding: 2rem 1.5rem;
-    color: white;
-    position: sticky;
-    top: 2rem;
-    height: fit-content;
+    padding: 1.5rem 1.5rem 2rem;
+    color: #fff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  @media (min-width: 1280px) {
+    .wizard-sidebar { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    .wizard-sidebar::-webkit-scrollbar { width: 6px; }
+    .wizard-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
   }
 
-  .main-panel {
-    flex: 1;
+  .sidebar-header h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.2; }
+  .sidebar-header p { font-size: .75rem; opacity: .8; margin-top: .35rem; }
+
+  /* Stepper */
+  .step-indicator { display: flex; justify-content: space-between; gap: .75rem; }
+  .step-indicator.compact { gap: .5rem; }
+  @media (min-width:1280px){
+    .step-indicator { flex-direction: column; align-items: flex-start; }
+    .step { flex-direction: row; align-items: center; width: 100%; }
+    .step-number { margin-bottom: 0; margin-right: .75rem; }
+    .progress-line { display: none; }
   }
+
+  /* Help accordion (native <details>) */
+  .help-accordion { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.15); border-radius: .75rem; padding: .75rem 1rem; }
+  .help-accordion + .help-accordion { margin-top: .75rem; }
+  .help-accordion[open] { backdrop-filter: blur(8px); }
+  .help-accordion summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; font-weight: 500; }
+  .help-accordion summary::-webkit-details-marker { display: none; }
+  .help-accordion p { font-size: .7rem; line-height: 1.05rem; margin-top: .5rem; opacity: .9; }
+
+  /* Main content panel */
+  .wizard-main { display: flex; flex-direction: column; gap: 1.25rem; min-height: 100%; }
+  .panel-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 1rem; box-shadow: 0 4px 16px -4px rgba(0,0,0,.06), 0 2px 6px -2px rgba(0,0,0,.05); display: flex; flex-direction: column; min-height: 0; }
+  .panel-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #f1f5f9; background: linear-gradient(90deg,#f8fafc,#f1f5f9); }
+  .panel-header h2 { font-size: 1.15rem; font-weight: 600; display: flex; align-items:center; gap:.75rem; }
+  .panel-body { padding: 1.25rem 1.5rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; overflow: hidden; }
+  .form-scroll { overflow-y: auto; padding-right: .5rem; scrollbar-width: thin; flex:1; }
+  .form-scroll::-webkit-scrollbar { width: 8px; }
+  .form-scroll::-webkit-scrollbar-track { background: transparent; }
+  .form-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+  @media (min-width:1280px){ .panel-card { height: calc(100vh - 11rem); } }
+
+  /* Condensed hero banner (moves inside panel) */
+  .hero-mini { position: relative; border-radius: .85rem; padding: 1.5rem 1.5rem 1.25rem; background: linear-gradient(135deg,#1e3a8a 0%,#2563eb 55%,#059669 100%); color:#fff; overflow: hidden; display:flex; flex-direction:column; gap:.75rem; }
+  .hero-mini:after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 25% 25%, rgba(255,255,255,.18), transparent 60%); pointer-events:none; }
+  .hero-badges { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .hero-badge { font-size:.65rem; letter-spacing:.05em; background:rgba(255,255,255,.15); padding:.35rem .65rem; border-radius:9999px; backdrop-filter:blur(6px); font-weight:500; display:inline-flex; align-items:center; }
+
+  /* Reuse / refine existing original styles below (trimmed) */
+  .full-width-container { width: 100%; max-width: 100%; }
+  .main-panel { flex:1; }
 
   /* Office info panel */
-  .office-info-header {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .office-description {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    margin-top: 1rem;
-  }
-
-  .help-card {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 0.75rem;
-    padding: 1.25rem;
-    margin-top: 1.5rem;
-    backdrop-filter: blur(10px);
-  }
-
-  .help-card h3 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-  }
-
-  .help-card h3 i {
-    margin-right: 0.5rem;
-  }
-
-  .help-card p {
-    font-size: 0.875rem;
-    opacity: 0.9;
-  }
+  /* Legacy help-card removed in favor of accordion */
 
   /* Form styling */
   .form-container {
@@ -198,17 +218,31 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
   }
 
   /* Date and time picker styling */
-  .date-time-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-
-  @media (max-width: 640px) {
-    .date-time-grid {
-      grid-template-columns: 1fr;
-    }
-  }
+  .date-time-grid { display:grid; grid-template-columns: 360px 1fr; gap:1rem; }
+  @media (max-width: 1024px){ .date-time-grid { grid-template-columns: 1fr; } }
+  .calendar-card { border:1px solid #e5e7eb; border-radius:.75rem; overflow:hidden; background:#fff; }
+  .calendar-header { display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; background:linear-gradient(90deg,#f8fafc,#f1f5f9); border-bottom:1px solid #f1f5f9; }
+  .calendar-title { font-weight:600; color:#111827; }
+  .cal-nav { display:flex; gap:.5rem; }
+  .cal-btn { border:1px solid #d1d5db; background:#fff; border-radius:.5rem; padding:.4rem .6rem; font-size:.875rem; color:#374151; }
+  .cal-btn:hover { background:#f9fafb; }
+  .calendar-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:.25rem; padding: .75rem; }
+  .cal-weekday { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; text-align:center; padding:.25rem 0; }
+  .cal-day { position:relative; aspect-ratio: 1/1; border-radius:.5rem; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:500; color:#111827; }
+  .cal-day.out { color:#9ca3af; cursor:default; }
+  .cal-day.today { outline:2px solid #60a5fa; outline-offset: -2px; }
+  .cal-day.selected { background:#eff6ff; border:1px solid #bfdbfe; }
+  .slots-card { border:1px solid #e5e7eb; border-radius:.75rem; background:#fff; }
+  .slots-header { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; }
+  .slots-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap:.5rem; padding: .75rem; max-height: 360px; overflow:auto; }
+  .slot { border:1px solid #e5e7eb; border-radius:.5rem; padding:.5rem .6rem; text-align:center; font-size:.9rem; cursor:pointer; background:#fff; transition:.2s; }
+  .slot:hover { border-color:#93c5fd; box-shadow:0 2px 6px -2px rgba(59,130,246,.25); transform: translateY(-1px); }
+  .slot.booked { background:#f3f4f6; color:#9ca3af; border-color:#e5e7eb; cursor:not-allowed; }
+  .slot.past { background:#f9fafb; color:#9ca3af; border-style:dashed; cursor:not-allowed; }
+  .slot.selected { background:#dbeafe; border-color:#60a5fa; color:#1e3a8a; box-shadow:0 0 0 2px rgba(59,130,246,.25) inset; }
+  .legend { display:flex; gap:.5rem; align-items:center; }
+  .legend span { display:inline-flex; align-items:center; gap:.35rem; font-size:.75rem; color:#6b7280; }
+  .legend .dot { width:10px; height:10px; border-radius:3px; display:inline-block; }
 
   /* Button styles */
   .btn {
@@ -285,13 +319,7 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
     margin-bottom: 2rem;
   }
 
-  .step-indicator {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    position: relative;
-    z-index: 1;
-  }
+  .step-indicator { margin-bottom: 1.5rem; position: relative; z-index:1; }
 
   .step {
     display: flex;
@@ -354,15 +382,7 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
     font-weight: 500;
   }
 
-  .progress-line {
-    position: absolute;
-    top: 1.25rem;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background-color: #e5e7eb;
-    z-index: 0;
-  }
+  .progress-line { position:absolute; top:1.25rem; left:0; width:100%; height:2px; background:#e5e7eb; z-index:0; }
 
   .progress-line-fill {
     position: absolute;
@@ -591,118 +611,131 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
   }
 </style>
 {% endblock %} {% block content %}
-<div class="full-width-container mx-auto py-8">
-  <!-- Back button -->
-  <div class="mb-6">
-    <a
-      href="{{ url_for('student.counseling_sessions') }}"
-      class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-    >
-      <i class="fas fa-arrow-left mr-2"></i> Back to Counseling Sessions
-    </a>
-  </div>
-
-  <!-- Content Grid Layout -->
-  <div class="content-wrapper">
-    <!-- Side Panel: Help Information -->
-    <div class="side-panel relative glow-bg hidden xl:block">
-      <div class="office-info-header">
-        <div class="flex items-center">
-          <div class="rounded-full bg-white/20 p-3 mr-3">
-            <i class="fas fa-calendar-check text-white text-lg"></i>
+<div class="full-width-container px-2 sm:px-4 xl:px-0">
+  <span id="cOfficesCount" data-count="{{ counseling_offices_count|default(0) }}" class="hidden"></span>
+  <div class="wizard-shell">
+    <!-- Sidebar (progress + help) -->
+    <aside class="wizard-sidebar hidden xl:flex">
+      <div class="sidebar-header">
+        <h1 class="flex items-center gap-2"><i class="fas fa-calendar-check text-white/90"></i><span>Request Session</span></h1>
+  <p>5 quick steps. Edit any selection before submitting.</p>
+      </div>
+      <!-- Step Indicator reused -->
+      <div class="step-container mt-1">
+        <div class="step-indicator compact">
+          <div class="step active" data-step="1">
+            <div class="step-number">1</div><div class="step-title">Office</div>
           </div>
-          <h2 class="text-xl font-bold">Counseling Request</h2>
+          <div class="step" data-step="2">
+            <div class="step-number">2</div><div class="step-title">Concern</div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="step-number">3</div><div class="step-title">Type</div>
+          </div>
+          <div class="step" data-step="4">
+            <div class="step-number">4</div><div class="step-title">Schedule</div>
+          </div>
+          <div class="step" data-step="5">
+            <div class="step-number">5</div><div class="step-title">Review</div>
+          </div>
         </div>
-
-        <p class="office-description">
-          Schedule a personal counseling session with our staff to discuss your
-          concerns in detail.
-        </p>
       </div>
-
-      <div class="help-card">
-        <h3><i class="fas fa-info-circle"></i> About Counseling</h3>
-        <p>
-          Counseling sessions are one-on-one appointments where you can discuss
-          your concerns in a private, confidential environment.
-        </p>
+      <!-- Contextual mini summary (appears after office selection) -->
+      <div id="selectedOfficeBarSidebar" class="selected-office-bar hidden rounded-lg border border-white/20 bg-white/10 px-3 py-3 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <div class="sel-office-initials w-9 h-9 rounded-md bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm"></div>
+          <div>
+            <p class="sel-office-name font-medium leading-tight text-white"></p>
+            <p class="sel-office-meta text-[10px] uppercase tracking-wide text-white/70"></p>
+          </div>
+        </div>
+  <button type="button" class="change-office-btn font-medium text-white/80 hover:text-white transition-colors">Edit</button>
       </div>
+      <!-- Help Accordions -->
+      <details class="help-accordion" open>
+        <summary><i class="fas fa-info-circle"></i><span>About Counseling</span></summary>
+        <p>Counseling is a confidential 1:1 space to discuss personal, academic, or emotional concerns with trained staff.</p>
+      </details>
+      <!-- <details class="help-accordion">
+        <summary><i class="fas fa-video"></i><span>Video Sessions</span></summary>
+        <p>Eligible offices enable secure video meetings through your browser. Choose Video if shown as available.</p>
+      </details> -->
+      <!-- <details class="help-accordion">
+        <summary><i class="fas fa-clock"></i><span>Scheduling</span></summary>
+        <p>Request up to 30 days ahead. You’ll be notified if the office confirms or adjusts your preferred time.</p>
+      </details> -->
+    </aside>
 
-      <div class="help-card">
-        <h3><i class="fas fa-video"></i> Video Counseling</h3>
-        <p>
-          Some offices offer video counseling sessions that allow you to meet
-          with a counselor remotely using your computer or smartphone.
-        </p>
+    <!-- Main Column -->
+    <div class="wizard-main">
+      <!-- Back link small -->
+      <div class="flex items-center justify-between xl:hidden">
+        <a href="{{ url_for('student.counseling_sessions') }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm"><i class="fas fa-arrow-left mr-2"></i>Back</a>
+        <div class="flex gap-1 hero-badges text-[10px]">
+          <span class="hero-badge"><i class="fas fa-building mr-1"></i>{{ counseling_offices_count }} Offices</span>
+          <span class="hero-badge"><i class="fas fa-user-shield mr-1"></i>Secure</span>
+          <span class="hero-badge"><i class="fas fa-clock mr-1"></i>30 Days Ahead</span>
+        </div>
       </div>
-
-      <div class="help-card">
-        <h3><i class="fas fa-clock"></i> Scheduling</h3>
-        <p>
-          Sessions can be scheduled up to 30 days in advance and typically last
-          45-60 minutes. Choose a time that works best for you.
-        </p>
-      </div>
-    </div>
-
-    <!-- Main Panel: Form Content -->
-    <div class="main-panel">
-      <!-- Form Container -->
-      <div class="bg-white rounded-xl shadow-md overflow-hidden form-container">
-        <div class="p-8">
-          <h1 class="text-2xl font-bold text-gray-900 mb-4">
-            Request a Counseling Session
-          </h1>
-          <p class="text-gray-600 mb-8">
-            Complete the following steps to schedule your counseling session.
-          </p>
-
-          <!-- Step Indicator -->
-          <div class="step-container">
-            <div class="step-indicator">
-              <div class="step active" data-step="1">
-                <div class="step-number">1</div>
-                <div class="step-title">Select Office</div>
+      <div class="panel-card form-container">
+        <div class="panel-header">
+          <div class="hero-mini hidden xl:flex">
+            <div>
+              <h2 class="text-lg font-semibold tracking-tight flex items-center gap-2"><span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow"><i class="fas fa-headset"></i></span> Schedule Your Counseling Session</h2>
+              <p class="text-xs text-white/80 mt-2 max-w-2xl">Choose an office, pick how to meet, then request your preferred date & time. Adjust any step before submission.</p>
+              <div class="hero-badges mt-3">
+                <span class="hero-badge"><i class="fas fa-building mr-1"></i>{{ counseling_offices_count }} Offices</span>
+                <span class="hero-badge"><i class="fas fa-user-shield mr-1"></i>Confidential</span>
+                <span class="hero-badge"><i class="fas fa-clock mr-1"></i>30 Days</span>
               </div>
-              <div class="step" data-step="2">
-                <div class="step-number">2</div>
-                <div class="step-title">Session Type</div>
-              </div>
-              <div class="step" data-step="3">
-                <div class="step-number">3</div>
-                <div class="step-title">Date & Time</div>
-              </div>
-              <div class="step" data-step="4">
-                <div class="step-number">4</div>
-                <div class="step-title">Additional Info</div>
-              </div>
-            </div>
-            <div class="progress-line">
-              <div class="progress-line-fill" style="width: 0%"></div>
             </div>
           </div>
+          <div class="xl:hidden flex flex-col gap-1">
+            <h2 class="text-base font-semibold flex items-center gap-2"><span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow"><i class="fas fa-headset text-sm"></i></span> Request a Counseling Session</h2>
+            <!-- Mobile step indicator -->
+            <div class="step-container mb-0">
+              <div class="step-indicator">
+                <div class="step active" data-step="1"><div class="step-number">1</div><div class="step-title">Office</div></div>
+                <div class="step" data-step="2"><div class="step-number">2</div><div class="step-title">Concern</div></div>
+                <div class="step" data-step="3"><div class="step-number">3</div><div class="step-title">Type</div></div>
+                <div class="step" data-step="4"><div class="step-number">4</div><div class="step-title">Schedule</div></div>
+                <div class="step" data-step="5"><div class="step-number">5</div><div class="step-title">Review</div></div>
+              </div>
+              <div class="progress-line"><div class="progress-line-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <!-- Desktop only separate progress line below hero (kept for JS width updates) -->
+          <div class="hidden xl:block">
+            <div class="progress-line"><div class="progress-line-fill" style="width:0%"></div></div>
+          </div>
+          <!-- Selected office summary (mobile) -->
+          <div id="selectedOfficeBarMobile" class="selected-office-bar hidden xl:hidden mb-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="sel-office-initials w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-semibold"></div>
+              <div>
+                <p class="sel-office-name text-sm font-medium text-indigo-900"></p>
+                <p class="sel-office-meta text-xs text-indigo-600"></p>
+              </div>
+            </div>
+            <button type="button" class="change-office-btn text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors">Change</button>
+          </div>
 
-          <form
-            id="counselingForm"
-            action="{{ url_for('student.schedule_session') }}"
-            method="POST"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input
-              type="hidden"
-              id="selected_office_id"
-              name="office_id"
-              value=""
-            />
-            <input
-              type="hidden"
-              id="is_video_session"
-              name="is_video"
-              value="false"
-            />
+          <div class="form-scroll">
+            <form
+              id="counselingForm"
+              action="{{ url_for('student.schedule_session') }}"
+              method="POST"
+              class="space-y-2"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" id="selected_office_id" name="office_id" value="" />
+              <input type="hidden" id="is_video_session" name="is_video" value="false" />
+              <input type="hidden" id="nature_of_concern_id" name="nature_of_concern_id" value="" />
 
-            <!-- Step 1: Office Selection -->
-            <div class="form-step active" id="step-1">
+              <!-- Step 1: Office Selection -->
+              <div class="form-step active" id="step-1">
               <div class="form-section">
                 <h3 class="form-section-title">
                   <i class="fas fa-building"></i> Select an Office
@@ -761,22 +794,57 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                 </div>
               </div>
 
-              <div class="form-navigation">
-                <div></div>
-                <!-- Empty div to maintain flex spacing -->
-                <button
-                  type="button"
-                  class="btn btn-primary btn-next"
-                  id="next-step-1"
-                  {% if counseling_offices_count == 0 %}disabled{% endif %}
-                >
-                  Next Step <i class="fas fa-arrow-right ml-2"></i>
-                </button>
+                <div class="form-navigation">
+                  <div></div>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-1" {% if counseling_offices_count == 0 %}disabled{% endif %}>
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <!-- Step 2: Session Type -->
-            <div class="form-step" id="step-2">
+              <!-- Step 2: Nature of Concern -->
+              <div class="form-step" id="step-2">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-question-circle"></i> Nature of Concern
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Select the primary concern you want to discuss. This helps counselors prepare and route your request appropriately.
+                </p>
+                <div class="grid md:grid-cols-2 gap-4" id="concernTypeGrid">
+                  {% for ct in concern_types %}
+                  {% set office_ids = concern_type_office_map.get(ct.id, []) %}
+                  <div class="border rounded-lg p-3 cursor-pointer transition concern-type-card hover:shadow-sm" data-concern-id="{{ ct.id }}" data-supporting-offices="{{ office_ids|join(',') }}" data-allows-other="{{ 'true' if ct.allows_other else 'false' }}">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <p class="font-medium text-gray-800 text-sm">{{ ct.name }}</p>
+                        {% if ct.description %}<p class="text-[11px] text-gray-500 mt-1 leading-snug line-clamp-3">{{ ct.description }}</p>{% endif %}
+                      </div>
+                      <div class="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-xs text-gray-400 check-icon" aria-hidden="true"><i class="fas fa-check"></i></div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="error-message" id="concern-error">Please select a concern type</div>
+                <div id="otherConcernWrapper" class="mt-4 hidden">
+                  <label class="input-label" for="nature_of_concern_description">Describe Your Concern</label>
+                  <textarea id="nature_of_concern_description" name="nature_of_concern_description" rows="3" class="input-field" placeholder="Provide a brief description..."></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Required for concern types that allow additional details.</p>
+                  <div class="error-message" id="concern-desc-error">Please provide a short description (at least 10 characters)</div>
+                </div>
+              </div>
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-2-office">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-2">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 3: Session Type -->
+              <div class="form-step" id="step-3">
               <div class="form-section">
                 <h3 class="form-section-title">
                   <i class="fas fa-handshake"></i> Session Type
@@ -833,26 +901,18 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                 </div>
               </div>
 
-              <div class="form-navigation">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-prev"
-                  id="prev-step-2"
-                >
-                  <i class="fas fa-arrow-left mr-2"></i> Previous
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-next"
-                  id="next-step-2"
-                >
-                  Next Step <i class="fas fa-arrow-right ml-2"></i>
-                </button>
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-3">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-3">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <!-- Step 3: Date and Time -->
-            <div class="form-step" id="step-3">
+              <!-- Step 4: Date and Time -->
+              <div class="form-step" id="step-4">
               <div class="form-section">
                 <h3 class="form-section-title">
                   <i class="fas fa-calendar-alt"></i> Preferred Date & Time
@@ -862,60 +922,35 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                 </p>
 
                 <div class="date-time-grid">
-                  <div>
-                    <label for="scheduled_date" class="input-label"
-                      >Preferred Date <span class="text-red-500">*</span></label
-                    >
-                    <input
-                      type="date"
-                      id="scheduled_date"
-                      name="scheduled_date"
-                      class="input-field"
-                      min="{{ today }}"
-                      max="{{ max_date }}"
-                      required
-                    />
-                    <p class="text-xs text-gray-500 mt-1">
-                      Sessions can be requested up to 30 days in advance
-                    </p>
-                    <div class="error-message" id="date-error">
-                      Please select a valid date
+                  <!-- Modern calendar -->
+                  <div class="calendar-card" id="calendarWidget">
+                    <div class="calendar-header">
+                      <div class="calendar-title" id="calTitle">Select date</div>
+                      <div class="cal-nav">
+                        <button type="button" class="cal-btn" id="calPrev"><i class="fas fa-chevron-left"></i></button>
+                        <button type="button" class="cal-btn" id="calNext"><i class="fas fa-chevron-right"></i></button>
+                      </div>
+                    </div>
+                    <div class="calendar-grid" id="calGrid">
+                      <!-- Rendered by JS -->
                     </div>
                   </div>
 
-                  <div>
-                    <label for="scheduled_time" class="input-label"
-                      >Preferred Time <span class="text-red-500">*</span></label
-                    >
-                    <select
-                      id="scheduled_time"
-                      name="scheduled_time"
-                      class="input-field"
-                      required
-                    >
-                      <option value="">Select a time</option>
-                      <option value="08:00">8:00 AM</option>
-                      <option value="08:30">8:30 AM</option>
-                      <option value="09:00">9:00 AM</option>
-                      <option value="09:30">9:30 AM</option>
-                      <option value="10:00">10:00 AM</option>
-                      <option value="10:30">10:30 AM</option>
-                      <option value="11:00">11:00 AM</option>
-                      <option value="11:30">11:30 AM</option>
-                      <option value="13:00">1:00 PM</option>
-                      <option value="13:30">1:30 PM</option>
-                      <option value="14:00">2:00 PM</option>
-                      <option value="14:30">2:30 PM</option>
-                      <option value="15:00">3:00 PM</option>
-                      <option value="15:30">3:30 PM</option>
-                      <option value="16:00">4:00 PM</option>
-                      <option value="16:30">4:30 PM</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">
-                      Office hours are 8:00 AM - 5:00 PM (PHT). The final time may be adjusted by the counseling office.
-                    </p>
-                    <div class="error-message" id="time-error">
-                      Please select a valid time
+                  <!-- Slots panel -->
+                  <div class="slots-card">
+                    <div class="slots-header">
+                      <div>
+                        <div class="font-semibold text-gray-800 text-sm" id="slotsTitle">Pick a time</div>
+                        <div class="text-xs text-gray-500">Blocks reflect booked or past times; details aren’t shown.</div>
+                      </div>
+                      <div class="legend">
+                        <span><span class="dot" style="background:#dbeafe;border:1px solid #60a5fa"></span> Available</span>
+                        <span><span class="dot" style="background:#f3f4f6;border:1px solid #e5e7eb"></span> Booked</span>
+                        <span><span class="dot" style="background:#f9fafb;border:1px dashed #e5e7eb"></span> Past</span>
+                      </div>
+                    </div>
+                    <div class="slots-grid" id="slotsGrid">
+                      <!-- Filled by JS from availability API -->
                     </div>
                   </div>
                 </div>
@@ -931,26 +966,18 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                 </div>
               </div>
               
-              <div class="form-navigation">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-prev"
-                  id="prev-step-3"
-                >
-                  <i class="fas fa-arrow-left mr-2"></i> Previous
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-next"
-                  id="next-step-3"
-                >
-                  Next Step <i class="fas fa-arrow-right ml-2"></i>
-                </button>
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-4">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-4">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <!-- Step 4: Additional Information -->
-            <div class="form-step" id="step-4">
+              <!-- Step 5: Additional Information -->
+              <div class="form-step" id="step-5">
               <div class="form-section">
                 <h3 class="form-section-title">
                   <i class="fas fa-sticky-note"></i> Additional Information
@@ -989,6 +1016,10 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                     </p>
                   </div>
                   <div>
+                    <p class="text-sm font-medium text-gray-500">Concern:</p>
+                    <p class="text-sm text-gray-900" id="summary-concern">Not selected</p>
+                  </div>
+                  <div>
                     <p class="text-sm font-medium text-gray-500">
                       Session Type:
                     </p>
@@ -1011,20 +1042,17 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                 </div>
               </div>
 
-              <div class="form-navigation">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-prev"
-                  id="prev-step-4"
-                >
-                  <i class="fas fa-arrow-left mr-2"></i> Previous
-                </button>
-                <button type="submit" class="btn btn-primary btn-submit">
-                  <i class="fas fa-calendar-plus mr-2"></i> Request Session
-                </button>
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-5">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="submit" class="btn btn-primary btn-submit">
+                    <i class="fas fa-calendar-plus mr-2"></i> Request Session
+                  </button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -1035,13 +1063,26 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
   document.addEventListener("DOMContentLoaded", function () {
     // Variables
     let currentStep = 1;
-    const totalSteps = 4;
-    const progressLine = document.querySelector(".progress-line-fill");
+  const totalSteps = 5;
+  const progressLines = document.querySelectorAll('.progress-line-fill');
 
     // Elements for office selection
     const officeCards = document.querySelectorAll(".office-card");
     const selectedOfficeInput = document.getElementById("selected_office_id");
     const officeError = document.getElementById("office-error");
+  // Multiple instances of selected office bar (desktop sidebar + mobile in form)
+    const selectedOfficeBars = document.querySelectorAll('.selected-office-bar');
+    function updateSelectedOfficeBars(name, meta, initials){
+      selectedOfficeBars.forEach(bar => {
+        const nameEl = bar.querySelector('.sel-office-name');
+        const metaEl = bar.querySelector('.sel-office-meta');
+        const initEl = bar.querySelector('.sel-office-initials');
+        if (nameEl) nameEl.textContent = name;
+        if (metaEl) metaEl.textContent = meta;
+        if (initEl) initEl.textContent = initials;
+      });
+    }
+  const changeOfficeBtns = document.querySelectorAll('.change-office-btn');
 
     // Check for office_id in URL parameters for pre-selection
     const urlParams = new URLSearchParams(window.location.search);
@@ -1063,8 +1104,9 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
       });
     }
 
-    // Set counseling offices count for UI updates
-    const counselingOfficesCount = {{ counseling_offices_count|default(0) }};
+  // Set counseling offices count for UI updates (sourced from data attribute to avoid template parsing issues)
+  const counselingOfficesCountEl = document.getElementById('cOfficesCount');
+  const counselingOfficesCount = parseInt(counselingOfficesCountEl?.dataset.count || '0', 10);
 
     // Check if there are counseling offices available
     if (counselingOfficesCount === 0) {
@@ -1087,25 +1129,55 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
     const videoNotAvailable = document.getElementById("videoNotAvailable");
 
     // Elements for date and time
-    const dateInput = document.getElementById("scheduled_date");
-    const timeInput = document.getElementById("scheduled_time");
+  const dateInput = document.getElementById("scheduled_date") || (function(){ const i=document.createElement('input'); i.type='hidden'; i.id='scheduled_date'; i.name='scheduled_date'; document.getElementById('counselingForm').appendChild(i); return i; })();
+  const timeInput = document.getElementById("scheduled_time") || (function(){ const i=document.createElement('input'); i.type='hidden'; i.id='scheduled_time'; i.name='scheduled_time'; document.getElementById('counselingForm').appendChild(i); return i; })();
     const dateError = document.getElementById("date-error");
     const timeError = document.getElementById("time-error");
     const datetimeError = document.getElementById("datetime-error");
 
     // Elements for summary
     const summaryOffice = document.getElementById("summary-office");
-    const summaryType = document.getElementById("summary-type");
+  const summaryType = document.getElementById("summary-type");
+  const summaryConcern = document.getElementById("summary-concern");
     const summaryDate = document.getElementById("summary-date");
     const summaryTime = document.getElementById("summary-time");
 
     // Navigation buttons
     const nextStep1 = document.getElementById("next-step-1");
-    const nextStep2 = document.getElementById("next-step-2");
-    const nextStep3 = document.getElementById("next-step-3");
-    const prevStep2 = document.getElementById("prev-step-2");
-    const prevStep3 = document.getElementById("prev-step-3");
-    const prevStep4 = document.getElementById("prev-step-4");
+  const nextStep2 = document.getElementById("next-step-2");
+  const nextStep3 = document.getElementById("next-step-3");
+  const nextStep4 = document.getElementById("next-step-4");
+  const prevStep2Office = document.getElementById("prev-step-2-office");
+  const prevStep3 = document.getElementById("prev-step-3");
+  const prevStep4 = document.getElementById("prev-step-4");
+  const prevStep5 = document.getElementById("prev-step-5");
+  const natureConcernHidden = document.getElementById("nature_of_concern_id");
+  const concernDescInput = document.getElementById("nature_of_concern_description");
+  const concernError = document.getElementById("concern-error");
+  const concernDescError = document.getElementById("concern-desc-error");
+  const concernCards = document.querySelectorAll('.concern-type-card');
+  // Filter concern cards by selected office (data-supporting-offices list)
+  function filterConcernCardsForOffice(officeId){
+    concernCards.forEach(card => {
+      const offices = (card.getAttribute('data-supporting-offices') || '').split(',').filter(Boolean);
+      if(!officeId){
+        card.classList.remove('hidden');
+        return;
+      }
+      if(offices.includes(String(officeId))){
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
+        if(card.classList.contains('selected')){
+          card.classList.remove('selected');
+          natureConcernHidden.value='';
+          summaryConcern.textContent='Not selected';
+          concernDescInput.value='';
+          document.getElementById('otherConcernWrapper')?.classList.add('hidden');
+        }
+      }
+    });
+  }
 
     // Office card selection
     officeCards.forEach((card) => {
@@ -1123,6 +1195,10 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
         // Update the summary
         summaryOffice.textContent = this.querySelector("h4").textContent;
 
+  // Populate dynamic bar
+  const officeName = this.querySelector("h4").textContent.trim();
+  const initials = officeName.split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase();
+
         // Hide error message if shown
         officeError.classList.remove("visible");
 
@@ -1133,10 +1209,12 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
         
         console.log("Office ID:", officeId, "Supports Video:", supportsVideo, "Raw value:", supportsVideoAttr);
         
+        let metaText = "In-Person Only";
         if (supportsVideo) {
           videoCard.classList.remove("disabled");
           videoInput.disabled = false;
           videoNotAvailable.classList.add("hidden");
+          metaText = "Video & In-Person";
         } else {
           videoCard.classList.add("disabled");
           videoInput.disabled = true;
@@ -1147,8 +1225,20 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
           isVideoInput.value = "false";
           summaryType.textContent = "In-Person";
         }
+
+  updateSelectedOfficeBars(officeName, metaText, initials);
+        selectedOfficeBars.forEach(bar => bar.classList.remove('hidden'));
+  // Filter concern list to those supported by this office
+  filterConcernCardsForOffice(officeId);
       });
     });
+
+    // Change office button
+    changeOfficeBtns.forEach(btn => btn.addEventListener('click', () => {
+      showStep(1);
+      const target = document.querySelector('#step-1');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start'});
+    }));
 
     // Session type selection
     const sessionTypeCards = document.querySelectorAll(".session-type-card");
@@ -1199,20 +1289,155 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
       });
     }
 
-    // Date and time input event listeners
-    dateInput.addEventListener("change", function () {
-      if (this.value) {
-        summaryDate.textContent = formatDate(this.value);
-        dateError.classList.remove("visible");
+    // Helper to add minutes to an "HH:MM" time string and return "HH:MM"
+    function addMinutesHHMM(hhmm, minutesToAdd){
+      const [h, m] = hhmm.split(":").map(Number);
+      const d = new Date();
+      d.setHours(h, m || 0, 0, 0);
+      d.setMinutes(d.getMinutes() + (minutesToAdd || 0));
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mi}`;
+    }
+
+    // Format a fixed 1-hour range label like "10:00 AM - 11:00 AM"
+    function formatOneHourRange(startHHMM){
+      const endHHMM = addMinutesHHMM(startHHMM, 60);
+      return `${formatTime(startHHMM)} - ${formatTime(endHHMM)}`;
+    }
+
+    // Calendar + Slots UI
+    const calGrid = document.getElementById('calGrid');
+    const calTitle = document.getElementById('calTitle');
+    const calPrev = document.getElementById('calPrev');
+    const calNext = document.getElementById('calNext');
+    const slotsGrid = document.getElementById('slotsGrid');
+    const slotsTitle = document.getElementById('slotsTitle');
+
+    const maxDateStr = '{{ max_date }}';
+    const minDateStr = '{{ today }}';
+    const toDate = (s)=>{ const [y,m,d]=s.split('-').map(Number); return new Date(y, m-1, d); };
+    const minDate = toDate(minDateStr);
+    const maxDate = toDate(maxDateStr);
+
+    let calCursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    let selectedDate = null;
+    let selectedSlot = null;
+
+    function renderCalendar(){
+      // Header
+      const monthName = calCursor.toLocaleString('en-US', { month:'long', year:'numeric'});
+      calTitle.textContent = monthName;
+      // Grid
+      calGrid.innerHTML = '';
+      const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      weekdays.forEach(d=>{
+        const el = document.createElement('div'); el.className='cal-weekday'; el.textContent=d; calGrid.appendChild(el);
+      });
+      const firstDay = new Date(calCursor.getFullYear(), calCursor.getMonth(), 1);
+      const startOffset = firstDay.getDay();
+      const daysInMonth = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 0).getDate();
+      // leading blanks
+      for(let i=0;i<startOffset;i++){ const s=document.createElement('div'); calGrid.appendChild(s); }
+      // days
+      for(let d=1; d<=daysInMonth; d++){
+        const cur = new Date(calCursor.getFullYear(), calCursor.getMonth(), d);
+        const dayBtn = document.createElement('button');
+        dayBtn.type='button';
+        dayBtn.className='cal-day';
+        dayBtn.textContent=String(d);
+        const outOfRange = cur < minDate || cur > maxDate;
+        if(outOfRange){ dayBtn.classList.add('out'); dayBtn.disabled = true; }
+        const today = new Date(); today.setHours(0,0,0,0);
+        const sameDay = (a,b)=>a.getFullYear()==b.getFullYear() && a.getMonth()==b.getMonth() && a.getDate()==b.getDate();
+        if(sameDay(cur, today)) dayBtn.classList.add('today');
+        if(selectedDate && sameDay(cur, selectedDate)) dayBtn.classList.add('selected');
+        dayBtn.addEventListener('click', ()=>{
+          if(outOfRange) return;
+          selectedDate = cur; selectedSlot = null; timeInput.value='';
+          document.querySelectorAll('.cal-day.selected').forEach(n=>n.classList.remove('selected'));
+          dayBtn.classList.add('selected');
+          dateInput.value = cur.toISOString().slice(0,10);
+          summaryDate.textContent = formatDate(dateInput.value);
+          dateError?.classList.remove('visible');
+          fetchSlots();
+        });
+        calGrid.appendChild(dayBtn);
       }
+    }
+
+    calPrev.addEventListener('click', ()=>{
+      const prev = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1);
+      if(prev >= new Date(minDate.getFullYear(), minDate.getMonth(), 1)) { calCursor = prev; renderCalendar(); }
+    });
+    calNext.addEventListener('click', ()=>{
+      const next = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1);
+      if(next <= new Date(maxDate.getFullYear(), maxDate.getMonth(), 1)) { calCursor = next; renderCalendar(); }
     });
 
-    timeInput.addEventListener("change", function () {
-      if (this.value) {
-        summaryTime.textContent = formatTime(this.value);
-        timeError.classList.remove("visible");
+    async function fetchSlots(){
+      slotsGrid.innerHTML = '';
+      if(!selectedOfficeInput.value || !dateInput.value){
+        slotsTitle.textContent = 'Pick a date to see available times';
+        return;
       }
+      slotsTitle.textContent = 'Loading availability...';
+      try{
+        // Force 60-minute slot generation server-side
+        const resp = await fetch(`/student/office/${selectedOfficeInput.value}/availability?date=${dateInput.value}&interval=60`);
+        if(!resp.ok){ throw new Error('Failed to load'); }
+        const data = await resp.json();
+        slotsTitle.textContent = `Available 1-hour slots for ${formatDate(data.date)}`;
+        data.slots.forEach(s=>{
+          const btn = document.createElement('button');
+          btn.type='button';
+          btn.className = `slot ${s.status}`;
+          // Show 1-hour range labels while keeping the submitted value as the start time
+          btn.textContent = formatOneHourRange(s.time);
+          if(s.status !== 'available') btn.disabled = true;
+          btn.addEventListener('click', ()=>{
+            if(btn.disabled) return;
+            document.querySelectorAll('.slot.selected').forEach(n=>n.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedSlot = s.time;
+            timeInput.value = s.time;
+            summaryTime.textContent = formatOneHourRange(s.time);
+            timeError?.classList.remove('visible');
+          });
+          slotsGrid.appendChild(btn);
+        });
+        if(!data.slots.length){
+          const p=document.createElement('p'); p.className='text-sm text-gray-500 px-3 py-2'; p.textContent='No slots in this day.'; slotsGrid.appendChild(p);
+        }
+      }catch(e){
+        const p=document.createElement('p'); p.className='text-sm text-red-600 px-3 py-2'; p.textContent='Unable to load availability.'; slotsGrid.appendChild(p);
+      }
+    }
+
+    // When office changes, re-filter concerns and refresh availability if date picked
+    function onOfficeChanged(){
+      if(dateInput.value){ fetchSlots(); }
+    }
+
+    // Hook into office selection to refresh slots
+    officeCards.forEach((card)=>{
+      card.addEventListener('click', ()=> setTimeout(onOfficeChanged, 0));
     });
+
+    // Initialize defaults: select minDate by default if any office preselected
+    function initCalendarDefaults(){
+      renderCalendar();
+      if(!dateInput.value){
+        selectedDate = minDate; dateInput.value = minDateStr; summaryDate.textContent = formatDate(minDateStr);
+        // highlight selected
+        setTimeout(()=>{
+          document.querySelectorAll('.cal-day').forEach(d=>{
+            if(d.textContent === String(minDate.getDate())) d.classList.add('selected');
+          });
+        },0);
+      }
+    }
+    initCalendarDefaults();
 
     // Function to update the step indicator
     function updateStepIndicator(step) {
@@ -1229,8 +1454,8 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
       });
 
       // Update progress line
-      const progressPercentage = ((step - 1) / (totalSteps - 1)) * 100;
-      progressLine.style.width = `${progressPercentage}%`;
+  const progressPercentage = ((step - 1) / (totalSteps - 1)) * 100;
+  progressLines.forEach(pl => pl.style.width = `${progressPercentage}%`);
     }
 
     // Function to show a specific step
@@ -1261,49 +1486,52 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
       showStep(2);
     });
 
-    nextStep2.addEventListener("click", function () {
+    // Concern selection logic
+    concernCards.forEach(card => {
+      card.addEventListener('click', () => {
+        concernCards.forEach(c => c.classList.remove('selected','ring','ring-blue-500'));
+        card.classList.add('selected','ring','ring-blue-500');
+        natureConcernHidden.value = card.dataset.concernId;
+        summaryConcern.textContent = card.querySelector('.font-medium').textContent.trim();
+        concernError.classList.remove('visible');
+        const allowsOther = card.dataset.allowsOther === 'true';
+        if (allowsOther) {
+          document.getElementById('otherConcernWrapper').classList.remove('hidden');
+        } else {
+          document.getElementById('otherConcernWrapper').classList.add('hidden');
+          concernDescInput.value = '';
+          concernDescError.classList.remove('visible');
+        }
+      });
+    });
+
+    nextStep2.addEventListener('click', function(){
+      if (!natureConcernHidden.value) { concernError.classList.add('visible'); return; }
+      const selectedCard = document.querySelector('.concern-type-card.selected');
+      if (selectedCard && selectedCard.dataset.allowsOther === 'true') {
+        if (!concernDescInput.value || concernDescInput.value.trim().length < 10) {
+          concernDescError.classList.add('visible'); return; }
+        concernDescError.classList.remove('visible');
+      }
       showStep(3);
     });
 
-    nextStep3.addEventListener("click", function () {
-      // Validate date and time
-      if (!dateInput.value) {
-        dateError.classList.add("visible");
-        return;
-      }
-
-      if (!timeInput.value) {
-        timeError.classList.add("visible");
-        return;
-      }
-
-      // Check if selected date/time is in the future
-      const selectedDateTime = new Date(
-        `${dateInput.value}T${timeInput.value}`
-      );
+    nextStep3.addEventListener('click', function(){ showStep(4); });
+    nextStep4.addEventListener('click', function(){
+      if (!dateInput.value) { dateError?.classList.add('visible'); return; }
+      if (!timeInput.value) { timeError?.classList.add('visible'); return; }
+      const selectedDateTime = new Date(`${dateInput.value}T${timeInput.value}`);
       const now = new Date();
-
-      if (selectedDateTime <= now) {
-        datetimeError.classList.add("visible");
-        return;
-      }
-
-      datetimeError.classList.remove("visible");
-      showStep(4);
+      if (selectedDateTime <= now) { datetimeError.classList.add('visible'); return; }
+      datetimeError.classList.remove('visible');
+      showStep(5);
     });
 
     // Previous button event listeners
-    prevStep2.addEventListener("click", function () {
-      showStep(1);
-    });
-
-    prevStep3.addEventListener("click", function () {
-      showStep(2);
-    });
-
-    prevStep4.addEventListener("click", function () {
-      showStep(3);
-    });
+    prevStep2Office.addEventListener('click', () => showStep(1));
+    prevStep3.addEventListener('click', () => showStep(2));
+    prevStep4.addEventListener('click', () => showStep(3));
+    prevStep5.addEventListener('click', () => showStep(4));
 
     // Form submission
     const counselingForm = document.getElementById("counselingForm");
@@ -1318,22 +1546,17 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
 
       if (!dateInput.value || !timeInput.value) {
         e.preventDefault();
-        showStep(3);
-
-        if (!dateInput.value) dateError.classList.add("visible");
-        if (!timeInput.value) timeError.classList.add("visible");
+        showStep(4);
+        if (!dateInput.value) dateError?.classList.add('visible');
+        if (!timeInput.value) timeError?.classList.add('visible');
         return;
       }
-
-      const selectedDateTime = new Date(
-        `${dateInput.value}T${timeInput.value}`
-      );
+      const selectedDateTime = new Date(`${dateInput.value}T${timeInput.value}`);
       const now = new Date();
-
       if (selectedDateTime <= now) {
         e.preventDefault();
-        showStep(3);
-        datetimeError.classList.add("visible");
+        showStep(4);
+        datetimeError.classList.add('visible');
         return;
       }
 

@@ -246,6 +246,17 @@
   .pulse-border {
     animation: pulse-border 2s infinite;
   }
+
+    /* Mobile-friendly tweaks */
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .refresh-animation { animation: spin 1s linear infinite; }
+    .stat-label { letter-spacing: 0.02em; }
+    .stat-value { line-height: 1; }
+
+        /* Compact list helpers */
+        .status-badge-sm { font-size: 0.70rem; padding: 0.25rem 0.5rem; }
 </style>
 {% endblock %}
 
@@ -272,61 +283,61 @@
     </div>
 </div>
 
-<!-- Enhanced Stats Section -->
-<div class="mb-8">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Enhanced Stats Section (mobile-optimized) -->
+<div class="mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <!-- Total Inquiries -->
-        <div class="stats-card orange rounded-2xl p-6 slide-in-up" style="animation-delay: 0.1s">
+        <div class="stats-card orange rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.1s">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Total Inquiries</p>
-                    <h3 class="text-3xl font-bold text-gray-800">{{ stats.total }}</h3>
-                    <p class="text-xs text-gray-500 mt-1">All time submissions</p>
+                    <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Total</p>
+                    <h3 class="stat-value text-2xl sm:text-3xl font-bold text-gray-800">{{ stats.total }}</h3>
+                    <p class="hidden sm:block text-xs text-gray-500 mt-1">All time submissions</p>
                 </div>
-                <div class="bg-orange-100 p-4 rounded-2xl">
-                    <i class="fas fa-inbox text-orange-600 text-2xl"></i>
+                <div class="bg-orange-100 p-2 sm:p-4 rounded-2xl">
+                    <i class="fas fa-inbox text-orange-600 text-xl sm:text-2xl"></i>
                 </div>
             </div>
         </div>
         
         <!-- Pending -->
-        <div class="stats-card yellow rounded-2xl p-6 slide-in-up" style="animation-delay: 0.2s">
+        <div class="stats-card yellow rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.2s">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Pending</p>
-                    <h3 class="text-3xl font-bold text-yellow-600">{{ stats.pending }}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Awaiting response</p>
+                    <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Pending</p>
+                    <h3 class="stat-value text-2xl sm:text-3xl font-bold text-yellow-600">{{ stats.pending }}</h3>
+                    <p class="hidden sm:block text-xs text-gray-500 mt-1">Awaiting response</p>
                 </div>
-                <div class="bg-yellow-100 p-4 rounded-2xl">
-                    <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                <div class="bg-yellow-100 p-2 sm:p-4 rounded-2xl">
+                    <i class="fas fa-clock text-yellow-600 text-xl sm:text-2xl"></i>
                 </div>
             </div>
         </div>
         
         <!-- In Progress -->
-        <div class="stats-card blue rounded-2xl p-6 slide-in-up" style="animation-delay: 0.3s">
+        <div class="stats-card blue rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.3s">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">In Progress</p>
-                    <h3 class="text-3xl font-bold text-blue-600">{{ stats.in_progress }}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Being handled</p>
+                    <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">In Progress</p>
+                    <h3 class="stat-value text-2xl sm:text-3xl font-bold text-blue-600">{{ stats.in_progress }}</h3>
+                    <p class="hidden sm:block text-xs text-gray-500 mt-1">Being handled</p>
                 </div>
-                <div class="bg-blue-100 p-4 rounded-2xl">
-                    <i class="fas fa-spinner text-blue-600 text-2xl"></i>
+                <div class="bg-blue-100 p-2 sm:p-4 rounded-2xl">
+                    <i class="fas fa-spinner text-blue-600 text-xl sm:text-2xl"></i>
                 </div>
             </div>
         </div>
         
         <!-- Resolved -->
-        <div class="stats-card green rounded-2xl p-6 slide-in-up" style="animation-delay: 0.4s">
+        <div class="stats-card green rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.4s">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Resolved</p>
-                    <h3 class="text-3xl font-bold text-green-600">{{ stats.resolved }}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Successfully completed</p>
+                    <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Resolved</p>
+                    <h3 class="stat-value text-2xl sm:text-3xl font-bold text-green-600">{{ stats.resolved }}</h3>
+                    <p class="hidden sm:block text-xs text-gray-500 mt-1">Successfully completed</p>
                 </div>
-                <div class="bg-green-100 p-4 rounded-2xl">
-                    <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                <div class="bg-green-100 p-2 sm:p-4 rounded-2xl">
+                    <i class="fas fa-check-circle text-green-600 text-xl sm:text-2xl"></i>
                 </div>
             </div>
         </div>
@@ -399,85 +410,78 @@
     </div>
     
     <!-- Inquiries Grid -->
-    <div class="grid grid-cols-1 gap-6">
-        {% for inquiry in inquiries %}
-        <div class="inquiry-card status-{{ inquiry.status }} rounded-2xl p-6 slide-in-up" 
-             style="animation-delay: {{ loop.index * 0.1 }}s"
-             onclick="window.location.href='{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}'">
-            
-            <!-- Header -->
-            <div class="flex items-start justify-between mb-4">                <div class="flex-1">
-                    <div class="flex items-center mb-2">
-                        <span class="priority-indicator priority-medium"></span>
-                        <h3 class="text-lg font-bold text-gray-800 truncate">{{ inquiry.subject }}</h3>
+    <div class="grid grid-cols-1 gap-3 sm:gap-4">
+    {% for inquiry in inquiries %}
+        <div class="inquiry-card status-{{ inquiry.status }} rounded-xl sm:rounded-2xl p-4 sm:p-5 slide-in-up" 
+         data-anim-delay="{{ (loop.index * 0.1) }}s"
+         data-href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}"
+         role="link" tabindex="0">
+            <!-- Compact messenger-style row -->
+            <div class="flex items-start justify-between">
+                <div class="min-w-0 flex-1">
+                    <!-- Subject + status + count -->
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <h3 class="truncate text-base font-semibold text-gray-800">
+                            <span class="priority-indicator priority-medium align-middle"></span>
+                            {{ inquiry.subject }}
+                        </h3>
+                        <div class="shrink-0 flex items-center gap-2">
+                            <span class="status-badge status-badge-sm status-{{ inquiry.status }} whitespace-nowrap">
+                                {% if inquiry.status == 'pending' %}
+                                    <i class="fas fa-clock mr-1"></i>
+                                {% elif inquiry.status == 'in_progress' %}
+                                    <i class="fas fa-spinner mr-1"></i>
+                                {% elif inquiry.status == 'resolved' %}
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                {% elif inquiry.status == 'reopened' %}
+                                    <i class="fas fa-redo mr-1"></i>
+                                {% endif %}
+                                {{ inquiry.status|replace('_', ' ')|title }}
+                            </span>
+                            {% if inquiry.messages %}
+                            <span class="flex items-center bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 text-[11px]">
+                                <i class="fas fa-comments mr-1"></i>{{ inquiry.messages|length }}
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="flex items-center text-sm text-gray-500 space-x-4">
-                        <span class="flex items-center">
+
+                    <!-- Meta: office • date/time -->
+                    <div class="flex items-center text-[12px] text-gray-500 gap-3 mb-1">
+                        <span class="inline-flex items-center min-w-0">
                             <i class="fas fa-building mr-1"></i>
-                            {{ inquiry.office.name }}
-                        </span>                        <span class="flex items-center">
+                            <span class="truncate">{{ inquiry.office.name }}</span>
+                        </span>
+                        <span class="inline-flex items-center whitespace-nowrap">
                             <i class="fas fa-calendar mr-1"></i>
                             {{ inquiry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
                         </span>
                     </div>
-                </div>
-                
-                <div class="flex items-center space-x-3">
-                    <span class="status-badge status-{{ inquiry.status }}">
-                        {% if inquiry.status == 'pending' %}
-                            <i class="fas fa-clock mr-1"></i>
-                        {% elif inquiry.status == 'in_progress' %}
-                            <i class="fas fa-spinner mr-1"></i>
-                        {% elif inquiry.status == 'resolved' %}
-                            <i class="fas fa-check-circle mr-1"></i>
-                        {% elif inquiry.status == 'reopened' %}
-                            <i class="fas fa-redo mr-1"></i>
+
+                    <!-- Preview line like messenger -->
+                    <div class="text-[13px] text-gray-700">
+                        {% if inquiry.messages and inquiry.messages|length > 0 %}
+                        <p class="truncate">{{ inquiry.messages[0].content|truncate(120) }}</p>
+                        {% else %}
+                        <p class="truncate text-gray-500 italic">No message content available</p>
                         {% endif %}
-                        {{ inquiry.status|replace('_', ' ')|title }}
-                    </span>
-                    
-                    <!-- Message Count -->
-                    {% if inquiry.messages %}
-                    <div class="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-600">
-                        <i class="fas fa-comments mr-1"></i>
-                        {{ inquiry.messages|length }} messages
                     </div>
-                    {% endif %}
                 </div>
-            </div>
-              <!-- Content Preview -->
-            <div class="mb-4">
-                {% if inquiry.messages and inquiry.messages|length > 0 %}
-                <p class="text-gray-700 line-clamp-2">{{ inquiry.messages[0].content|truncate(120) }}</p>
-                {% else %}
-                <p class="text-gray-500 italic line-clamp-2">No message content available</p>
-                {% endif %}
-            </div>
-            
-            <!-- Footer -->
-            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div class="flex items-center space-x-4 text-sm text-gray-500">
+
+                <!-- Right rail: tags/attachments condensed -->
+                <div class="hidden sm:flex flex-col items-end ml-3 shrink-0 text-gray-500 text-xs gap-1">
                     {% if inquiry.concern_types %}
-                    <span class="flex items-center">
+                    <span class="inline-flex items-center bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
                         <i class="fas fa-tag mr-1"></i>
-                        {{ inquiry.concern_types[0].name }}
-                        {% if inquiry.concern_types|length > 1 %}+{{ inquiry.concern_types|length - 1 }}{% endif %}
+                        {{ inquiry.concern_types[0].name }}{% if inquiry.concern_types|length > 1 %}+{{ inquiry.concern_types|length - 1 }}{% endif %}
                     </span>
                     {% endif %}
-                    
                     {% if inquiry.attachments %}
-                    <span class="flex items-center">
+                    <span class="inline-flex items-center bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
                         <i class="fas fa-paperclip mr-1"></i>
-                        {{ inquiry.attachments|length }} attachment{{ 's' if inquiry.attachments|length > 1 else '' }}
+                        {{ inquiry.attachments|length }}
                     </span>
                     {% endif %}
-                </div>
-                
-                <div class="flex items-center space-x-2">
-                    <button class="action-button px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-                            onclick="event.stopPropagation(); window.location.href='{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}'">
-                        <i class="fas fa-eye mr-1"></i> View Details
-                    </button>
                 </div>
             </div>
         </div>
@@ -575,8 +579,8 @@
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for office in offices %}
-        <div class="office-card rounded-2xl overflow-hidden slide-in-up" style="animation-delay: {{ loop.index * 0.1 }}s">
+    {% for office in offices %}
+    <div class="office-card rounded-2xl overflow-hidden slide-in-up" data-anim-delay="{{ (loop.index * 0.1) }}s">
             <div class="p-6">
                 <!-- Office Header -->
                 <div class="flex items-start mb-4">
@@ -889,10 +893,28 @@
         });
 
         animatedElements.forEach(el => {
+            // apply optional per-element delay
+            const delay = el.getAttribute('data-anim-delay');
+            if (delay) el.style.transitionDelay = delay;
             el.style.opacity = '0';
             el.style.transform = 'translateY(30px)';
             el.style.transition = 'all 0.6s ease';
             observer.observe(el);
+        });
+
+        // card navigation via data-href
+        document.querySelectorAll('[data-href]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const href = el.getAttribute('data-href');
+                if (href) window.location.href = href;
+            });
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const href = el.getAttribute('data-href');
+                    if (href) window.location.href = href;
+                }
+            });
         });
 
         // Update timestamps dynamically

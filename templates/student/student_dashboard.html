@@ -10,6 +10,7 @@
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    border-radius: 0.75rem; /* rounded-xl */
   }
   
   .stats-card:hover {
@@ -58,8 +59,8 @@
     opacity: 0.3;
   }
   
-  .modern-table {
-    border-radius: 1rem;
+    .modern-table {
+        border-radius: 0.75rem; /* rounded-xl */
     overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
@@ -88,6 +89,7 @@
     backdrop-filter: blur(10px);
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem; /* rounded-xl */
   }
   
   .refresh-animation {
@@ -105,33 +107,38 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+    /* Consistent section header typography */
+    .section-title { font-weight: 600; color: #1f2937; letter-spacing: .2px; }
+    @media (min-width: 768px) { .section-title { font-size: 1.125rem; } }
+    @media (max-width: 767.98px) { .section-title { font-size: 1rem; } }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-6">
     <!-- Enhanced Dashboard Header -->
-    <div class="dashboard-header rounded-xl shadow-lg p-8 mb-8 border border-indigo-100 relative">
+    <div class="dashboard-header rounded-xl shadow-lg p-6 mb-8 border border-indigo-100 relative">
         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
             <div class="flex items-center space-x-4">
                 <div class="w-12 h-12 bg-gradient-to-br from-white to-gray-100 rounded-xl flex items-center justify-center shadow-lg">
                     <i class="fas fa-graduation-cap text-indigo-600 text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-3xl font-bold text-white mb-1">
+                    <h1 class="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
                         Welcome back, {{ current_user.first_name }}!
                     </h1>
-                    <p class="text-indigo-100">{{ today.strftime('%A, %B %d, %Y') }} - Your academic journey continues</p>
+                    <p class="text-indigo-100 text-sm md:text-base">{{ today|to_local('%A, %B %d, %Y') }} - Your academic journey continues</p>
                 </div>
             </div>
             
             <!-- Enhanced Action Controls -->
             <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                <div class="floating-card rounded-xl px-4 py-3 shadow-sm min-w-0 sm:min-w-[200px]">
+                <div class="floating-card px-4 py-3 shadow-sm min-w-0 sm:min-w-[200px]">
                     <div class="flex items-center space-x-2">
                         <i class="fas fa-sync-alt text-indigo-500 text-sm"></i>
                         <span class="text-sm text-gray-700">
-                            Last updated: <span id="last-updated" class="font-medium text-gray-900">{{ today.strftime('%H:%M') }}</span>
+                            Last updated: <span id="last-updated" class="font-medium text-gray-900">{{ today.strftime('%I:%M %p') }}</span>
                         </span>
                     </div>
                 </div>
@@ -150,7 +157,7 @@
     <!-- Enhanced Stats Overview -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Pending Inquiries Card -->
-        <div class="stats-card yellow bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+        <div class="stats-card yellow bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="flex items-center space-x-3 mb-2">
@@ -159,7 +166,7 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Pending Inquiries</p>
                     </div>
-                    <p class="text-3xl font-bold text-orange-600 pending-inquiries">{{ stats.pending_inquiries|default(0) }}</p>
+                    <p class="text-3xl md:text-4xl font-bold text-orange-600 pending-inquiries">{{ stats.pending_inquiries|default(0) }}</p>
                     <div class="mt-3">
                         <a href="{{ url_for('student.inquiries', status='pending') }}" class="text-orange-500 hover:text-orange-700 text-sm font-medium hover:underline flex items-center transition-colors duration-200">
                             <i class="fas fa-external-link-alt mr-1"></i>
@@ -174,7 +181,7 @@
         </div>
 
         <!-- Total Inquiries Card -->
-        <div class="stats-card blue bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+    <div class="stats-card blue bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="flex items-center space-x-3 mb-2">
@@ -183,7 +190,7 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Total Inquiries</p>
                     </div>
-                    <p class="text-3xl font-bold text-blue-600 total-inquiries">{{ stats.total_inquiries|default(0) }}</p>
+            <p class="text-3xl md:text-4xl font-bold text-blue-600 total-inquiries">{{ stats.total_inquiries|default(0) }}</p>
                     <div class="mt-3">
                         <a href="{{ url_for('student.inquiries') }}" class="text-blue-500 hover:text-blue-700 text-sm font-medium hover:underline flex items-center transition-colors duration-200">
                             <i class="fas fa-external-link-alt mr-1"></i>
@@ -198,7 +205,7 @@
         </div>
 
         <!-- Upcoming Sessions Card -->
-        <div class="stats-card green bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+    <div class="stats-card green bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="flex items-center space-x-3 mb-2">
@@ -207,7 +214,7 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">Upcoming Sessions</p>
                     </div>
-                    <p class="text-3xl font-bold text-green-600 upcoming-sessions">{{ stats.upcoming_sessions|default(0) }}</p>
+            <p class="text-3xl md:text-4xl font-bold text-green-600 upcoming-sessions">{{ stats.upcoming_sessions|default(0) }}</p>
                     <div class="mt-3">
                         <a href="{{ url_for('student.counseling_sessions') }}" class="text-green-500 hover:text-green-700 text-sm font-medium hover:underline flex items-center transition-colors duration-200">
                             <i class="fas fa-external-link-alt mr-1"></i>
@@ -222,7 +229,7 @@
         </div>
 
         <!-- New Announcements Card -->
-        <div class="stats-card purple bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+        <div class="stats-card purple bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="flex items-center space-x-3 mb-2">
@@ -231,7 +238,7 @@
                         </div>
                         <p class="text-sm font-semibold text-gray-700">New Announcements</p>
                     </div>
-                    <p class="text-3xl font-bold text-purple-600 new-announcements">{{ stats.new_announcements|default(0) }}</p>
+                    <p class="text-3xl md:text-4xl font-bold text-purple-600 new-announcements">{{ stats.new_announcements|default(0) }}</p>
                     <div class="mt-3">
                         <a href="{{ url_for('student.announcements') }}" class="text-purple-500 hover:text-purple-700 text-sm font-medium hover:underline flex items-center transition-colors duration-200">
                             <i class="fas fa-external-link-alt mr-1"></i>
@@ -247,14 +254,14 @@
     </div>
 
     <!-- Enhanced Main Dashboard Content -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <!-- Upcoming Schedule & Recent Inquiries Section -->
-        <div class="lg:col-span-2">
+        <div class="xl:col-span-9">
             <!-- Enhanced Upcoming Schedule -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-6">
+            <div class="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden mb-6">
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <h2 class="section-title flex items-center">
                             <i class="fas fa-calendar-day mr-2 text-gray-600"></i>
                             Upcoming Schedule
                         </h2>
@@ -269,29 +276,29 @@
                     <div class="space-y-4">
                         {% for session in upcoming_schedule %}
                         <div class="p-4 border-2 rounded-xl transition-all duration-200 hover:shadow-md {% if session.is_today %}border-blue-200 bg-blue-50 hover:bg-blue-100{% else %}border-gray-200 bg-gray-50 hover:bg-gray-100{% endif %}">
-                            <div class="flex items-start space-x-4">
-                                <div class="text-center bg-white rounded-lg p-3 shadow-sm border-2 {% if session.is_today %}border-blue-200{% else %}border-gray-200{% endif %}">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
+                                <div class="text-center bg-white rounded-lg p-3 shadow-sm border-2 {% if session.is_today %}border-blue-200{% else %}border-gray-200{% endif %} w-full sm:w-auto">
                                     <div class="text-xs font-bold text-blue-800 uppercase">
-                                        {{ session.scheduled_at.strftime('%b') }}
+                                        {{ session.scheduled_at|mon }}
                                     </div>
                                     <div class="text-2xl font-bold text-gray-800">
                                         {{ session.scheduled_at.day }}
                                     </div>
                                     <div class="text-xs text-gray-500 uppercase">
-                                        {{ session.scheduled_at.strftime('%a') }}
+                                        {{ session.scheduled_at|wday }}
                                     </div>
                                 </div>
-                                <div class="flex-1">
+                                <div class="flex-1 w-full">
                                     <div class="flex items-center space-x-3 mb-2">
-                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-md">
+                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-md flex-shrink-0">
                                             <i class="fas fa-building text-white text-sm"></i>
                                         </div>
                                         <div>
-                                            <h3 class="font-semibold text-gray-800">{{ session.office.name }}</h3>
-                                            <div class="flex items-center space-x-4 text-sm text-gray-600">
+                                            <h3 class="font-semibold text-gray-800 leading-tight">{{ session.office.name }}</h3>
+                                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                                                 <div class="flex items-center space-x-1">
                                                     <i class="far fa-clock text-gray-400"></i>
-                                                    <span>{{ session.scheduled_at.strftime('%I:%M %p') }}</span>
+                                                    <span>{{ session.scheduled_at|time12 }}</span>
                                                 </div>
                                                 <div class="flex items-center space-x-1">
                                                     <i class="far fa-user text-gray-400"></i>
@@ -300,8 +307,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-2">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div class="flex items-center flex-wrap gap-2">
                                             <span class="px-3 py-1 text-xs font-semibold rounded-full border-2
                                                 {% if session.status == 'confirmed' %}bg-green-50 text-green-700 border-green-200
                                                 {% elif session.status == 'pending' %}bg-yellow-50 text-yellow-700 border-yellow-200
@@ -314,7 +321,7 @@
                                             </span>
                                             {% endif %}
                                         </div>
-                                        <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="action-button inline-flex items-center px-3 py-2 text-sm leading-4 font-medium rounded-lg transition-colors duration-200">
+                                        <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="action-button inline-flex items-center px-3 py-2 text-sm leading-4 font-medium rounded-lg transition-colors duration-200 self-start sm:self-auto">
                                             <i class="fas fa-eye mr-1"></i> View
                                         </a>
                                     </div>
@@ -340,10 +347,10 @@
             </div>
 
             <!-- Enhanced Recent Inquiries Table -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                        <div class="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <h2 class="section-title flex items-center">
                             <i class="fas fa-inbox mr-2 text-gray-600"></i>
                             Recent Inquiries
                         </h2>
@@ -353,8 +360,52 @@
                         </a>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
+                                <!-- Mobile-friendly card list -->
+                                <div class="md:hidden p-4 space-y-3">
+                                    {% if recent_inquiries %}
+                                        {% for inquiry in recent_inquiries %}
+                                        <div class="p-4 border-2 border-gray-100 rounded-xl hover:border-blue-200 hover:bg-blue-50 transition-all duration-200">
+                                            <div class="flex items-start space-x-3">
+                                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-md">
+                                                    <i class="fas fa-comment-alt text-white text-sm"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="text-sm font-semibold text-gray-900 truncate mr-2">{{ inquiry.subject }}</div>
+                                                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full border-2 whitespace-nowrap
+                                                            {% if inquiry.status == 'pending' %}bg-yellow-50 text-yellow-700 border-yellow-200
+                                                            {% elif inquiry.status == 'in_progress' %}bg-blue-50 text-blue-700 border-blue-200
+                                                            {% elif inquiry.status == 'resolved' %}bg-green-50 text-green-700 border-green-200
+                                                            {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">
+                                                            {{ inquiry.status|replace('_', ' ')|title }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                        <span class="flex items-center space-x-1"><i class="fas fa-building text-gray-400"></i><span>{{ inquiry.office.name }}</span></span>
+                                                        <span class="flex items-center space-x-1"><i class="fas fa-hashtag text-gray-400"></i><span>#{{ inquiry.id }}</span></span>
+                                                        <span class="flex items-center space-x-1"><i class="fas fa-clock text-gray-400"></i><span>{{ inquiry.created_at|dt12 }}</span></span>
+                                                    </div>
+                                                    <div class="mt-3">
+                                                        <a href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}" class="action-button inline-flex items-center px-3 py-2 text-sm leading-4 font-medium rounded-lg">
+                                                            <i class="fas fa-eye mr-1"></i> View
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="text-center py-8">
+                                            <i class="fas fa-inbox text-gray-300 text-3xl mb-3"></i>
+                                            <p class="text-gray-500 font-medium">No inquiries found</p>
+                                            <p class="text-gray-400 text-sm">Submit your first inquiry to get started</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Desktop table -->
+                                <div class="hidden md:block overflow-x-auto">
+                                        <table class="min-w-full">
                         <thead class="bg-gradient-to-r from-gray-100 to-gray-200">
                             <tr>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Subject</th>
@@ -394,7 +445,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <div class="flex items-center space-x-1">
                                         <i class="fas fa-clock text-gray-400"></i>
-                                        <span>{{ inquiry.created_at.strftime('%b %d, %H:%M') }}</span>
+                                        <span>{{ inquiry.created_at|dt12 }}</span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -422,11 +473,11 @@
         </div>
 
         <!-- Enhanced Right Sidebar Content -->
-        <div class="space-y-6">
+        <div class="space-y-6 xl:col-span-3">
             <!-- Enhanced Today's Activities -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <h2 class="section-title flex items-center">
                         <i class="fas fa-tasks mr-2 text-gray-600"></i>
                         Today's Activities
                     </h2>
@@ -443,7 +494,7 @@
                                 <p class="text-sm font-semibold text-gray-800">{{ activity.description }}</p>
                                 <div class="flex items-center space-x-1 text-xs text-gray-500 mt-1">
                                     <i class="fas fa-clock"></i>
-                                    <span>{{ activity.time.strftime('%H:%M') }}</span>
+                                    <span>{{ activity.time|time12 }}</span>
                                 </div>
                             </div>
                         </div>
@@ -465,10 +516,10 @@
             </div>
 
             <!-- Enhanced Recent Announcements -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <h2 class="section-title flex items-center">
                             <i class="fas fa-bullhorn mr-2 text-gray-600"></i>
                             Recent Announcements
                         </h2>
@@ -499,7 +550,7 @@
                         <div class="flex justify-between items-center text-xs text-gray-500 pt-2 border-t border-gray-100">
                             <div class="flex items-center space-x-1">
                                 <i class="fas fa-clock"></i>
-                                <span>{{ announcement.created_at.strftime('%b %d, %H:%M') }}</span>
+                                <span>{{ announcement.created_at|dt12 }}</span>
                             </div>
                             <a href="{{ url_for('student.view_announcement', announcement_id=announcement.id) }}" class="text-purple-600 hover:text-purple-800 font-medium hover:underline">
                                 Read more
@@ -516,53 +567,6 @@
                     {% endif %}
                 </div>
             </div>
-
-            <!-- Enhanced Quick Actions -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fas fa-rocket mr-2 text-gray-600"></i>
-                        Quick Actions
-                    </h2>
-                </div>
-                <div class="p-4 space-y-3">
-                    <a href="{{ url_for('student.university_offices') }}" class="block p-4 border-2 border-gray-100 rounded-xl hover:border-blue-200 hover:bg-blue-50 transition-all duration-200 group">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                                <i class="fas fa-building text-white text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">Browse Offices</p>
-                                <p class="text-sm text-gray-600">Explore university services</p>
-                            </div>
-                        </div>
-                    </a>
-                    
-                    <a href="{{ url_for('student.request_counseling_session') }}" class="block p-4 border-2 border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50 transition-all duration-200 group">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                                <i class="fas fa-calendar-plus text-white text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">Request Session</p>
-                                <p class="text-sm text-gray-600">Schedule counseling</p>
-                            </div>
-                        </div>
-                    </a>
-                    
-                    <a href="{{ url_for('student.profile') }}" class="block p-4 border-2 border-gray-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50 transition-all duration-200 group">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                                <i class="fas fa-user text-white text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">My Profile</p>
-                                <p class="text-sm text-gray-600">View account details</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -576,11 +580,16 @@
     const refreshIcon = document.getElementById('refresh-icon');
     let isRefreshing = false;
 
-    function updateLastUpdated() {
-      const now = new Date();
-      const timeString = now.toTimeString().slice(0, 5);
-      document.getElementById('last-updated').textContent = timeString;
-    }
+        function updateLastUpdated() {
+            const now = new Date();
+            const timeString = new Intl.DateTimeFormat(undefined, {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            }).format(now);
+            const el = document.getElementById('last-updated');
+            if (el) el.textContent = timeString;
+        }
 
     // Auto-refresh data every 2 minutes
     setInterval(function() {

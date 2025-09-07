@@ -118,9 +118,10 @@
         <!-- Profile Avatar and Basic Info -->
         <div class="text-center mb-6">
           <div class="profile-avatar w-24 h-24 rounded-full mx-auto flex items-center justify-center text-white text-2xl font-bold mb-4">
-            {% if current_user.profile_pic %}
+            {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+            {% if avatar_url %}
               <img
-                src="{{ current_user.profile_pic }}"
+                src="{{ avatar_url }}"
                 alt="Profile Picture"
                 class="w-full h-full rounded-full object-cover"
               />
@@ -134,6 +135,9 @@
           <p class="text-gray-600 mb-2">{{ current_user.role|replace('_', ' ')|title }}</p>
           {% if student.student_number %}
           <p class="text-sm text-gray-500">Student ID: {{ student.student_number }}</p>
+          {% endif %}
+          {% if student.department_name %}
+          <p class="text-sm text-gray-500 mt-1">Department: {{ student.department_name }}</p>
           {% endif %}
           <span class="badge badge-active mt-2">
             <i class="fas fa-circle w-2 h-2 mr-2"></i>

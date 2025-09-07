@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask import render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import desc, or_
@@ -6,12 +6,14 @@ from app.student import student_bp
 from app.models import (
     Inquiry, InquiryMessage, Student, User, Office, 
     ConcernType, OfficeConcernType, InquiryConcern, 
-    InquiryAttachment, StudentActivityLog, Notification, OfficeAdmin
+    InquiryAttachment, StudentActivityLog, Notification, OfficeAdmin, MessageAttachment
 )
 from app.extensions import db
 from app.utils import role_required
 import os
 from werkzeug.utils import secure_filename
+from app.extensions import socketio
+from app.utils.file_uploads import save_upload
 
 # Import dashboard broadcasting function
 try:
@@ -71,8 +73,9 @@ def inquiries():
     # Paginate results
     inquiries_paginated = query.paginate(page=page, per_page=per_page, error_out=False)
     
-    # Get all offices for filter dropdown
-    offices = Office.query.all()
+    # Get campus-scoped offices for filter dropdown (fallback to session campus)
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    offices = Office.query.filter_by(campus_id=campus_id).all() if campus_id else Office.query.all()
     
     # Calculate statistics for sidebar
     stats = {
@@ -195,11 +198,22 @@ def submit_inquiry(office_id):
     
     # Get the office
     office = Office.query.get_or_404(office_id)
+    # Enforce campus scope (fallback to session campus)
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    if campus_id and office.campus_id != campus_id:
+        flash('You can only submit inquiries to offices in your campus.', 'error')
+        return redirect(url_for('student.university_offices'))
     
-    # Get concern types for this office
-    concern_types = ConcernType.query.join(OfficeConcernType).filter(
-        OfficeConcernType.office_id == office_id
-    ).all()
+    # Get concern types for this office limited to inquiry usage (exclude counseling-only)
+    concern_types = (
+        ConcernType.query.join(OfficeConcernType)
+        .filter(
+            OfficeConcernType.office_id == office_id,
+            OfficeConcernType.for_inquiries.is_(True)
+        )
+        .order_by(ConcernType.name)
+        .all()
+    )
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(
@@ -245,6 +259,23 @@ def create_inquiry():
         concern_type_id = request.form.get('concern_type_id')
         other_concern = request.form.get('other_concern')
 
+        # Server-side word limit enforcement (keep in sync with template)
+        def count_words(txt: str) -> int:
+            if not txt:
+                return 0
+            return len([w for w in txt.replace('\n', ' ').strip().split() if w])
+
+        SUBJECT_MAX_WORDS = 15
+        MESSAGE_MAX_WORDS = 300
+        subject_words = count_words(subject)
+        message_words = count_words(message)
+        if subject_words > SUBJECT_MAX_WORDS:
+            flash(f'Subject exceeds the maximum of {SUBJECT_MAX_WORDS} words (current: {subject_words}).', 'error')
+            return redirect(url_for('student.submit_inquiry', office_id=office_id))
+        if message_words > MESSAGE_MAX_WORDS:
+            flash(f'Message exceeds the maximum of {MESSAGE_MAX_WORDS} words (current: {message_words}).', 'error')
+            return redirect(url_for('student.submit_inquiry', office_id=office_id))
+
         # Validate required fields
         if not office_id or not subject or not message:
             flash('Please fill all required fields', 'error')
@@ -256,8 +287,13 @@ def create_inquiry():
             flash('Selected office does not exist.', 'error')
             return redirect(url_for('student.inquiries'))
 
-        # Get the student record
+        # Get the student record and resolve campus
         student = Student.query.filter_by(user_id=current_user.id).first_or_404()
+        campus_id = student.campus_id or session.get('selected_campus_id')
+        # Ensure office is in the same campus as the student
+        if campus_id and office.campus_id != campus_id:
+            flash('You can only submit inquiries to offices in your campus.', 'error')
+            return redirect(url_for('student.inquiries'))
 
         # Create new inquiry
         new_inquiry = Inquiry(
@@ -275,22 +311,32 @@ def create_inquiry():
             inquiry_id=new_inquiry.id,
             sender_id=current_user.id,
             content=message,
-            created_at=datetime.utcnow()
+            status='sent',
+            created_at=datetime.utcnow(),
+            delivered_at=datetime.utcnow()
         )
         db.session.add(initial_message)
         db.session.flush()  # Flush to get message ID
 
         # Add concern type if provided
         if concern_type_id:
-            # Check if concern type allows "other" specification
+            # Validate that the concern type is supported by this office for inquiries (not just counseling)
+            assoc = OfficeConcernType.query.filter_by(
+                office_id=int(office_id),
+                concern_type_id=int(concern_type_id),
+                for_inquiries=True
+            ).first()
             concern_type = ConcernType.query.get(concern_type_id)
-            if concern_type:
-                concern = InquiryConcern(
-                    inquiry_id=new_inquiry.id,
-                    concern_type_id=int(concern_type_id),
-                    other_specification=other_concern if concern_type.allows_other and other_concern else None
-                )
-                db.session.add(concern)
+            if not assoc or not concern_type:
+                flash('Selected concern type is not available for inquiries in this office.', 'error')
+                db.session.rollback()
+                return redirect(url_for('student.submit_inquiry', office_id=office_id))
+            concern = InquiryConcern(
+                inquiry_id=new_inquiry.id,
+                concern_type_id=int(concern_type_id),
+                other_specification=other_concern if concern_type.allows_other and other_concern else None
+            )
+            db.session.add(concern)
 
         # Handle attachments if any
         if 'attachments' in request.files:
@@ -311,7 +357,9 @@ def create_inquiry():
                         )
                         # Reset file pointer after reading size
                         file.seek(0)
-                        db.session.add(attachment)        # Log this activity
+                        db.session.add(attachment)
+
+        # Log this activity
         log_entry = StudentActivityLog.log_action(
             student=student,
             action="Created new inquiry",
@@ -320,6 +368,70 @@ def create_inquiry():
             ip_address=request.remote_addr,
             user_agent=request.user_agent.string if request.user_agent else None
         )
+
+        # Create notifications for office admins using smart notification system
+        from app.utils.smart_notifications import SmartNotificationManager
+        office_admin_user_ids = SmartNotificationManager.get_office_admin_for_notification(office_id)
+
+        for admin_user_id in office_admin_user_ids:
+            SmartNotificationManager.create_inquiry_notification(
+                new_inquiry, admin_user_id, 'new_inquiry'
+            )
+
+        # Auto-reply on student's first message if office concern type has auto-reply enabled
+        try:
+            # Collect concern type ids associated with this inquiry
+            concern_type_ids = [ic.concern_type_id for ic in InquiryConcern.query.filter_by(inquiry_id=new_inquiry.id).all()]
+            if concern_type_ids:
+                assoc = OfficeConcernType.query.filter(
+                    OfficeConcernType.office_id == new_inquiry.office_id,
+                    OfficeConcernType.concern_type_id.in_(concern_type_ids),
+                    OfficeConcernType.auto_reply_enabled.is_(True),
+                    OfficeConcernType.auto_reply_message.isnot(None)
+                ).order_by(OfficeConcernType.id.asc()).first()
+            else:
+                assoc = None
+
+            if assoc and assoc.auto_reply_message and assoc.auto_reply_message.strip():
+                # Choose an office admin as the sender
+                office_admin = OfficeAdmin.query.filter_by(office_id=new_inquiry.office_id).first()
+                if office_admin:
+                    # Render placeholders
+                    student_user = User.query.get(student.user_id)
+                    rendered = assoc.auto_reply_message
+                    try:
+                        rendered = (
+                            rendered
+                            .replace('{{student_name}}', student_user.get_full_name() if student_user else 'Student')
+                            .replace('{{office_name}}', office.name if office else 'Office')
+                        )
+                    except Exception:
+                        pass
+
+                    # Create the auto-reply message from office admin
+                    auto_msg = InquiryMessage(
+                        inquiry_id=new_inquiry.id,
+                        sender_id=office_admin.user_id,
+                        content=rendered,
+                        status='sent',
+                        delivered_at=datetime.utcnow(),
+                        created_at=datetime.utcnow()
+                    )
+                    db.session.add(auto_msg)
+
+                    # Notify the student about the office reply
+                    db.session.add(Notification(
+                        user_id=student.user_id,
+                        title="New Office Reply",
+                        message=f"New message from office in inquiry '{new_inquiry.subject}'",
+                        is_read=False,
+                        notification_type='inquiry_reply',
+                        inquiry_id=new_inquiry.id,
+                        source_office_id=new_inquiry.office_id
+                    ))
+        except Exception as e:
+            # Do not fail creation due to auto-reply issues; log to console
+            print(f"Auto-reply generation failed: {e}")
 
         db.session.commit()
 
@@ -402,17 +514,16 @@ def reply_to_inquiry(inquiry_id):
                         file.seek(0)
                         db.session.add(attachment)
         
-        # Create notification for office admin
-        # Find office admins for this inquiry's office
-        office_admins = OfficeAdmin.query.filter_by(office_id=inquiry.office_id).all()
-        for admin in office_admins:
-            notification = Notification(
-                user_id=admin.user_id,
-                title="New Student Reply",
-                message=f"Student {student.user.get_full_name()} replied to inquiry '{inquiry.subject}'",
-                is_read=False
+        # Create smart notifications for office admins
+        from app.utils.smart_notifications import SmartNotificationManager
+        office_admin_user_ids = SmartNotificationManager.get_office_admin_for_notification(
+            inquiry.office_id, exclude_user_id=current_user.id
+        )
+        
+        for admin_user_id in office_admin_user_ids:
+            SmartNotificationManager.create_inquiry_notification(
+                inquiry, admin_user_id, 'new_message'
             )
-            db.session.add(notification)
         
         # Log this activity using the log_action helper method
         log_entry = StudentActivityLog.log_action(
@@ -478,15 +589,28 @@ def get_older_messages(inquiry_id):
         messages_data = []
         for message in messages:
             sender = User.query.get(message.sender_id)
-            is_student = sender.id == current_user.id
-            
+            is_student = sender.id == current_user.id if sender else False
+            # serialize attachments if present
+            atts = []
+            try:
+                for a in (message.attachments or []):
+                    atts.append({
+                        'filename': getattr(a, 'filename', None),
+                        'file_path': getattr(a, 'file_path', None),
+                        'file_type': getattr(a, 'file_type', None),
+                        'file_size': getattr(a, 'file_size', None)
+                    })
+            except Exception:
+                atts = []
+
             messages_data.append({
                 'id': message.id,
                 'content': message.content,
                 'timestamp': message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'sender_name': sender.get_full_name() if sender else 'Unknown',
                 'is_student': is_student,
-                'status': message.status
+                'status': message.status,
+                'attachments': atts
             })
         
         return jsonify({
@@ -500,3 +624,95 @@ def get_older_messages(inquiry_id):
             'success': False,
             'message': f'Error fetching messages: {str(e)}'
         }), 500
+
+
+@student_bp.route('/api/inquiry/<int:inquiry_id>/send-message', methods=['POST'])
+@login_required
+@role_required(['student'])
+def api_send_message(inquiry_id):
+    """Send a chat message with optional attachments (student). Returns JSON and broadcasts via websocket."""
+    try:
+        student = Student.query.filter_by(user_id=current_user.id).first_or_404()
+        inquiry = Inquiry.query.filter_by(id=inquiry_id, student_id=student.id).first_or_404()
+
+        content = (request.form.get('message') or '').strip()
+        files = request.files.getlist('attachments') if 'attachments' in request.files else []
+
+        if not content and not any(f.filename for f in files):
+            return jsonify({'success': False, 'message': 'Message or attachment required'}), 400
+
+        # Create message
+        new_message = InquiryMessage(
+            inquiry_id=inquiry.id,
+            sender_id=current_user.id,
+            content=content or '',
+            status='sent',
+            delivered_at=datetime.utcnow(),
+            created_at=datetime.utcnow()
+        )
+        db.session.add(new_message)
+        db.session.flush()  # get id
+
+        attachments_payload = []
+        # Save attachments
+        for file in files:
+            if not file or not file.filename:
+                continue
+            try:
+                static_path, meta = save_upload(file, subfolder='messages')
+            except Exception as fe:
+                # Skip invalid files but continue processing others
+                continue
+            att = MessageAttachment(
+                filename=meta.get('filename'),
+                file_path=static_path,
+                file_size=meta.get('file_size'),
+                file_type=meta.get('file_type'),
+                uploaded_by_id=current_user.id,
+                uploaded_at=datetime.utcnow(),
+                message_id=new_message.id
+            )
+            db.session.add(att)
+            attachments_payload.append({
+                'filename': att.filename,
+                'file_path': att.file_path,
+                'file_type': att.file_type,
+                'file_size': att.file_size
+            })
+
+        # Notify office admins
+        office = Office.query.get(inquiry.office_id)
+        office_admins = OfficeAdmin.query.filter_by(office_id=office.id).all()
+        for admin in office_admins:
+            db.session.add(Notification(
+                user_id=admin.user_id,
+                title='New Message',
+                message=f"New message from {current_user.get_full_name()} in inquiry '{inquiry.subject}'",
+                is_read=False,
+                notification_type='inquiry_reply',
+                inquiry_id=inquiry.id,
+                source_office_id=office.id
+            ))
+
+        db.session.commit()
+
+        # Broadcast to room
+        sender = User.query.get(current_user.id)
+        payload = {
+            'id': new_message.id,
+            'content': new_message.content,
+            'attachments': attachments_payload,
+            'sender_id': current_user.id,
+            'sender_name': sender.get_full_name() if sender else 'Student',
+            'sender_role': 'student',
+            'timestamp': new_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'is_current_user': True,
+            'status': new_message.status
+        }
+        room = f'inquiry_{inquiry.id}'
+        socketio.emit('receive_message', payload, room=room, namespace='/chat')
+
+        return jsonify({'success': True, 'message_id': new_message.id, 'message': payload})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500

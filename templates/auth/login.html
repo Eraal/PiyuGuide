@@ -1,13 +1,32 @@
-{% extends 'headerbase.html' %}
+{% extends (current_campus and 'campus/headerbase.html' or 'headerbase.html') %}
 
-{% block title %}KapiyuGuide - Student Portal Login{% endblock %}
+{% block title %}{{ current_campus_name }} - Student Portal Login{% endblock %}
 
 {% block content %}
+{# Resolve campus-scoped assets (logo/background), with safe fallbacks #}
+{% set _logo_path = current_campus.campus_logo_path if current_campus and current_campus.campus_logo_path else None %}
+{% if _logo_path %}
+  {% if _logo_path.startswith('http') or _logo_path.startswith('/') %}
+    {% set campus_logo_url = _logo_path %}
+  {% else %}
+    {% set campus_logo_url = url_for('static', filename=_logo_path) %}
+  {% endif %}
+{% else %}
+  {% set campus_logo_url = brand_logo_url %}
+{% endif %}
+
+{% set _bg_path = current_campus.campus_landing_bg_path if current_campus and current_campus.campus_landing_bg_path else 'images/backgroundlanding.png' %}
+{% if _bg_path.startswith('http') or _bg_path.startswith('/') %}
+  {% set campus_bg_url = _bg_path %}
+{% else %}
+  {% set campus_bg_url = url_for('static', filename=_bg_path) %}
+{% endif %}
+
 <!-- Full-screen Background Image -->
 <div class="relative min-h-screen flex flex-col">
   <div
     class="bg-cover bg-center flex-1"
-    style="background-image: url('{{ url_for('static', filename='images/backgroundlanding.png') }}');"
+    data-bg-url="{{ campus_bg_url }}"
   >
     <div class="absolute inset-0 bg-black bg-opacity-30"></div>
     
@@ -16,15 +35,15 @@
       <div class="bg-white rounded-lg shadow-xl overflow-hidden w-full max-w-md">
         <div class="flex flex-col items-center p-6 pb-2">
           <img 
-            src="{{ url_for('static', filename='images/schoollogo.png') }}" 
+            src="{{ campus_logo_url }}" 
             alt="Laguna State Polytechnic University Logo" 
-            class="w-40 h-40 mb-4"
+            class="w-40 h-40 mb-4 rounded-full"
           >
           <h2 class="text-2xl font-bold text-blue-800 text-center">PORTAL</h2>
         </div>
         
         <div class="p-6 pt-2">
-          <form action="{{ url_for('auth.login') }}" method="post" class="space-y-4">
+          <form action="{{ url_for('auth.login', campus_id=(current_campus.id if current_campus else None)) }}" method="post" class="space-y-4">
             <!-- Email Input -->
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="relative">
@@ -76,13 +95,12 @@
               LOG IN
             </button>
             
-            <!-- Remember Me & Forgot Password -->
-            <div class="flex justify-between items-center text-sm">
+            <!-- Remember Me -->
+            <div class="flex items-center text-sm">
               <div class="flex items-center">
                 <input type="checkbox" id="remember" name="remember" class="h-4 w-4 text-blue-800 focus:ring-blue-800 border-gray-300 rounded">
                 <label for="remember" class="ml-2 text-gray-700">Remember me</label>
               </div>
-              <a href="#" class="text-blue-800 hover:underline">Forgot password?</a>
             </div>
           </form>
           
@@ -90,7 +108,7 @@
           <div class="text-center mt-6 text-sm">
             <p class="text-gray-700">
               Don't have an account? 
-              <a href="{{ url_for('auth.register') }}" class="text-blue-800 font-semibold hover:underline">Register</a>
+              <a href="{{ url_for('auth.register', campus_id=(current_campus.id if current_campus else None)) }}" class="text-blue-800 font-semibold hover:underline">Register</a>
             </p>
           </div>
         </div>
@@ -105,6 +123,11 @@
   document.addEventListener('DOMContentLoaded', function() {
     // Password toggle functionality
     const passwordToggles = document.querySelectorAll('.password-toggle');
+    // Set background image from data attribute to avoid inline Jinja in CSS
+    const bgEl = document.querySelector('[data-bg-url]');
+    if (bgEl && bgEl.dataset.bgUrl) {
+      bgEl.style.backgroundImage = `url('${bgEl.dataset.bgUrl}')`;
+    }
     
     passwordToggles.forEach(toggle => {
       toggle.addEventListener('click', function() {
@@ -130,5 +153,164 @@
       });
     });
   });
+</script>
+<!-- Serialized login error context -->
+<script id="login-error-data" type="application/json">
+  {{ {
+      'login_error_message': (login_error_message or ''),
+      'suppress_flashes': (suppress_flashes or false)
+    } | tojson }}
+</script>
+<script>
+  // Accessible Error Modal
+  (function() {
+    let loginErrorMessage = '';
+    let suppressFlashes = false;
+    const dataEl = document.getElementById('login-error-data');
+    if (dataEl) {
+      try {
+        const parsed = JSON.parse(dataEl.textContent || '{}');
+        loginErrorMessage = parsed.login_error_message || '';
+        suppressFlashes = !!parsed.suppress_flashes;
+      } catch (e) {
+        // ignore parse errors; default values remain
+      }
+    }
+    const hasError = !!loginErrorMessage;
+
+    // If suppressing flashes, hide header flash container for this page render
+    if (suppressFlashes) {
+      const flashWrap = document.querySelector('.flash-messages');
+      if (flashWrap) flashWrap.style.display = 'none';
+    }
+
+    // Create modal elements
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-200';
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const modal = document.createElement('div');
+    modal.className = 'bg-white w-full max-w-md mx-4 rounded-lg shadow-2xl transform scale-95 opacity-0 transition-all duration-200 outline-none';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'login-error-title');
+    modal.setAttribute('aria-describedby', 'login-error-desc');
+
+    // Encode helper to avoid HTML injection in error messages
+    function encodeHTML(str){
+      const p = document.createElement('p');
+      p.textContent = str; return p.innerHTML;
+    }
+
+    modal.innerHTML = `
+      <div class="border-t-4 border-red-600 rounded-t-lg"></div>
+      <div class="p-5">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 text-red-600 mr-3" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 id="login-error-title" class="text-lg font-semibold text-red-700">Login error</h3>
+            <p id="login-error-desc" class="mt-1 text-sm text-gray-700">${encodeHTML(loginErrorMessage || 'An error occurred during login. Please try again.')}</p>
+          </div>
+          <button type="button" class="ml-3 text-gray-500 hover:text-gray-700" aria-label="Close login error" data-close>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+  <div class="mt-4 space-y-3">
+          <button type="button" class="w-full py-2 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" data-close>
+            Try again
+          </button>
+        </div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Focusable elements inside modal for focus trap
+    function getFocusables() {
+      return modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    }
+
+    function openModal() {
+      overlay.classList.remove('pointer-events-none');
+      overlay.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(() => {
+        overlay.classList.add('opacity-100');
+        modal.classList.remove('opacity-0', 'scale-95');
+        modal.classList.add('opacity-100', 'scale-100');
+      });
+      // Set initial focus
+      const focusables = getFocusables();
+      if (focusables.length) focusables[focusables.length - 1].focus();
+      document.addEventListener('keydown', onKeydown);
+      document.addEventListener('focus', trapFocus, true);
+    }
+
+    function closeModal() {
+      overlay.classList.remove('opacity-100');
+      modal.classList.remove('opacity-100', 'scale-100');
+      modal.classList.add('opacity-0', 'scale-95');
+      // Small delay to allow animation
+      setTimeout(() => {
+        overlay.classList.add('pointer-events-none');
+        overlay.setAttribute('aria-hidden', 'true');
+      }, 180);
+      document.removeEventListener('keydown', onKeydown);
+      document.removeEventListener('focus', trapFocus, true);
+      // Return focus to email input for quick retry
+      const email = document.querySelector('input[name="email"]');
+      if (email) email.focus();
+    }
+
+    function onKeydown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      } else if (e.key === 'Tab') {
+        // trap focus
+        const focusables = Array.from(getFocusables());
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
+      }
+    }
+
+    function trapFocus(e) {
+      if (!modal.contains(e.target)) {
+        e.stopPropagation();
+        const focusables = getFocusables();
+        if (focusables.length) focusables[0].focus();
+      }
+    }
+
+    // Overlay click to close
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    // Close buttons
+    overlay.addEventListener('click', function(e) {
+      const target = e.target.closest('[data-close]');
+      if (target) {
+        e.preventDefault();
+        closeModal();
+      }
+    });
+
+  // No "Forgot password" link shown; add real flow later if implemented
+
+    // Auto-open when there is an error
+    if (hasError) {
+      openModal();
+    }
+  })();
 </script>
 {% endblock %}

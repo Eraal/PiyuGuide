@@ -510,6 +510,26 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
       box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
     }
   }
+
+  /* Word counter badge inside inputs */
+  .counter-badge {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.5rem;
+    background: #f3f4f6; /* gray-100 */
+    color: #6b7280; /* gray-500 */
+    font-size: 0.75rem; /* text-sm */
+    padding: 0.1rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid #e5e7eb; /* gray-200 */
+    pointer-events: none;
+    line-height: 1.2;
+  }
+  .counter-badge.over-limit {
+    background: #fee2e2; /* red-100 */
+    color: #b91c1c; /* red-700 */
+    border-color: #fecaca; /* red-200 */
+  }
 </style>
 {% endblock %} {% block content %}
 <div class="full-width-container mx-auto py-8">
@@ -657,6 +677,15 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
                   </p>
                 </div>
                 {% endfor %}
+                {% if concern_types|length == 0 %}
+                <div class="col-span-full bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-lg text-sm flex items-start gap-3">
+                  <i class="fas fa-info-circle mt-0.5"></i>
+                  <div>
+                    <p class="font-medium">No inquiry concern types available</p>
+                    <p class="mt-1">This office hasn't configured any concern categories for inquiries yet. You can still proceed by drafting your inquiry.</p>
+                  </div>
+                </div>
+                {% endif %}
               </div>
 
               <!-- Other Concern Specification Field (Hidden by Default) -->
@@ -715,6 +744,7 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
                     class="futuristic-input w-full border border-gray-300 rounded-md py-3 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Brief summary of your inquiry"
                   />
+                  <span id="subjectCounter" class="counter-badge" aria-live="polite" title="Remaining words"></span>
                 </div>
               </div>
 
@@ -734,6 +764,7 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
                     class="futuristic-input w-full border border-gray-300 rounded-md py-3 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Provide details of your inquiry..."
                   ></textarea>
+                  <span id="messageCounter" class="counter-badge" aria-live="polite" title="Remaining words"></span>
                 </div>
               </div>
 
@@ -778,6 +809,10 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
 {% endblock %} {% block scripts %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+  // Word limit configuration (assumption: subject 15 words, message 300 words)
+  const SUBJECT_MAX_WORDS = 15;
+  const MESSAGE_MAX_WORDS = 300;
+
     // Elements
     const step1 = document.getElementById("step1");
     const step2 = document.getElementById("step2");
@@ -796,6 +831,10 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
     const fileInput = document.getElementById("attachments");
     const fileDropArea = document.getElementById("fileDropArea");
     const filePreview = document.getElementById("filePreview");
+  const subjectInput = document.getElementById("subject");
+  const messageInput = document.getElementById("message");
+  const subjectCounter = document.getElementById("subjectCounter");
+  const messageCounter = document.getElementById("messageCounter");
 
     // Current step tracker
     let currentStep = 1;
@@ -996,6 +1035,28 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
     document
       .getElementById("inquiryForm")
       .addEventListener("submit", function (e) {
+        // Additional word-limit validation
+        const subjectWords = countWords(subjectInput.value);
+        const messageWords = countWords(messageInput.value);
+        const subjectOver = subjectWords > SUBJECT_MAX_WORDS;
+        const messageOver = messageWords > MESSAGE_MAX_WORDS;
+
+        if (subjectOver || messageOver) {
+          e.preventDefault();
+          // Trigger counters to show over-limit styles
+          updateCounter(subjectInput, subjectCounter, SUBJECT_MAX_WORDS);
+          updateCounter(messageInput, messageCounter, MESSAGE_MAX_WORDS);
+          // Focus first offending field
+          if (subjectOver) {
+            subjectInput.scrollIntoView({ behavior: "smooth", block: "center" });
+            subjectInput.focus();
+          } else if (messageOver) {
+            messageInput.scrollIntoView({ behavior: "smooth", block: "center" });
+            messageInput.focus();
+          }
+          return;
+        }
+
         if (this.checkValidity()) {
           submitBtn.classList.add("btn-loading");
           submitBtn.disabled = true;
@@ -1041,6 +1102,51 @@ office.name }} - KapiyuGuide{% endblock %} {% block extra_head %}
         this.parentElement.classList.remove("border-blue-200");
       });
     });
+
+    // Word count helpers
+    function countWords(text) {
+      if (!text) return 0;
+      return text
+        .replace(/\n/g, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
+    }
+
+    function updateCounter(field, counterEl, max) {
+      const words = countWords(field.value);
+      const remaining = Math.max(0, max - words);
+      counterEl.textContent = `${remaining} left`;
+      if (words > max) {
+        field.classList.add("border-red-500");
+        counterEl.classList.add("over-limit");
+      } else {
+        field.classList.remove("border-red-500");
+        counterEl.classList.remove("over-limit");
+      }
+      toggleSubmitDisabled();
+    }
+
+    function toggleSubmitDisabled() {
+      const subjectOver = countWords(subjectInput.value) > SUBJECT_MAX_WORDS;
+      const messageOver = countWords(messageInput.value) > MESSAGE_MAX_WORDS;
+      const anyOver = subjectOver || messageOver;
+      submitBtn.disabled = anyOver;
+      submitBtn.classList.toggle("opacity-50", anyOver);
+      submitBtn.classList.toggle("cursor-not-allowed", anyOver);
+    }
+
+    // Initialize counters and listeners
+    subjectCounter.textContent = `${SUBJECT_MAX_WORDS} left`;
+    messageCounter.textContent = `${MESSAGE_MAX_WORDS} left`;
+    updateCounter(subjectInput, subjectCounter, SUBJECT_MAX_WORDS);
+    updateCounter(messageInput, messageCounter, MESSAGE_MAX_WORDS);
+    subjectInput.addEventListener("input", () =>
+      updateCounter(subjectInput, subjectCounter, SUBJECT_MAX_WORDS)
+    );
+    messageInput.addEventListener("input", () =>
+      updateCounter(messageInput, messageCounter, MESSAGE_MAX_WORDS)
+    );
   });
 </script>
 {% endblock %}

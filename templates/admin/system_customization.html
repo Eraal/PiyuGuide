@@ -1,0 +1,491 @@
+{% extends 'admin/adminbase.html' %}
+
+{% block title %}Campus Customization{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+	<!-- Header -->
+	<div class="relative bg-gradient-to-br from-blue-900 via-indigo-900 to-sky-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+		<div class="absolute inset-0 opacity-10">
+			<div class="absolute top-6 left-6 w-24 h-24 border-2 border-white rounded-full animate-ping"></div>
+			<div class="absolute bottom-10 right-16 w-16 h-16 border-2 border-white rounded-full animate-bounce delay-700"></div>
+		</div>
+		<div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+			<div class="flex-1">
+				<div class="flex items-center mb-4">
+					<div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-4 shadow-inner">
+						<i class="fas fa-sliders-h text-2xl text-white"></i>
+					</div>
+					<div>
+						<h1 class="text-4xl font-bold mb-1">System Settings</h1>
+						<p class="text-blue-200 text-lg">Customize your campus branding and details</p>
+					</div>
+				</div>
+				<div class="text-blue-100/90 text-sm flex items-center gap-3">
+					<span class="inline-flex items-center gap-2"><i class="fas fa-palette"></i> Theme</span>
+					<span class="opacity-50">•</span>
+					<span class="inline-flex items-center gap-2"><i class="fas fa-image"></i> Landing Background</span>
+					<span class="opacity-50">•</span>
+					<span class="inline-flex items-center gap-2"><i class="fas fa-badge-check"></i> Branding</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+		<form method="POST" enctype="multipart/form-data" action="{{ url_for('admin.update_system_customization') }}" class="space-y-6">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+			<!-- Campus Details Card -->
+			<div class="bg-white/75 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/30 overflow-hidden">
+				<div class="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
+					<div class="flex items-center space-x-4">
+						<div class="w-12 h-12 bg-gradient-to-r from-blue-600 to-sky-600 rounded-2xl flex items-center justify-center shadow-lg">
+							<i class="fas fa-school text-white text-xl"></i>
+						</div>
+						<div>
+							<h2 class="text-2xl font-bold text-gray-900">Campus Details</h2>
+							<p class="text-gray-600">Update the campus name, code, address, and description.</p>
+						</div>
+					</div>
+				</div>
+				<div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div>
+							<label for="campus_name" class="block text-sm font-bold text-gray-700 mb-2">Campus Name *</label>
+							<input id="campus_name" name="campus_name" value="{{ campus.name if campus }}" required class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-gray-400" placeholder="e.g., North Campus" />
+							<p id="error-campus-name" class="mt-1 text-sm text-red-600 hidden">Campus name is required.</p>
+					</div>
+					<div>
+							<label for="campus_code" class="block text-sm font-bold text-gray-700 mb-2">Campus Code *</label>
+							<input id="campus_code" name="campus_code" value="{{ campus.code if campus }}" required maxlength="10" pattern="^[A-Z0-9-]{1,10}$" title="Use 1-10 uppercase letters, numbers, or hyphen" class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+							<p id="error-campus-code" class="mt-1 text-sm text-red-600 hidden">Code must be 1-10 uppercase letters, numbers, or hyphen.</p>
+					</div>
+					<div class="md:col-span-2">
+							<label for="campus_address" class="block text-sm font-bold text-gray-700 mb-2">Address</label>
+							<input id="campus_address" name="campus_address" value="{{ campus.address if campus }}" class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-gray-400" placeholder="Street, City, State" />
+					</div>
+					<div class="md:col-span-2">
+							<label for="campus_description" class="block text-sm font-bold text-gray-700 mb-2">Description</label>
+							<textarea id="campus_description" name="campus_description" rows="4" class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-gray-400" placeholder="Brief description of your campus...">{{ campus.description if campus }}</textarea>
+					</div>
+				</div>
+			</div>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<!-- Logo Card -->
+			<div class="bg-white/80 backdrop-blur rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+				<div class="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white flex items-center justify-center shadow-sm">
+							<i class="fas fa-image"></i>
+						</div>
+						<div>
+							<h2 class="font-semibold text-lg text-gray-900">Logo</h2>
+							<p class="text-sm text-gray-600">Upload a square logo with transparent background if possible.</p>
+						</div>
+					</div>
+				</div>
+				<div class="p-6 space-y-4">
+					<div id="logo_dropzone" class="group flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-2xl p-6 cursor-pointer transition bg-gray-50/60 hover:bg-blue-50/50 text-center">
+						<div>
+							<div class="mx-auto w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-105 transition"><i class="fas fa-upload"></i></div>
+							<div class="mt-2 font-medium text-gray-700">Drag & drop or click to upload</div>
+							<div class="text-xs text-gray-500">PNG, JPG, WEBP up to ~2MB</div>
+						</div>
+					</div>
+					<input id="campus_logo_file" type="file" name="campus_logo_file" accept="image/*" class="sr-only" />
+
+					<div>
+						<label class="block text-sm font-medium mb-1">or Logo URL</label>
+						<input id="campus_logo_url" type="url" name="campus_logo_url" placeholder="https://example.com/logo.png" class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+						<p id="error-logo" class="mt-1 text-sm text-red-600 hidden">Provide a valid image URL (png, jpg, jpeg, gif, webp) or upload a file.</p>
+					</div>
+					<div class="mt-2">
+						<div class="text-sm text-gray-500 mb-1">Logo Preview</div>
+						{% set _logo = campus.campus_logo_path if campus and campus.campus_logo_path else None %}
+						{% if _logo %}
+							{% if _logo.startswith('http') or _logo.startswith('/') %}
+								{% set logo_url = _logo %}
+							{% else %}
+								{% set logo_url = url_for('static', filename=_logo) %}
+							{% endif %}
+						{% endif %}
+						<div class="h-20 w-20 rounded-2xl border bg-white flex items-center justify-center overflow-hidden">
+							<img id="logo_preview" src="{{ logo_url if _logo else '' }}" alt="Logo Preview" class="max-h-20 max-w-20 object-contain {{ 'hidden' if not _logo }}" />
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Landing Background Card -->
+			<div class="bg-white/80 backdrop-blur rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+				<div class="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-500 text-white flex items-center justify-center shadow-sm">
+							<i class="fas fa-image-landscape"></i>
+						</div>
+						<div>
+							<h2 class="font-semibold text-lg text-gray-900">Landing Background</h2>
+							<p class="text-sm text-gray-600">Best results with 16:9 image, at least 1600×900px.</p>
+						</div>
+					</div>
+				</div>
+				<div class="p-6 space-y-4">
+					<div id="bg_dropzone" class="group flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-2xl p-6 cursor-pointer transition bg-gray-50/60 hover:bg-blue-50/50 text-center">
+						<div>
+							<div class="mx-auto w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-105 transition"><i class="fas fa-cloud-upload-alt"></i></div>
+							<div class="mt-2 font-medium text-gray-700">Drag & drop or click to upload</div>
+							<div class="text-xs text-gray-500">PNG, JPG, WEBP up to ~4MB</div>
+						</div>
+					</div>
+					<input id="campus_bg_file" type="file" name="campus_bg_file" accept="image/*" class="sr-only" />
+
+					<div>
+						<label class="block text-sm font-medium mb-1">or Background URL</label>
+						<input id="campus_bg_url" type="url" name="campus_bg_url" placeholder="https://example.com/bg.jpg" class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+						<p id="error-bg" class="mt-1 text-sm text-red-600 hidden">Provide a valid image URL (png, jpg, jpeg, gif, webp) or upload a file.</p>
+					</div>
+					<div class="mt-2">
+						<div class="text-sm text-gray-500 mb-1">Background Preview</div>
+						{% set _bg = campus.campus_landing_bg_path if campus and campus.campus_landing_bg_path else None %}
+						{% if _bg %}
+							{% if _bg.startswith('http') or _bg.startswith('/') %}
+								{% set bg_url = _bg %}
+							{% else %}
+								{% set bg_url = url_for('static', filename=_bg) %}
+							{% endif %}
+						{% endif %}
+						<div class="h-28 w-full rounded-2xl border overflow-hidden bg-gray-100">
+							<img id="bg_preview" src="{{ bg_url if _bg else '' }}" alt="Background Preview" class="h-full w-full object-cover {{ 'hidden' if not _bg }}" />
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="bg-white/80 backdrop-blur rounded-3xl shadow-xl border border-gray-100 p-6">
+			<div class="flex items-start justify-between gap-4 flex-col sm:flex-row">
+				<div>
+					<h2 class="font-semibold text-lg text-gray-900">Theme</h2>
+					<p class="text-sm text-gray-600">Choose a preset to keep a cohesive look across campus pages.</p>
+				</div>
+				<div class="flex items-center gap-3">
+					<label class="text-sm text-gray-600" for="campus_theme_key">Preset</label>
+					<select id="campus_theme_key" name="campus_theme_key" class="border rounded-xl p-2.5 w-48 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
+						{% for key in theme_keys %}
+							<option value="{{ key }}" {% if campus and campus.campus_theme_key==key %}selected{% endif %}>{{ key|capitalize }}</option>
+						{% endfor %}
+					</select>
+				</div>
+			</div>
+			<p class="text-xs text-gray-500 mt-2">Themes are predefined for consistency. They only affect Campus pages.</p>
+
+			<!-- Swatches -->
+			<div id="theme_swatches" class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+				{% for key in theme_keys %}
+				<button type="button" class="preview-scope campus-theme theme-{{ key }} w-full rounded-2xl border p-2.5 text-left hover:shadow transition" data-theme-key="{{ key }}" aria-label="Use {{ key }} theme">
+					<div class="h-10 w-full rounded-lg" style="background-image: linear-gradient(to right, var(--campus-gradient-from), var(--campus-gradient-to));"></div>
+					<div class="mt-2 text-xs font-medium text-gray-700 capitalize">{{ key }}</div>
+				</button>
+				{% endfor %}
+			</div>
+
+			<!-- Live Theme Preview -->
+			<div class="mt-6">
+				<div class="text-sm text-gray-600 mb-2">Live Preview</div>
+				<style>
+					/* Preview-only campus theme variables */
+					.preview-scope.campus-theme { --campus-primary:#2a4e92; --campus-primary-600:#1d4ed8; --campus-primary-700:#1e40af; --campus-gradient-from:#1e3a8a; --campus-gradient-to:#3b82f6; }
+					.preview-scope.campus-theme.theme-emerald { --campus-primary:#065f46; --campus-primary-600:#059669; --campus-primary-700:#047857; --campus-gradient-from:#065f46; --campus-gradient-to:#10b981; }
+					.preview-scope.campus-theme.theme-violet { --campus-primary:#5b21b6; --campus-primary-600:#7c3aed; --campus-primary-700:#6d28d9; --campus-gradient-from:#4c1d95; --campus-gradient-to:#8b5cf6; }
+					.preview-scope.campus-theme.theme-sunset { --campus-primary:#b91c1c; --campus-primary-600:#f97316; --campus-primary-700:#ea580c; --campus-gradient-from:#b91c1c; --campus-gradient-to:#f59e0b; }
+					.preview-scope.campus-theme.theme-teal { --campus-primary:#134e4a; --campus-primary-600:#0d9488; --campus-primary-700:#0f766e; --campus-gradient-from:#0f766e; --campus-gradient-to:#14b8a6; }
+					.preview-scope.campus-theme.theme-indigo { --campus-primary:#3730a3; --campus-primary-600:#4f46e5; --campus-primary-700:#4338ca; --campus-gradient-from:#312e81; --campus-gradient-to:#6366f1; }
+				</style>
+				{% set __logo = campus.campus_logo_path if campus and campus.campus_logo_path else None %}
+				{% if __logo %}
+					{% if __logo.startswith('http') or __logo.startswith('/') %}
+						{% set initial_logo_url = __logo %}
+					{% else %}
+						{% set initial_logo_url = url_for('static', filename=__logo) %}
+					{% endif %}
+				{% else %}
+					{% set initial_logo_url = '' %}
+				{% endif %}
+
+				{% set __bg = campus.campus_landing_bg_path if campus and campus.campus_landing_bg_path else None %}
+				{% if __bg %}
+					{% if __bg.startswith('http') or __bg.startswith('/') %}
+						{% set initial_bg_url = __bg %}
+					{% else %}
+						{% set initial_bg_url = url_for('static', filename=__bg) %}
+					{% endif %}
+				{% else %}
+					{% set initial_bg_url = '' %}
+				{% endif %}
+
+				<div id="theme_preview" class="preview-scope campus-theme theme-{{ campus.campus_theme_key if campus and campus.campus_theme_key else 'blue' }} rounded-2xl overflow-hidden border" data-initial-bg="{{ initial_bg_url }}">
+					<!-- Header preview -->
+					<div class="px-4 py-2 text-white" style="background-color: var(--campus-primary);">
+						<div class="flex items-center gap-2">
+							<img id="preview_logo_small" src="{{ initial_logo_url }}" class="h-6 w-6 object-contain {% if not initial_logo_url %}hidden{% endif %}" alt="logo" />
+							<div class="font-semibold text-sm" id="preview_campus_name">{{ campus.name if campus else 'Campus' }}</div>
+						</div>
+					</div>
+					<!-- Hero preview with background -->
+					<div id="theme_preview_hero" class="h-28 bg-center bg-cover flex items-center justify-center text-white text-sm" style="background-image: linear-gradient(to right, var(--campus-gradient-from), var(--campus-gradient-to));">
+						<div class="backdrop-brightness-90 bg-black/20 px-3 py-1 rounded">Landing background preview</div>
+					</div>
+					<!-- Content controls preview -->
+					<div class="p-3 bg-white/60 backdrop-blur">
+						<div class="flex items-center gap-2 text-xs">
+							<span class="px-2 py-0.5 rounded-full text-white" style="background-color: var(--campus-primary-600);">Badge</span>
+							<button type="button" class="px-2 py-1 rounded text-white" style="background-color: var(--campus-primary-700);">Button</button>
+							<input type="text" class="px-2 py-1 rounded border text-gray-700 text-xs flex-1" placeholder="Input" />
+						</div>
+					</div>
+					<!-- Footer preview -->
+					<div class="px-4 py-2 text-white text-xs" style="background-color: var(--campus-primary-700);">
+						Footer preview — colors follow selected theme
+					</div>
+				</div>
+			</div>
+		</div>
+
+			<div class="flex flex-col sm:flex-row gap-4 pt-2">
+				<a href="{{ url_for('admin.dashboard') }}" class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-2xl transition-all duration-300 text-center border-2 border-gray-200 hover:border-gray-300">
+					<i class="fas fa-times mr-2"></i>Cancel
+				</a>
+				<button type="submit" class="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300">
+					<i class="fas fa-save mr-2"></i>Save Changes
+				</button>
+			</div>
+	</form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="theme_keys_json">{{ theme_keys|tojson }}</script>
+<script>
+	(function() {
+		let THEME_KEYS = ["blue","emerald","violet","sunset","teal","indigo"]; // fallback
+		try {
+			const raw = document.getElementById('theme_keys_json')?.textContent;
+			if (raw) THEME_KEYS = JSON.parse(raw);
+		} catch (e) { /* ignore */ }
+		const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+
+		const el = {
+			form: document.querySelector('form[action$="system-customization"]'),
+			name: document.getElementById('campus_name'),
+			code: document.getElementById('campus_code'),
+			address: document.getElementById('campus_address'),
+			description: document.getElementById('campus_description'),
+			theme: document.getElementById('campus_theme_key'),
+			logoFile: document.getElementById('campus_logo_file'),
+			logoUrl: document.getElementById('campus_logo_url'),
+			bgFile: document.getElementById('campus_bg_file'),
+			bgUrl: document.getElementById('campus_bg_url'),
+			logoPreview: document.getElementById('logo_preview'),
+			bgPreview: document.getElementById('bg_preview'),
+			themePreview: document.getElementById('theme_preview'),
+			previewLogoSmall: document.getElementById('preview_logo_small'),
+			previewCampusName: document.getElementById('preview_campus_name'),
+			errName: document.getElementById('error-campus-name'),
+			errCode: document.getElementById('error-campus-code'),
+			errLogo: document.getElementById('error-logo'),
+			errBg: document.getElementById('error-bg')
+		};
+
+		function hasValidImageExt(url) {
+			if (!url) return false;
+			const lower = url.toLowerCase();
+			return imageExts.some(ext => lower.endsWith(ext));
+		}
+
+		function show(elm) { elm && elm.classList.remove('hidden'); }
+		function hide(elm) { elm && elm.classList.add('hidden'); }
+
+		// Theme preview switching
+		function applyThemePreview(key) {
+			if (!el.themePreview) return;
+			THEME_KEYS.forEach(k => el.themePreview.classList.remove('theme-' + k));
+			el.themePreview.classList.add('theme-' + key);
+			// mark selected swatch
+			const swatches = document.querySelectorAll('#theme_swatches [data-theme-key]');
+			swatches.forEach(s => s.classList.toggle('ring-2', s.dataset.themeKey === key));
+			swatches.forEach(s => s.classList.toggle('ring-blue-500', s.dataset.themeKey === key));
+		}
+
+		// Update campus name live in preview
+		function syncCampusName() {
+			if (el.previewCampusName) {
+				el.previewCampusName.textContent = el.name.value.trim() || 'Campus';
+			}
+		}
+
+		// Image preview helpers
+		function setImgSrc(imgEl, src) {
+			if (!imgEl) return;
+			if (src) {
+				imgEl.src = src;
+				show(imgEl);
+			} else {
+				imgEl.removeAttribute('src');
+				hide(imgEl);
+			}
+		}
+
+		function handleFilePreview(fileInput, imgEls) {
+			const file = fileInput.files && fileInput.files[0];
+			const url = file ? URL.createObjectURL(file) : '';
+			(Array.isArray(imgEls) ? imgEls : [imgEls]).forEach(img => setImgSrc(img, url));
+		}
+
+		function handleUrlPreview(urlInput, imgEls) {
+			const url = urlInput.value.trim();
+			(Array.isArray(imgEls) ? imgEls : [imgEls]).forEach(img => setImgSrc(img, url));
+		}
+
+		// Validation
+		function validate() {
+			let ok = true;
+			// name required
+			if (!el.name.value.trim()) { show(el.errName); ok = false; } else { hide(el.errName); }
+
+			// code constraints
+			const codeVal = el.code.value.trim();
+			const codeValid = /^[A-Z0-9-]{1,10}$/.test(codeVal);
+			if (!codeValid) { show(el.errCode); ok = false; } else { hide(el.errCode); }
+
+			// If logo URL provided and no file, check ext
+			if (el.logoUrl.value.trim() && !el.logoFile.value) {
+				if (!hasValidImageExt(el.logoUrl.value.trim())) { show(el.errLogo); ok = false; } else { hide(el.errLogo); }
+			} else { hide(el.errLogo); }
+
+			// If bg URL provided and no file, check ext
+			if (el.bgUrl.value.trim() && !el.bgFile.value) {
+				if (!hasValidImageExt(el.bgUrl.value.trim())) { show(el.errBg); ok = false; } else { hide(el.errBg); }
+			} else { hide(el.errBg); }
+
+			return ok;
+		}
+
+		// Event wiring
+		if (el.theme) {
+			el.theme.addEventListener('change', () => applyThemePreview(el.theme.value));
+		}
+
+		// Swatches behavior
+		const swatchContainer = document.getElementById('theme_swatches');
+		if (swatchContainer && el.theme) {
+			swatchContainer.addEventListener('click', (e) => {
+				const btn = e.target.closest('[data-theme-key]');
+				if (!btn) return;
+				const key = btn.dataset.themeKey;
+				el.theme.value = key;
+				applyThemePreview(key);
+			});
+		}
+
+		if (el.name) {
+			el.name.addEventListener('input', () => { syncCampusName(); validate(); });
+		}
+
+		if (el.code) {
+			el.code.addEventListener('input', () => {
+				// force uppercase
+				el.code.value = el.code.value.toUpperCase();
+				validate();
+			});
+		}
+
+		if (el.logoFile) {
+			el.logoFile.addEventListener('change', () => {
+				handleFilePreview(el.logoFile, [el.logoPreview, el.previewLogoSmall]);
+				hide(el.errLogo);
+			});
+		}
+
+		if (el.logoUrl) {
+			el.logoUrl.addEventListener('input', () => {
+				handleUrlPreview(el.logoUrl, [el.logoPreview, el.previewLogoSmall]);
+				validate();
+			});
+		}
+
+			if (el.bgFile) {
+			el.bgFile.addEventListener('change', () => {
+				handleFilePreview(el.bgFile, el.bgPreview);
+				// Also apply to hero background in preview via inline style
+					if (el.themePreview) {
+					const url = (el.bgFile.files && el.bgFile.files[0]) ? URL.createObjectURL(el.bgFile.files[0]) : '';
+						const hero = document.getElementById('theme_preview_hero');
+					if (hero) {
+							const base = `linear-gradient(to right, var(--campus-gradient-from), var(--campus-gradient-to))`;
+							hero.style.backgroundImage = url ? `url('${url}'), ${base}` : base;
+					}
+				}
+				hide(el.errBg);
+			});
+		}
+
+			if (el.bgUrl) {
+			el.bgUrl.addEventListener('input', () => {
+				handleUrlPreview(el.bgUrl, el.bgPreview);
+				// Apply to hero preview
+					if (el.themePreview) {
+						const hero = document.getElementById('theme_preview_hero');
+					if (hero) {
+						const base = `linear-gradient(to right, var(--campus-gradient-from), var(--campus-gradient-to))`;
+						const url = el.bgUrl.value.trim();
+						hero.style.backgroundImage = url ? `url('${url}'), ${base}` : base;
+					}
+				}
+				validate();
+			});
+		}
+
+		if (el.form) {
+			el.form.addEventListener('submit', (e) => {
+				if (!validate()) {
+					e.preventDefault();
+					const firstErr = document.querySelector('.text-red-600:not(.hidden)');
+					if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				}
+			});
+		}
+
+			// Initialize
+			applyThemePreview(el.theme ? el.theme.value : 'blue');
+			syncCampusName();
+			// Apply initial background from data attribute if present
+			const initialBg = document.getElementById('theme_preview')?.dataset?.initialBg || '';
+			if (initialBg) {
+				const hero = document.getElementById('theme_preview_hero');
+				if (hero) {
+					const base = `linear-gradient(to right, var(--campus-gradient-from), var(--campus-gradient-to))`;
+					hero.style.backgroundImage = `url('${initialBg}'), ${base}`;
+				}
+			}
+
+			// Dropzone helpers
+			function wireDropzone(zoneId, input) {
+				const zone = document.getElementById(zoneId);
+				if (!zone || !input) return;
+				const active = () => zone.classList.add('ring-2','ring-blue-400');
+				const inactive = () => zone.classList.remove('ring-2','ring-blue-400');
+				zone.addEventListener('click', () => input.click());
+				zone.addEventListener('dragover', (e) => { e.preventDefault(); active(); });
+				zone.addEventListener('dragleave', (e) => { e.preventDefault(); inactive(); });
+				zone.addEventListener('drop', (e) => {
+					e.preventDefault(); inactive();
+					if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+						input.files = e.dataTransfer.files;
+						input.dispatchEvent(new Event('change'));
+					}
+				});
+			}
+			wireDropzone('logo_dropzone', el.logoFile);
+			wireDropzone('bg_dropzone', el.bgFile);
+	})();
+</script>
+{% endblock %}

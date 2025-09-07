@@ -1,94 +1,428 @@
-{% extends "headerbase.html" %}
+{% extends (current_campus and 'campus/headerbase.html' or 'headerbase.html') %}
 
-{% block title %}Register - KapiyuGuide{% endblock %}
+{% block title %}Register - {{ current_campus_name }}{% endblock %}
 
 {% block content %}
-<div class="w-full min-h-screen bg-cover bg-center flex items-center justify-center p-4 md:p-6" style="background-image: url('{{ url_for('static', filename='images/backgroundlanding.png') }}');">
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-4xl flex flex-col md:flex-row">
-        <!-- Logo and registration title (stacks vertically on mobile, side by side on larger screens) -->
-        <div class="w-full md:w-2/5 bg-white p-6 md:p-8 flex flex-col items-center justify-center">
-            <img src="{{ url_for('static', filename='images/schoollogo.png') }}" alt="School Logo" class="w-24 h-24 md:w-32 md:h-32 mb-3 md:mb-4">
-            <h2 class="text-xl md:text-2xl font-bold text-blue-800 mb-2">REGISTRATION</h2>
+{# Resolve campus-scoped assets (logo) for the left panel #}
+{% set _logo_path = current_campus.campus_logo_path if current_campus and current_campus.campus_logo_path else None %}
+{% if _logo_path %}
+    {% if _logo_path.startswith('http') or _logo_path.startswith('/') %}
+        {% set campus_logo_url = _logo_path %}
+    {% else %}
+        {% set campus_logo_url = url_for('static', filename=_logo_path) %}
+    {% endif %}
+{% else %}
+    {% set campus_logo_url = brand_logo_url %}
+{% endif %}
+
+<!-- Enhanced Registration Page with Modern UI/UX -->
+<div class="w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center p-4 md:p-6 relative overflow-hidden">
+    <!-- Background decorative elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200 to-blue-300 rounded-full opacity-20 animate-pulse"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-blue-100 to-blue-200 rounded-full opacity-15 animate-pulse delay-1000"></div>
+        <div class="absolute top-1/2 left-1/4 w-32 h-32 bg-gradient-to-br from-blue-300 to-blue-400 rounded-full opacity-10 animate-bounce delay-2000"></div>
+    </div>
+
+    <!-- Main Registration Container -->
+    <div class="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 overflow-hidden w-full max-w-7xl flex flex-col lg:flex-row relative z-10 transform hover:scale-[1.01] transition-all duration-500">
+        
+        <!-- Left Panel - Welcome Section -->
+        <div class="w-full lg:w-1/3 bg-gradient-to-br from-blue-800 via-blue-700 to-blue-900 p-6 lg:p-8 flex flex-col items-center justify-center text-white relative overflow-hidden min-h-[400px] lg:min-h-[600px]">
+            <!-- Decorative background pattern -->
+            <div class="absolute inset-0 opacity-10">
+                <div class="absolute top-10 left-10 w-20 h-20 border-2 border-white rounded-full"></div>
+                <div class="absolute bottom-10 right-10 w-16 h-16 border-2 border-white rounded-full"></div>
+                <div class="absolute top-1/2 left-1/4 w-12 h-12 border border-white rounded-full"></div>
+            </div>
+            
+            <!-- Logo with enhanced styling -->
+            <div class="relative mb-4">
+                <div class="absolute inset-0 bg-white/20 rounded-full blur-xl scale-110"></div>
+             <img src="{{ campus_logo_url }}" alt="School Logo" 
+                 class="w-20 h-20 lg:w-28 lg:h-28 relative z-10 drop-shadow-2xl transform hover:scale-105 transition-transform duration-300 rounded-full">
+            </div>
+            
+            <!-- Welcome content -->
+            <div class="text-center relative z-10">
+                <h2 class="text-xl lg:text-2xl font-bold mb-3 font-marcellus tracking-wide">Welcome to</h2>
+                <h1 class="text-2xl lg:text-3xl font-bold mb-3 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">{{ current_campus_name }}</h1>
+                <div class="w-16 h-1 bg-gradient-to-r from-blue-300 to-white mx-auto mb-4 rounded-full"></div>
+                <p class="text-blue-100 text-sm lg:text-base leading-relaxed max-w-xs">
+                    Join our academic community and unlock your potential with personalized guidance and support.
+                </p>
+            </div>
+            
+            <!-- Animated progress dots -->
+            <div class="flex space-x-2 mt-6">
+                <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                <div class="w-2 h-2 bg-white/70 rounded-full animate-pulse delay-100"></div>
+                <div class="w-2 h-2 bg-white/50 rounded-full animate-pulse delay-200"></div>
+            </div>
         </div>
 
-        <!-- Form (full width on mobile, 3/5 width on larger screens) -->
-        <div class="w-full md:w-3/5 p-6 md:p-8 bg-white">
-            <h1 class="text-xl md:text-2xl font-bold text-blue-800 mb-4 md:mb-6 text-center">CREATE AN ACCOUNT</h1>
+        <!-- Right Panel - Registration Form -->
+        <div class="w-full lg:w-2/3 p-6 lg:p-8 xl:p-10 bg-white/95 backdrop-blur-sm">
+            <!-- Form Header -->
+            <div class="text-center mb-6">
+                <h1 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-2 font-marcellus">Create Account</h1>
+                <p class="text-gray-600 text-sm lg:text-base">Fill in your details to get started</p>
+                <div class="w-16 h-1 bg-gradient-to-r from-blue-600 to-blue-800 mx-auto mt-3 rounded-full"></div>
+            </div>
             
-            <form action="{{ url_for('auth.register') }}" method="POST" class="space-y-3 md:space-y-4">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div>
-                    <div class="relative">
-                        <input type="text" name="first_name" placeholder="First Name" class="w-full px-4 py-2 border rounded-lg pl-10 bg-gray-100 text-sm md:text-base">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- Progress Bar -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold step-indicator" data-step="1">
+                            1
+                        </div>
+                        <span class="ml-2 text-sm font-medium text-blue-600 step-label" data-step="1">Personal & Security</span>
+                    </div>
+                    
+                    <div class="flex-1 mx-4">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-in-out progress-bar" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-500 text-sm font-semibold step-indicator" data-step="2">
+                            2
+                        </div>
+                        <span class="ml-2 text-sm font-medium text-gray-500 step-label" data-step="2">Academic Info</span>
+                    </div>
+                </div>
+            </div>
+            
+            
+            <!-- Enhanced Registration Form -->
+            <form action="{{ url_for('auth.register', campus_id=(current_campus.id if current_campus else None)) }}" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <!-- Step 1: Personal Information & Security -->
+                <div id="step-1" class="step-content">
+                    <!-- Personal Information Section -->
+                    <div class="bg-gray-50/50 rounded-xl p-5 border border-gray-100 mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                        </span>
+                            Personal Information
+                        </h3>
+                        
+                        <!-- Name Fields Row -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                                <div class="relative">
+                                    <input type="text" name="first_name" placeholder="Enter your first name" 
+                                           class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                  transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                           required>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                                <div class="relative">
+                                    <input type="text" name="last_name" placeholder="Enter your last name" 
+                                           class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                  transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                           required>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Field -->
+                        <div class="group">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                            <div class="relative">
+                                <input type="email" name="email" placeholder="Enter your email address" 
+                                       class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                              focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                              transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                       required>
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campus Selection (pre-filled but editable) -->
+                        <div class="group mt-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Campus</label>
+                            <div class="relative">
+                                <select name="campus_id" id="campus_select"
+                                        class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                               focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                               transition-all duration-300 hover:border-gray-300 group-hover:shadow-md appearance-none"
+                                        required>
+                                    {% set preselected_id = selected_campus_id or (current_campus.id if current_campus) %}
+                                    {% if campuses and campuses|length > 0 %}
+                                        {% for c in campuses %}
+                                            <option value="{{ c.id }}" {% if preselected_id and c.id == preselected_id %}selected{% endif %}>{{ c.name }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="" selected>No active campuses available</option>
+                                    {% endif %}
+                                </select>
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                    </svg>
+                                </div>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Defaulted from your campus landing. You may change it if needed.</p>
+                        </div>
                     </div>
-                </div>
-                
-                <div>
-                    <div class="relative">
-                        <input type="text" name="last_name" placeholder="Last Name" class="w-full px-4 py-2 border rounded-lg pl-10 bg-gray-100 text-sm md:text-base">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </span>
-                    </div>
-                </div>
-                
-                <div>
-                    <div class="relative">
-                        <input type="email" name="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg pl-10 bg-gray-100 text-sm md:text-base">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                        </span>
-                    </div>
-                </div>
-                
-                <div>
-                    <div class="relative">
-                        <input type="password" name="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg pl-10 bg-gray-100 text-sm md:text-base">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    
+                    <!-- Security Section -->
+                    <div class="bg-gray-50/50 rounded-xl p-5 border border-gray-100">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
-                        </span>
-                        <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3 toggle-password">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            Security Information
+                        </h3>
+                        
+                        <!-- Password Fields -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                <div class="relative">
+                                    <input type="password" id="password" name="password" placeholder="Create a secure password" 
+                                           class="w-full px-4 py-3 pl-12 pr-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                  transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                           required>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                    </div>
+                                    <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-4 toggle-password hover:scale-110 transition-transform" data-target="#password" data-managed="true" aria-pressed="false" aria-label="Show password">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                                <div class="relative">
+                                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" 
+                                           class="w-full px-4 py-3 pl-12 pr-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                  transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                           required>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                    </div>
+                                    <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-4 toggle-password hover:scale-110 transition-transform" data-target="#confirm_password" data-managed="true" aria-pressed="false" aria-label="Show password">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 1 Navigation -->
+                    <div class="flex justify-end pt-4">
+                        <button type="button" id="next-step-1" 
+                                class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+                                       text-white px-8 py-3 rounded-xl transition-all duration-300 font-semibold
+                                       transform hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-200
+                                       flex items-center group">
+                            <span class="mr-2">Continue</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
                     </div>
                 </div>
                 
-                <div>
-                    <div class="relative">
-                        <input type="password" name="confirm_password" placeholder="Confirm Password" class="w-full px-4 py-2 border rounded-lg pl-10 bg-gray-100 text-sm md:text-base">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <!-- Step 2: Academic Information -->
+                <div id="step-2" class="step-content hidden">
+                    <!-- Academic Information Section -->
+                    <div class="bg-gray-50/50 rounded-xl p-5 border border-gray-100">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
-                        </span>
-                        <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3 toggle-password">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            Academic Information
+                        </h3>
+                        
+                        <!-- Student Number and Department Row -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Student Number</label>
+                                <div class="relative">
+                                    <input type="text" name="student_number" placeholder="0000-0000" 
+                                           class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                  transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                           pattern="[0-9]{4}-[0-9]{4}" title="Please enter student number in format: 0000-0000" required>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                                <div class="relative">
+                                    <select name="department_id" 
+                                            class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                   focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                   transition-all duration-300 hover:border-gray-300 group-hover:shadow-md appearance-none"
+                                            required>
+                                        <option value="">Select Your Department</option>
+                                        {% if departments %}
+                                            {% for d in departments %}
+                                                <option value="{{ d.id }}">{{ d.name }}</option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Year Level and Section Row -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Year Level</label>
+                                <div class="relative">
+                                    <select name="year_level" 
+                                            class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                   focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                   transition-all duration-300 hover:border-gray-300 group-hover:shadow-md appearance-none"
+                                            required>
+                                        <option value="">Select Year</option>
+                                        <option value="1st Year">1st Year</option>
+                                        <option value="2nd Year">2nd Year</option>
+                                        <option value="3rd Year">3rd Year</option>
+                                        <option value="4th Year">4th Year</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Section</label>
+                                <div class="relative">
+                                    <input type="text" name="section" placeholder="e.g., A, B, CS-1" 
+                                           class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl bg-white text-gray-700 
+                                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none 
+                                                  transition-all duration-300 hover:border-gray-300 group-hover:shadow-md"
+                                           required>
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2 Navigation -->
+                    <div class="flex justify-between pt-4">
+                        <button type="button" id="prev-step-2" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-xl 
+                                       transition-all duration-300 font-semibold transform hover:scale-[1.02] 
+                                       hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-gray-200
+                                       flex items-center group">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
+                            <span>Back</span>
+                        </button>
+                        
+                        <button type="submit" 
+                                class="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 
+                                       text-white px-8 py-3 rounded-xl transition-all duration-300 font-semibold
+                                       transform hover:scale-[1.02] hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200
+                                       relative overflow-hidden group">
+                            <span class="relative z-10 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                                Create My Account
+                            </span>
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         </button>
                     </div>
                 </div>
-                
-                <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white py-2 md:py-3 rounded-lg transition duration-200 text-sm md:text-base font-medium">REGISTER</button>
             </form>
             
-            <div class="mt-4 text-center">
-                <p class="text-xs md:text-sm text-gray-600">Already have an account? <a href="{{ url_for('auth.login') }}" class="text-blue-700 hover:underline">Login</a></p>
+            <!-- Login Link -->
+            <div class="mt-6 text-center">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-4 bg-white text-gray-500">Already have an account?</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('auth.login', campus_id=(current_campus.id if current_campus else None)) }}" 
+                       class="inline-flex items-center text-blue-700 hover:text-blue-800 font-medium transition-colors duration-200 
+                              hover:underline decoration-2 underline-offset-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        Sign in to your account
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -97,50 +431,317 @@
 
 {% block extra_js %}
 <script>
-    // Toggle password visibility with better accessibility
+    // Enhanced Registration Form JavaScript with Modern UX Features
     document.addEventListener('DOMContentLoaded', function() {
-        const toggleButtons = document.querySelectorAll('.toggle-password');
         
+        // Enhanced Password Visibility Toggle
+        const toggleButtons = document.querySelectorAll('.toggle-password');
         toggleButtons.forEach(button => {
             button.addEventListener('click', function() {
-                const inputField = this.parentElement.querySelector('input');
+                const targetSel = this.getAttribute('data-target');
+                const inputField = (targetSel && document.querySelector(targetSel)) || this.closest('.relative')?.querySelector('input');
+                if (!inputField) return;
+
+                const isPassword = inputField.type === 'password';
+                inputField.type = isPassword ? 'text' : 'password';
+
+                // aria state
+                this.setAttribute('aria-pressed', String(isPassword));
+                this.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+
+                // Update icon with smooth transition
+                this.style.transform = 'scale(0.9)';
+                const iconShown = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>`;
+                const iconHidden = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>`;
+                setTimeout(() => {
+                    this.innerHTML = isPassword ? iconShown : iconHidden;
+                    this.style.transform = 'scale(1)';
+                }, 100);
+            });
+        });
+        
+        // Enhanced Student Number Formatting with Real-time Validation
+        const studentNumberInput = document.querySelector('input[name="student_number"]');
+        if (studentNumberInput) {
+            studentNumberInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^\d-]/g, '');
                 
-                // Toggle input type
-                if (inputField.type === 'password') {
-                    inputField.type = 'text';
-                    // Update the SVG to show "hide password" icon (crossed eye)
-                    this.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                    `;
-                } else {
-                    inputField.type = 'password';
-                    // Update the SVG to show "show password" icon (eye)
-                    this.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                    `;
+                // Auto-format: add hyphen after 4 digits
+                if (value.length === 4 && !value.includes('-')) {
+                    value += '-';
                 }
+                
+                // Limit to correct format
+                value = value.substring(0, 9);
+                e.target.value = value;
+                
+                // Visual feedback with enhanced styling
+                const pattern = /^\d{4}-\d{4}$/;
+                const isValid = pattern.test(value);
+                const isEmpty = value.length === 0;
+                
+                // Remove existing validation classes
+                e.target.classList.remove('border-red-300', 'border-green-300', 'ring-red-200', 'ring-green-200');
+                
+                if (!isEmpty) {
+                    if (isValid) {
+                        e.target.classList.add('border-green-300', 'ring-2', 'ring-green-200');
+                        showValidationMessage(e.target, 'Valid student number format!', 'success');
+                    } else {
+                        e.target.classList.add('border-red-300', 'ring-2', 'ring-red-200');
+                        showValidationMessage(e.target, 'Format: 0000-0000', 'error');
+                    }
+                } else {
+                    hideValidationMessage(e.target);
+                }
+            });
+        }
+        
+        // Real-time Password Strength Indicator
+        const passwordInput = document.querySelector('input[name="password"]');
+        const confirmPasswordInput = document.querySelector('input[name="confirm_password"]');
+        
+        if (passwordInput) {
+            // Create password strength indicator
+            const strengthIndicator = createPasswordStrengthIndicator();
+            passwordInput.parentElement.appendChild(strengthIndicator);
+            
+            passwordInput.addEventListener('input', function(e) {
+                const password = e.target.value;
+                updatePasswordStrength(password, strengthIndicator);
+            });
+        }
+        
+        if (confirmPasswordInput) {
+            confirmPasswordInput.addEventListener('input', function(e) {
+                const password = passwordInput.value;
+                const confirmPassword = e.target.value;
+                
+                if (confirmPassword.length > 0) {
+                    if (password === confirmPassword) {
+                        e.target.classList.remove('border-red-300', 'ring-red-200');
+                        e.target.classList.add('border-green-300', 'ring-2', 'ring-green-200');
+                        showValidationMessage(e.target, 'Passwords match!', 'success');
+                    } else {
+                        e.target.classList.remove('border-green-300', 'ring-green-200');
+                        e.target.classList.add('border-red-300', 'ring-2', 'ring-red-200');
+                        showValidationMessage(e.target, 'Passwords do not match', 'error');
+                    }
+                } else {
+                    e.target.classList.remove('border-red-300', 'border-green-300', 'ring-red-200', 'ring-green-200');
+                    hideValidationMessage(e.target);
+                }
+            });
+        }
+        
+        // Enhanced Form Validation
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const studentNumber = document.querySelector('input[name="student_number"]').value;
+                const password = document.querySelector('input[name="password"]').value;
+                const confirmPassword = document.querySelector('input[name="confirm_password"]').value;
+                
+                const pattern = /^\d{4}-\d{4}$/;
+                
+                if (!pattern.test(studentNumber)) {
+                    e.preventDefault();
+                    showNotification('Please enter a valid student number in format: 0000-0000', 'error');
+                    return false;
+                }
+                
+                if (password !== confirmPassword) {
+                    e.preventDefault();
+                    showNotification('Passwords do not match', 'error');
+                    return false;
+                }
+                
+                if (password.length < 6) {
+                    e.preventDefault();
+                    showNotification('Password must be at least 6 characters long', 'error');
+                    return false;
+                }
+                
+                // Show loading state
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <span class="relative z-10 flex items-center justify-center">
+                        <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Creating Account...
+                    </span>
+                `;
+            });
+        }
+        
+        // Input Focus Animations
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('scale-[1.02]');
+                this.parentElement.style.transition = 'transform 0.2s ease';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.classList.remove('scale-[1.02]');
             });
         });
     });
+    
+    // Helper Functions
+    function createPasswordStrengthIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'mt-2 hidden';
+        indicator.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <div class="flex space-x-1">
+                    <div class="h-2 w-8 bg-gray-200 rounded-full transition-colors duration-300" id="strength-1"></div>
+                    <div class="h-2 w-8 bg-gray-200 rounded-full transition-colors duration-300" id="strength-2"></div>
+                    <div class="h-2 w-8 bg-gray-200 rounded-full transition-colors duration-300" id="strength-3"></div>
+                    <div class="h-2 w-8 bg-gray-200 rounded-full transition-colors duration-300" id="strength-4"></div>
+                </div>
+                <span class="text-sm font-medium" id="strength-text">Password Strength</span>
+            </div>
+        `;
+        return indicator;
+    }
+    
+    function updatePasswordStrength(password, indicator) {
+        const strength = calculatePasswordStrength(password);
+        const bars = [1, 2, 3, 4].map(i => indicator.querySelector(`#strength-${i}`));
+        const textElement = indicator.querySelector('#strength-text');
+        
+        if (password.length === 0) {
+            indicator.classList.add('hidden');
+            return;
+        }
+        
+        indicator.classList.remove('hidden');
+        
+        // Reset bars
+        bars.forEach(bar => {
+            bar.className = 'h-2 w-8 bg-gray-200 rounded-full transition-colors duration-300';
+        });
+        
+        const colors = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-400'];
+        const texts = ['Weak', 'Fair', 'Good', 'Strong'];
+        const textColors = ['text-red-600', 'text-orange-600', 'text-yellow-600', 'text-green-600'];
+        
+        for (let i = 0; i < strength; i++) {
+            bars[i].className = `h-2 w-8 ${colors[strength - 1]} rounded-full transition-colors duration-300`;
+        }
+        
+        textElement.textContent = texts[strength - 1] || 'Enter password';
+        textElement.className = `text-sm font-medium ${textColors[strength - 1] || 'text-gray-500'}`;
+    }
+    
+    function calculatePasswordStrength(password) {
+        let strength = 0;
+        if (password.length >= 6) strength++;
+        if (password.length >= 8) strength++;
+        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+        if (/\d/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+        return Math.max(1, strength);
+    }
+    
+    function showValidationMessage(input, message, type) {
+        // Remove existing message
+        hideValidationMessage(input);
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = `validation-message mt-1 text-sm ${type === 'success' ? 'text-green-600' : 'text-red-600'} flex items-center`;
+        messageElement.innerHTML = `
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                ${type === 'success' ? 
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />' :
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />'
+                }
+            </svg>
+            ${message}
+        `;
+        
+        input.parentElement.appendChild(messageElement);
+    }
+    
+    function hideValidationMessage(input) {
+        const existingMessage = input.parentElement.querySelector('.validation-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+    }
+    
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white transform translate-x-full transition-all duration-300 ${
+            type === 'success' ? 'bg-green-600' : 'bg-red-600'
+        }`;
+        notification.setAttribute('role', 'alert');
+        notification.setAttribute('aria-live', 'polite');
+        notification.innerHTML = `
+            <div class="flex items-start pr-6">
+                <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    ${type === 'success' ? 
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />' :
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />'
+                    }
+                </svg>
+                <span>${message}</span>
+            </div>
+            <button type="button" class="absolute top-2.5 right-2.5 text-white/80 hover:text-white" aria-label="Dismiss notification">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>`;
 
-    // Adjust height for smaller screens
-    function adjustHeight() {
+        document.body.appendChild(notification);
+
+        const close = () => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => notification.remove(), 300);
+        };
+
+        // Wire close button
+        const btn = notification.querySelector('button');
+        if (btn) btn.addEventListener('click', close);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+        });
+
+        // Auto-dismiss after 5s
+        setTimeout(close, 5000);
+    }
+    
+    // Responsive adjustments
+    function adjustLayout() {
         const container = document.querySelector('.min-h-screen');
-        if (window.innerHeight < 650 && window.innerWidth < 768) {
+        if (window.innerHeight < 700 && window.innerWidth < 768) {
             container.classList.remove('min-h-screen');
-            container.classList.add('py-8');
+            container.classList.add('py-8', 'min-h-full');
         } else {
             container.classList.add('min-h-screen');
-            container.classList.remove('py-8');
+            container.classList.remove('py-8', 'min-h-full');
         }
     }
 
-    window.addEventListener('load', adjustHeight);
-    window.addEventListener('resize', adjustHeight);
+    window.addEventListener('load', adjustLayout);
+    window.addEventListener('resize', adjustLayout);
 </script>
+
+<!-- Multi-step Registration Form Script -->
+<script src="{{ url_for('static', filename='js/student/multistep-registration.js') }}"></script>
+
 {% endblock %}

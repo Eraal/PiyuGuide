@@ -3,50 +3,110 @@ from app.models import (
     Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, 
     OfficeLoginLog, AuditLog
 )
-from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
+from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, session
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, case, or_
 from app.admin import admin_bp
 from app.websockets.dashboard import broadcast_resolved_inquiry, broadcast_new_session
+from app.utils.decorators import campus_access_required
 
 
 @admin_bp.route('/dashboard')
 @login_required
+@campus_access_required
 def dashboard():
     if not current_user.role == 'office_admin' and not current_user.role == 'super_admin':
         flash('You do not have permission to access this page.', 'danger')
         return redirect(url_for('auth.login'))
-        
-    # Dashboard statistics
-    total_students = User.query.filter_by(role='student').count()
-    total_office_admins = User.query.filter_by(role='office_admin').count()
-    total_inquiries = Inquiry.query.count()
-    pending_inquiries = Inquiry.query.filter_by(status='pending').count()
-    resolved_inquiries = Inquiry.query.filter_by(status='resolved').count()
-
-    # Office data
-    office_data = []
-    offices = Office.query.all()
-    for office in offices:
-        inquiry_count = db.session.query(db.func.count(Inquiry.id)).filter(Inquiry.office_id == office.id).scalar()
-        office_data.append({
-            "name": office.name,
-            "count": inquiry_count
-        })
     
-    # Find top office by inquiry count
-    top_office = (
-        db.session.query(Office.name, db.func.count(Inquiry.id).label('inquiry_count'))
-        .join(Inquiry)
-        .group_by(Office.id)
-        .order_by(db.desc('inquiry_count'))
-        .first()
-    )
+    # Get campus context for super_admin users
+    campus_filter = None
+    if current_user.role == 'super_admin':
+        campus_filter = current_user.campus_id
+        if not campus_filter:
+            flash('Your account is not assigned to any campus. Please contact the system administrator.', 'error')
+            return redirect(url_for('auth.login'))
+        
+    # Dashboard statistics with campus filtering for super_admin
+    if campus_filter:
+        # For super_admin: only show data from their assigned campus
+        campus_offices = Office.query.filter_by(campus_id=campus_filter).all()
+        campus_office_ids = [office.id for office in campus_offices]
+        
+        total_students = User.query.filter_by(role='student').count()  # System-wide for now
+        total_office_admins = db.session.query(User).join(OfficeAdmin).join(Office).filter(
+            User.role == 'office_admin',
+            Office.campus_id == campus_filter
+        ).count()
+        total_inquiries = Inquiry.query.filter(Inquiry.office_id.in_(campus_office_ids)).count()
+        pending_inquiries = Inquiry.query.filter(
+            Inquiry.office_id.in_(campus_office_ids),
+            Inquiry.status == 'pending'
+        ).count()
+        resolved_inquiries = Inquiry.query.filter(
+            Inquiry.office_id.in_(campus_office_ids),
+            Inquiry.status == 'resolved'
+        ).count()
+        
+        # Office data for the assigned campus only
+        office_data = []
+        for office in campus_offices:
+            inquiry_count = db.session.query(db.func.count(Inquiry.id)).filter(Inquiry.office_id == office.id).scalar()
+            office_data.append({
+                "name": office.name,
+                "count": inquiry_count
+            })
+        
+        # Find top office by inquiry count within the campus
+        top_office = (
+            db.session.query(Office.name, db.func.count(Inquiry.id).label('inquiry_count'))
+            .join(Inquiry)
+            .filter(Office.campus_id == campus_filter)
+            .group_by(Office.id)
+            .order_by(db.desc('inquiry_count'))
+            .first()
+        )
+    else:
+        # For office_admin: show all data (existing behavior)
+        total_students = User.query.filter_by(role='student').count()
+        total_office_admins = User.query.filter_by(role='office_admin').count()
+        total_inquiries = Inquiry.query.count()
+        pending_inquiries = Inquiry.query.filter_by(status='pending').count()
+        resolved_inquiries = Inquiry.query.filter_by(status='resolved').count()
+
+        # Office data
+        office_data = []
+        offices = Office.query.all()
+        for office in offices:
+            inquiry_count = db.session.query(db.func.count(Inquiry.id)).filter(Inquiry.office_id == office.id).scalar()
+            office_data.append({
+                "name": office.name,
+                "count": inquiry_count
+            })
+        
+        # Find top office by inquiry count
+        top_office = (
+            db.session.query(Office.name, db.func.count(Inquiry.id).label('inquiry_count'))
+            .join(Inquiry)
+            .group_by(Office.id)
+            .order_by(db.desc('inquiry_count'))
+            .first()
+        )
+    
     top_inquiry_office = top_office.name if top_office else "N/A"
     
-    # Recent activities and logs
-    recent_activities = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(5).all()
+    # Recent activities and logs with campus filtering for super_admin
+    if campus_filter:
+        # Filter audit logs to only show activities related to the campus
+        recent_activities = AuditLog.query.filter(
+            or_(
+                AuditLog.office_id.in_(campus_office_ids),
+                AuditLog.actor_id == current_user.id  # Include own activities
+            )
+        ).order_by(AuditLog.timestamp.desc()).limit(5).all()
+    else:
+        recent_activities = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(5).all()
     
     today = datetime.utcnow()
     upcoming_sessions = (
@@ -57,13 +117,7 @@ def dashboard():
         .all()
     )
     
-    system_logs = (
-        AuditLog.query
-        .filter(AuditLog.target_type == 'system')
-        .order_by(AuditLog.timestamp.desc())
-        .limit(5)
-        .all()
-    )
+    # System logs removed from dashboard UI
     
     # Chart data initialization
     weekly_labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -138,7 +192,6 @@ def dashboard():
         top_inquiry_office=top_inquiry_office,
         recent_activities=recent_activities,
         upcoming_sessions=upcoming_sessions,
-        system_logs=system_logs,
         weekly_labels=weekly_labels,
         weekly_new_inquiries=weekly_new_inquiries,
         weekly_resolved=weekly_resolved,

@@ -3,50 +3,70 @@
 {% block title %}Account Settings - KapiyuGuide{% endblock %}
 
 {% block content %}
-<div class="bg-white shadow-md rounded-lg p-6  mb-6">
-    <h1 class="text-2xl font-bold text-blue-800 mb-6 border-b pb-3">
-        <i class="fas fa-user-cog mr-2"></i> Account Settings
-    </h1>
+<!-- Page Header / Hero -->
+<div class="mb-6">
+    <div class="rounded-3xl overflow-hidden shadow-lg border border-blue-100">
+        <div class="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold flex items-center">
+                        <i class="fas fa-user-cog mr-3 opacity-90"></i>
+                        Account Settings
+                    </h1>
+                    <p class="text-blue-100 mt-1 text-sm md:text-base">Manage your profile, personal info, and security preferences.</p>
+                </div>
+                <div class="hidden md:flex items-center space-x-2 text-blue-100">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="text-xs">Your data is protected</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Profile Picture Section -->
         <div class="lg:col-span-1">
-            <div class="bg-gray-50 rounded-lg p-6 text-center border sticky top-6">
-                <div class="w-40 h-40 rounded-full overflow-hidden bg-blue-800 mx-auto mb-4">
+            <div class="bg-white/80 backdrop-blur rounded-3xl p-6 text-center border shadow-lg sticky top-6">
+                                <div class="w-36 h-36 md:w-40 md:h-40 rounded-full overflow-hidden bg-blue-800 mx-auto mb-4 ring-4 ring-blue-100 shadow">
                     {% if current_user.profile_pic %}
                         <img src="{{ url_for('static', filename='uploads/profile_pics/' + current_user.profile_pic) }}" 
                             alt="Profile Picture" class="w-full h-full object-cover">
                     {% else %}
-                        <div class="w-full h-full flex items-center justify-center text-white text-5xl font-bold">
+                                                <div class="w-full h-full flex items-center justify-center text-white text-4xl md:text-5xl font-bold">
                             {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
                         </div>
                     {% endif %}
                 </div>
-                <h3 class="font-semibold text-xl text-blue-800">{{ current_user.first_name }} {{ current_user.last_name }}</h3>
-                <p class="text-gray-500 mb-6">{{ current_user.role|replace('_', ' ')|title }}</p>
+                                <h3 class="font-semibold text-xl text-blue-800">{{ current_user.first_name }} {{ current_user.last_name }}</h3>
+                                <p class="text-gray-500 mb-1 capitalize">{{ current_user.role|replace('_', ' ') }}</p>
+                                <p class="text-xs text-gray-400 mb-6">{{ current_user.email }}</p>
                 
                 <form id="profile-pic-form" action="{{ url_for('admin.update_profile_picture') }}" method="post" enctype="multipart/form-data">
                     {{ profile_pic_form.csrf_token }}
                     <div class="mb-4">
-                        <label for="profile_pic" class="cursor-pointer bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 px-4 rounded inline-block">
-                            <i class="fas fa-camera mr-2"></i> Change Photo
-                            <input type="file" id="profile_pic" name="profile_pic" class="hidden" onchange="document.getElementById('profile-pic-form').submit()">
-                        </label>
-                    </div>
+                        <label for="profile_pic" class="cursor-pointer inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl shadow transition">
+                                                        <i class="fas fa-camera"></i>
+                                                        <span>Change Photo</span>
+                                                        <input type="file" id="profile_pic" name="profile_pic" class="hidden" onchange="document.getElementById('profile-pic-form').submit()">
+                                                </label>
+                                        </div>
                 </form>
                 
                 {% if current_user.profile_pic %}
                 <form action="{{ url_for('admin.remove_profile_picture') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="text-red-600 hover:text-red-800">
-                        <i class="fas fa-trash-alt mr-1"></i> Remove Photo
-                    </button>
+                                        <button type="submit" class="text-red-600 hover:text-red-700 text-sm inline-flex items-center gap-2">
+                                                <i class="fas fa-trash-alt"></i>
+                                                <span>Remove Photo</span>
+                                        </button>
                 </form>
                 {% endif %}
             
                 <!-- Last Activity Section -->
-                <div class="mt-6 border-t pt-6">
-                    <h3 class="font-semibold text-lg text-blue-800 mb-3">Account Info</h3>
+                                <div class="mt-6 border-t pt-6 text-left">
+                                        <h3 class="font-semibold text-lg text-blue-800 mb-3">Account Info</h3>
                     <div class="mb-3">
                         <p class="text-sm text-gray-500">Last Activity</p>
                         <p class="font-medium">{{ current_user.last_activity.strftime('%B %d, %Y %I:%M %p') if current_user.last_activity else 'Not available' }}</p>
@@ -57,7 +77,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Status</p>
-                        <span class="px-3 py-1 rounded-full text-sm font-medium {{ 'bg-green-100 text-green-800' if current_user.is_active else 'bg-red-100 text-red-800' }}">
+                                                <span class="px-3 py-1 rounded-full text-sm font-medium {{ 'bg-green-100 text-green-800' if current_user.is_active else 'bg-red-100 text-red-800' }}">
                             {{ 'Active' if current_user.is_active else 'Inactive' }}
                         </span>
                     </div>
@@ -66,151 +86,156 @@
         </div>
         
         <!-- Account Settings Section -->
-        <div class="lg:col-span-2">
-            <!-- Personal Information Form -->
-            <div class="bg-gray-50 rounded-lg p-6 mb-6 border">
-                <h3 class="font-semibold text-lg text-blue-800 mb-4 pb-2 border-b">Personal Information</h3>
+                <div class="lg:col-span-2 space-y-6">
+                        <!-- Personal Information Form -->
+                        <div class="bg-white/80 backdrop-blur rounded-3xl border shadow-lg">
+                                <div class="px-6 pt-6 pb-4 border-b">
+                                    <h3 class="font-semibold text-xl text-blue-800">Personal Information</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Keep your name and contact details up to date.</p>
+                                </div>
                 
-                <form action="{{ url_for('admin.update_personal_info') }}" method="post">
-                    {{ personal_form.csrf_token }}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                <form action="{{ url_for('admin.update_personal_info') }}" method="post" class="p-6">
+                                        {{ personal_form.csrf_token }}
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                                <div>
+                                                        <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                             <input type="text" id="first_name" name="first_name" 
                                 value="{{ current_user.first_name }}" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="First name">
+                                                </div>
+                                                <div>
+                                                        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                             <input type="text" id="last_name" name="last_name" 
                                 value="{{ current_user.last_name }}" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="Last name">
+                                                </div>
+                                        </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name (Optional)</label>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                                <div>
+                                                        <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name (Optional)</label>
                             <input type="text" id="middle_name" name="middle_name" 
                                 value="{{ current_user.middle_name or '' }}" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="Middle name (optional)">
+                                                </div>
+                                                <div>
+                                                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                             <input type="email" id="email" name="email" 
                                 value="{{ current_user.email }}" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="Email address">
+                                                </div>
+                                        </div>
                     
-                    <div class="flex justify-end">
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md">
-                            <i class="fas fa-save mr-2"></i> Save Changes
-                        </button>
-                    </div>
-                </form>
+                                        <div class="flex justify-end">
+                                                <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-5 rounded-xl shadow">
+                                                        <i class="fas fa-save"></i>
+                                                        <span>Save Changes</span>
+                                                </button>
+                                        </div>
+                                </form>
             </div>
             
             <!-- Change Password Form -->
-            <div class="bg-gray-50 rounded-lg p-6 mb-6 border">
-                <h3 class="font-semibold text-lg text-blue-800 mb-4 pb-2 border-b">Change Password</h3>
+                        <div class="bg-white/80 backdrop-blur rounded-3xl border shadow-lg">
+                                <div class="px-6 pt-6 pb-4 border-b">
+                                    <h3 class="font-semibold text-xl text-blue-800">Change Password</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Use a strong password that you don't reuse elsewhere.</p>
+                                </div>
                 
-                <form action="{{ url_for('admin.change_password') }}" method="post">
-                    {{ password_form.csrf_token }}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="mb-4">
-                            <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                                <form action="{{ url_for('admin.change_password') }}" method="post" class="p-6">
+                                        {{ password_form.csrf_token }}
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div class="mb-4">
+                                                        <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
                             <input type="password" id="current_password" name="current_password" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="Current password">
+                                                </div>
+                                        </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                                <div>
+                                                        <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                             <input type="password" id="new_password" name="new_password" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">Password must be at least 8 characters with letters, numbers and special characters</p>
-                        </div>
-                        <div>
-                            <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="New password">
+                                                        <p class="text-xs text-gray-500 mt-1">At least 8 characters with letters, numbers, and symbols.</p>
+                                                </div>
+                                                <div>
+                                                        <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                             <input type="password" id="confirm_password" name="confirm_password" 
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
+                                class="w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="Confirm new password">
+                                                </div>
+                                        </div>
                     
-                    <div class="flex justify-end">
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md">
-                            <i class="fas fa-key mr-2"></i> Update Password
-                        </button>
-                    </div>
-                </form>
+                                        <div class="flex justify-end">
+                                                <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-5 rounded-xl shadow">
+                                                        <i class="fas fa-key"></i>
+                                                        <span>Update Password</span>
+                                                </button>
+                                        </div>
+                                </form>
             </div>
             
-            <!-- Security Settings -->
-            <div class="bg-gray-50 rounded-lg p-6 border">
-                <h3 class="font-semibold text-lg text-blue-800 mb-4 pb-2 border-b">Security Settings</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="mb-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <h4 class="font-medium">Two-Factor Authentication</h4>
-                                <p class="text-sm text-gray-500">Add an extra layer of security</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="tfa_toggle" class="sr-only peer" {{ 'checked' if tfa_enabled else '' }}>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
+                        <!-- Security & Activity -->
+                        <div class="bg-white/80 backdrop-blur rounded-3xl border shadow-lg">
+                                <div class="px-6 pt-6 pb-4 border-b">
+                                    <h3 class="font-semibold text-xl text-blue-800">Security & Activity</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Review your activity and manage account-level actions.</p>
+                                </div>
+
+                                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="mb-2">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="font-medium">Login History</h4>
+                                                <p class="text-sm text-gray-500">View your recent login activity</p>
+                                            </div>
+                                            <a href="{{ url_for('admin.login_history') }}" class="inline-flex items-center gap-2 text-blue-700 hover:text-blue-800 px-3 py-1 border border-blue-200 hover:border-blue-300 rounded-md bg-blue-50">
+                                                <i class="fas fa-history"></i>
+                                                <span>View</span>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                        <div class="flex items-start gap-3">
+                                            <i class="fas fa-lightbulb text-blue-600 mt-1"></i>
+                                            <div>
+                                                <h5 class="font-medium text-blue-900 mb-1">Security tip</h5>
+                                                <p class="text-sm text-blue-900/80">Use a strong, unique password and keep your email updated to receive important notifications.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="px-6 pb-6 pt-4 border-t">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h4 class="font-medium">Account Actions</h4>
+                                            <p class="text-sm text-gray-500">Manage advanced account options</p>
+                                        </div>
+                                        <button id="deactivate-account-btn" class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 px-3 py-1.5 border border-red-200 hover:border-red-300 rounded-lg bg-red-50">
+                                            <i class="fas fa-user-slash"></i>
+                                            <span>Deactivate Account</span>
+                                        </button>
+                                    </div>
+                                </div>
                         </div>
-                        <div id="tfa_settings" class="mt-3 {{ '' if tfa_enabled else 'hidden' }}">
-                            <a href="{{ url_for('admin.setup_two_factor') }}" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-cog mr-1"></i> Configure Two-Factor Authentication
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <h4 class="font-medium">Login History</h4>
-                                <p class="text-sm text-gray-500">View your recent login activity</p>
-                            </div>
-                            <a href="{{ url_for('admin.login_history') }}" class="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-600 rounded-md">
-                                <i class="fas fa-history mr-1"></i> View History
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-4 pt-4 border-t">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="font-medium">Account Actions</h4>
-                            <p class="text-sm text-gray-500">Manage advanced account options</p>
-                        </div>
-                        <button id="deactivate-account-btn" class="text-red-600 hover:text-red-800 px-3 py-1 border border-red-600 rounded-md">
-                            <i class="fas fa-user-slash mr-1"></i> Deactivate Account
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
-    </div>
-</div>
+        </div>
+<!-- End Content Grid -->
 
 <!-- Deactivate Account Modal -->
-<div id="deactivate-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+<div id="deactivate-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
         <h3 class="text-xl font-bold text-red-600 mb-4">Deactivate Account?</h3>
         <p class="mb-6">Are you sure you want to deactivate your account? This action will require another super admin to reactivate your account.</p>
         <form action="{{ url_for('admin.deactivate_account') }}" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex justify-end space-x-3">
-                <button type="button" id="cancel-deactivate" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-md">
+                <button type="button" id="cancel-deactivate" class="bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-xl">
                     Cancel
                 </button>
-                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-xl">
                     Deactivate
                 </button>
             </div>
@@ -222,51 +247,6 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get CSRF token from meta tag
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
-        // Two-Factor Authentication toggle
-        const tfaToggle = document.getElementById('tfa_toggle');
-        const tfaSettings = document.getElementById('tfa_settings');
-        
-        if (tfaToggle) {
-            tfaToggle.addEventListener('change', function() {
-                if (this.checked) {
-                    tfaSettings.classList.remove('hidden');
-                    // Redirect to setup page or show settings
-                    window.location.href = "{{ url_for('admin.setup_two_factor') }}";
-                } else {
-                    tfaSettings.classList.add('hidden');
-                    // Disable 2FA via AJAX
-                    fetch("{{ url_for('admin.disable_two_factor') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Show success notification
-                            showNotification('Two-factor authentication disabled successfully', 'success');
-                        } else {
-                            // Show error and revert toggle
-                            this.checked = true;
-                            tfaSettings.classList.remove('hidden');
-                            showNotification('Failed to disable two-factor authentication', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        this.checked = true;
-                        tfaSettings.classList.remove('hidden');
-                        showNotification('An error occurred. Please try again.', 'error');
-                    });
-                }
-            });
-        }
-        
         // Deactivate Account Modal
         const deactivateBtn = document.getElementById('deactivate-account-btn');
         const deactivateModal = document.getElementById('deactivate-modal');
@@ -289,18 +269,15 @@
             });
         }
         
-        // Helper function for showing notifications
-        function showNotification(message, type) {
-            // You can implement or use an existing notification system
-            // This is a simple fallback
-            if (type === 'error') {
-                console.error(message);
-                alert(message);
-            } else {
-                console.log(message);
-                // You could use a toast notification library here
-            }
-        }
+                // Optional: Toast placeholder
+                function showNotification(message, type) {
+                    if (type === 'error') {
+                        console.error(message);
+                        alert(message);
+                    } else {
+                        console.log(message);
+                    }
+                }
     });
 </script>
 {% endblock %}

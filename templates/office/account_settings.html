@@ -213,162 +213,43 @@
                 </form>
             </div>
             
-            <!-- Notification Preferences -->
-            <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-                <div class="flex items-center space-x-3 mb-6">
-                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-bell text-purple-600"></i>
+            
+            
+            <!-- Account Deactivation (Redesigned) -->
+            <div id="account-status" class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                <div class="flex items-start justify-between flex-wrap gap-4 mb-4">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-user-slash text-amber-600"></i>
+                            Account Deactivation
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">Temporarily disable your access while keeping data intact.</p>
                     </div>
-                    <h3 class="font-semibold text-xl text-gray-800">Notification Preferences</h3>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold tracking-wide" style="background:#fef3c7;color:#92400e">Caution</span>
                 </div>
-                
-                <form action="{{ url_for('office.update_notification_preferences') }}" method="post" class="space-y-6">
-                    {{ notification_form.csrf_token }}
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="bg-purple-50 rounded-xl p-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <div>
-                                    <h4 class="font-medium text-gray-800">Video Call Notifications</h4>
-                                    <p class="text-sm text-gray-500">Receive notifications for video calls</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="video_call_notifications" class="sr-only peer" {{ 'checked' if current_user.video_call_notifications else '' }}>
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-purple-50 rounded-xl p-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <div>
-                                    <h4 class="font-medium text-gray-800">Email Reminders</h4>
-                                    <p class="text-sm text-gray-500">Receive email reminders for appointments</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="video_call_email_reminders" class="sr-only peer" {{ 'checked' if current_user.video_call_email_reminders else '' }}>
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                </label>
-                            </div>
-                        </div>
+                <form method="post" action="{{ url_for('office.deactivate_account') }}" onsubmit="return confirm('Deactivate your account now?');" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-2">Reason (optional)</label>
+                        <textarea name="deactivation_reason" rows="3" maxlength="255" placeholder="Brief reason (helps administrators)" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"></textarea>
+                        <p class="text-[10px] mt-1 text-gray-500">Only administrators can view this note.</p>
                     </div>
-                    
-                    <div class="bg-gray-50 rounded-xl p-6">
-                        <label for="preferred_video_quality" class="block text-sm font-medium text-gray-700 mb-2">Preferred Video Quality</label>
-                        <select id="preferred_video_quality" name="preferred_video_quality" 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200">
-                            <option value="auto" {{ 'selected' if current_user.preferred_video_quality == 'auto' else '' }}>Auto (Recommended)</option>
-                            <option value="low" {{ 'selected' if current_user.preferred_video_quality == 'low' else '' }}>Low Quality</option>
-                            <option value="medium" {{ 'selected' if current_user.preferred_video_quality == 'medium' else '' }}>Medium Quality</option>
-                            <option value="high" {{ 'selected' if current_user.preferred_video_quality == 'high' else '' }}>High Quality</option>
-                        </select>
-                        <p class="text-xs text-gray-500 mt-2">Higher quality uses more bandwidth but provides better video clarity</p>
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-xs text-amber-800">
+                        <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                        <p>Your login becomes disabled immediately. Contact a super admin to restore access.</p>
                     </div>
-                    
-                    <div class="flex justify-end pt-4">
-                        <button type="submit" class="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white py-3 px-8 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2">
-                            <i class="fas fa-bell"></i>
-                            <span>Save Preferences</span>
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <p class="text-[11px] text-gray-500">Need a short break? Deactivation is reversible.</p>
+                        <button type="submit" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2">
+                            <i class="fas fa-power-off"></i>
+                            <span>Deactivate Account</span>
                         </button>
                     </div>
                 </form>
             </div>
-            
-            <!-- Security Settings -->
-            <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-                <div class="flex items-center space-x-3 mb-6">
-                    <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-shield-alt text-red-600"></i>
-                    </div>
-                    <h3 class="font-semibold text-xl text-gray-800">Security Settings</h3>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-yellow-50 rounded-xl p-6 border border-yellow-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h4 class="font-medium text-gray-800">Two-Factor Authentication</h4>
-                                <p class="text-sm text-gray-500">Add an extra layer of security</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="tfa_toggle" class="sr-only peer" {{ 'checked' if tfa_enabled else '' }}>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600"></div>
-                            </label>
-                        </div>
-                        <div id="tfa_settings" class="mt-3 {{ '' if tfa_enabled else 'hidden' }}">
-                            <a href="{{ url_for('office.setup_two_factor') }}" class="text-yellow-600 hover:text-yellow-800 font-medium flex items-center space-x-2">
-                                <i class="fas fa-cog"></i>
-                                <span>Configure Two-Factor Authentication</span>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-blue-50 rounded-xl p-6 border border-blue-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h4 class="font-medium text-gray-800">Login History</h4>
-                                <p class="text-sm text-gray-500">View your recent login activity</p>
-                            </div>
-                            <a href="{{ url_for('office.login_history') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2">
-                                <i class="fas fa-history"></i>
-                                <span>View History</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-8 pt-6 border-t border-gray-200">
-                    <div class="bg-red-50 rounded-xl p-6 border border-red-200">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h4 class="font-medium text-gray-800">Danger Zone</h4>
-                                <p class="text-sm text-gray-500">Advanced account actions - use with caution</p>
-                            </div>
-                            <button id="deactivate-account-btn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2">
-                                <i class="fas fa-user-slash"></i>
-                                <span>Deactivate Account</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
-
-<!-- Deactivate Account Modal -->
-<div id="deactivate-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-        <div class="text-center mb-6">
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
-            </div>
-            <h3 class="text-2xl font-bold text-red-600 mb-2">Deactivate Account?</h3>
-            <p class="text-gray-600">This action will deactivate your account. You will need another administrator to reactivate it.</p>
-        </div>
-        
-        <form action="{{ url_for('office.deactivate_account') }}" method="post" class="space-y-4">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
-            <div>
-                <label for="deactivation_reason" class="block text-sm font-medium text-gray-700 mb-2">Reason for deactivation (optional)</label>
-                <textarea id="deactivation_reason" name="deactivation_reason" rows="3" 
-                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" 
-                    placeholder="Please provide a reason..."></textarea>
-            </div>
-            
-            <div class="flex justify-end space-x-3 pt-4">
-                <button type="button" id="cancel-deactivate" class="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-medium transition-colors duration-200">
-                    Cancel
-                </button>
-                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl">
-                    Deactivate Account
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <!-- Image Preview Modal -->
 <div id="image-preview-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -392,9 +273,7 @@
 <script src="{{ url_for('static', filename='js/office/account_settings.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get CSRF token from meta tag
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
+    // Password visibility toggle helper & image preview
         // Password visibility toggle
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
@@ -411,69 +290,6 @@
         
         // Make togglePassword globally available
         window.togglePassword = togglePassword;
-        
-        // Two-Factor Authentication toggle
-        const tfaToggle = document.getElementById('tfa_toggle');
-        const tfaSettings = document.getElementById('tfa_settings');
-        
-        if (tfaToggle) {
-            tfaToggle.addEventListener('change', function() {
-                if (this.checked) {
-                    tfaSettings.classList.remove('hidden');
-                    // Redirect to setup page or show settings
-                    window.location.href = "{{ url_for('office.setup_two_factor') }}";
-                } else {
-                    tfaSettings.classList.add('hidden');
-                    // Disable 2FA via AJAX
-                    fetch("{{ url_for('office.disable_two_factor') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification('Two-factor authentication disabled successfully', 'success');
-                        } else {
-                            // Show error and revert toggle
-                            this.checked = true;
-                            tfaSettings.classList.remove('hidden');
-                            showNotification('Failed to disable two-factor authentication', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        this.checked = true;
-                        tfaSettings.classList.remove('hidden');
-                        showNotification('An error occurred. Please try again.', 'error');
-                    });
-                }
-            });
-        }
-        
-        // Deactivate Account Modal
-        const deactivateBtn = document.getElementById('deactivate-account-btn');
-        const deactivateModal = document.getElementById('deactivate-modal');
-        const cancelDeactivate = document.getElementById('cancel-deactivate');
-        
-        if (deactivateBtn && deactivateModal && cancelDeactivate) {
-            deactivateBtn.addEventListener('click', function() {
-                deactivateModal.classList.remove('hidden');
-            });
-            
-            cancelDeactivate.addEventListener('click', function() {
-                deactivateModal.classList.add('hidden');
-            });
-            
-            // Close modal when clicking outside
-            deactivateModal.addEventListener('click', function(e) {
-                if (e.target === deactivateModal) {
-                    deactivateModal.classList.add('hidden');
-                }
-            });
-        }
         
         // Image preview functionality
         const imagePreviewModal = document.getElementById('image-preview-modal');
@@ -548,50 +364,7 @@
             });
         }
         
-        // Helper function for showing notifications
-        function showNotification(message, type) {
-            // Create a toast notification
-            const toast = document.createElement('div');
-            toast.className = `fixed top-4 right-4 z-50 p-4 rounded-xl shadow-lg transition-all duration-300 transform translate-x-full`;
-            
-            if (type === 'error') {
-                toast.className += ' bg-red-500 text-white';
-            } else if (type === 'success') {
-                toast.className += ' bg-green-500 text-white';
-            } else {
-                toast.className += ' bg-blue-500 text-white';
-            }
-            
-            toast.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
-                    <span>${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            
-            document.body.appendChild(toast);
-            
-            // Animate in
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full');
-            }, 100);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                toast.classList.add('translate-x-full');
-                setTimeout(() => {
-                    if (toast.parentElement) {
-                        toast.parentElement.removeChild(toast);
-                    }
-                }, 300);
-            }, 5000);
-        }
-        
-        // Make showNotification globally available
-        window.showNotification = showNotification;
+    // (Optional) inline alert can be added here if needed
     });
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from app.models import Inquiry, InquiryMessage, User, Office, db, OfficeAdmin, Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, OfficeLoginLog, AuditLog
+from app.models import Inquiry, InquiryMessage, User, Office, db, OfficeAdmin, Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, OfficeLoginLog, AuditLog, Department
 from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user
@@ -8,9 +8,11 @@ from sqlalchemy import func, case, or_, desc
 import random
 import os
 from app.admin import admin_bp
+from app.utils.decorators import campus_access_required
 
 @admin_bp.route('/admin_inquiries')
 @login_required
+@campus_access_required
 def all_inquiries():
     """
     View all inquiries across offices (Superadmin only)
@@ -18,18 +20,27 @@ def all_inquiries():
     """
     office_id = request.args.get('office', type=int)
     status = request.args.get('status')
+    department_id = request.args.get('department', type=int)
     date_range = request.args.get('date_range')
     search_query = request.args.get('search')
     page = request.args.get('page', 1, type=int)
     per_page = 10
 
     query = Inquiry.query.join(Student).join(User).join(Office)
+    
+    # Apply campus filtering for super_admin users
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        query = query.filter(Office.campus_id == current_user.campus_id)
 
     if office_id:
         query = query.filter(Inquiry.office_id == office_id)
     
     if status:
         query = query.filter(Inquiry.status == status)
+
+    # Optional department filter (based on the student's structured department)
+    if department_id:
+        query = query.filter(Student.department_id == department_id)
     
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     if date_range == 'today':
@@ -74,7 +85,16 @@ def all_inquiries():
         )
     
 
-    offices = Office.query.all()
+    # Limit office choices shown in filter: campus admins (role super_admin) should only
+    # see offices belonging to their assigned campus; higher roles (e.g., super_super_admin)
+    # can still see all offices.
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        offices = Office.query.filter(Office.campus_id == current_user.campus_id).all()
+        # Only departments within the same campus
+        departments = Department.query.filter(Department.campus_id == current_user.campus_id).order_by(Department.name.asc()).all()
+    else:
+        offices = Office.query.all()
+        departments = Department.query.order_by(Department.name.asc()).all()
     
     query = query.order_by(desc(Inquiry.created_at))
     
@@ -88,8 +108,50 @@ def all_inquiries():
         inquiries=inquiries,
         pagination=pagination,
         offices=offices,
-        stats=stats
+        stats=stats,
+        departments=departments,
+        current_department=department_id
     )
+
+
+@admin_bp.route('/admin/api/inquiries-per-department')
+@login_required
+def inquiries_per_department():
+    """Return JSON of inquiry counts grouped by department for the current campus context.
+
+    If the user is a super_admin with a campus, results are scoped to that campus via Office.campus_id.
+    Only structured departments (Student.department_id referencing Department) are counted.
+    """
+    # Base query with joins
+    q = db.session.query(
+        Department.id.label('department_id'),
+        Department.name.label('department_name'),
+        db.func.count(Inquiry.id).label('inquiry_count')
+    ).join(
+        Student, Student.department_id == Department.id
+    ).join(
+        Inquiry, Inquiry.student_id == Student.id
+    ).join(
+        Office, Office.id == Inquiry.office_id
+    )
+
+    # Scope to campus for campus admins
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        q = q.filter(Office.campus_id == current_user.campus_id)
+
+    q = q.group_by(Department.id, Department.name).order_by(Department.name.asc())
+
+    rows = q.all()
+    data = [
+        {
+            'department_id': row.department_id,
+            'department_name': row.department_name,
+            'count': int(row.inquiry_count or 0)
+        }
+        for row in rows
+    ]
+
+    return jsonify({'data': data})
 
 def get_inquiry_stats():
     """Calculate inquiry statistics for the dashboard"""

@@ -3,7 +3,7 @@ from app.models import (
     CounselingSession, StudentActivityLog, SuperAdminActivityLog, 
     OfficeLoginLog, AuditLog, ConcernType, OfficeConcernType, InquiryConcern
 )
-from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
+from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -27,15 +27,22 @@ def add_office():
     concern_types = ConcernType.query.all()
     
     if request.method == 'POST':
+        # Determine campus for the new office (required)
+        campus_id = getattr(current_user, 'campus_id', None)
+        if not campus_id:
+            # If admin has no campus assigned, block creation to avoid NULL FK
+            flash('Your admin account is not assigned to any campus. Please contact a super super admin to assign a campus before creating offices.', 'error')
+            return render_template('admin/add_office.html', concern_types=concern_types)
+
         name = request.form.get('name')
         description = request.form.get('description')
         supports_video = request.form.get('supports_video', False)
         
         # Get selected concern types from the form (multi-select)
         selected_concern_ids = request.form.getlist('concern_types')
-        
-        # Check if office with same name already exists
-        existing_office = Office.query.filter_by(name=name).first()
+
+        # Check if office with same name already exists (per campus)
+        existing_office = Office.query.filter_by(name=name, campus_id=campus_id).first()
         if existing_office:
             flash('An office with this name already exists.', 'error')
             return render_template('admin/add_office.html', concern_types=concern_types)
@@ -44,7 +51,8 @@ def add_office():
         new_office = Office(
             name=name,
             description=description,
-            supports_video=supports_video == 'true'
+            supports_video=supports_video == 'true',
+            campus_id=campus_id
         )
         
         # Add the office to session

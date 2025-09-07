@@ -1,6 +1,6 @@
 {% extends "admin/adminbase.html" %}
 
-{% block title %}Audit Logs | KapiyuGuide Admin{% endblock %}
+{% block title %}Audit Logs | {{ current_campus_name }} Admin{% endblock %}
 
 {% block content %}
 
@@ -52,16 +52,13 @@
     <form action="{{ url_for('admin.audit_logs') }}" method="GET" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label for="log_type" class="block text-sm font-medium text-gray-700">Log Type</label>
-                <select id="log_type" name="type"
+                <label for="filter_type" class="block text-sm font-medium text-gray-700">Log Type</label>
+                <select id="filter_type" name="filter_type"
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    <option value="all" {% if log_type=='all' %}selected{% endif %}>All Logs</option>
-                    <option value="audit" {% if log_type=='audit' %}selected{% endif %}>System Audit Logs</option>
-                    <option value="student" {% if log_type=='student' %}selected{% endif %}>Student Activity Logs
-                    </option>
-                    <option value="office" {% if log_type=='office' %}selected{% endif %}>Office Login Logs</option>
-                    <option value="super_admin" {% if log_type=='super_admin' %}selected{% endif %}>Super Admin Logs
-                    </option>
+                    <option value="all" {% if filter_type=='all' %}selected{% endif %}>All Logs</option>
+                    <option value="student" {% if filter_type=='student' %}selected{% endif %}>Student Activity Logs</option>
+                    <option value="office" {% if filter_type=='office' %}selected{% endif %}>Office Login Logs</option>
+                    <option value="superadmin" {% if filter_type=='superadmin' %}selected{% endif %}>Super Admin Logs</option>
                 </select>
             </div>
 

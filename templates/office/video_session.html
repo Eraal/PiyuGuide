@@ -94,7 +94,7 @@
                   ></video>
                   <div
                     id="waitingRoomVideoPlaceholder"
-                    class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900"
+                    class="absolute inset-0 flex items-center justify-center bg-yellow-200"
                   >
                     <div class="text-center">
                       <i class="fas fa-video-slash text-slate-400 text-5xl mb-4"></i>
@@ -170,9 +170,9 @@
                   <div class="flex items-center justify-between">
                     <span class="text-slate-500 font-medium">Student</span>
                     <div class="flex items-center">
-                      {% if student_user.profile_pic %}
+                      {% if student_user.profile_pic_path %}
                       <img
-                        src="{{ url_for('static', filename='uploads/profiles/' + student_user.profile_pic) }}"
+                        src="{{ url_for('static', filename=student_user.profile_pic_path) }}"
                         alt="Profile"
                         class="h-6 w-6 rounded-full mr-2"
                       />
@@ -241,6 +241,18 @@
             playsinline
             class="w-full h-full object-cover"
           ></video>
+          <!-- Remote (Student) camera off placeholder -->
+          <div id="remoteVideoPlaceholder" class="absolute inset-0 hidden items-center justify-center bg-yellow-200">
+            <div class="text-center">
+              <div class="w-24 h-24 mx-auto rounded-full bg-slate-700 flex items-center justify-center mb-4 shadow-xl">
+                <i class="fas fa-user text-slate-300 text-4xl"></i>
+              </div>
+              <p class="text-slate-300 font-medium flex items-center justify-center space-x-2">
+                <i class="fas fa-video-slash"></i>
+                <span>Student camera off</span>
+              </p>
+            </div>
+          </div>
           
           <!-- Elegant overlay for student info -->
           <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -264,6 +276,18 @@
             muted
             class="w-full h-full object-cover"
           ></video>
+          <!-- Local (Counselor) camera off placeholder -->
+          <div id="localVideoPlaceholder" class="absolute inset-0 hidden items-center justify-center bg-yellow-200">
+            <div class="text-center">
+              <div class="w-20 h-20 mx-auto rounded-full bg-slate-700 flex items-center justify-center mb-3 shadow-lg">
+                <i class="fas fa-user text-slate-300 text-3xl"></i>
+              </div>
+              <p class="text-slate-300 text-xs font-medium flex items-center justify-center space-x-1">
+                <i class="fas fa-video-slash"></i>
+                <span>Your camera is off</span>
+              </p>
+            </div>
+          </div>
           <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
           <div class="absolute bottom-3 left-3 right-3">
             <div class="bg-white/10 backdrop-blur-sm px-3 py-2 rounded-lg">
@@ -389,9 +413,9 @@
                   <div class="flex justify-between items-center py-2">
                     <span class="text-slate-500 font-medium">Student</span>
                     <div class="flex items-center">
-                      {% if student_user.profile_pic %}
+                      {% if student_user.profile_pic_path %}
                       <img
-                        src="{{ url_for('static', filename='uploads/profiles/' + student_user.profile_pic) }}"
+                        src="{{ url_for('static', filename=student_user.profile_pic_path) }}"
                         alt="Profile"
                         class="h-6 w-6 rounded-full mr-2"
                       />
@@ -593,14 +617,20 @@
 </div>
 
 <!-- Session Data for JavaScript -->
+<script id="sessionData" type="application/json">{{ {
+  'sessionId': session.id,
+  'userId': current_user.id,
+  'userName': current_user.get_full_name(),
+  'userRole': current_user.role
+} | tojson }}</script>
 <script>
-window.sessionData = {
-    sessionId: {{ session.id }},
-    userId: {{ current_user.id }},
-    userName: "{{ current_user.get_full_name() }}",
-    userRole: "{{ current_user.role }}"
-};
-</script>
+  try {
+    window.sessionData = JSON.parse(document.getElementById('sessionData').textContent);
+  } catch (e) {
+    console.error('Failed to parse session data:', e);
+    window.sessionData = {};
+  }
+  </script>
 {% endblock %} 
 
 {% block extra_js %}
@@ -1025,4 +1055,65 @@ video {
   }
 }
 </style>
+<!-- Navigation Guard Modal -->
+<div id="navGuardModal" class="fixed inset-0 z-[100000] hidden">
+  <!-- Backdrop under content; don't capture clicks -->
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm modal-backdrop pointer-events-none"></div>
+  <!-- Ensure the content is above backdrop and clickable -->
+  <div class="flex items-center justify-center min-h-screen p-4 relative z-10 pointer-events-auto">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl border border-white/20 max-w-md w-full overflow-hidden relative z-10">
+      <div class="p-6 bg-gradient-to-r from-green-600/10 to-emerald-600/10 border-b border-white/20">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-white">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-800">Leave current call?</h3>
+        </div>
+      </div>
+      <div class="p-6 space-y-3">
+        <p class="text-slate-700">You're currently in a counseling call. Navigating away may disconnect the call.</p>
+        <div class="flex items-start space-x-2 text-slate-500 text-sm">
+          <i class="fas fa-info-circle mt-1"></i>
+          <span>You can return within 45 seconds and we’ll try to reconnect automatically.</span>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-slate-50/60 border-t border-slate-200/50 flex flex-col sm:flex-row-reverse gap-3">
+        <button id="navGuardConfirm" class="w-full sm:w-auto inline-flex justify-center items-center rounded-xl px-5 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold shadow hover:from-red-600 hover:to-red-700 transition-all">
+          Leave page
+        </button>
+        <button id="navGuardCancel" class="w-full sm:w-auto inline-flex justify-center items-center rounded-xl px-5 py-3 bg-white border border-slate-300 text-slate-700 font-semibold shadow-sm hover:bg-slate-50 transition-all">
+          Stay on page
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.NavGuardModal = {
+      _nextHref: null,
+      open(href, onConfirm) {
+        this._nextHref = href || null;
+        this._onConfirm = onConfirm || null;
+        document.getElementById('navGuardModal').classList.remove('hidden');
+      },
+      close() {
+        document.getElementById('navGuardModal').classList.add('hidden');
+        this._nextHref = null;
+        this._onConfirm = null;
+      },
+      wire() {
+        const confirmBtn = document.getElementById('navGuardConfirm');
+        const cancelBtn = document.getElementById('navGuardCancel');
+        if (confirmBtn) confirmBtn.onclick = () => {
+          const fn = this._onConfirm;
+          const href = this._nextHref;
+          this.close();
+          if (fn) fn();
+          else if (href) window.location.href = href;
+        };
+  if (cancelBtn) cancelBtn.onclick = () => this.close();
+      }
+    };
+    window.addEventListener('DOMContentLoaded', () => window.NavGuardModal.wire());
+  </script>
+</div>
 {% endblock %}

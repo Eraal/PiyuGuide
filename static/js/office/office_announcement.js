@@ -66,7 +66,7 @@ function openEditAnnouncementModal(announcementId) {
             
             // Show current images if they exist - FIXED to handle multiple images
             if (data.images && data.images.length > 0) {
-                const currentImageContainer = document.getElementById('edit-current-images-container');
+                const currentImageContainer = document.getElementById('edit-current-image-container');
                 if (currentImageContainer) {
                     currentImageContainer.innerHTML = '';
                     data.images.forEach(image => {
@@ -168,34 +168,32 @@ function confirmDeleteImage(imageId, announcementId) {
     }
 }
 
-// Image preview functions - FIXED to handle multiple images
+// Image preview functions - handle single file input IDs used in template
 function previewImages(input) {
-    const previewContainer = input.id === 'announcement-images' 
-        ? document.getElementById('image-preview-container') 
+    const previewContainer = input.id === 'announcement-image'
+        ? document.getElementById('image-preview-container')
         : document.getElementById('edit-image-preview-container');
-    
     if (!previewContainer) return;
-    
-    const imagePreviewsDiv = previewContainer.querySelector('.image-previews') || 
-                           (() => {
-                               const div = document.createElement('div');
-                               div.className = 'image-previews grid grid-cols-2 md:grid-cols-3 gap-4';
-                               previewContainer.appendChild(div);
-                               return div;
-                           })();
+
+    const imagePreviewsDiv = previewContainer.querySelector('.image-previews') || (function () {
+        const div = document.createElement('div');
+        div.className = 'image-previews grid grid-cols-2 md:grid-cols-3 gap-4';
+        previewContainer.appendChild(div);
+        return div;
+    })();
 
     if (input.files && input.files.length > 0) {
         imagePreviewsDiv.innerHTML = '';
         Array.from(input.files).forEach((file, index) => {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 const previewDiv = document.createElement('div');
                 previewDiv.className = 'relative';
                 previewDiv.innerHTML = `
-                    <img src="${e.target.result}" alt="Preview ${index + 1}" 
+                    <img src="${e.target.result}" alt="Preview ${index + 1}"
                          class="w-full h-32 object-cover rounded-lg" />
                     <div class="mt-2">
-                        <input type="text" name="captions[]" placeholder="Image caption..." 
+                        <input type="text" name="captions[]" placeholder="Image caption..."
                                class="w-full text-sm border rounded px-2 py-1 mb-1" />
                         <input type="number" name="display_orders[]" placeholder="Display order" value="${index}"
                                class="w-full text-sm border rounded px-2 py-1" />
@@ -212,14 +210,14 @@ function previewImages(input) {
 }
 
 function removeImages(buttonId) {
-    const input = buttonId === 'remove-images' 
-        ? document.getElementById('announcement-images') 
-        : document.getElementById('edit-announcement-images');
-    
-    const previewContainer = buttonId === 'remove-images' 
-        ? document.getElementById('image-preview-container') 
+    const input = buttonId === 'remove-image'
+        ? document.getElementById('announcement-image')
+        : document.getElementById('edit-announcement-image');
+
+    const previewContainer = buttonId === 'remove-image'
+        ? document.getElementById('image-preview-container')
         : document.getElementById('edit-image-preview-container');
-    
+
     if (input) input.value = '';
     if (previewContainer) previewContainer.classList.add('hidden');
 }
@@ -267,50 +265,159 @@ function applyFilters() {
     if (dateRangeFilter.value && dateRangeFilter.value !== 'all') {
         queryParams.append('date_range', dateRangeFilter.value);
     }
-
-    // Redirect with filters
-    window.location.href = `${window.location.pathname}?${queryParams.toString()}`;
+    // Update URL without reload
+    const newUrl = `${window.location.pathname}?${queryParams.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+    // Reset and reload feed from first page
+    resetAnnouncementsFeed();
+    loadAnnouncements(__officeAnnPage, true);
 }
 
-function loadAnnouncements(page = 1) {
+// Infinite scroll state
+let __officeAnnPage = 1;
+let __officeAnnHasMore = true;
+let __officeAnnLoading = false;
+
+function resetAnnouncementsFeed() {
+    const container = document.getElementById('announcements-container');
+    if (container) container.innerHTML = '';
+    __officeAnnPage = 1;
+    __officeAnnHasMore = true;
+}
+
+function loadAnnouncements(page = __officeAnnPage, append = true) {
+    if (__officeAnnLoading || !__officeAnnHasMore) return;
+
     // Get current filters from URL
     const urlParams = new URLSearchParams(window.location.search);
     const visibility = urlParams.get('visibility') || 'all';
     const dateRange = urlParams.get('date_range') || 'all';
-    
-    // Show loading indicator
+
     const container = document.getElementById('announcements-container');
+    const loading = document.getElementById('infinite-loading');
     if (!container) return;
-    
-    container.innerHTML = '<div class="flex justify-center py-10"><i class="fas fa-circle-notch fa-spin text-blue-600 text-3xl"></i></div>';
-    
-    // Build query for fetch
-    let queryParams = new URLSearchParams();
+
+    __officeAnnLoading = true;
+    if (loading) loading.classList.remove('hidden');
+    if (!append && container) container.innerHTML = '';
+
+    // Build query for fetch (no template string side-effects)
+    const queryParams = new URLSearchParams();
     queryParams.append('page', page);
     if (visibility !== 'all') queryParams.append('visibility', visibility);
     if (dateRange !== 'all') queryParams.append('date_range', dateRange);
-    
-    // Fetch announcements - FIXED URL
+
     fetch(`/office/api/office-announcements?${queryParams.toString()}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch announcements');
-            }
-            return response.json();
+        .then(res => {
+            if (!res.ok) throw new Error('Failed to fetch announcements');
+            return res.json();
         })
         .then(data => {
-            renderAnnouncements(data.announcements);
-            renderPagination(data.pagination);
+            if (!data || !Array.isArray(data.announcements)) data.announcements = [];
+            if (append) {
+                appendAnnouncements(data.announcements);
+            } else {
+                renderAnnouncements(data.announcements);
+            }
+            const pg = data.pagination || {};
+            if (typeof pg.has_next === 'boolean') {
+                __officeAnnHasMore = pg.has_next;
+            } else if (typeof pg.total_pages === 'number' && typeof pg.current_page === 'number') {
+                __officeAnnHasMore = pg.current_page < pg.total_pages;
+            } else {
+                __officeAnnHasMore = data.announcements.length > 0; // fallback
+            }
+            if (__officeAnnHasMore) __officeAnnPage = (pg.current_page || page) + 1;
         })
-        .catch(error => {
-            console.error('Error loading announcements:', error);
-            container.innerHTML = `
-                <div class="text-center py-10">
-                    <i class="fas fa-exclamation-circle text-red-500 text-3xl mb-3"></i>
-                    <p class="text-gray-700">Failed to load announcements. Please try again later.</p>
-                </div>
-            `;
+        .catch(err => {
+            console.error('Error loading announcements:', err);
+        })
+        .finally(() => {
+            __officeAnnLoading = false;
+            if (loading) loading.classList.add('hidden');
         });
+}
+
+function appendAnnouncements(items) {
+    const container = document.getElementById('announcements-container');
+    if (!container) return;
+    if (!items || items.length === 0) {
+        if (container.children.length === 0) {
+            renderAnnouncements([]); // empty state on first load
+        }
+        return;
+    }
+    const html = buildAnnouncementsHtml(items);
+    container.insertAdjacentHTML('beforeend', html);
+    initializeDropdowns();
+}
+
+function buildAnnouncementsHtml(announcements) {
+    const currentUserIdElement = document.getElementById('current-user-id');
+    const currentUserId = currentUserIdElement ? currentUserIdElement.value : null;
+    let html = '';
+    (announcements || []).forEach(announcement => {
+        const canEdit = announcement.can_edit || (currentUserId && announcement.author_id == currentUserId);
+        const createdDateText = announcement.created_at;
+        const header = `
+            <div class="ann-header mb-3">
+                <div class="ann-avatar">
+                    ${announcement.author_avatar ? `<img src="${announcement.author_avatar}" alt="Profile" class="w-full h-full object-cover" />` : `<i class=\"fas fa-user\"></i>`}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start gap-2 flex-wrap">
+                        <span class="ann-name">${escapeHtml(announcement.author_name || 'Unknown')}</span>
+                        ${announcement.is_public ? `<span class=\"ann-badge\">Public</span>` : `<span class=\"ann-badge\">${escapeHtml(announcement.office_name || 'Office')}</span>`}
+                    </div>
+                    <div class="ann-meta mt-1">
+                        <i class="fas fa-clock text-xs"></i>
+                        <span>${escapeHtml(createdDateText)}</span>
+                    </div>
+                </div>
+                ${canEdit ? `
+                <div class=\"ann-actions dropdown ml-auto\">
+                    <button class=\"text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full h-9 w-9 flex items-center justify-center transition-colors\" aria-haspopup=\"true\" aria-expanded=\"false\">
+                        <i class=\"fas fa-ellipsis-h\"></i>
+                    </button>
+                    <div class=\"dropdown-content hidden\">
+                        <a href=\"#\" onclick=\"openEditAnnouncementModal(${announcement.id})\" class=\"flex items-center px-4 py-2 hover:bg-blue-50 text-gray-700\"><i class=\"fas fa-edit mr-2 text-blue-600\"></i> Edit</a>
+                        <a href=\"#\" onclick=\"confirmDeleteAnnouncement(${announcement.id}, ${announcement.author_id || currentUserId})\" class=\"flex items-center px-4 py-2 hover:bg-red-50 text-red-600\"><i class=\"fas fa-trash-alt mr-2\"></i> Delete</a>
+                    </div>
+                </div>` : ''}
+            </div>`;
+
+        const bodyId = `body-${announcement.id}`;
+        const body = `
+            ${announcement.title ? `<h2 class=\"ann-title\">${escapeHtml(announcement.title)}</h2>` : ''}
+            <div class=\"ann-body mb-3\" data-clamped=\"true\" id=\"${bodyId}\">\n        <p>${escapeHtml(announcement.content)}</p>\n      </div>
+            <button class=\"show-more-btn\" data-target=\"${bodyId}\" onclick=\"toggleClamp(this)\"><span>Show more</span><i class=\"fas fa-chevron-down text-xs\"></i></button>
+        `;
+
+        const images = (announcement.images && announcement.images.length > 0) ? `
+            <div class=\"ann-gallery mt-4 ${announcement.images.length === 1 ? 'layout-1' : announcement.images.length === 2 ? 'layout-2' : 'layout-3'}\">
+                ${announcement.images.slice(0, 6).map((image, idx) => `
+                    <figure class=\"relative rounded-lg overflow-hidden ${idx===0 && announcement.images.length>3 ? 'span-2' : ''}\">
+                        <img src=\"${image.image_path}\" alt=\"${escapeHtml(image.caption || 'Announcement image')}\" class=\"w-full ${idx===0 && announcement.images.length>3 ? 'md:h-80' : 'h-40'} object-cover preview-image cursor-pointer\" onclick=\"showImagePreview('${image.image_path}', '${escapeHtml(image.caption || '')}')\" />
+                        ${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ''}
+                        ${(idx===5 && announcement.images.length>6) ? `<div class=\"absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg\"><span class=\"text-white text-xl font-bold\">+${announcement.images.length-6} more</span></div>` : ''}
+                    </figure>
+                `).join('')}
+            </div>
+        ` : '';
+
+        const footer = `
+            <div class=\"ann-footer\">
+                <div class=\"flex items-center gap-3 text-xs\">
+                    ${announcement.is_public ? `<span class=\"visibility-pill\"><i class=\"fas fa-globe\"></i> All Users</span>` : `<span class=\"visibility-pill office\"><i class=\"fas fa-building\"></i> ${escapeHtml(announcement.office_name || 'Office')} Office</span>`}
+                </div>
+                <div class=\"text-xs text-gray-400 tracking-wide uppercase font-medium\">Announcement</div>
+            </div>`;
+
+        html += `
+            <div class=\"ann-card announcement-card p-6 border-l-4 ${announcement.is_public ? 'border-green-500' : 'border-blue-500'}\">\n        ${header}\n        ${body}\n        ${images}\n        ${footer}\n      </div>
+        `;
+    });
+    return html;
 }
 
 function renderAnnouncements(announcements) {
@@ -321,79 +428,97 @@ function renderAnnouncements(announcements) {
     const currentUserIdElement = document.getElementById('current-user-id');
     const currentUserId = currentUserIdElement ? currentUserIdElement.value : null;
     
-    if (!announcements || announcements.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-10">
-                <i class="fas fa-info-circle text-blue-500 text-3xl mb-3"></i>
-                <p class="text-gray-700">No announcements found.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '';
-    
-    announcements.forEach(announcement => {
-        const canEdit = announcement.can_edit || (currentUserId && announcement.author_id == currentUserId);
-        
-        html += `
-            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden transition-all duration-200 hover:shadow-lg">
-                <div class="p-5">
-                    <div class="flex flex-wrap justify-between items-start mb-3">
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-800 mb-1">${escapeHtml(announcement.title)}</h2>
-                            <div class="flex flex-wrap items-center text-sm text-gray-600 space-x-3">
-                                <span class="flex items-center">
-                                    <i class="far fa-clock mr-1"></i>
-                                    ${new Date(announcement.created_at).toLocaleDateString()}
-                                </span>
-                                <span class="flex items-center">
-                                    <i class="far fa-building mr-1"></i>
-                                    ${escapeHtml(announcement.office_name || 'General')}
-                                </span>
-                                <span class="flex items-center ${announcement.is_public ? 'text-green-600' : 'text-blue-600'}">
-                                    <i class="${announcement.is_public ? 'fas fa-globe' : 'fas fa-lock'} mr-1"></i>
-                                    ${announcement.is_public ? 'Public' : 'Private'}
-                                </span>
-                            </div>
+        if (!announcements || announcements.length === 0) {
+                container.innerHTML = `
+                    <div class="ann-card p-12 text-center">
+                        <div class="text-blue-400 mb-4">
+                            <i class="fas fa-bullhorn fa-4x"></i>
                         </div>
-                        ${canEdit ? `
-                            <div class="dropdown relative">
-                                <button class="p-1 text-gray-500 hover:text-gray-700 focus:outline-none" type="button">
-                                    <i class="fas fa-ellipsis-v"></i>
+                        <h3 class="text-xl font-medium text-gray-700 mb-2">No Announcements Yet</h3>
+                        <p class="text-gray-500 mb-6">Create your first announcement to notify students and staff.</p>
+                        <button onclick="openNewAnnouncementModal()" class="bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-6 rounded-full transition-colors duration-200 flex items-center mx-auto shadow">
+                            <i class="fas fa-plus mr-2"></i> Create Announcement
+                        </button>
+                    </div>
+                `;
+                return;
+        }
+    
+        let html = '';
+    
+        announcements.forEach(announcement => {
+                const canEdit = announcement.can_edit || (currentUserId && announcement.author_id == currentUserId);
+                const createdDateText = announcement.created_at;
+
+                // Header mapped to Campus styles
+                const header = `
+                        <div class="ann-header mb-3">
+                            <div class="ann-avatar">
+                                ${announcement.author_avatar ? `<img src="${announcement.author_avatar}" alt="Profile" class="w-full h-full object-cover" />` : `<i class=\"fas fa-user\"></i>`}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start gap-2 flex-wrap">
+                                    <span class="ann-name">${escapeHtml(announcement.author_name || 'Unknown')}</span>
+                                    ${announcement.is_public ? `<span class=\"ann-badge\">Public</span>` : `<span class=\"ann-badge\">${escapeHtml(announcement.office_name || 'Office')}</span>`}
+                                </div>
+                                <div class="ann-meta mt-1">
+                                    <i class="fas fa-clock text-xs"></i>
+                                    <span>${escapeHtml(createdDateText)}</span>
+                                </div>
+                            </div>
+                            ${canEdit ? `
+                            <div class=\"ann-actions dropdown ml-auto\">
+                                <button class=\"text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full h-9 w-9 flex items-center justify-center transition-colors\" aria-haspopup=\"true\" aria-expanded=\"false\">
+                                    <i class=\"fas fa-ellipsis-h\"></i>
                                 </button>
-                                <div class="dropdown-content absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 hidden py-1">
-                                    <a href="#" onclick="openEditAnnouncementModal(${announcement.id}); return false;" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <i class="fas fa-edit mr-2"></i> Edit
-                                    </a>
-                                    <a href="#" onclick="confirmDeleteAnnouncement(${announcement.id}, ${announcement.author_id || currentUserId}); return false;" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                                        <i class="fas fa-trash-alt mr-2"></i> Delete
-                                    </a>
+                                <div class=\"dropdown-content\">
+                                    <a href=\"#\" onclick=\"openEditAnnouncementModal(${announcement.id})\" class=\"flex items-center px-4 py-2 hover:bg-blue-50 text-gray-700\"><i class=\"fas fa-edit mr-2 text-blue-600\"></i> Edit</a>
+                                    <a href=\"#\" onclick=\"confirmDeleteAnnouncement(${announcement.id}, ${announcement.author_id || currentUserId})\" class=\"flex items-center px-4 py-2 hover:bg-red-50 text-red-600\"><i class=\"fas fa-trash-alt mr-2\"></i> Delete</a>
                                 </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="prose max-w-none text-gray-700 mb-4">
-                        ${escapeHtml(announcement.content).replace(/\n/g, '<br>')}
-                    </div>
-                    
-                    ${announcement.images && announcement.images.length > 0 ? `
-                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            ${announcement.images.map(image => `
-                                <div class="rounded-lg overflow-hidden">
-                                    <img src="${image.image_path}" alt="${escapeHtml(image.caption || 'Announcement image')}" 
-                                        class="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                        onclick="showImagePreview('${image.image_path}', '${escapeHtml(image.caption || '')}')" />
-                                    ${image.caption ? `<p class="text-sm text-gray-600 mt-2 px-2 pb-2">${escapeHtml(image.caption)}</p>` : ''}
-                                </div>
-                            `).join('')}
+                            </div>` : ''}
+                        </div>`;
+
+                // Title and body with clamping and Show more
+                const bodyId = `body-${announcement.id}`;
+                const body = `
+                        ${announcement.title ? `<h2 class=\"ann-title\">${escapeHtml(announcement.title)}</h2>` : ''}
+                        <div class=\"ann-body mb-3\" data-clamped=\"true\" id=\"${bodyId}\">
+                                <p>${escapeHtml(announcement.content)}</p>
                         </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    });
+                        <button class=\"show-more-btn\" data-target=\"${bodyId}\" onclick=\"toggleClamp(this)\"><span>Show more</span><i class=\"fas fa-chevron-down text-xs\"></i></button>
+                `;
+
+                // Images as gallery aligned with Campus style
+                const images = (announcement.images && announcement.images.length > 0) ? `
+                    <div class=\"ann-gallery mt-4 ${announcement.images.length === 1 ? 'layout-1' : announcement.images.length === 2 ? 'layout-2' : 'layout-3'}\">
+                        ${announcement.images.slice(0, 6).map((image, idx) => `
+                            <figure class=\"relative rounded-lg overflow-hidden ${idx===0 && announcement.images.length>3 ? 'span-2' : ''}\">
+                                <img src=\"${image.image_path}\" alt=\"${escapeHtml(image.caption || 'Announcement image')}\" class=\"w-full ${idx===0 && announcement.images.length>3 ? 'md:h-80' : 'h-40'} object-cover preview-image cursor-pointer\" onclick=\"showImagePreview('${image.image_path}', '${escapeHtml(image.caption || '')}')\" />
+                                ${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ''}
+                                ${(idx===5 && announcement.images.length>6) ? `<div class=\"absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg\"><span class=\"text-white text-xl font-bold\">+${announcement.images.length-6} more</span></div>` : ''}
+                            </figure>
+                        `).join('')}
+                    </div>
+                ` : '';
+
+                // Footer with visibility pill
+                const footer = `
+                    <div class=\"ann-footer\">
+                        <div class=\"flex items-center gap-3 text-xs\">
+                            ${announcement.is_public ? `<span class=\"visibility-pill\"><i class=\"fas fa-globe\"></i> All Users</span>` : `<span class=\"visibility-pill office\"><i class=\"fas fa-building\"></i> ${escapeHtml(announcement.office_name || 'Office')} Office</span>`}
+                        </div>
+                        <div class=\"text-xs text-gray-400 tracking-wide uppercase font-medium\">Announcement</div>
+                    </div>`;
+
+                html += `
+                    <div class=\"ann-card announcement-card p-6 border-l-4 ${announcement.is_public ? 'border-green-500' : 'border-blue-500'}\">
+                        ${header}
+                        ${body}
+                        ${images}
+                        ${footer}
+                    </div>
+                `;
+        });
     
     container.innerHTML = html;
     
@@ -401,80 +526,29 @@ function renderAnnouncements(announcements) {
     initializeDropdowns();
 }
 
-function renderPagination(pagination) {
-    const container = document.getElementById('pagination-container');
-    const nav = document.getElementById('pagination-nav');
-    
-    if (!container || !nav) return;
-    
-    if (!pagination || pagination.total_pages <= 1) {
-        container.classList.add('hidden');
-        return;
-    }
-    
-    container.classList.remove('hidden');
-    
-    let html = '';
-    
-    // Previous button
-    if (pagination.has_prev) {
-        html += `
-            <a href="#" onclick="loadAnnouncements(${pagination.current_page - 1}); return false;" 
-               class="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-md bg-white text-gray-700 hover:bg-gray-50 border border-gray-300">
-                <i class="fas fa-chevron-left mr-1"></i> Previous
-            </a>
-        `;
+// Toggle clamp for announcement content, shared with Campus Admin UX
+function toggleClamp(btn){
+    const id = btn.getAttribute('data-target');
+    const body = document.getElementById(id);
+    if(!body) return;
+    const clamped = body.getAttribute('data-clamped') === 'true';
+    if(clamped){
+        body.setAttribute('data-clamped','false');
+        const span = btn.querySelector('span');
+        if (span) span.textContent = 'Show less';
+        const icon = btn.querySelector('i');
+        if (icon) icon.classList.add('rotate-180');
     } else {
-        html += `
-            <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-md bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-300">
-                <i class="fas fa-chevron-left mr-1"></i> Previous
-            </span>
-        `;
+        body.setAttribute('data-clamped','true');
+        const span = btn.querySelector('span');
+        if (span) span.textContent = 'Show more';
+        const icon = btn.querySelector('i');
+        if (icon) icon.classList.remove('rotate-180');
+        body.scrollIntoView({behavior:'smooth', block:'center'});
     }
-    
-    // Page numbers
-    for (let i = 1; i <= pagination.total_pages; i++) {
-        if (
-            i === 1 || 
-            i === pagination.total_pages || 
-            (i >= pagination.current_page - 1 && i <= pagination.current_page + 1)
-        ) {
-            html += `
-                <a href="#" onclick="loadAnnouncements(${i}); return false;" 
-                   class="relative inline-flex items-center px-4 py-2 text-sm font-medium border-t border-b ${i === pagination.current_page ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}">
-                    ${i}
-                </a>
-            `;
-        } else if (
-            i === pagination.current_page - 2 || 
-            i === pagination.current_page + 2
-        ) {
-            html += `
-                <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium bg-white text-gray-700 border-t border-b border-gray-300">
-                    ...
-                </span>
-            `;
-        }
-    }
-    
-    // Next button
-    if (pagination.has_next) {
-        html += `
-            <a href="#" onclick="loadAnnouncements(${pagination.current_page + 1}); return false;" 
-               class="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-md bg-white text-gray-700 hover:bg-gray-50 border border-gray-300">
-                Next <i class="fas fa-chevron-right ml-1"></i>
-            </a>
-        `;
-    } else {
-        html += `
-            <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-md bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-300">
-                Next <i class="fas fa-chevron-right ml-1"></i>
-            </span>
-        `;
-    }
-    
-    nav.innerHTML = html;
 }
+
+// Pagination renderer removed in favor of infinite scrolling
 
 function initializeDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -540,33 +614,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Set up image upload listeners - FIXED for multiple images
-    const announcementImages = document.getElementById('announcement-images');
+    // Set up image upload listeners (IDs aligned with template)
+    const announcementImages = document.getElementById('announcement-image');
     if (announcementImages) {
         announcementImages.addEventListener('change', function() {
             previewImages(this);
         });
     }
-    
-    const editAnnouncementImages = document.getElementById('edit-announcement-images');
+    const editAnnouncementImages = document.getElementById('edit-announcement-image');
     if (editAnnouncementImages) {
         editAnnouncementImages.addEventListener('change', function() {
             previewImages(this);
         });
     }
-    
-    // Set up remove image button listeners
-    const removeImagesBtn = document.getElementById('remove-images');
-    if (removeImagesBtn) {
-        removeImagesBtn.addEventListener('click', function() {
-            removeImages('remove-images');
+
+    // Set up remove image button listeners (IDs aligned)
+    const removeImageBtn = document.getElementById('remove-image');
+    if (removeImageBtn) {
+        removeImageBtn.addEventListener('click', function() {
+            removeImages('remove-image');
         });
     }
-    
-    const editRemoveImagesBtn = document.getElementById('edit-remove-images');
-    if (editRemoveImagesBtn) {
-        editRemoveImagesBtn.addEventListener('click', function() {
-            removeImages('edit-remove-images');
+    const editRemoveImageBtn = document.getElementById('edit-remove-image');
+    if (editRemoveImageBtn) {
+        editRemoveImageBtn.addEventListener('click', function() {
+            removeImages('edit-remove-image');
         });
     }
     
@@ -634,10 +706,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (visibility && visibilityFilter) visibilityFilter.value = visibility;
     if (dateRange && dateRangeFilter) dateRangeFilter.value = dateRange;
     
-    // Initialize dropdowns
-    initializeDropdowns();
+        // Initialize dropdowns
+        initializeDropdowns();
     
-    // Close dropdowns when clicking outside
+        // Close dropdowns when clicking outside
     document.addEventListener('click', function() {
         document.querySelectorAll('.dropdown-content.active').forEach(dropdown => {
             dropdown.classList.add('hidden');
@@ -645,8 +717,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Load announcements
-    loadAnnouncements();
+        // Setup infinite scroll observer
+        const sentinel = document.getElementById('infinite-scroll-sentinel');
+        if ('IntersectionObserver' in window && sentinel) {
+            const io = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        loadAnnouncements(__officeAnnPage, true);
+                    }
+                });
+            });
+            io.observe(sentinel);
+        } else {
+            // Fallback: basic scroll listener
+            window.addEventListener('scroll', () => {
+                if (__officeAnnLoading || !__officeAnnHasMore) return;
+                const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 400);
+                if (nearBottom) loadAnnouncements(__officeAnnPage, true);
+            });
+        }
+
+        // Initial load (fresh)
+        resetAnnouncementsFeed();
+        loadAnnouncements(__officeAnnPage, true);
 });
 
 function submitDeleteForm(announcementId) {

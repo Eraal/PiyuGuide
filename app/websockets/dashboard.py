@@ -10,13 +10,23 @@ import json
 @socketio.on('connect', namespace='/dashboard')
 def dashboard_connect():
     """Handle client connection to dashboard namespace"""
-    if not current_user.is_authenticated or current_user.role not in ['super_admin', 'office_admin']:
+    if not current_user.is_authenticated or current_user.role not in ['super_admin', 'super_super_admin', 'office_admin']:
         print("Unauthorized dashboard connection attempt")
         disconnect()
         return False
     
     print(f"Dashboard connected: {current_user.email}")
     join_room('dashboard_room', namespace='/dashboard')
+    # Also join role-based rooms for targeted notifications
+    try:
+        if current_user.role == 'super_admin':
+            join_room('room_super_admins', namespace='/dashboard')
+        if current_user.role == 'super_super_admin':
+            join_room('room_super_super_admins', namespace='/dashboard')
+        if current_user.role == 'office_admin':
+            join_room('room_office_admins', namespace='/dashboard')
+    except Exception:
+        pass
     
     # Send initial dashboard data
     emit('dashboard_connected', {
@@ -34,11 +44,20 @@ def dashboard_disconnect():
     if current_user.is_authenticated:
         print(f"Dashboard disconnected: {current_user.email}")
         leave_room('dashboard_room', namespace='/dashboard')
+        try:
+            if current_user.role == 'super_admin':
+                leave_room('room_super_admins', namespace='/dashboard')
+            if current_user.role == 'super_super_admin':
+                leave_room('room_super_super_admins', namespace='/dashboard')
+            if current_user.role == 'office_admin':
+                leave_room('room_office_admins', namespace='/dashboard')
+        except Exception:
+            pass
 
 @socketio.on('request_dashboard_update', namespace='/dashboard')
 def handle_dashboard_update_request():
     """Handle request for fresh dashboard data"""
-    if not current_user.is_authenticated or current_user.role not in ['super_admin', 'office_admin']:
+    if not current_user.is_authenticated or current_user.role not in ['super_admin', 'super_super_admin', 'office_admin']:
         return
     
     # Get fresh dashboard statistics
@@ -179,3 +198,10 @@ def broadcast_dashboard_update():
     """Broadcast full dashboard update to all connected clients"""
     dashboard_data = get_dashboard_stats()
     socketio.emit('dashboard_update', dashboard_data, room='dashboard_room', namespace='/dashboard')
+
+def broadcast_campus_name_update(payload):
+    """Broadcast a campus name update to super admins.
+
+    Expected payload keys: campus_id, old_name, new_name, updated_by (name/id), timestamp
+    """
+    socketio.emit('campus_name_updated', payload, room='room_super_super_admins', namespace='/dashboard')

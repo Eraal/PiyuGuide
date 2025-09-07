@@ -17,9 +17,13 @@ class VideoCounselingClient {
         this.startTime = null;
         this.isInCall = false;
         this.heartbeatInterval = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 8;
         this.connectionQuality = 'unknown';
+    this.pendingIceCandidates = [];
+    this.reconnectInProgress = false;
+    this.wasInCallBeforeDisconnect = false;
+    this.persistKey = `videoCounseling:${this.sessionId}:${this.userId}`;
         
         // ICE servers configuration
         this.iceServers = [
@@ -49,8 +53,10 @@ class VideoCounselingClient {
         try {
             console.log('Initializing Video Counseling Client for Student...');
             this.updateConnectionStatus('Initializing...', 'info');
+            this.restoreLocalState();
             this.initializeSocket();
             this.setupEventListeners();
+            this.installNavigationGuards();
             await this.initializeMedia();
             this.showWaitingRoom();
             // Initialize participant indicators - student is connected, counselor is not yet
@@ -79,7 +85,12 @@ class VideoCounselingClient {
             this.isConnected = true;
             this.reconnectAttempts = 0;
             this.updateConnectionStatus('Connecting to session...', 'info');
-            this.joinSession();
+            if (this.wasInCallBeforeDisconnect) {
+                // Attempt to restore session/call after reconnect
+                this.onSocketReconnected();
+            } else {
+                this.joinSession();
+            }
             this.startHeartbeat();
         });
         
@@ -88,10 +99,11 @@ class VideoCounselingClient {
             this.isConnected = false;
             this.updateConnectionStatus('Disconnected from server', 'error');
             this.stopHeartbeat();
+            this.wasInCallBeforeDisconnect = this.isInCall;
             this.handleDisconnection();
         });
         
-        this.socket.on('connect_error', (error) => {
+    this.socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
             this.updateConnectionStatus('Connection error', 'error');
             this.handleConnectionError();
@@ -166,6 +178,33 @@ class VideoCounselingClient {
             console.log('Successfully joined call:', data);
             this.showCallUI();
             this.updateConnectionStatus('Connected to call', 'success');
+        });
+        
+        // Apply initial media state for other participants so placeholders are correct on first render
+        this.socket.on('initial_media_state', (payload) => {
+            try {
+                if (!payload || !Array.isArray(payload.participants)) return;
+                payload.participants.forEach(p => {
+                    if (p.user_id === this.userId) return;
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
+                    const videoOn = !!p.video_enabled;
+                    if (remoteVideo && remotePlaceholder) {
+                        if (videoOn) {
+                            remotePlaceholder.classList.add('hidden');
+                            remoteVideo.classList.remove('hidden');
+                            if (remoteVideo.readyState >= 2) {
+                                remoteVideo.play().catch(() => {});
+                            }
+                        } else {
+                            remoteVideo.classList.add('hidden');
+                            remotePlaceholder.classList.remove('hidden');
+                        }
+                    }
+                });
+            } catch (e) {
+                console.warn('Failed to apply initial media state:', e);
+            }
         });
         
         this.socket.on('user_joined_call', (data) => {
@@ -246,6 +285,24 @@ class VideoCounselingClient {
         
         this.socket.on('quality_update', (data) => {
             this.updateConnectionQuality(data.quality);
+        });
+        
+        // Peer requests renegotiation after they reconnect
+        this.socket.on('reconnect_request', async (data) => {
+            console.log('Peer requested reconnection/renegotiation:', data);
+            try {
+                if (this.peerConnection) {
+                    const offer = await this.peerConnection.createOffer({ iceRestart: true });
+                    await this.peerConnection.setLocalDescription(offer);
+                    this.socket.emit('offer', {
+                        session_id: this.sessionId,
+                        offer: offer,
+                        target_user_id: data.user_id || null
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to renegotiate on reconnect_request:', e);
+            }
         });
         
         this.socket.on('error', (data) => {
@@ -376,6 +433,13 @@ class VideoCounselingClient {
                 console.log('Audio track enabled:', track.enabled);
             });
             
+            // Try to enhance local media quality (1080p@30fps, high bitrate)
+            try {
+                await this.enhanceLocalMediaQuality('init');
+            } catch (e) {
+                console.warn('Could not apply high-quality constraints initially:', e?.name || e);
+            }
+
             // Attach to waiting room video element
             const waitingRoomVideo = document.getElementById('waitingRoomVideo');
             if (waitingRoomVideo && videoTracks.length > 0) {
@@ -532,6 +596,11 @@ class VideoCounselingClient {
         if (endSessionBtn) {
             endSessionBtn.addEventListener('click', () => this.showEndSessionModal());
         }
+        // Mobile floating end call button
+        const endCallFab = document.getElementById('endCallFab');
+        if (endCallFab) {
+            endCallFab.addEventListener('click', () => this.showEndSessionModal());
+        }
         
         // Join call button
         const joinCallBtn = document.getElementById('joinCallBtn');
@@ -543,6 +612,23 @@ class VideoCounselingClient {
         const fullscreenBtn = document.getElementById('fullScreenToggle');
         if (fullscreenBtn) {
             fullscreenBtn.addEventListener('click', () => this.toggleFullScreen());
+        }
+
+        // Mobile side panel open/close
+        const mobilePanelButton = document.getElementById('mobilePanelButton');
+        const mobilePanelClose = document.getElementById('mobilePanelClose');
+        const sidePanel = document.getElementById('sidePanel');
+    if (mobilePanelButton && sidePanel) {
+            mobilePanelButton.addEventListener('click', () => {
+        sidePanel.classList.add('mobile-open');
+        try { document.body.style.overflow = 'hidden'; } catch (_) {}
+            });
+        }
+        if (mobilePanelClose && sidePanel) {
+            mobilePanelClose.addEventListener('click', () => {
+        sidePanel.classList.remove('mobile-open');
+        try { document.body.style.overflow = ''; } catch (_) {}
+            });
         }
         
         // Device selection
@@ -660,14 +746,47 @@ class VideoCounselingClient {
                 this.peerConnection.addTrack(track, this.localStream);
             });
         }
+        // Bump outbound video quality if possible
+        try {
+            await this.applyHighQualitySenderParams();
+        } catch (e) {
+            console.warn('Could not set high-quality sender params:', e?.name || e);
+        }
         
         // Handle remote stream
         this.peerConnection.ontrack = (event) => {
             console.log('Student received remote stream from counselor');
             this.remoteStream = event.streams[0];
             const remoteVideo = document.getElementById('remoteVideo');
+            const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
             if (remoteVideo) {
                 remoteVideo.srcObject = this.remoteStream;
+                // Ensure playback starts even with autoplay policies
+                const tryPlay = () => {
+                    remoteVideo.play().catch(e => {
+                        console.warn('Remote video play blocked, will retry on unmute/metadata:', e?.name || e);
+                    });
+                };
+                // Play on metadata load
+                remoteVideo.onloadedmetadata = () => {
+                    tryPlay();
+                };
+                // If already have metadata, try immediately
+                if (remoteVideo.readyState >= 2) {
+                    tryPlay();
+                }
+                // Also try when the incoming track becomes unmuted
+                if (event.track) {
+                    event.track.onunmute = () => {
+                        tryPlay();
+                        if (remotePlaceholder) remotePlaceholder.classList.add('hidden');
+                        remoteVideo.classList.remove('hidden');
+                    };
+                    event.track.onmute = () => {
+                        if (remotePlaceholder) remotePlaceholder.classList.remove('hidden');
+                        remoteVideo.classList.add('hidden');
+                    };
+                }
                 console.log('Remote video stream attached to video element');
             }
             
@@ -729,11 +848,69 @@ class VideoCounselingClient {
                 }
             } else if (state === 'failed' || state === 'disconnected') {
                 this.handleConnectionIssue();
+                // Attempt ICE restart if in-call
+                if (this.isInCall && !this.reconnectInProgress) {
+                    this.restartIceSafely();
+                }
             }
         };
         
         // Monitor data channel for connection quality
         this.monitorConnectionQuality();
+    }
+
+    async applyHighQualitySenderParams() {
+        if (!this.peerConnection) return;
+        const sender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (!sender) return;
+        const params = sender.getParameters() || {};
+        params.degradationPreference = 'maintain-framerate';
+        // Prefer a single high-quality encoding; browsers may clamp values
+        const maxBitrate = 2500_000; // ~2.5 Mbps
+        const maxFr = 30;
+        params.encodings = [{ maxBitrate, maxFramerate: maxFr, scaleResolutionDownBy: 1 }];
+        try {
+            await sender.setParameters(params);
+        } catch (e) {
+            // Some browsers require renegotiation before setParameters
+            console.debug('setParameters failed (will ignore if unsupported):', e?.name || e);
+        }
+    }
+
+    async enhanceLocalMediaQuality(context = 'manual') {
+        if (!this.localStream) return;
+        const vt = this.localStream.getVideoTracks()[0];
+        if (!vt) return;
+        // Apply ideal 1080p@30fps; browser may adapt
+        const constraints = {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30, max: 30 }
+        };
+        try {
+            await vt.applyConstraints(constraints);
+        } catch (e) {
+            console.debug(`applyConstraints failed during ${context}:`, e?.name || e);
+        }
+    }
+
+    async restartIceSafely() {
+        if (!this.peerConnection) return;
+        try {
+            this.reconnectInProgress = true;
+            this.updateConnectionStatus('Re-establishing media path…', 'warning');
+            const offer = await this.peerConnection.createOffer({ iceRestart: true });
+            await this.peerConnection.setLocalDescription(offer);
+            this.socket.emit('offer', {
+                session_id: this.sessionId,
+                offer: offer,
+                target_user_id: null
+            });
+        } catch (e) {
+            console.warn('ICE restart failed:', e);
+        } finally {
+            setTimeout(() => { this.reconnectInProgress = false; }, 1500);
+        }
     }
     
     async handleOffer(data) {
@@ -761,6 +938,8 @@ class VideoCounselingClient {
             }
             
             this.updateConnectionStatus('Connecting to call...', 'info');
+            // Flush any ICE candidates that arrived early
+            this.drainPendingIceCandidates();
             
         } catch (error) {
             console.error('Error processing offer:', error);
@@ -775,6 +954,8 @@ class VideoCounselingClient {
             try {
                 await this.peerConnection.setRemoteDescription(data.answer);
                 this.updateConnectionStatus('Call connection established', 'success');
+                // Flush any ICE candidates that arrived early
+                this.drainPendingIceCandidates();
                 
                 // Show call UI after connection is established
                 setTimeout(() => {
@@ -792,9 +973,32 @@ class VideoCounselingClient {
     }
     
     async handleIceCandidate(candidate) {
-        if (this.peerConnection && this.peerConnection.remoteDescription) {
+        try {
+            if (!candidate) return; // Skip null end-of-candidates
+            // Queue candidates until peer connection is ready with a remote description
+            if (!this.peerConnection || !this.peerConnection.remoteDescription) {
+                this.pendingIceCandidates.push(candidate);
+                return;
+            }
             await this.peerConnection.addIceCandidate(candidate);
+        } catch (err) {
+            console.error('Failed to add ICE candidate:', err);
         }
+    }
+
+    drainPendingIceCandidates() {
+        if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
+        if (this.pendingIceCandidates.length === 0) return;
+        console.log(`Adding ${this.pendingIceCandidates.length} queued ICE candidates`);
+        const queue = this.pendingIceCandidates;
+        this.pendingIceCandidates = [];
+        queue.forEach(async (cand) => {
+            try {
+                await this.peerConnection.addIceCandidate(cand);
+            } catch (err) {
+                console.warn('Error adding queued ICE candidate:', err);
+            }
+        });
     }
     
     toggleAudio(isWaitingRoom = false) {
@@ -824,6 +1028,8 @@ class VideoCounselingClient {
                 
                 // Update all media buttons (both waiting room and call interface)
                 this.updateAllMediaButtons();
+                // Persist preference for reconnection restore
+                this.persistLocalState();
                 
                 const status = this.isAudioEnabled ? 'Microphone on' : 'Microphone off';
                 this.showNotification(status, this.isAudioEnabled ? 'success' : 'warning');
@@ -867,6 +1073,8 @@ class VideoCounselingClient {
                 
                 // Update all media buttons (both waiting room and call interface)
                 this.updateAllMediaButtons();
+                // Persist preference for reconnection restore
+                this.persistLocalState();
                 
                 const status = this.isVideoEnabled ? 'Camera on' : 'Camera off';
                 this.showNotification(status, this.isVideoEnabled ? 'success' : 'warning');
@@ -967,13 +1175,14 @@ class VideoCounselingClient {
         
         // Also update main video elements if they exist
         const localVideo = document.getElementById('localVideo');
+        const localPlaceholder = document.getElementById('localVideoPlaceholder');
         if (localVideo) {
             if (this.isVideoEnabled) {
-                localVideo.style.opacity = '1';
-                localVideo.style.filter = 'none';
+                localVideo.classList.remove('hidden');
+                if (localPlaceholder) localPlaceholder.classList.add('hidden');
             } else {
-                localVideo.style.opacity = '0.3';
-                localVideo.style.filter = 'blur(10px)';
+                localVideo.classList.add('hidden');
+                if (localPlaceholder) localPlaceholder.classList.remove('hidden');
             }
         }
     }
@@ -981,6 +1190,7 @@ class VideoCounselingClient {
     showWaitingRoom() {
         const waitingRoom = document.getElementById('waitingRoomUI'); // Fixed ID
         const callInterface = document.getElementById('callUI'); // Fixed ID
+    const header = document.getElementById('videoHeader');
         
         if (waitingRoom) {
             waitingRoom.classList.remove('hidden');
@@ -994,6 +1204,10 @@ class VideoCounselingClient {
             console.log('Call interface hidden');
         } else {
             console.warn('Call interface element not found');
+        }
+        // Ensure header is visible when not in call
+        if (header) {
+            header.classList.remove('in-call-hide');
         }
         
         this.updateWaitingRoomMessage('Connecting to session...');
@@ -1016,6 +1230,7 @@ class VideoCounselingClient {
         console.log('=== STUDENT SHOWING CALL UI ===');
         const waitingRoom = document.getElementById('waitingRoomUI');
         const callInterface = document.getElementById('callUI');
+    const header = document.getElementById('videoHeader');
         
         console.log('Waiting room element:', waitingRoom);
         console.log('Call interface element:', callInterface);
@@ -1034,6 +1249,10 @@ class VideoCounselingClient {
             console.log('Call interface classes after:', callInterface.className);
         } else {
             console.error('Call interface element (callUI) not found!');
+        }
+        // On small screens, hide the header to maximize video area
+        if (header) {
+            header.classList.add('in-call-hide');
         }
         
         // Try to find and activate the first available tab
@@ -1071,6 +1290,7 @@ class VideoCounselingClient {
             this.isInCall = true;
             this.startSessionTimer();
             console.log('Call marked as active and timer started');
+            this.persistLocalState();
         }
         
         // Ensure local video stream is attached
@@ -1292,14 +1512,19 @@ class VideoCounselingClient {
             this.remoteStream = null;
         }
         
-        // Disconnect socket
-        if (this.socket) {
-            this.socket.disconnect();
-            this.socket = null;
-        }
+    // Do not force disconnect socket here to preserve reconnection
         
-        this.isInCall = false;
+    this.isInCall = false;
         this.isConnected = false;
+    this.pendingIceCandidates = [];
+    this.persistLocalState();
+
+        // Ensure mobile overlay is closed and scroll restored
+        try {
+            const sidePanel = document.getElementById('sidePanel');
+            if (sidePanel) sidePanel.classList.remove('mobile-open');
+            document.body.style.overflow = '';
+        } catch (_) {}
     }
     
     showNotification(message, type = 'info') {
@@ -1389,13 +1614,13 @@ class VideoCounselingClient {
     }
     
     handleDisconnection() {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             this.updateConnectionStatus(`Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`, 'warning');
             
             setTimeout(() => {
                 if (this.socket) {
-                    this.socket.connect();
+            try { this.socket.connect(); } catch (_) {}
                 }
             }, 2000 * this.reconnectAttempts);
         } else {
@@ -1405,6 +1630,126 @@ class VideoCounselingClient {
     
     handleConnectionError() {
         this.updateConnectionStatus('Connection error - retrying...', 'error');
+    }
+
+    restoreLocalState() {
+        try {
+            const raw = localStorage.getItem(this.persistKey);
+            if (!raw) return;
+            const state = JSON.parse(raw);
+            this.isAudioEnabled = state.isAudioEnabled ?? this.isAudioEnabled;
+            this.isVideoEnabled = state.isVideoEnabled ?? this.isVideoEnabled;
+            this.wasInCallBeforeDisconnect = state.isInCall || false;
+        } catch (e) {
+            console.warn('Failed to restore local state:', e);
+        }
+    }
+
+    persistLocalState() {
+        try {
+            localStorage.setItem(this.persistKey, JSON.stringify({
+                isAudioEnabled: this.isAudioEnabled,
+                isVideoEnabled: this.isVideoEnabled,
+                isInCall: this.isInCall
+            }));
+        } catch (_) {}
+    }
+
+    installNavigationGuards() {
+        if (this._navGuardsInstalled) return;
+        this._navGuardsInstalled = true;
+
+        // Warn on refresh/close
+        this._beforeUnloadHandler = (e) => {
+            if (this.isInCall) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', this._beforeUnloadHandler);
+
+        // Intercept internal link clicks
+        this._linkClickHandler = (e) => {
+            const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) return;
+            if (a.hasAttribute('download')) return;
+            if (a.getAttribute('href')?.startsWith('#')) return;
+            if (a.target && a.target !== '_self') return;
+            const href = a.getAttribute('href');
+            if (!href) return;
+            let url;
+            try { url = new URL(href, window.location.href); } catch (_) { return; }
+            if (url.origin !== window.location.origin) return;
+            if (this.isInCall) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.NavGuardModal) {
+                    window.NavGuardModal.open(url.href);
+                } else {
+                    if (confirm("You're in a call. Leave this page?")) window.location.href = url.href;
+                }
+            }
+        };
+        document.addEventListener('click', this._linkClickHandler, true);
+
+        // Intercept form submissions
+        this._formSubmitHandler = (e) => {
+            if (this.isInCall) {
+                e.preventDefault();
+                e.stopPropagation();
+                const form = e.target;
+                if (window.NavGuardModal) {
+                    window.NavGuardModal.open(null, () => form.submit());
+                } else {
+                    if (confirm("You're in a call. Submit and leave this page?")) form.submit();
+                }
+            }
+        };
+        document.addEventListener('submit', this._formSubmitHandler, true);
+
+        // Guard history navigations
+        this._origPushState = history.pushState.bind(history);
+        this._origReplaceState = history.replaceState.bind(history);
+        const self = this;
+        history.pushState = function(...args) {
+            if (self.isInCall) {
+                if (window.NavGuardModal) {
+                    window.NavGuardModal.open(null, () => self._origPushState(...args));
+                    return;
+                } else if (!confirm("You're in a call. Continue navigation?")) {
+                    return;
+                }
+            }
+            return self._origPushState(...args);
+        };
+        history.replaceState = function(...args) {
+            if (self.isInCall) {
+                if (window.NavGuardModal) {
+                    window.NavGuardModal.open(null, () => self._origReplaceState(...args));
+                    return;
+                } else if (!confirm("You're in a call. Continue navigation?")) {
+                    return;
+                }
+            }
+            return self._origReplaceState(...args);
+        };
+        this._popStateHandler = () => {
+            if (this.isInCall) {
+                if (window.NavGuardModal) {
+                    // Revert the navigation unless user confirms
+                    window.NavGuardModal.open(null, () => {/* allow staying on new page */});
+                    // If user cancels, we push forward to remain
+                    const cancelBtn = document.getElementById('navGuardCancel');
+                    if (cancelBtn) {
+                        const handler = () => { history.forward(); cancelBtn.removeEventListener('click', handler); };
+                        cancelBtn.addEventListener('click', handler, { once: true });
+                    }
+                } else if (!confirm("You're in a call. Leave this page?")) {
+                    history.forward();
+                }
+            }
+        };
+        window.addEventListener('popstate', this._popStateHandler);
     }
     
     switchTab(tabName) {
@@ -1687,7 +2032,12 @@ class VideoCounselingClient {
             
             // Get new video stream
             const newStream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: { exact: deviceId } },
+                video: {
+                    deviceId: { exact: deviceId },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 30, max: 30 }
+                },
                 audio: false
             });
             
@@ -1695,6 +2045,8 @@ class VideoCounselingClient {
             const newVideoTrack = newStream.getVideoTracks()[0];
             this.localStream.removeTrack(videoTrack);
             this.localStream.addTrack(newVideoTrack);
+            // Try to apply constraints to the new track as well
+            try { await newVideoTrack.applyConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }); } catch (_) {}
             
             // Update peer connection
             if (this.peerConnection) {
@@ -1703,6 +2055,8 @@ class VideoCounselingClient {
                 );
                 if (sender) {
                     await sender.replaceTrack(newVideoTrack);
+                    // Re-apply high-quality params after track switch
+                    try { await this.applyHighQualitySenderParams(); } catch (_) {}
                 }
             }
             
@@ -1890,7 +2244,22 @@ class VideoCounselingClient {
     
     handleRemoteVideoToggle(data) {
         console.log(`${data.name} ${data.video_enabled ? 'enabled' : 'disabled'} their camera`);
-        // Could update UI to show remote user's video state
+        // Immediately reflect remote camera state in UI
+        const remoteVideo = document.getElementById('remoteVideo');
+        const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
+        if (remoteVideo && remotePlaceholder) {
+            if (data.video_enabled) {
+                remoteVideo.classList.remove('hidden');
+                remotePlaceholder.classList.add('hidden');
+                // Try to play in case autoplay was blocked previously
+                if (remoteVideo.readyState >= 2) {
+                    remoteVideo.play().catch(() => {});
+                }
+            } else {
+                remoteVideo.classList.add('hidden');
+                remotePlaceholder.classList.remove('hidden');
+            }
+        }
     }
     
     handleCounselorDisconnect() {
@@ -1901,6 +2270,29 @@ class VideoCounselingClient {
     handleConnectionIssue() {
         this.showNotification('Connection issues detected. Trying to reconnect...', 'warning');
         this.updateConnectionStatus('Connection unstable - attempting to reconnect', 'warning');
+    }
+
+    // Auto-rejoin flow after socket reconnect
+    async onSocketReconnected() {
+        try {
+            this.updateConnectionStatus('Reconnected. Restoring session…', 'info');
+            this.joinSession();
+            if (this.wasInCallBeforeDisconnect || this.isInCall) {
+                // Ensure media and peer connection ready
+                if (!this.localStream) {
+                    await this.initializeMedia();
+                }
+                if (!this.peerConnection) {
+                    await this.createPeerConnection();
+                }
+                // Inform peers to renegotiate by requesting an offer via server
+                this.socket.emit('reconnect_request', { session_id: this.sessionId });
+                // Also join call again to re-mark state
+                this.socket.emit('join_call', { session_id: this.sessionId });
+            }
+        } catch (e) {
+            console.warn('Failed to restore session on reconnect:', e);
+        }
     }
     
     monitorConnectionQuality() {
@@ -1969,11 +2361,20 @@ class VideoCounselingClient {
         console.log('🖥️ Handling screen share started from counselor');
         
         // The remote video will automatically update when the counselor replaces their video track
-        // We just need to update the UI to indicate screen sharing is active
+        // Ensure the element is optimized for screens and playback starts
         const remoteVideo = document.getElementById('remoteVideo');
         if (remoteVideo) {
-            // Add a visual indicator that screen sharing is active
             remoteVideo.style.objectFit = 'contain'; // Better for screen content
+            if (this.remoteStream) {
+                remoteVideo.srcObject = this.remoteStream;
+            }
+            const tryPlay = () => {
+                remoteVideo.play().catch(e => {
+                    console.warn('Remote video play (screen share start) blocked:', e?.name || e);
+                });
+            };
+            remoteVideo.onloadedmetadata = () => tryPlay();
+            if (remoteVideo.readyState >= 2) tryPlay();
             console.log('✅ Remote video set to contain mode for screen sharing');
         }
         
@@ -1987,11 +2388,19 @@ class VideoCounselingClient {
     handleScreenShareStopped(data) {
         console.log('🛑 Handling screen share stopped from counselor');
         
-        // Reset remote video display
+        // Reset remote video display and ensure playback resumes
         const remoteVideo = document.getElementById('remoteVideo');
         if (remoteVideo) {
             remoteVideo.style.objectFit = 'cover'; // Back to normal video mode
             console.log('✅ Remote video set back to cover mode');
+            if (this.remoteStream) {
+                remoteVideo.srcObject = this.remoteStream;
+            }
+            const tryPlay = () => {
+                remoteVideo.play().catch(e => console.warn('Remote video play (screen share stop) blocked:', e?.name || e));
+            };
+            remoteVideo.onloadedmetadata = () => tryPlay();
+            if (remoteVideo.readyState >= 2) tryPlay();
         }
         
         // Hide screen sharing indicator
@@ -2073,7 +2482,21 @@ class VideoCounselingClient {
     
     handleRemoteVideoToggle(data) {
         console.log('Remote video toggle:', data);
-        // Could add visual indicator for remote video state
+        // Immediately reflect remote camera state in UI
+        const remoteVideo = document.getElementById('remoteVideo');
+        const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
+        if (remoteVideo && remotePlaceholder) {
+            if (data.video_enabled) {
+                remoteVideo.classList.remove('hidden');
+                remotePlaceholder.classList.add('hidden');
+                if (remoteVideo.readyState >= 2) {
+                    remoteVideo.play().catch(() => {});
+                }
+            } else {
+                remoteVideo.classList.add('hidden');
+                remotePlaceholder.classList.remove('hidden');
+            }
+        }
         const message = data.video_enabled ? 
             `${data.name} turned on camera` : 
             `${data.name} turned off camera`;

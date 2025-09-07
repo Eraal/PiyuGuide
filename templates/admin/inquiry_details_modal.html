@@ -1,0 +1,99 @@
+<!-- Read-only Inquiry Details Modal Content for Campus Admin -->
+<div class="space-y-5">
+  <!-- Header with Status and ID -->
+  <div class="flex items-start justify-between">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-900">{{ inquiry.subject or 'Inquiry' }}</h2>
+      <p class="text-sm text-gray-500">ID: #INQ-{{ inquiry.id }} • {{ inquiry.created_at.strftime('%b %d, %Y %I:%M %p') }}</p>
+    </div>
+    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+      {% if inquiry.status == 'pending' %}bg-yellow-100 text-yellow-800
+      {% elif inquiry.status == 'in_progress' %}bg-indigo-100 text-indigo-800
+      {% elif inquiry.status == 'resolved' %}bg-green-100 text-green-800
+      {% elif inquiry.status == 'closed' %}bg-gray-100 text-gray-800
+      {% else %}bg-blue-100 text-blue-800{% endif %}">
+      {{ inquiry.status|title }}
+    </span>
+  </div>
+
+  <!-- Student and Office Info -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-gray-50 rounded-lg p-4 border">
+      <div class="text-xs uppercase text-gray-500 font-semibold mb-2">Student</div>
+      <div class="flex items-center">
+        <div class="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
+          {{ inquiry.student.user.first_name[0] if inquiry.student and inquiry.student.user and inquiry.student.user.first_name else '?' }}{{ inquiry.student.user.last_name[0] if inquiry.student and inquiry.student.user and inquiry.student.user.last_name else '' }}
+        </div>
+        <div class="ml-3">
+          <div class="font-medium text-gray-900">{{ inquiry.student.user.get_full_name() if inquiry.student and inquiry.student.user else 'Unknown' }}</div>
+          <div class="text-sm text-gray-600">ID: {{ inquiry.student.student_number or 'N/A' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-4 border">
+      <div class="text-xs uppercase text-gray-500 font-semibold mb-2">Office</div>
+      <div class="font-medium text-gray-900">{{ inquiry.office.name if inquiry.office else 'N/A' }}</div>
+      <div class="text-sm text-gray-600">Concern Types: 
+        {% if inquiry.concerns %}
+          {% for ic in inquiry.concerns %}{{ ic.concern_type.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}N/A{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="bg-white rounded-lg p-4 border">
+    <div class="text-xs uppercase text-gray-500 font-semibold mb-2">Message</div>
+    {% if inquiry.content is defined and inquiry.content %}
+      <div class="prose max-w-none text-gray-800 whitespace-pre-line">{{ inquiry.content }}</div>
+    {% elif messages and messages[0] %}
+      <div class="prose max-w-none text-gray-800 whitespace-pre-line">{{ messages[0].content }}</div>
+    {% else %}
+      <div class="text-gray-500">No message content available.</div>
+    {% endif %}
+  </div>
+
+  <!-- Messages Thread (read-only) -->
+  {% if messages %}
+  <div class="bg-white rounded-lg p-4 border">
+    <div class="text-xs uppercase text-gray-500 font-semibold mb-3">Conversation</div>
+    <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+      {% for msg in messages %}
+      <div class="flex items-start gap-3">
+        <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold">
+          {{ msg.sender.first_name[0] if msg.sender and msg.sender.first_name else '?' }}{{ msg.sender.last_name[0] if msg.sender and msg.sender.last_name else '' }}
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-900">{{ msg.sender.get_full_name() if msg.sender else 'Unknown' }}</span>
+            <span class="text-xs text-gray-500">{{ msg.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+            {% if msg.sender and msg.sender.role %}
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 capitalize">{{ msg.sender.role|replace('_',' ') }}</span>
+            {% endif %}
+          </div>
+          <div class="text-sm text-gray-800 whitespace-pre-line">{{ msg.content }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Metadata -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+    <div class="bg-gray-50 rounded-lg p-3 border">
+      <div class="text-gray-500">Created</div>
+      <div class="font-medium text-gray-900">{{ inquiry.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-3 border">
+      <div class="text-gray-500">Attachments</div>
+      <div class="font-medium text-gray-900">{{ inquiry.attachments|length if inquiry.attachments is defined else 0 }}</div>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-3 border">
+      <div class="text-gray-500">Office</div>
+      <div class="font-medium text-gray-900">{{ inquiry.office.name if inquiry.office else '—' }}</div>
+    </div>
+  </div>
+
+  <div class="text-xs text-gray-400">Read-only view for Campus Admin</div>
+</div>

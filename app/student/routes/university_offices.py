@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from sqlalchemy import desc
 
@@ -17,8 +17,10 @@ def university_offices():
     # Get the student record
     student = Student.query.filter_by(user_id=current_user.id).first_or_404()
     
-    # Get all offices
-    offices = Office.query.all()
+    # Resolve campus context: prefer student's campus, fallback to session-selected campus
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    # Get offices only for the resolved campus; if unknown, fallback to all to avoid empty view
+    offices = Office.query.filter_by(campus_id=campus_id).all() if campus_id else Office.query.all()
     
     # Get offices that support video counseling
     video_offices = [office for office in offices if office.supports_video]
@@ -69,6 +71,12 @@ def view_office_detail(office_id):
     
     # Get the office
     office = Office.query.get_or_404(office_id)
+    
+    # Ensure the office is within the student's campus (fallback to session campus)
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    if campus_id and office.campus_id != campus_id:
+        flash('You can only view offices from your campus.', 'error')
+        return redirect(url_for('student.university_offices'))
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(

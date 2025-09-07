@@ -7,12 +7,17 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
     for (let i = 0; i < rows.length; i++) {
         const nameCell = rows[i].getElementsByTagName('td')[1];
         const emailCell = rows[i].getElementsByTagName('td')[2];
+        const studentNumberCell = rows[i].getElementsByTagName('td')[3];
+        const departmentCell = rows[i].getElementsByTagName('td')[4];
         
-        if (nameCell && emailCell) {
+        if (nameCell && emailCell && studentNumberCell && departmentCell) {
             const name = nameCell.textContent.toLowerCase();
             const email = emailCell.textContent.toLowerCase();
+            const studentNumber = studentNumberCell.textContent.toLowerCase();
+            const department = departmentCell.textContent.toLowerCase();
             
-            if (name.includes(searchText) || email.includes(searchText)) {
+            if (name.includes(searchText) || email.includes(searchText) || 
+                studentNumber.includes(searchText) || department.includes(searchText)) {
                 rows[i].style.display = '';
             } else {
                 rows[i].style.display = 'none';
@@ -21,46 +26,12 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
     }
 });
 
-// Login status filter
-document.getElementById('loginStatusFilter').addEventListener('change', function() {
-    const filterValue = this.value.toLowerCase();
-    const table = document.getElementById('studentTableBody');
-    const rows = table.getElementsByTagName('tr');
-    
-    for (let i = 0; i < rows.length; i++) {
-        const statusCell = rows[i].getElementsByTagName('td')[3]; // Login status column
-        
-        if (statusCell) {
-            const status = statusCell.textContent.toLowerCase();
-            
-            if (filterValue === '' || status.includes(filterValue)) {
-                rows[i].style.display = '';
-            } else {
-                rows[i].style.display = 'none';
-            }
-        }
-    }
-});
-
-// Account lock status filter
-document.getElementById('lockStatusFilter').addEventListener('change', function() {
-    const filterValue = this.value.toLowerCase();
-    const table = document.getElementById('studentTableBody');
-    const rows = table.getElementsByTagName('tr');
-    
-    for (let i = 0; i < rows.length; i++) {
-        const lockStatusCell = rows[i].getElementsByTagName('td')[4]; // Account lock status column
-        
-        if (lockStatusCell) {
-            const status = lockStatusCell.textContent.toLowerCase();
-            
-            if (filterValue === '' || status.includes(filterValue)) {
-                rows[i].style.display = '';
-            } else {
-                rows[i].style.display = 'none';
-            }
-        }
-    }
+// Status filter (for active/inactive)
+document.getElementById('statusFilter').addEventListener('change', function() {
+    // Since we removed status columns, this filter may need to be updated
+    // or removed based on whether you want to keep account status filtering
+    console.log('Status filter changed:', this.value);
+    // Implementation depends on whether you want to keep any status filtering
 });
 
 // Sort functionality
@@ -80,15 +51,18 @@ document.getElementById('sortBy').addEventListener('change', function() {
         } else if (sortBy === 'email') {
             aValue = a.getElementsByTagName('td')[2].textContent.toLowerCase();
             bValue = b.getElementsByTagName('td')[2].textContent.toLowerCase();
-        } else if (sortBy === 'login_status') {
+        } else if (sortBy === 'student_number') {
             aValue = a.getElementsByTagName('td')[3].textContent.toLowerCase();
             bValue = b.getElementsByTagName('td')[3].textContent.toLowerCase();
-        } else if (sortBy === 'lock_status') {
+        } else if (sortBy === 'department') {
             aValue = a.getElementsByTagName('td')[4].textContent.toLowerCase();
             bValue = b.getElementsByTagName('td')[4].textContent.toLowerCase();
-        } else if (sortBy === 'date_registered') {
-            aValue = new Date(a.getElementsByTagName('td')[6].textContent);
-            bValue = new Date(b.getElementsByTagName('td')[6].textContent);
+        } else if (sortBy === 'year_level') {
+            aValue = a.getElementsByTagName('td')[5].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[5].textContent.toLowerCase();
+        } else if (sortBy === 'section') {
+            aValue = a.getElementsByTagName('td')[6].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[6].textContent.toLowerCase();
         }
         
         if (aValue < bValue) return -1;
@@ -154,6 +128,18 @@ function toggleStudentLock(studentId, shouldLock) {
     });
 }
 
+// Delegate lock button clicks to support new data attributes
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.lock-button');
+    if (!btn) return;
+    const studentId = parseInt(btn.getAttribute('data-student-id'));
+    const shouldLockAttr = btn.getAttribute('data-should-lock');
+    const shouldLock = shouldLockAttr === '1';
+    if (Number.isFinite(studentId)) {
+        toggleStudentLock(studentId, shouldLock);
+    }
+});
+
 // Helper function to update lock status without page reload
 function updateLockStatus(studentId, isLocked, lockReason, lockedAt) {
     // Find the row for this student
@@ -171,31 +157,24 @@ function updateLockStatus(studentId, isLocked, lockReason, lockedAt) {
     
     // Update button appearance
     if (isLocked) {
-        lockButton.className = lockButton.className.replace(/bg-orange-\d00/g, 'bg-green-500');
-        lockButton.className = lockButton.className.replace(/hover:bg-orange-\d00/g, 'hover:bg-green-600');
-        lockButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            UNLOCK
-        `;
-        lockButton.onclick = function() { toggleStudentLock(studentId, false); };
+        // switch to unlocked state button visuals (green tone, unlock icon)
+        lockButton.classList.remove('bg-yellow-100','hover:bg-yellow-200','text-yellow-700');
+        lockButton.classList.add('bg-green-100','hover:bg-green-200','text-green-700');
+        lockButton.innerHTML = '<i class="fas fa-unlock"></i>';
+        lockButton.setAttribute('data-should-lock','0');
+        lockButton.title = 'Unlock Account' + (lockReason ? `: ${lockReason} (${lockedAt})` : '');
         
         // Add tooltip with lock reason if available
         if (lockReason) {
             lockButton.setAttribute('title', `Locked: ${lockReason} (${lockedAt})`);
         }
     } else {
-        lockButton.className = lockButton.className.replace(/bg-green-\d00/g, 'bg-orange-500');
-        lockButton.className = lockButton.className.replace(/hover:bg-green-\d00/g, 'hover:bg-orange-600');
-        lockButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-            </svg>
-            LOCK
-        `;
-        lockButton.onclick = function() { toggleStudentLock(studentId, true); };
-        lockButton.removeAttribute('title');
+        // switch to locked state button visuals (yellow tone, lock icon)
+        lockButton.classList.remove('bg-green-100','hover:bg-green-200','text-green-700');
+        lockButton.classList.add('bg-yellow-100','hover:bg-yellow-200','text-yellow-700');
+        lockButton.innerHTML = '<i class="fas fa-lock"></i>';
+        lockButton.setAttribute('data-should-lock','1');
+        lockButton.title = 'Lock Account';
     }
     
     // Also update the lock status cell if it exists

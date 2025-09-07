@@ -1,0 +1,840 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Edit Campus Admin - {{ super_admin.get_full_name() }}{% endblock %}
+
+{% block page_title %}Edit Campus Admin{% endblock %}
+{% block page_subtitle %}Update details for {{ super_admin.get_full_name() }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <!-- Enhanced Header Section with Campus Admin Info -->
+    <div class="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-4 left-4 w-32 h-32 border-2 border-white rounded-full animate-ping"></div>
+            <div class="absolute bottom-10 right-20 w-16 h-16 border-2 border-white rounded-full animate-bounce delay-700"></div>
+        </div>
+        
+        <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            <div class="flex items-center">
+                <div class="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mr-6">
+                    <span class="text-white font-bold text-3xl">
+                        {{ super_admin.first_name[0] }}{{ super_admin.last_name[0] }}
+                    </span>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">Edit Campus Admin</h1>
+                    <p class="text-purple-200 text-lg mb-2">{{ super_admin.get_full_name() }}</p>
+                    <div class="flex items-center space-x-4">
+                        <span class="bg-purple-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                            <i class="fas fa-users-cog mr-2"></i>
+                            Campus Administrator
+                        </span>
+                        {% if super_admin.is_active %}
+                            <span class="bg-green-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Active
+                            </span>
+                        {% else %}
+                            <span class="bg-red-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Inactive
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ml-auto flex space-x-4">
+                <a href="{{ url_for('super_admin.view_super_admin', admin_id=super_admin.id) }}" 
+                   class="bg-white/20 hover:bg-white/30 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center space-x-2 backdrop-blur-sm border border-white/20">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Details</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="rounded-2xl p-4 {% if category == 'error' %}bg-red-50 border border-red-200{% else %}bg-green-50 border border-green-200{% endif %}">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            {% if category == 'error' %}
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            {% else %}
+                                <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm {% if category == 'error' %}text-red-700{% else %}text-green-700{% endif %}">
+                                {{ message }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Enhanced Form Section -->
+    <div class="bg-white/70 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+        <form method="POST" action="{{ url_for('super_admin.edit_super_admin', admin_id=super_admin.id) }}" enctype="multipart/form-data" id="editSuperAdminForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 p-8">
+                <!-- Admin Profile Card -->
+                <div class="col-span-1">
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl sticky top-8">
+                        <div class="flex flex-col items-center text-center p-6">
+                            <div class="relative group">
+                                <div class="h-32 w-32 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden mb-4 ring-4 ring-white shadow-lg border border-gray-100 transition-all duration-300">
+                                    {% if super_admin.profile_pic %}
+                                    <img src="{{ url_for('static', filename=super_admin.profile_pic) }}" alt="Profile" class="h-full w-full object-cover" id="profile-preview">
+                                    {% else %}
+                                    <div class="text-4xl font-bold text-indigo-600" id="initials">{{ super_admin.first_name[0] }}{{ super_admin.last_name[0] }}</div>
+                                    <img src="" alt="Profile" class="h-full w-full object-cover hidden" id="profile-preview">
+                                    {% endif %}
+                                </div>
+                                <label for="profile_pic" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 ease-in-out">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </label>
+                                <input type="file" id="profile_pic" name="profile_pic" class="hidden" accept="image/*">
+                            </div>
+                            
+                            <h3 class="text-lg font-semibold text-gray-900 mt-3">{{ super_admin.first_name }} {{ super_admin.last_name }}</h3>
+                            <p class="text-gray-500 text-sm mt-1">{{ super_admin.email }}</p>
+                            
+                            <div class="mt-4">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-medium rounded-full {% if super_admin.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ 'Active' if super_admin.is_active else 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t border-gray-100 bg-gradient-to-r from-gray-50 to-indigo-50">
+                            <div class="px-6 py-4">
+                                <div class="flex justify-between py-2.5">
+                                    <span class="text-gray-500 text-sm">Role</span>
+                                    <span class="font-medium text-gray-900">Campus Admin</span>
+                                </div>
+                                <div class="flex justify-between py-2.5 border-t border-gray-100">
+                                    <span class="text-gray-500 text-sm">Campus</span>
+                                    <span class="font-medium text-gray-900">{{ super_admin.campus.name if super_admin.campus else 'Unassigned' }}</span>
+                                </div>
+                                <div class="flex justify-between py-2.5 border-t border-gray-100">
+                                    <span class="text-gray-500 text-sm">Joined</span>
+                                    <span class="font-medium text-gray-900">{{ super_admin.created_at.strftime('%b %d, %Y') if super_admin.created_at else 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Edit Form Fields -->
+                <div class="col-span-1 lg:col-span-3 space-y-8">
+                    <!-- Personal Information -->
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl">
+                        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100">
+                            <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                                <i class="fas fa-user mr-3 text-blue-600"></i>
+                                Personal Information
+                            </h3>
+                            <p class="text-gray-600 text-sm mt-1">Update basic personal details</p>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="first_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        First Name *
+                                        <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" id="first_name" name="first_name" value="{{ super_admin.first_name }}" required
+                                        class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3 px-4 transition-all duration-300 hover:border-blue-400"
+                                        placeholder="Enter first name">
+                                    <div id="firstNameCheck" class="validation-check hidden"></div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="last_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Last Name *
+                                        <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" id="last_name" name="last_name" value="{{ super_admin.last_name }}" required
+                                        class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3 px-4 transition-all duration-300 hover:border-blue-400"
+                                        placeholder="Enter last name">
+                                    <div id="lastNameCheck" class="validation-check hidden"></div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="middle_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Middle Name
+                                        <span class="text-gray-400 text-xs">(Optional)</span>
+                                    </label>
+                                    <input type="text" id="middle_name" name="middle_name" value="{{ super_admin.middle_name or '' }}"
+                                        class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3 px-4 transition-all duration-300 hover:border-blue-400"
+                                        placeholder="Enter middle name">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Email Address *
+                                        <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="email" id="email" name="email" value="{{ super_admin.email }}" required
+                                        class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3 px-4 transition-all duration-300 hover:border-blue-400"
+                                        placeholder="Enter email address">
+                                    <div id="emailCheck" class="validation-check hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Campus Assignment -->
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl">
+                        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-purple-50 border-b border-gray-100">
+                            <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                                <i class="fas fa-university mr-3 text-purple-600"></i>
+                                Campus Assignment
+                            </h3>
+                            <p class="text-gray-600 text-sm mt-1">Assign or change campus for this administrator</p>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div class="form-group">
+                                <label for="campus_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Campus *
+                                    <span class="text-red-500">*</span>
+                                </label>
+                                <select id="campus_id" name="campus_id" required
+                                    class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm py-3 px-4 transition-all duration-300 hover:border-purple-400">
+                                    <option value="">-- Select a Campus --</option>
+                                    {% for campus in available_campuses %}
+                                    <option value="{{ campus.id }}" {% if super_admin.campus and campus.id == super_admin.campus.id %}selected{% endif %}>
+                                        {{ campus.name }} ({{ campus.code }}) - {{ 'Active' if campus.is_active else 'Inactive' }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div id="campusCheck" class="validation-check hidden"></div>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Campus admins can only be assigned to one campus at a time
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Password Update -->
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl">
+                        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-red-50 border-b border-gray-100">
+                            <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                                <i class="fas fa-key mr-3 text-red-600"></i>
+                                Password Update
+                            </h3>
+                            <p class="text-gray-600 text-sm mt-1">Leave blank to keep current password</p>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        New Password
+                                        <span class="text-gray-400 text-xs">(Optional)</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="password" id="password" name="password"
+                                            class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm py-3 px-4 pr-12 transition-all duration-300 hover:border-red-400"
+                                            placeholder="Enter new password">
+                                        <button type="button" onclick="togglePassword('password')" 
+                                                class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="password-toggle-icon"></i>
+                                        </button>
+                                    </div>
+                                    <div id="passwordCheck" class="validation-check hidden"></div>
+                                    <div class="password-strength mt-2" id="passwordStrength" style="display: none;">
+                                        <div class="text-xs text-gray-600 mb-1">Password strength:</div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-red-500 h-2 rounded-full transition-all duration-300" id="strengthBar" style="width: 0%"></div>
+                                        </div>
+                                        <div class="text-xs mt-1" id="strengthText"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="confirm_password" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Confirm New Password
+                                        <span class="text-gray-400 text-xs">(Optional)</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="password" id="confirm_password" name="confirm_password"
+                                            class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm py-3 px-4 pr-12 transition-all duration-300 hover:border-red-400"
+                                            placeholder="Confirm new password">
+                                        <button type="button" onclick="togglePassword('confirm_password')" 
+                                                class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="confirm_password-toggle-icon"></i>
+                                        </button>
+                                    </div>
+                                    <div id="confirmPasswordCheck" class="validation-check hidden"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h4 class="text-sm font-medium text-yellow-800">Password Requirements</h4>
+                                        <div class="mt-2 text-sm text-yellow-700">
+                                            <ul class="list-disc list-inside space-y-1">
+                                                <li>At least 8 characters long</li>
+                                                <li>Contains uppercase and lowercase letters</li>
+                                                <li>Contains at least one number</li>
+                                                <li>Contains at least one special character</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Status -->
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl">
+                        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-green-50 border-b border-gray-100">
+                            <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                                <i class="fas fa-toggle-on mr-3 text-green-600"></i>
+                                Account Status
+                            </h3>
+                            <p class="text-gray-600 text-sm mt-1">Control account accessibility and permissions</p>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                                        <i class="fas fa-user-check text-green-600 text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-semibold text-gray-900">Account Status</h4>
+                                        <p class="text-sm text-gray-600">
+                                            {% if super_admin.is_active %}
+                                                Administrator can access the system
+                                            {% else %}
+                                                Administrator cannot access the system
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="is_active" value="1" class="sr-only peer" {% if super_admin.is_active %}checked{% endif %}>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between space-x-4">
+                                <div class="flex items-center text-sm text-gray-500">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    All fields marked with * are required
+                                </div>
+                                <div class="flex space-x-4">
+                                    <a href="{{ url_for('super_admin.view_super_admin', admin_id=super_admin.id) }}" 
+                                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-8 rounded-xl transition-all duration-300 flex items-center space-x-2">
+                                        <i class="fas fa-times"></i>
+                                        <span>Cancel</span>
+                                    </a>
+                                    <button type="submit" id="submitButton"
+                                            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                        <i class="fas fa-save"></i>
+                                        <span id="submitText">Update Campus Admin</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Form validation
+let isFormValid = false;
+let validations = {
+    firstName: true, // Start as valid since we have existing data
+    lastName: true,
+    email: true,
+    campus: true,
+    password: true,
+    confirmPassword: true
+};
+
+function checkFormValidity() {
+    const allValid = Object.values(validations).every(v => v);
+    isFormValid = allValid;
+    
+    const submitButton = document.getElementById('submitButton');
+    submitButton.disabled = !allValid;
+    
+    if (allValid) {
+        submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        submitButton.classList.add('hover:scale-105', 'hover:shadow-lg');
+    } else {
+        submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+        submitButton.classList.remove('hover:scale-105', 'hover:shadow-lg');
+    }
+}
+
+// Real-time validation for first name
+document.getElementById('first_name').addEventListener('input', function() {
+    const value = this.value.trim();
+    const checkElement = document.getElementById('firstNameCheck');
+    
+    if (value.length >= 2) {
+        validations.firstName = true;
+        this.classList.remove('border-red-500');
+        this.classList.add('border-green-500');
+        checkElement.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+        checkElement.classList.remove('hidden');
+    } else {
+        validations.firstName = false;
+        this.classList.remove('border-green-500');
+        this.classList.add('border-red-500');
+        checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        checkElement.classList.remove('hidden');
+    }
+    
+    updateInitials();
+    checkFormValidity();
+});
+
+// Real-time validation for last name
+document.getElementById('last_name').addEventListener('input', function() {
+    const value = this.value.trim();
+    const checkElement = document.getElementById('lastNameCheck');
+    
+    if (value.length >= 2) {
+        validations.lastName = true;
+        this.classList.remove('border-red-500');
+        this.classList.add('border-green-500');
+        checkElement.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+        checkElement.classList.remove('hidden');
+    } else {
+        validations.lastName = false;
+        this.classList.remove('border-green-500');
+        this.classList.add('border-red-500');
+        checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        checkElement.classList.remove('hidden');
+    }
+    
+    updateInitials();
+    checkFormValidity();
+});
+
+// Real-time validation for email
+document.getElementById('email').addEventListener('input', function() {
+    const value = this.value.trim();
+    const checkElement = document.getElementById('emailCheck');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (emailRegex.test(value)) {
+        validations.email = true;
+        this.classList.remove('border-red-500');
+        this.classList.add('border-green-500');
+        checkElement.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+        checkElement.classList.remove('hidden');
+    } else {
+        validations.email = false;
+        this.classList.remove('border-green-500');
+        this.classList.add('border-red-500');
+        checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        checkElement.classList.remove('hidden');
+    }
+    
+    checkFormValidity();
+});
+
+// Campus validation
+document.getElementById('campus_id').addEventListener('change', function() {
+    const value = this.value;
+    const checkElement = document.getElementById('campusCheck');
+    
+    if (value) {
+        validations.campus = true;
+        this.classList.remove('border-red-500');
+        this.classList.add('border-green-500');
+        checkElement.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+        checkElement.classList.remove('hidden');
+    } else {
+        validations.campus = false;
+        this.classList.remove('border-green-500');
+        this.classList.add('border-red-500');
+        checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        checkElement.classList.remove('hidden');
+    }
+    
+    checkFormValidity();
+});
+
+// Password validation
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const strengthElement = document.getElementById('passwordStrength');
+    const strengthBar = document.getElementById('strengthBar');
+    const strengthText = document.getElementById('strengthText');
+    const checkElement = document.getElementById('passwordCheck');
+    
+    if (password.length === 0) {
+        // Empty password is valid (optional field)
+        validations.password = true;
+        strengthElement.style.display = 'none';
+        this.classList.remove('border-red-500', 'border-green-500');
+        checkElement.classList.add('hidden');
+    } else {
+        strengthElement.style.display = 'block';
+        
+        let strength = 0;
+        let feedback = [];
+        
+        // Check length
+        if (password.length >= 8) strength += 25;
+        else feedback.push('At least 8 characters');
+        
+        // Check uppercase
+        if (/[A-Z]/.test(password)) strength += 25;
+        else feedback.push('Uppercase letter');
+        
+        // Check lowercase
+        if (/[a-z]/.test(password)) strength += 25;
+        else feedback.push('Lowercase letter');
+        
+        // Check numbers and special characters
+        if (/[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password)) strength += 25;
+        else feedback.push('Number & special character');
+        
+        // Update strength bar
+        strengthBar.style.width = strength + '%';
+        
+        if (strength < 50) {
+            strengthBar.className = 'bg-red-500 h-2 rounded-full transition-all duration-300';
+            strengthText.textContent = 'Weak - Missing: ' + feedback.join(', ');
+            strengthText.className = 'text-xs mt-1 text-red-600';
+            validations.password = false;
+            this.classList.remove('border-green-500');
+            this.classList.add('border-red-500');
+            checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        } else if (strength < 75) {
+            strengthBar.className = 'bg-yellow-500 h-2 rounded-full transition-all duration-300';
+            strengthText.textContent = 'Medium - Missing: ' + feedback.join(', ');
+            strengthText.className = 'text-xs mt-1 text-yellow-600';
+            validations.password = false;
+            this.classList.remove('border-green-500');
+            this.classList.add('border-red-500');
+            checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        } else {
+            strengthBar.className = 'bg-green-500 h-2 rounded-full transition-all duration-300';
+            strengthText.textContent = 'Strong password!';
+            strengthText.className = 'text-xs mt-1 text-green-600';
+            validations.password = true;
+            this.classList.remove('border-red-500');
+            this.classList.add('border-green-500');
+            checkElement.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+        }
+        
+        checkElement.classList.remove('hidden');
+    }
+    
+    checkPasswordMatch();
+    checkFormValidity();
+});
+
+// Confirm password validation
+document.getElementById('confirm_password').addEventListener('input', checkPasswordMatch);
+
+function checkPasswordMatch() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const checkElement = document.getElementById('confirmPasswordCheck');
+    const confirmInput = document.getElementById('confirm_password');
+    
+    if (password.length === 0 && confirmPassword.length === 0) {
+        // Both empty is valid
+        validations.confirmPassword = true;
+        confirmInput.classList.remove('border-red-500', 'border-green-500');
+        checkElement.classList.add('hidden');
+    } else if (password === confirmPassword && password.length > 0) {
+        validations.confirmPassword = true;
+        confirmInput.classList.remove('border-red-500');
+        confirmInput.classList.add('border-green-500');
+        checkElement.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+        checkElement.classList.remove('hidden');
+    } else {
+        validations.confirmPassword = false;
+        confirmInput.classList.remove('border-green-500');
+        confirmInput.classList.add('border-red-500');
+        checkElement.innerHTML = '<i class="fas fa-times text-red-500"></i>';
+        checkElement.classList.remove('hidden');
+    }
+    
+    checkFormValidity();
+}
+
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const icon = document.getElementById(fieldId + '-toggle-icon');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function updateInitials() {
+    const firstName = document.getElementById('first_name').value.trim();
+    const lastName = document.getElementById('last_name').value.trim();
+    const initialsElement = document.getElementById('initials');
+    
+    if (firstName && lastName) {
+        initialsElement.textContent = firstName[0].toUpperCase() + lastName[0].toUpperCase();
+    }
+}
+
+// Profile picture preview
+document.getElementById('profile_pic').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('profile-preview');
+            const initials = document.getElementById('initials');
+            
+            preview.src = e.target.result;
+            preview.classList.remove('hidden');
+            initials.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Form submission
+document.getElementById('editSuperAdminForm').addEventListener('submit', function(e) {
+    const submitButton = document.getElementById('submitButton');
+    const submitText = document.getElementById('submitText');
+    
+    if (!isFormValid) {
+        e.preventDefault();
+        showNotification('Please fill in all required fields correctly.', 'error');
+        return;
+    }
+    
+    submitButton.disabled = true;
+    submitText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+});
+
+// Enhanced notification system
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 max-w-sm w-full ${
+        type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 
+        type === 'success' ? 'bg-green-50 border-green-200 text-green-700' :
+        'bg-blue-50 border-blue-200 text-blue-700'
+    } border rounded-xl p-4 shadow-lg transition-all duration-300 transform translate-x-full`;
+    
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${
+                type === 'error' ? 'fa-exclamation-circle' : 
+                type === 'success' ? 'fa-check-circle' : 'fa-info-circle'
+            } mr-3"></i>
+            <div class="flex-1">
+                <p class="font-medium">${message}</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 300);
+    }, 5000);
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (isFormValid) {
+            document.getElementById('editSuperAdminForm').submit();
+        }
+    }
+    if (e.key === 'Escape') {
+        const confirmModal = confirm('Are you sure you want to cancel? Any unsaved changes will be lost.');
+        if (confirmModal) {
+            window.location.href = "{{ url_for('super_admin.view_super_admin', admin_id=super_admin.id) }}";
+        }
+    }
+});
+
+// Initialize form
+document.addEventListener('DOMContentLoaded', function() {
+    checkFormValidity();
+});
+</script>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Enhanced form styling */
+.form-group {
+    transition: all 0.3s ease;
+}
+
+.form-group:focus-within {
+    transform: translateY(-2px);
+}
+
+/* Custom focus effects */
+input:focus, textarea:focus, select:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Smooth animations */
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-in {
+    animation: slideInFromTop 0.6s ease-out;
+}
+
+/* Loading states */
+.btn-loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    margin-left: -10px;
+    margin-top: -10px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: button-loading-spinner 1s ease infinite;
+}
+
+@keyframes button-loading-spinner {
+    from {
+        transform: rotate(0turn);
+    }
+    to {
+        transform: rotate(1turn);
+    }
+}
+
+/* Enhanced transitions */
+* {
+    transition: all 0.3s ease;
+}
+
+/* Responsive improvements */
+@media (max-width: 640px) {
+    .grid {
+        gap: 1rem;
+    }
+    
+    .p-8 {
+        padding: 1.5rem;
+    }
+    
+    .text-4xl {
+        font-size: 2rem;
+    }
+}
+
+/* Custom toggle switch styling */
+input[type="checkbox"]:checked + div {
+    background-color: #10b981;
+}
+
+/* Enhanced card hover effects */
+.form-group:hover {
+    transform: translateY(-1px);
+}
+
+/* Validation styling */
+.border-green-500 {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.border-red-500 {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.validation-check {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+}
+
+/* Profile upload styling */
+.form-group {
+    position: relative;
+}
+</style>
+{% endblock %}

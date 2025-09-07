@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}{{ brand_title or 'PiyuGuide' }} - Super Admin Panel{% endblock %} - {{ brand_title or 'PiyuGuide' }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <style>
+        .sidebar-item {
+            transition: all 0.3s ease;
+        }
+        .sidebar-item:hover {
+            background-color: #f3f4f6;
+            padding-left: 1.25rem;
+        }
+        .sidebar-item.active {
+            background-color: #3b82f6;
+            color: white;
+            border-right: 4px solid #1d4ed8;
+        }
+        .sidebar-item.active:hover {
+            background-color: #2563eb;
+        }
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        /* Unified Notification & Toast Styling (Blue theme) */
+        #sa-ann-bell-wrapper { position:relative; z-index:1000; }
+        #sa-ann-dropdown { backdrop-filter:saturate(1.2) blur(8px); box-shadow:0 8px 24px -4px rgba(17,24,39,0.15), 0 4px 12px -2px rgba(17,24,39,0.08); transform-origin: top right; opacity:0; transform: translateY(-8px) scale(.96); transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .32s cubic-bezier(.4,0,.2,1); }
+        #sa-ann-dropdown.open { opacity:1; transform:translateY(0) scale(1); }
+        #sa-ann-dropdown.closing { opacity:0; transform:translateY(-6px) scale(.95); pointer-events:none; }
+        .sa-ann-item { position:relative; display:flex; gap:.75rem; }
+        .sa-ann-item .icon-pill { flex-shrink:0; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:600; background:linear-gradient(135deg,#3b82f6,#1e40af); color:#fff; box-shadow:0 4px 10px -2px rgba(59,130,246,0.35); }
+        .sa-ann-item.unread { background:linear-gradient(90deg, rgba(59,130,246,0.10), rgba(59,130,246,0)); }
+        .sa-ann-item:hover { background:linear-gradient(90deg, rgba(59,130,246,0.16), rgba(59,130,246,0.04)); }
+        .sa-ann-item .ann-body { flex:1; min-width:0; }
+        .sa-ann-item .ann-title { font-weight:600; font-size:.78rem; line-height:1.1rem; color:#1f2937; letter-spacing:.3px; }
+        .sa-ann-item .ann-msg { font-size:.67rem; color:#4b5563; line-height:1rem; margin-top:2px; }
+        .sa-ann-item .ann-meta { font-size:.6rem; color:#9ca3af; margin-top:4px; display:flex; align-items:center; gap:4px; text-transform:uppercase; font-weight:500; letter-spacing:.5px; }
+        .sa-ann-scroll { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
+        .sa-ann-scroll::-webkit-scrollbar { width:6px; }
+        .sa-ann-scroll::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
+        .sa-ann-empty { padding:3.5rem 1.25rem; text-align:center; }
+        .sa-ann-empty i { opacity:.35; }
+        .toast-zone { position:fixed; top:5rem; right:1.25rem; display:flex; flex-direction:column; gap:.75rem; z-index:1500; width:clamp(260px, 30vw, 380px); pointer-events:none; }
+        .toast { position:relative; background:#ffffff; border-radius:18px; padding:.9rem 1rem 1rem 1rem; box-shadow:0 10px 25px -5px rgba(17,24,39,0.18), 0 4px 10px -3px rgba(17,24,39,0.08); display:flex; gap:.85rem; transform:translateX(40px) scale(.96); opacity:0; animation:toastIn .55s cubic-bezier(.68,-0.55,.27,1.55) forwards; border:1px solid #e5e7eb; backdrop-filter:saturate(1.2) blur(6px); pointer-events:auto; }
+        .toast.closing { animation:toastOut .35s ease forwards; }
+        .toast .toast-icon-wrapper { position:relative; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.05rem; font-weight:600; box-shadow:0 4px 12px -2px rgba(0,0,0,.2); }
+        .toast .toast-title { font-weight:600; font-size:.85rem; color:#111827; letter-spacing:.3px; }
+        .toast .toast-message { font-size:.7rem; color:#374151; margin-top:2px; line-height:1.05rem; }
+        .toast button.toast-close { position:absolute; top:6px; right:6px; width:30px; height:30px; border-radius:12px; background:rgba(0,0,0,0.05); color:#4b5563; display:flex; align-items:center; justify-content:center; font-size:.75rem; transition:all .2s; }
+        .toast button.toast-close:hover { background:rgba(0,0,0,0.12); color:#111827; }
+        .toast .progress-bar { position:absolute; left:8px; right:8px; bottom:6px; height:4px; border-radius:2px; overflow:hidden; background:#e5e7eb; }
+        .toast .progress-fill { height:100%; width:100%; transform-origin:left; animation:toastProgress linear forwards; background:linear-gradient(90deg,#3b82f6,#1e40af); }
+        @keyframes toastIn { 0% { opacity:0; transform:translateX(50px) scale(.9); } 60% { opacity:1; transform:translateX(-4px) scale(1.02); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+        @keyframes toastOut { 0% { opacity:1; transform:translateX(0) scale(1); } 100% { opacity:0; transform:translateX(40px) scale(.9); } }
+        @keyframes toastProgress { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 flex h-screen overflow-hidden">
+    
+    <!-- Sidebar -->
+    <div class="bg-white w-64 shadow-lg flex flex-col">
+        <!-- Logo/Header -->
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center space-x-3">
+                <img class="h-10 w-10" src="{{ brand_logo_url }}" alt="Logo">
+                <div>
+                    <h1 class="text-lg font-bold text-gray-900">{{ brand_title or 'PiyuGuide' }}</h1>
+                    <p class="text-xs text-gray-500">Super Admin</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <!-- Dashboard -->
+            <a href="{{ url_for('super_admin.dashboard') }}" 
+               class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg 
+                      {% if request.endpoint == 'super_admin.dashboard' %}active{% else %}text-gray-700{% endif %}">
+                <i class="fas fa-tachometer-alt mr-3"></i>
+                Dashboard
+            </a>
+            
+            <!-- Campus Management -->
+            <div class="pt-4">
+                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Campus Management</p>
+                <div class="mt-2 space-y-1">
+                    <a href="{{ url_for('super_admin.campus_list') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.campus_list' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-university mr-3"></i>
+                        All Campuses
+                    </a>
+                    <a href="{{ url_for('super_admin.create_campus') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.create_campus' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-plus-circle mr-3"></i>
+                        Add Campus
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Super Admin Management -->
+            <div class="pt-4">
+                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin Management</p>
+                <div class="mt-2 space-y-1">
+                    <a href="{{ url_for('super_admin.all_admins_list') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.all_admins_list' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-users mr-3"></i>
+                        All Admins
+                    </a>
+                    <a href="{{ url_for('super_admin.super_admin_list') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.super_admin_list' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-users-cog mr-3"></i>
+                        Campus Admins
+                    </a>
+                    <a href="{{ url_for('super_admin.create_super_admin') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.create_super_admin' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-user-plus mr-3"></i>
+                        Add Campus Admin
+                    </a>
+                </div>
+            </div>
+            
+            <!-- System Settings -->
+            <div class="pt-4">
+                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">System</p>
+                <div class="mt-2 space-y-1">
+                    <a href="{{ url_for('super_admin.settings') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.settings' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-cogs mr-3"></i>
+                        System Settings
+                    </a>
+                    <a href="{{ url_for('super_admin.activity_logs') }}" 
+                       class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                              {% if request.endpoint == 'super_admin.activity_logs' %}active{% else %}text-gray-700{% endif %}">
+                        <i class="fas fa-clipboard-list mr-3"></i>
+                        Activity Logs
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- User Info & Logout -->
+        <div class="border-t border-gray-200 p-4">
+            {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+            <a href="{{ url_for('super_admin.account_settings') }}" class="flex items-center space-x-3 mb-3 group">
+                <img src="{{ avatar_url or url_for('static', filename='images/default.jpg') }}" alt="Avatar" class="h-8 w-8 rounded-full object-cover ring-2 ring-blue-100 group-hover:ring-blue-300 transition">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate group-hover:text-blue-700">
+                        {{ current_user.first_name }} {{ current_user.last_name }}
+                    </p>
+                    <p class="text-xs text-gray-500">Super Admin</p>
+                </div>
+                <i class="fas fa-gear text-gray-300 group-hover:text-blue-500"></i>
+            </a>
+            <a href="{{ url_for('auth.logout') }}" 
+               class="flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <i class="fas fa-sign-out-alt mr-2"></i>
+                Logout
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navigation Bar -->
+        <header class="bg-white shadow-sm border-b border-gray-200">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h2>
+                    <p class="text-sm text-gray-600">{% block page_subtitle %}System Overview and Management{% endblock %}</p>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Unified Notifications -->
+                    <div class="relative" id="sa-ann-bell-wrapper">
+                        <button id="sa-ann-bell" type="button" class="group relative w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-200" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-bell text-lg text-gray-700 group-hover:scale-110"></i>
+                            <span id="sa-ann-badge" class="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] leading-[18px] rounded-full text-center font-semibold shadow {% if unread_notifications_count == 0 %}hidden{% endif %}">{{ unread_notifications_count or 0 }}</span>
+                        </button>
+                        <audio id="notificationSound" src="{{ url_for('static', filename='sounds/notification.mp3') }}" preload="auto"></audio>
+                        <div id="sa-ann-dropdown" class="hidden absolute right-0 mt-3 w-[430px] bg-white/95 rounded-2xl border border-gray-200 z-50 overflow-hidden">
+                            <div class="px-5 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100/70 backdrop-blur-sm border-b border-gray-200/70">
+                                <div class="font-semibold text-gray-800 flex items-center gap-2 text-sm tracking-wide"><span class="relative inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow"><i class="fas fa-bell"></i></span><span>Notifications</span></div>
+                                <div class="flex items-center gap-3">
+                                    <button id="sa-ann-refresh" class="text-xs px-2.5 py-1.5 rounded-lg bg-white/70 hover:bg-white text-blue-700 font-medium shadow-sm border border-blue-100 transition">Refresh</button>
+                                    <button id="sa-ann-mark-all" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition">Mark all read</button>
+                                </div>
+                            </div>
+                            <div id="sa-ann-list" class="sa-ann-scroll max-h-96 overflow-y-auto divide-y divide-transparent">
+                                {% if sidebar_notifications %}
+                                    {% for n in sidebar_notifications %}
+                                    <a href="{{ n.link or url_for('super_admin.dashboard') }}" data-id="{{ n.id }}" class="sa-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}" data-title="{{ n.title|e }}" data-message="{{ n.message|e }}">
+                                        <div class="icon-pill"><i class="fa-solid fa-bell"></i></div>
+                                        <div class="ann-body">
+                                            <div class="ann-title">{{ n.title }}</div>
+                                            <div class="ann-msg line-clamp-2">{{ n.message }}</div>
+                                            <div class="ann-meta"><i class="fas fa-clock"></i>{{ n.created_at.strftime('%b %d, %H:%M') }}</div>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                {% else %}
+                                <div class="sa-ann-empty text-gray-500 text-sm">
+                                    <i class="fas fa-bell-slash text-3xl mb-3 block"></i>
+                                    <p class="font-medium">No notifications</p>
+                                    <p class="text-xs mt-1 text-gray-400">You're all caught up!</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="border-t border-gray-100/80 bg-gray-50/60 backdrop-blur-sm flex items-center justify-between px-5 py-3">
+                                <a href="{{ url_for('super_admin.dashboard') }}" class="text-[11px] tracking-wide font-semibold text-blue-700 hover:text-blue-900 uppercase flex items-center gap-1">View Dashboard <i class="fas fa-arrow-right text-[10px]"></i></a>
+                                <span class="text-[10px] text-gray-400 font-medium select-none">Real-time</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Time -->
+                    <!-- <div class="text-sm text-gray-600">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span id="header-datetime"></span>
+                    </div> -->
+                    <!-- User Menu Dropdown -->
+                    <div class="relative hidden sm:block" id="sa-user-menu-wrapper">
+                        {% set top_avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+                        <button id="sa-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="sa-user-menu"
+                                class="w-11 h-11 rounded-full overflow-hidden ring-2 ring-transparent hover:ring-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 transition">
+                            <img src="{{ top_avatar_url or url_for('static', filename='images/default.jpg') }}" alt="User menu" class="w-11 h-11 object-cover">
+                        </button>
+                        <div id="sa-user-menu" class="hidden absolute right-0 mt-3 w-56 bg-white/95 backdrop-blur-sm rounded-2xl border border-gray-200 shadow-xl z-50 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <p class="text-sm font-semibold text-gray-900">{{ current_user.first_name }} {{ current_user.last_name }}</p>
+                                <p class="text-xs text-gray-500 truncate">{{ current_user.email }}</p>
+                            </div>
+                            <div class="py-1">
+                                <a href="{{ url_for('super_admin.profile') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                    <i class="fas fa-id-card text-gray-400 w-4"></i>
+                                    Profile
+                                </a>
+                                <a href="{{ url_for('super_admin.account_settings') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                    <i class="fas fa-user-cog text-gray-400 w-4"></i>
+                                    Account Settings
+                                </a>
+                                <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                    <i class="fas fa-sign-out-alt text-red-400 w-4"></i>
+                                    Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="p-4">
+                    {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg 
+                        {% if category == 'error' or category == 'danger' %}bg-red-100 border border-red-200 text-red-700
+                        {% elif category == 'warning' %}bg-yellow-100 border border-yellow-200 text-yellow-700
+                        {% elif category == 'success' %}bg-green-100 border border-green-200 text-green-700
+                        {% else %}bg-blue-100 border border-blue-200 text-blue-700{% endif %}">
+                        <div class="flex items-center">
+                            {% if category == 'error' or category == 'danger' %}
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            {% elif category == 'success' %}
+                            <i class="fas fa-check-circle mr-2"></i>
+                            {% else %}
+                            <i class="fas fa-info-circle mr-2"></i>
+                            {% endif %}
+                            {{ message }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Main Content Block -->
+            <div class="p-4 md:p-6 lg:p-8">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script type="module">
+        import { initNotifications } from "{{ url_for('static', filename='js/common/notifications.js') }}";
+        const api = initNotifications({
+            role: 'super_admin',
+            ids: { bell:'sa-ann-bell', badge:'sa-ann-badge', dropdown:'sa-ann-dropdown', list:'sa-ann-list', markAll:'sa-ann-mark-all', refresh:'sa-ann-refresh' },
+            endpoints: { markAll:'/super-admin/notifications/mark-all-read', list:'/super-admin/notifications/recent' },
+            palette: { base:'#3b82f6', baseAlt:'#1e40af' }
+        });
+
+        // Play sound effect for new notifications
+        function playNotificationSound() {
+            const audio = document.getElementById('notificationSound');
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play().catch(()=>{});
+            }
+        }
+
+        // Real-time socket events
+        try {
+            const socket = io('/dashboard', { transports:['websocket'] });
+            socket.on('campus_name_updated', (data) => {
+                api.addRealtime({
+                    id: data.id || '',
+                    title: 'Campus Name Updated',
+                    message: `${data.updated_by.name} renamed campus from '${data.old_name}' to '${data.new_name}'.`,
+                    created_at: data.timestamp,
+                    link: `/super-admin/campus/${data.campus_id}`,
+                    type: 'info',
+                    toast_message: 'Campus name updated'
+                });
+                playNotificationSound();
+            });
+        } catch(e) { /* swallow */ }
+
+        // Update header datetime
+        function updateHeaderDateTime() {
+            const now = new Date();
+            const options = { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            const element = document.getElementById('header-datetime');
+            if (element) {
+                element.textContent = now.toLocaleDateString('en-US', options);
+            }
+        }
+        updateHeaderDateTime();
+        setInterval(updateHeaderDateTime, 60000);
+
+        // Auto-hide flash messages after 5 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.mb-4.p-4.rounded-lg');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s ease-out';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+
+        // User menu dropdown
+        const userBtn = document.getElementById('sa-user-menu-btn');
+        const userMenu = document.getElementById('sa-user-menu');
+        const wrapper = document.getElementById('sa-user-menu-wrapper');
+        if (userBtn && userMenu && wrapper) {
+            function closeUserMenu() {
+                userMenu.classList.add('hidden');
+                userBtn.setAttribute('aria-expanded', 'false');
+            }
+            function openUserMenu() {
+                userMenu.classList.remove('hidden');
+                userBtn.setAttribute('aria-expanded', 'true');
+            }
+            userBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = !userMenu.classList.contains('hidden');
+                if (isOpen) closeUserMenu(); else openUserMenu();
+            });
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) closeUserMenu();
+            });
+            // Close on escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeUserMenu();
+            });
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

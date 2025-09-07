@@ -1,6 +1,7 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy import desc
 from app.student import student_bp
 from app.models import (
@@ -15,8 +16,12 @@ from app.utils import role_required
 @role_required(['student'])
 def dashboard():
     """Render the student dashboard with relevant statistics and recent activities"""
-    # Get the current date for welcome message
-    today = datetime.utcnow()
+    # Get the current date/time in configured local timezone for display and daily boundaries
+    tz = ZoneInfo(current_app.config.get('TIMEZONE', 'UTC'))
+    now_utc = datetime.utcnow().replace(tzinfo=ZoneInfo('UTC'))
+    today_local = now_utc.astimezone(tz)
+    # Also keep naive UTC 'today' for DB queries defaulting to UTC storage
+    today = now_utc.replace(tzinfo=None)
     
     # Get the student record for the current user
     student = Student.query.filter_by(user_id=current_user.id).first_or_404()
@@ -45,7 +50,14 @@ def dashboard():
     
     # Mark sessions scheduled for today
     for session in upcoming_schedule:
-        session.is_today = session.scheduled_at.date() == today.date()
+        try:
+            sched = session.scheduled_at
+            if sched.tzinfo is None:
+                sched = sched.replace(tzinfo=ZoneInfo('UTC'))
+            local_sched = sched.astimezone(tz)
+            session.is_today = local_sched.date() == today_local.date()
+        except Exception:
+            session.is_today = session.scheduled_at.date() == today.date()
     
     # Get recent inquiries
     recent_inquiries = Inquiry.query.filter_by(
@@ -56,10 +68,16 @@ def dashboard():
     todays_activities = []
     
     # Add counseling sessions for today
+    # Compute local day boundaries then convert to naive UTC for querying stored UTC datetimes
+    start_local = today_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_local = today_local.replace(hour=23, minute=59, second=59, microsecond=999999)
+    start_utc = start_local.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+    end_utc = end_local.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+
     today_sessions = CounselingSession.query.filter(
         CounselingSession.student_id == student.id,
-        CounselingSession.scheduled_at >= today.replace(hour=0, minute=0, second=0),
-        CounselingSession.scheduled_at <= today.replace(hour=23, minute=59, second=59)
+        CounselingSession.scheduled_at >= start_utc,
+        CounselingSession.scheduled_at <= end_utc
     ).all()
     
     for session in today_sessions:
@@ -73,8 +91,8 @@ def dashboard():
     # Add recent inquiry updates for today
     today_inquiries = Inquiry.query.filter(
         Inquiry.student_id == student.id,
-        Inquiry.created_at >= today.replace(hour=0, minute=0, second=0),
-        Inquiry.created_at <= today.replace(hour=23, minute=59, second=59)
+        Inquiry.created_at >= start_utc,
+        Inquiry.created_at <= end_utc
     ).all()
     
     for inquiry in today_inquiries:
@@ -101,7 +119,13 @@ def dashboard():
     
     for announcement in recent_announcements:
         # Mark announcement as new if it's less than 3 days old
-        announcement.is_new = (today - announcement.created_at).days < 3
+        try:
+            created = announcement.created_at
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=ZoneInfo('UTC'))
+            announcement.is_new = (today_local - created.astimezone(tz)).days < 3
+        except Exception:
+            announcement.is_new = (today - announcement.created_at).days < 3
     
     # Get available offices for creating inquiries and sessions
     # Since 'is_active' does not exist, fetch all offices instead
@@ -131,7 +155,7 @@ def dashboard():
     
     return render_template(
         'student/student_dashboard.html',
-        today=today,
+    today=today_local,
         stats=stats,
         upcoming_schedule=upcoming_schedule,
         recent_inquiries=recent_inquiries,

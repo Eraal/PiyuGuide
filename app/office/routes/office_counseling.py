@@ -14,6 +14,8 @@ from app.utils import role_required
 import uuid
 import os
 from flask_apscheduler import APScheduler
+from app.websockets.student import push_student_notification_to_user, push_student_session_update
+from datetime import datetime, timedelta, time as dtime
 
 # Create the scheduler but don't initialize it yet
 scheduler = APScheduler()
@@ -75,6 +77,33 @@ def check_upcoming_sessions():
                         notification_type="video_session"
                     )
                     db.session.add(notification)
+                    # Flush to assign ID before emit
+                    try:
+                        db.session.flush()
+                        from app.websockets.student import push_student_notification_to_user
+                        payload = {
+                            'id': notification.id,
+                            'title': notification.title,
+                            'message': notification.message,
+                            'notification_type': notification.notification_type,
+                            'source_office_id': notification.source_office_id,
+                            'link': notification.link,
+                            'timestamp': datetime.utcnow().isoformat(),
+                        }
+                        push_student_notification_to_user(student.user_id, payload)
+                        # Realtime session status to student
+                        try:
+                            push_student_session_update(student.user_id, {
+                                'session_id': session.id,
+                                'status': 'in_progress',
+                                'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
+                                'is_video_session': True,
+                                'link': f"/student/view-session/{session.id}"
+                            })
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
             
             # Send reminder notification at 15 minutes before session
             elif session.scheduled_at <= now + timedelta(minutes=15):
@@ -99,6 +128,22 @@ def check_upcoming_sessions():
                             notification_type="reminder"
                         )
                         db.session.add(notification)
+                        # Flush to assign ID before emit
+                        try:
+                            db.session.flush()
+                            from app.websockets.student import push_student_notification_to_user
+                            payload = {
+                                'id': notification.id,
+                                'title': notification.title,
+                                'message': notification.message,
+                                'notification_type': notification.notification_type,
+                                'source_office_id': notification.source_office_id,
+                                'link': notification.link,
+                                'timestamp': datetime.utcnow().isoformat(),
+                            }
+                            push_student_notification_to_user(student.user_id, payload)
+                        except Exception:
+                            pass
         
         db.session.commit()
 
@@ -112,16 +157,34 @@ def video_counseling():
         return redirect(url_for('main.index'))
     
     office_id = current_user.office_admin.office_id
+    # If office doesn't offer counseling at all, redirect away
+    try:
+        from app.models import OfficeConcernType
+        has_counseling_types = db.session.query(OfficeConcernType.id).filter(
+            OfficeConcernType.office_id == office_id,
+            OfficeConcernType.for_counseling.is_(True)
+        ).first() is not None
+        has_any_sessions = db.session.query(CounselingSession.id).filter(
+            CounselingSession.office_id == office_id
+        ).first() is not None
+        if not (has_counseling_types or has_any_sessions):
+            flash('Counseling is not enabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        pass
     
     # Get filter parameters
+    # Default to 'upcoming' so the initial view prioritizes upcoming (student-submitted) sessions
     status = request.args.get('status', 'upcoming')
-    date_range = request.args.get('date_range', '7d')
+    # Broaden default date range to 'all' so future sessions beyond 7 days are visible by default
+    date_range = request.args.get('date_range', 'all')
     page = request.args.get('page', 1, type=int)
     
-    # Only get video sessions
+    # Base query now includes BOTH video and in-person sessions so that newly
+    # submitted in-person requests appear in the dashboard immediately.
+    # (User request: show in-person sessions that previously were hidden.)
     query = CounselingSession.query.filter_by(
-        office_id=office_id,
-        is_video_session=True
+        office_id=office_id
     )
     
     # Apply status filter
@@ -169,49 +232,49 @@ def video_counseling():
     else:
         query = query.order_by(desc(CounselingSession.scheduled_at))
     
-    # Make sure all sessions have meeting links generated
-    for session in query:
-        if session.status in ['pending', 'confirmed', 'in_progress'] and not session.meeting_id:
-            session.generate_meeting_details()
-    
-    db.session.commit()
-    
-    # Paginate results
+    # Paginate results first
     video_sessions = query.paginate(page=page, per_page=10, error_out=False)
+
+    # Generate meeting details ONLY for the sessions in the current page that need them
+    for session in video_sessions.items:
+        if session.is_video_session and session.status in ['pending', 'confirmed', 'in_progress'] and not session.meeting_id:
+            session.generate_meeting_details()
+    db.session.commit()
     
     # Get stats for sidebar
     today_start = datetime.combine(now.date(), datetime.min.time())
     today_end = datetime.combine(now.date(), datetime.max.time())
     
+    # Preserve existing video-only stats for the cards
     today_video_count = CounselingSession.query.filter(
         CounselingSession.office_id == office_id,
-        CounselingSession.is_video_session == True,
+        CounselingSession.is_video_session.is_(True),
         CounselingSession.scheduled_at >= today_start,
         CounselingSession.scheduled_at <= today_end
     ).count()
     
     active_video_count = CounselingSession.query.filter(
         CounselingSession.office_id == office_id,
-        CounselingSession.is_video_session == True,
+        CounselingSession.is_video_session.is_(True),
         CounselingSession.status == 'in_progress'
     ).count()
     
     upcoming_video_count = CounselingSession.query.filter(
         CounselingSession.office_id == office_id,
-        CounselingSession.is_video_session == True,
+        CounselingSession.is_video_session.is_(True),
         CounselingSession.status.in_(['pending', 'confirmed']),
         CounselingSession.scheduled_at > now
     ).count()
     
     completed_video_count = CounselingSession.query.filter(
         CounselingSession.office_id == office_id,
-        CounselingSession.is_video_session == True,
+        CounselingSession.is_video_session.is_(True),
         CounselingSession.status == 'completed'
     ).count()
     
     my_upcoming_sessions = CounselingSession.query.filter(
         CounselingSession.office_id == office_id,
-        CounselingSession.is_video_session == True,
+        CounselingSession.is_video_session.is_(True),
         CounselingSession.counselor_id == current_user.id,
         CounselingSession.status.in_(['pending', 'confirmed']),
         CounselingSession.scheduled_at > now
@@ -312,6 +375,17 @@ def join_video_session(session_id):
                 db.session.add(notification)
         
         db.session.commit()
+        # Push realtime status to student
+        try:
+            push_student_session_update(student.user_id, {
+                'session_id': session.id,
+                'status': 'in_progress',
+                'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
+                'is_video_session': True,
+                'link': f"/student/view-session/{session.id}"
+            })
+        except Exception:
+            pass
     
     # Log counselor joining the session
     session.counselor_joined_at = now
@@ -545,9 +619,38 @@ def update_session_status(session_id):
                 source_office_id=session.office_id,
                 is_read=False,
                 link=f"/student/view-session/{session.id}" if session.is_video_session else None,
-                notification_type="video_session" if session.is_video_session else "confirmation"
+                # Use a type that maps to a green toast in the student UI
+                notification_type="scheduled"
             )
             db.session.add(notification)
+            # Flush to obtain ID, then push realtime event
+            try:
+                db.session.flush()
+                payload = {
+                    'id': getattr(notification, 'id', None),
+                    'title': notification.title,
+                    'message': notification.message,
+                    'notification_type': notification.notification_type,
+                    'source_office_id': notification.source_office_id,
+                    'target_office_name': session.office.name if session.office else None,
+                    'link': notification.link,
+                    'created_at': datetime.utcnow().isoformat()
+                }
+                push_student_notification_to_user(student.user_id, payload)
+                # Also emit realtime session update for student view page
+                try:
+                    push_student_session_update(student.user_id, {
+                        'session_id': session.id,
+                        'status': 'confirmed',
+                        'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
+                        'is_video_session': bool(session.is_video_session),
+                        'link': f"/student/view-session/{session.id}" if session.is_video_session else None
+                    })
+                except Exception:
+                    pass
+            except Exception:
+                # Non-fatal if emit fails
+                pass
     
     # If cancelling, record cancellation reason
     if new_status == 'cancelled':
@@ -566,9 +669,37 @@ def update_session_status(session_id):
                 title="Counseling Session Cancelled",
                 message=f"Your counseling session scheduled for {session.scheduled_at.strftime('%Y-%m-%d %H:%M')} has been cancelled.",
                 source_office_id=session.office_id,
-                is_read=False
+                is_read=False,
+                link=f"/student/counseling-sessions",
+                # Map to red toast via 'error'
+                notification_type="cancelled_error"
             )
             db.session.add(notification)
+            try:
+                db.session.flush()
+                payload = {
+                    'id': getattr(notification, 'id', None),
+                    'title': notification.title,
+                    'message': notification.message,
+                    'notification_type': notification.notification_type,
+                    'source_office_id': notification.source_office_id,
+                    'target_office_name': session.office.name if session.office else None,
+                    'link': notification.link,
+                    'created_at': datetime.utcnow().isoformat()
+                }
+                push_student_notification_to_user(student.user_id, payload)
+                try:
+                    push_student_session_update(student.user_id, {
+                        'session_id': session.id,
+                        'status': 'cancelled',
+                        'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
+                        'is_video_session': bool(session.is_video_session),
+                        'link': f"/student/counseling-sessions"
+                    })
+                except Exception:
+                    pass
+            except Exception:
+                pass
     
     # Log activity
     AuditLog.log_action(
@@ -582,7 +713,20 @@ def update_session_status(session_id):
     )
     
     db.session.commit()
-    
+    # Emit realtime session update regardless of branch
+    try:
+        student = Student.query.get(session.student_id)
+        if student:
+            push_student_session_update(student.user_id, {
+                'session_id': session.id,
+                'status': new_status,
+                'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
+                'is_video_session': bool(session.is_video_session),
+                'link': f"/student/view-session/{session.id}" if session.is_video_session else None
+            })
+    except Exception:
+        pass
+
     return jsonify({'status': 'success', 'message': f'Session status updated to {new_status}'})
 
 
@@ -615,14 +759,21 @@ def send_session_reminder(session_id):
     )
     db.session.add(reminder)
     
-    # For in-app notifications, create a notification
+    # For in-app notifications, create a notification and broadcast to the student in real-time
     if reminder_type == 'in_app':
         from app.models import Notification
-        
+        from app.websockets.student import push_student_notification_to_user
+
+        # Build a richer notification including linkage and typing for client UI
         notification = Notification(
             user_id=student_user.id,
             title="Counseling Reminder",
-            message=f"Reminder: You have a video counseling session scheduled for {session.scheduled_at.strftime('%Y-%m-%d %H:%M')}. Please be ready to join the session on time."
+            message=f"Reminder: You have a video counseling session scheduled for {session.scheduled_at.strftime('%Y-%m-%d %H:%M')}. Please be ready to join the session on time.",
+            source_office_id=session.office_id,
+            link=f"/student/view-session/{session.id}",
+            notification_type="reminder",
+            is_read=False,
+            created_at=datetime.utcnow(),
         )
         db.session.add(notification)
     
@@ -638,6 +789,23 @@ def send_session_reminder(session_id):
     )
     
     db.session.commit()
+
+    # Emit real-time event to student if in-app reminder
+    if reminder_type == 'in_app':
+        try:
+            payload = {
+                'id': notification.id,
+                'title': notification.title,
+                'message': notification.message,
+                'notification_type': notification.notification_type,
+                'source_office_id': notification.source_office_id,
+                'link': notification.link,
+                'timestamp': notification.created_at.isoformat(),
+            }
+            push_student_notification_to_user(student_user.id, payload)
+        except Exception:
+            # Non-fatal if websocket layer is unavailable
+            pass
     
     return jsonify({
         'status': 'success', 
@@ -672,16 +840,38 @@ def reschedule_session(session_id):
     try:
         # Parse the date and time
         new_datetime = datetime.strptime(f"{new_date} {new_time}", '%Y-%m-%d %H:%M')
+        # Prevent double-booking within the office: block if overlapping with another active session
+        new_end = new_datetime + timedelta(minutes=session.duration_minutes or 60)
+        candidates = CounselingSession.query.filter(
+            CounselingSession.office_id == session.office_id,
+            CounselingSession.id != session.id,
+            CounselingSession.status.in_(['pending','confirmed','in_progress']),
+            CounselingSession.scheduled_at < new_end
+        ).all()
+        conflict = None
+        for c in candidates:
+            c_end = c.scheduled_at + timedelta(minutes=c.duration_minutes or 60)
+            if c_end > new_datetime:
+                conflict = c
+                break
+        if conflict:
+            return jsonify({'status':'error','message':'Selected time overlaps with an existing session. Please choose another slot.'}), 409
         
         # Store original datetime for notification
         original_datetime = session.scheduled_at
         
         # Update session with new datetime
         session.scheduled_at = new_datetime
-        
-        # Set session status to confirmed since an office admin has reviewed it
-        if session.status == 'pending':
-            session.status = 'confirmed'
+
+        # Assign the rescheduling admin as the counselor to ensure ownership
+        session.counselor_id = current_user.id
+
+        # Auto-confirm the session upon reschedule for consistency
+        session.status = 'confirmed'
+
+        # For video sessions, ensure meeting details are generated
+        if session.is_video_session and not session.meeting_id:
+            session.generate_meeting_details()
         
         # Add a note about rescheduling
         if session.notes:
@@ -689,13 +879,21 @@ def reschedule_session(session_id):
         else:
             session.notes = f"Rescheduled: Session was moved from {original_datetime.strftime('%Y-%m-%d %H:%M')} to {new_datetime.strftime('%Y-%m-%d %H:%M')} by {current_user.get_full_name()}."
         
-        # Create notification for student
+        # Create notification for student and emit realtime update
         from app.models import Notification
         student = Student.query.get(session.student_id)
         notification = Notification(
             user_id=student.user_id,
             title="Counseling Session Rescheduled",
-            message=f"Your counseling session has been rescheduled to {new_datetime.strftime('%Y-%m-%d %H:%M')}."
+            message=(
+                f"Your counseling session with {session.office.name if session.office else 'the office'} "
+                f"has been rescheduled from {original_datetime.strftime('%Y-%m-%d %H:%M')} to {new_datetime.strftime('%Y-%m-%d %H:%M')}."
+            ),
+            source_office_id=session.office_id,
+            is_read=False,
+            link=f"/student/view-session/{session.id}",
+            # Map to yellow toast via 'warning'
+            notification_type="rescheduled_warning"
         )
         db.session.add(notification)
         
@@ -710,6 +908,34 @@ def reschedule_session(session_id):
             user_agent=request.user_agent.string
         )
         
+        # Commit DB changes and then push realtime payload
+        db.session.flush()
+        try:
+            payload = {
+                'id': getattr(notification, 'id', None),
+                'title': notification.title,
+                'message': notification.message,
+                'notification_type': notification.notification_type,
+                'source_office_id': notification.source_office_id,
+                'target_office_name': session.office.name if session.office else None,
+                'link': notification.link,
+                'created_at': datetime.utcnow().isoformat()
+            }
+            push_student_notification_to_user(student.user_id, payload)
+            # Also push realtime session update to reflect confirmed + new time
+            try:
+                push_student_session_update(student.user_id, {
+                    'session_id': session.id,
+                    'status': 'confirmed',
+                    'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
+                    'is_video_session': bool(session.is_video_session),
+                    'link': f"/student/view-session/{session.id}" if session.is_video_session else None
+                })
+            except Exception:
+                pass
+        except Exception:
+            pass
+
         db.session.commit()
         
         return jsonify({
@@ -721,6 +947,170 @@ def reschedule_session(session_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': f'Error rescheduling session: {str(e)}'}), 500
+
+
+@office_bp.route('/video-counseling/calendar-events')
+@login_required
+def office_calendar_events():
+    """Return counseling sessions for the current office within a date range for calendar rendering."""
+    if current_user.role != 'office_admin':
+        return jsonify([]), 200
+
+    office_id = current_user.office_admin.office_id
+    start = request.args.get('start')
+    end = request.args.get('end')
+
+    def parse_iso(s):
+        if not s:
+            return None
+        try:
+            return datetime.fromisoformat(s.replace('Z', '+00:00'))
+        except Exception:
+            try:
+                return datetime.strptime(s.split('T')[0], '%Y-%m-%d')
+            except Exception:
+                return None
+
+    start_dt = parse_iso(start) or (datetime.utcnow() - timedelta(days=7))
+    end_dt = parse_iso(end) or (datetime.utcnow() + timedelta(days=60))
+
+    sessions = CounselingSession.query.filter(
+        CounselingSession.office_id == office_id,
+        CounselingSession.scheduled_at >= start_dt,
+        CounselingSession.scheduled_at <= end_dt
+    ).all()
+
+    events = []
+    for s in sessions:
+        dur = s.duration_minutes or 60
+        e = {
+            'id': s.id,
+            'title': f"{('Video' if s.is_video_session else 'In-Person')} - {s.student.user.get_full_name() if s.student and s.student.user else 'Student'}",
+            'start': s.scheduled_at.isoformat(),
+            'end': (s.scheduled_at + timedelta(minutes=dur)).isoformat(),
+            'allDay': False,
+            'backgroundColor': '#3b82f6' if s.is_video_session else '#6b7280',
+            'borderColor': '#2563eb' if s.is_video_session else '#4b5563',
+            'textColor': '#ffffff',
+            'extendedProps': {
+                'status': s.status,
+                'student': s.student.user.get_full_name() if s.student and s.student.user else '',
+                'is_video': s.is_video_session,
+                'office_id': s.office_id
+            }
+        }
+        # Status-based color accent
+        if s.status == 'pending':
+            e['backgroundColor'] = '#f59e0b'
+            e['borderColor'] = '#d97706'
+        elif s.status == 'confirmed':
+            e['backgroundColor'] = '#10b981'
+            e['borderColor'] = '#059669'
+        elif s.status == 'in_progress':
+            e['backgroundColor'] = '#22c55e'
+            e['borderColor'] = '#16a34a'
+        elif s.status == 'completed':
+            e['backgroundColor'] = '#9ca3af'
+            e['borderColor'] = '#6b7280'
+        elif s.status == 'cancelled':
+            e['backgroundColor'] = '#ef4444'
+            e['borderColor'] = '#dc2626'
+
+        events.append(e)
+
+    return jsonify(events)
+
+
+@office_bp.route('/video-session/availability')
+@login_required
+def office_availability():
+    """Return availability for the current office (office_admin) on a given date.
+
+    Query params:
+      - date: YYYY-MM-DD (required)
+      - interval: slot minutes (ignored; enforced to 60)
+      - start: day start HH:MM (default 08:00)
+      - end: day end HH:MM (default 17:00)
+      - exclude_session_id: optional session id to exclude from blocking
+    """
+    if current_user.role != 'office_admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'date is required (YYYY-MM-DD)'}), 400
+
+    try:
+        day = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except Exception:
+        return jsonify({'error': 'invalid date format'}), 400
+
+    office_id = current_user.office_admin.office_id
+
+    # Force 60-minute slots regardless of input
+    slot_minutes = 60
+
+    def parse_hhmm(val, default):
+        try:
+            hh, mm = map(int, val.split(':'))
+            return dtime(hour=hh, minute=mm)
+        except Exception:
+            return default
+
+    start_param = request.args.get('start', '08:00')
+    end_param = request.args.get('end', '17:00')
+    start_t = parse_hhmm(start_param, dtime(8, 0))
+    end_t = parse_hhmm(end_param, dtime(17, 0))
+
+    day_start = datetime.combine(day, start_t)
+    day_end = datetime.combine(day, end_t)
+
+    exclude_id = request.args.get('exclude_session_id', type=int)
+
+    # Blocking statuses
+    blocking = ['pending', 'confirmed', 'in_progress']
+    q = CounselingSession.query.filter(
+        CounselingSession.office_id == office_id,
+        CounselingSession.status.in_(blocking),
+        CounselingSession.scheduled_at < day_end
+    )
+    if exclude_id:
+        q = q.filter(CounselingSession.id != exclude_id)
+    sessions = q.all()
+
+    booked = []
+    for s in sessions:
+        s_start = s.scheduled_at
+        s_end = s_start + timedelta(minutes=(s.duration_minutes or 60))
+        if s_end > day_start and s_start < day_end:
+            booked.append((max(s_start, day_start), min(s_end, day_end)))
+
+    slots = []
+    cursor = day_start
+    now = datetime.utcnow()
+    while cursor < day_end:
+        slot_end = cursor + timedelta(minutes=slot_minutes)
+        status = 'available'
+        if slot_end <= now:
+            status = 'past'
+        else:
+            for b_start, b_end in booked:
+                if b_end > cursor and b_start < slot_end:
+                    status = 'booked'
+                    break
+        slots.append({'time': cursor.strftime('%H:%M'), 'status': status})
+        cursor = slot_end
+
+    return jsonify({
+        'office_id': office_id,
+        'date': day.strftime('%Y-%m-%d'),
+        'slot_interval_minutes': slot_minutes,
+        'office_hours': {
+            'start': start_t.strftime('%H:%M'),
+            'end': end_t.strftime('%H:%M'),
+        },
+        'slots': slots,
+    })
 
 
 @office_bp.route('/video-session/<int:session_id>/save-notes', methods=['POST'])
@@ -1013,3 +1403,43 @@ def schedule_followup(session_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error scheduling follow-up: {str(e)}'}), 500
+
+
+@office_bp.route('/video-session/<int:session_id>/assign', methods=['POST'])
+@login_required
+def assign_counseling_session(session_id):
+    """Assign the current office admin as the counselor for a session"""
+    if current_user.role != 'office_admin':
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+
+    session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+
+    # Ensure the session belongs to the current user's office
+    if session.office_id != current_user.office_admin.office_id:
+        return jsonify({'status': 'error', 'message': 'You do not have permission to assign this session'}), 403
+
+    # If already assigned to someone else, block simple assignment
+    if session.counselor_id and session.counselor_id != current_user.id:
+        return jsonify({'status': 'error', 'message': 'This session is already assigned to another counselor'}), 409
+
+    # Assign to current user
+    session.counselor_id = current_user.id
+
+    # Log the assignment
+    AuditLog.log_action(
+        actor=current_user,
+        action="Assigned counseling session to self",
+        target_type="counseling_session",
+        target_id=session_id,
+        status=session.status,
+        office=current_user.office_admin.office,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string
+    )
+
+    try:
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Session assigned to you'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': f'Failed to assign session: {str(e)}'}), 500

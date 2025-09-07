@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
-from sqlalchemy import func, case, or_
+from sqlalchemy import func, case, or_, and_
 import random
 import os
 from app.admin import admin_bp
@@ -24,7 +24,7 @@ def audit_logs():
     date_to = request.args.get('date_to', '')
     role = request.args.get('role', '')
     action = request.args.get('action', '')
-    status = request.args.get('status', '')
+    status = request.args.get('status', '')  # 'success' | 'failed' | ''
     
     # Create a dictionary of filter params to pass to view functions
     filter_params = {
@@ -56,6 +56,10 @@ def handle_student_logs(filter_params):
         User, Student.user_id == User.id
     ).order_by(StudentActivityLog.timestamp.desc())
     
+    # Campus scoping: Super Admin (Campus Admin) sees only their campus
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        student_logs_query = student_logs_query.filter(Student.campus_id == current_user.campus_id)
+
     if filter_params['search']:
         student_logs_query = student_logs_query.filter(
             or_(
@@ -71,6 +75,22 @@ def handle_student_logs(filter_params):
     
     if filter_params['date_to']:
         student_logs_query = student_logs_query.filter(StudentActivityLog.timestamp <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+    # Role filter (only makes sense if role == 'student'; otherwise will intentionally yield empty to reflect no match)
+    if filter_params['role']:
+        if filter_params['role'] == 'student':
+            pass  # already scoped to students
+        else:
+            student_logs_query = student_logs_query.filter(False)  # force empty result
+
+    # Action filter
+    if filter_params['action']:
+        student_logs_query = student_logs_query.filter(StudentActivityLog.action.ilike(f"%{filter_params['action']}%"))
+
+    # Status filter
+    if filter_params['status']:
+        want_success = (filter_params['status'].lower() == 'success')
+        student_logs_query = student_logs_query.filter(StudentActivityLog.is_success == want_success)
     
     students_query = db.session.query(
         User,
@@ -87,6 +107,10 @@ def handle_student_logs(filter_params):
     ).group_by(
         User.id, Student.id
     )
+
+    # Campus scoping for student summary
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        students_query = students_query.filter(Student.campus_id == current_user.campus_id)
     
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -128,6 +152,10 @@ def handle_office_logs(filter_params):
         Office, OfficeAdmin.office_id == Office.id
     ).order_by(OfficeLoginLog.login_time.desc())
     
+    # Campus scoping: Super Admin (Campus Admin) sees only their campus
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        office_logs_query = office_logs_query.filter(Office.campus_id == current_user.campus_id)
+
     if filter_params['search']:
         office_logs_query = office_logs_query.filter(
             or_(
@@ -143,6 +171,20 @@ def handle_office_logs(filter_params):
     
     if filter_params['date_to']:
         office_logs_query = office_logs_query.filter(OfficeLoginLog.login_time <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+    # Role filter (only office_admin yields data; any other role => empty)
+    if filter_params['role']:
+        if filter_params['role'] == 'office_admin':
+            pass
+        else:
+            office_logs_query = office_logs_query.filter(False)
+
+    # NOTE: Office login logs do not have an 'action' field; ignore action filter silently.
+
+    # Status filter
+    if filter_params['status']:
+        want_success = (filter_params['status'].lower() == 'success')
+        office_logs_query = office_logs_query.filter(OfficeLoginLog.is_success == want_success)
     
     offices_query = db.session.query(
         Office,
@@ -157,6 +199,10 @@ def handle_office_logs(filter_params):
     ).group_by(
         Office.id
     )
+
+    # Campus scoping for office summary
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        offices_query = offices_query.filter(Office.campus_id == current_user.campus_id)
     
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -197,6 +243,10 @@ def handle_superadmin_logs(filter_params):
         User, SuperAdminActivityLog.super_admin_id == User.id
     ).order_by(SuperAdminActivityLog.timestamp.desc())
     
+    # Campus scoping: only super admins from the same campus
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        superadmin_logs_query = superadmin_logs_query.filter(User.campus_id == current_user.campus_id)
+
     if filter_params['search']:
         superadmin_logs_query = superadmin_logs_query.filter(
             or_(
@@ -213,6 +263,22 @@ def handle_superadmin_logs(filter_params):
     
     if filter_params['date_to']:
         superadmin_logs_query = superadmin_logs_query.filter(SuperAdminActivityLog.timestamp <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+    # Role filter (only super_admin valid)
+    if filter_params['role']:
+        if filter_params['role'] == 'super_admin':
+            pass
+        else:
+            superadmin_logs_query = superadmin_logs_query.filter(False)
+
+    # Action filter
+    if filter_params['action']:
+        superadmin_logs_query = superadmin_logs_query.filter(SuperAdminActivityLog.action.ilike(f"%{filter_params['action']}%"))
+
+    # Status filter
+    if filter_params['status']:
+        want_success = (filter_params['status'].lower() == 'success')
+        superadmin_logs_query = superadmin_logs_query.filter(SuperAdminActivityLog.is_success == want_success)
     
     super_admins_query = db.session.query(
         User,
@@ -224,6 +290,10 @@ def handle_superadmin_logs(filter_params):
     ).group_by(
         User.id
     )
+
+    # Campus scoping for super admin summary
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        super_admins_query = super_admins_query.filter(User.campus_id == current_user.campus_id)
     
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -262,11 +332,24 @@ def handle_all_logs(filter_params):
         User.first_name.label('user_first_name'),
         User.last_name.label('user_last_name'),
         User.email.label('user_email'),
-        User.role.label('user_role')
+        User.role.label('user_role'),
+        Office.campus_id.label('office_campus_id')
     ).outerjoin(
         User, AuditLog.actor_id == User.id
+    ).outerjoin(
+        Office, AuditLog.office_id == Office.id
     ).order_by(AuditLog.timestamp.desc())
     
+    # Campus scoping: restrict to current campus context
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        audit_logs_query = audit_logs_query.filter(
+            or_(
+                Office.campus_id == current_user.campus_id,  # logs tied to offices in campus
+                and_(User.role == 'super_admin', User.campus_id == current_user.campus_id),  # campus admins
+                User.id == current_user.id  # always include own actions
+            )
+        )
+
     if filter_params['search']:
         audit_logs_query = audit_logs_query.filter(
             or_(
@@ -283,6 +366,19 @@ def handle_all_logs(filter_params):
     
     if filter_params['date_to']:
         audit_logs_query = audit_logs_query.filter(AuditLog.timestamp <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+    # Role filter
+    if filter_params['role']:
+        audit_logs_query = audit_logs_query.filter(User.role == filter_params['role'])
+
+    # Action filter
+    if filter_params['action']:
+        audit_logs_query = audit_logs_query.filter(AuditLog.action.ilike(f"%{filter_params['action']}%"))
+
+    # Status filter
+    if filter_params['status']:
+        want_success = (filter_params['status'].lower() == 'success')
+        audit_logs_query = audit_logs_query.filter(AuditLog.is_success == want_success)
     
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -358,6 +454,10 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
             User, Student.user_id == User.id
         )
         
+        # Campus scoping
+        if current_user.role == 'super_admin' and current_user.campus_id:
+            query = query.filter(Student.campus_id == current_user.campus_id)
+
         if filter_params['search']:
             query = query.filter(
                 or_(
@@ -373,6 +473,14 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
         
         if filter_params['date_to']:
             query = query.filter(StudentActivityLog.timestamp <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+        if filter_params['role'] and filter_params['role'] != 'student':
+            query = query.filter(False)
+        if filter_params['action']:
+            query = query.filter(StudentActivityLog.action.ilike(f"%{filter_params['action']}%"))
+        if filter_params['status']:
+            want_success = (filter_params['status'].lower() == 'success')
+            query = query.filter(StudentActivityLog.is_success == want_success)
             
         return query.order_by(StudentActivityLog.timestamp.desc()).all()
         
@@ -387,6 +495,10 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
             Office, OfficeAdmin.office_id == Office.id
         )
         
+        # Campus scoping
+        if current_user.role == 'super_admin' and current_user.campus_id:
+            query = query.filter(Office.campus_id == current_user.campus_id)
+
         if filter_params['search']:
             query = query.filter(
                 or_(
@@ -402,6 +514,13 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
         
         if filter_params['date_to']:
             query = query.filter(OfficeLoginLog.login_time <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+        if filter_params['role'] and filter_params['role'] != 'office_admin':
+            query = query.filter(False)
+        # action ignored for office logs
+        if filter_params['status']:
+            want_success = (filter_params['status'].lower() == 'success')
+            query = query.filter(OfficeLoginLog.is_success == want_success)
             
         return query.order_by(OfficeLoginLog.login_time.desc()).all()
         
@@ -412,6 +531,10 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
             User, SuperAdminActivityLog.super_admin_id == User.id
         )
         
+        # Campus scoping
+        if current_user.role == 'super_admin' and current_user.campus_id:
+            query = query.filter(User.campus_id == current_user.campus_id)
+
         if filter_params['search']:
             query = query.filter(
                 or_(
@@ -428,16 +551,36 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
         
         if filter_params['date_to']:
             query = query.filter(SuperAdminActivityLog.timestamp <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+        if filter_params['role'] and filter_params['role'] != 'super_admin':
+            query = query.filter(False)
+        if filter_params['action']:
+            query = query.filter(SuperAdminActivityLog.action.ilike(f"%{filter_params['action']}%"))
+        if filter_params['status']:
+            want_success = (filter_params['status'].lower() == 'success')
+            query = query.filter(SuperAdminActivityLog.is_success == want_success)
             
         return query.order_by(SuperAdminActivityLog.timestamp.desc()).all()
         
     else:  # 'all' or any other value
         query = db.session.query(
-            AuditLog, User
+            AuditLog, User, Office
         ).outerjoin(
             User, AuditLog.actor_id == User.id
+        ).outerjoin(
+            Office, AuditLog.office_id == Office.id
         )
         
+        # Campus scoping
+        if current_user.role == 'super_admin' and current_user.campus_id:
+            query = query.filter(
+                or_(
+                    Office.campus_id == current_user.campus_id,
+                    and_(User.role == 'super_admin', User.campus_id == current_user.campus_id),
+                    User.id == current_user.id
+                )
+            )
+
         if filter_params['search']:
             query = query.filter(
                 or_(
@@ -454,6 +597,14 @@ def get_logs_based_on_type_and_filters(log_type, filter_params):
         
         if filter_params['date_to']:
             query = query.filter(AuditLog.timestamp <= datetime.strptime(filter_params['date_to'] + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+
+        if filter_params['role']:
+            query = query.filter(User.role == filter_params['role'])
+        if filter_params['action']:
+            query = query.filter(AuditLog.action.ilike(f"%{filter_params['action']}%"))
+        if filter_params['status']:
+            want_success = (filter_params['status'].lower() == 'success')
+            query = query.filter(AuditLog.is_success == want_success)
             
         return query.order_by(AuditLog.timestamp.desc()).all()
 

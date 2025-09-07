@@ -219,9 +219,10 @@
           <td class="py-5 px-6">
             <div class="flex items-center space-x-3">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center shadow-md">
-                {% if inquiry.student.user.profile_pic %}
+                {% set stu_avatar_url = inquiry.student.user.profile_pic_path and url_for('static', filename=inquiry.student.user.profile_pic_path) %}
+                {% if stu_avatar_url %}
                 <img
-                  src="{{ url_for('static', filename=inquiry.student.user.profile_pic) }}"
+                  src="{{ stu_avatar_url }}?v={{ inquiry.student.user.profile_pic or '' }}"
                   class="w-10 h-10 rounded-full object-cover"
                   alt="Profile"
                 />
@@ -299,6 +300,7 @@
                 href="#"
                 class="w-9 h-9 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-600 hover:text-red-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg deleteInquiryBtn"
                 data-inquiry-id="{{ inquiry.id }}"
+                data-status="{{ inquiry.status }}"
                 title="Delete"
               >
                 <i class="fas fa-trash"></i>
@@ -482,6 +484,7 @@
           </p>
         </div>
       </div>
+  <p id="statusWarning" class="text-red-700 font-semibold mb-4 hidden"></p>
       <p class="text-gray-600 text-sm">
         This action cannot be undone and will permanently remove the inquiry from the system.
       </p>
@@ -528,6 +531,7 @@
     const cancelDelete = document.getElementById("cancelDelete");
     const deleteInquiryForm = document.getElementById("deleteInquiryForm");
     const deleteInquiryIdInput = document.getElementById("deleteInquiryId");
+  const statusWarning = document.getElementById("statusWarning");
 
     // Search and filter functionality
     const searchInput = document.getElementById("searchInput");
@@ -610,35 +614,12 @@
         });
     });
 
-    // Open delete confirmation modal
-    deleteInquiryBtns.forEach((btn) => {
-      btn.addEventListener("click", function (e) {
-        e.preventDefault();
-        const inquiryId = this.getAttribute("data-inquiry-id");
-        deleteInquiryIdInput.value = inquiryId;
-        deleteConfirmModal.classList.remove("hidden");
-      });
-    });
-
-    // Close delete confirmation modal
-    closeDeleteModal.addEventListener("click", function () {
-      deleteConfirmModal.classList.add("hidden");
-    });
-
-    cancelDelete.addEventListener("click", function () {
-      deleteConfirmModal.classList.add("hidden");
-    });
-
-    // Handle delete form submission
-    deleteInquiryForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const inquiryId = deleteInquiryIdInput.value;
-
-      // Add loading state
-      const submitBtn = this.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
-      submitBtn.disabled = true;
+    // Helper to perform deletion (used by closed auto-delete and modal submit)
+    function performDelete(inquiryId, submitBtn) {
+      const btn = submitBtn || deleteInquiryForm.querySelector('button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+      btn.disabled = true;
 
       fetch(
         `{{ url_for('office.delete_inquiry', inquiry_id=0) }}`.replace(
@@ -657,11 +638,7 @@
         .then((response) => response.json())
         .then((data) => {
           if (data.success) {
-            // Show success message
             showFlashMessage("success", data.message);
-
-            // Remove the deleted inquiry from the UI with animation
-            const inquiryId = deleteInquiryIdInput.value;
             removeInquiryFromUI(inquiryId);
           } else {
             showFlashMessage(
@@ -678,11 +655,60 @@
           );
         })
         .finally(() => {
-          // Reset button
-          submitBtn.innerHTML = originalText;
-          submitBtn.disabled = false;
+          btn.innerHTML = originalText;
+          btn.disabled = false;
           deleteConfirmModal.classList.add("hidden");
         });
+    }
+
+    // Open delete confirmation modal or auto-delete based on status
+    deleteInquiryBtns.forEach((btn) => {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        const inquiryId = this.getAttribute("data-inquiry-id");
+        const status = (this.getAttribute("data-status") || "").toLowerCase();
+
+        if (status === "closed") {
+          // For closed inquiries, no warning modal; delete immediately
+          performDelete(inquiryId, this);
+          return;
+        }
+
+        // For pending/in_progress/resolved, show additional warning
+        deleteInquiryIdInput.value = inquiryId;
+        let msg = '';
+        if (status === 'pending') {
+          msg = 'This inquiry is still Pending. Deleting it now will permanently remove an active case.';
+        } else if (status === 'in_progress') {
+          msg = 'This inquiry is In Progress. Deleting it will terminate an ongoing conversation.';
+        } else if (status === 'resolved') {
+          msg = 'This inquiry is Resolved. Consider closing instead if you want to keep records.';
+        } else {
+          msg = '';
+        }
+        if (msg) {
+          statusWarning.textContent = msg;
+          statusWarning.classList.remove('hidden');
+        } else {
+          statusWarning.classList.add('hidden');
+        }
+        deleteConfirmModal.classList.remove("hidden");
+      });
+    });
+
+    // Close delete confirmation modal
+    closeDeleteModal.addEventListener("click", function () {
+      deleteConfirmModal.classList.add("hidden");
+    });
+
+    cancelDelete.addEventListener("click", function () {
+      deleteConfirmModal.classList.add("hidden");
+    });
+
+    // Handle delete form submission
+    deleteInquiryForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      performDelete(deleteInquiryIdInput.value);
     });
 
     // Enhanced search and filter functionality

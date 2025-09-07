@@ -174,9 +174,25 @@
                                 <i class="fas fa-chevron-down text-xs"></i>
                             </div>
                         </div>
+
+                        <!-- Open Calendar Button (opens modal) -->
+                        <button id="openCalendarBtn" type="button"
+                                class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-md">
+                            <i class="far fa-calendar-alt mr-2"></i>
+                            Calendar
+                        </button>
+
+                        <!-- Subtle manual navigation to All Sessions -->
+                        <a href="{{ url_for('office.video_counseling', status='all') }}"
+                           class="text-sm text-gray-500 hover:text-gray-700 underline decoration-dotted ml-1"
+                           title="View all sessions (past, active, and upcoming)">
+                            All Sessions
+                        </a>
                     </div>
                 </div>
             </div>
+
+            <!-- Calendar moved to modal; button above opens it -->
 
             <!-- Enhanced Sessions Table -->
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
@@ -219,13 +235,34 @@
                         <tbody class="bg-white divide-y divide-gray-100">
                             {% if video_sessions.items %}
                                 {% for session in video_sessions.items %}
-                                <tr class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 group
-                                    {% if session.status == 'pending' %}bg-yellow-50 border-l-4 border-yellow-400 shadow-sm{% endif %}">
+                <tr class="session-row hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 group cursor-pointer
+                                    {% if session.status == 'pending' %}bg-yellow-50 border-l-4 border-yellow-400 shadow-sm{% endif %}"
+                                    data-session='{
+                                        "id": {{ session.id }},
+                                        "student_name": "{{ session.student.user.get_full_name()|e }}",
+                                        "student_number": "{{ session.student.student_number|e }}",
+                    "student_section": "{{ (session.student.section or '')|e }}",
+                    "student_department": "{{ (session.student.department_name or '')|e }}",
+                    "student_year_level": "{{ (session.student.year_level or '')|e }}",
+                    "student_email": "{{ (session.student.user.email or '')|e }}",
+                    "student_profile_pic_url": "{{ (url_for('static', filename=session.student.user.profile_pic_path) + ('?v=' + (session.student.user.profile_pic or ''))) | e if session.student.user.profile_pic_path else '' }}",
+                                        "student_campus": "{{ (session.student.campus.name if session.student.campus else '')|e }}",
+                                        "is_video_session": {{ 'true' if session.is_video_session else 'false' }},
+                                        "scheduled_date": "{{ session.scheduled_at.strftime('%Y-%m-%d') }}",
+                                        "scheduled_time": "{{ session.scheduled_at.strftime('%H:%M') }}",
+                                        "status": "{{ session.status }}",
+                    "counselor": "{{ session.counselor.get_full_name() if session.counselor else '' }}",
+                    "counselor_id": {{ session.counselor_id or 'null' }},
+                                        "nature_of_concern": "{{ session.nature_of_concern.name if session.nature_of_concern else ('Other' if session.nature_of_concern_description else '') }}",
+                                        "concern_description": "{{ (session.nature_of_concern_description or '')|e }}",
+                                        "notes": "{{ (session.notes or '')|replace('\n','\\n')|e }}",
+                                        "can_join": {{ 'true' if session.is_video_session and session.status == 'confirmed' else 'false' }}
+                                    }'>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-12 w-12 relative">
-                                                {% if session.student.user.profile_pic %}
-                                                <img class="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-lg" src="{{ url_for('static', filename='uploads/profiles/' + session.student.user.profile_pic) }}" alt="Profile">
+                                                {% if session.student.user.profile_pic_path %}
+                                                <img class="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-lg" src="{{ url_for('static', filename=session.student.user.profile_pic_path) }}?v={{ session.student.user.profile_pic or '' }}" alt="Profile">
                                                 {% else %}
                                                 <div class="h-12 w-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center shadow-lg">
                                                     <span class="text-white font-bold text-lg">{{ session.student.user.first_name[0] }}{{ session.student.user.last_name[0] }}</span>
@@ -245,6 +282,17 @@
                                                     <i class="fas fa-id-card text-xs mr-1"></i>
                                                     ID: {{ session.student.student_number }}
                                                 </div>
+                                                <div class="mt-1">
+                                                    {% if session.is_video_session %}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                                        Video
+                                                    </span>
+                                                    {% else %}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
+                                                        In-Person
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -256,7 +304,7 @@
                                             </div>
                                             <div class="text-sm text-gray-500 flex items-center mt-1">
                                                 <i class="far fa-clock text-green-500 mr-2"></i>
-                                                {{ session.scheduled_at.strftime('%H:%M') }}
+                                                {{ session.scheduled_at.strftime('%I:%M %p') }}
                                             </div>
                                         </div>
                                     </td>
@@ -304,18 +352,22 @@
                                             {{ session.status|title }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4" onclick="event.stopPropagation()">
                                         <div class="flex flex-wrap gap-2">
                                             {% if session.status in ['pending', 'confirmed'] and session.counselor_id == current_user.id %}
+                                                {% if session.is_video_session and session.status == 'confirmed' %}
                                                 <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-105 shadow-md">
                                                     <i class="fas fa-video mr-1"></i> Join
                                                 </a>
+                                                {% endif %}
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 shadow-md send-reminder" data-session-id="{{ session.id }}">
                                                     <i class="fas fa-bell mr-1"></i> Remind
                                                 </button>
+                                                {% if session.status == 'pending' %}
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-md update-status" data-session-id="{{ session.id }}" data-status="confirmed">
                                                     <i class="fas fa-check mr-1"></i> Confirm
                                                 </button>
+                                                {% endif %}
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 transform hover:scale-105 shadow-md reschedule-session" data-session-id="{{ session.id }}" data-date="{{ session.scheduled_at.strftime('%Y-%m-%d') }}" data-time="{{ session.scheduled_at.strftime('%H:%M') }}">
                                                     <i class="fas fa-calendar-alt mr-1"></i> Reschedule
                                                 </button>
@@ -338,16 +390,18 @@
                                                     <i class="fas fa-times mr-1"></i> Cancel
                                                 </button>
                                             {% elif session.status == 'in_progress' and session.counselor_id == current_user.id %}
+                                                {% if session.is_video_session %}
                                                 <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-105 shadow-md">
                                                     <i class="fas fa-video mr-1"></i> Rejoin
                                                 </a>
+                                                {% endif %}
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 shadow-md update-status" data-session-id="{{ session.id }}" data-status="completed">
                                                     <i class="fas fa-check-circle mr-1"></i> Complete
                                                 </button>
                                             {% elif session.status == 'completed' %}
-                                                <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 shadow-md view-notes" data-session-id="{{ session.id }}" data-notes="{{ session.notes or 'No notes available' }}">
-                                                    <i class="fas fa-sticky-note mr-1"></i> Notes
-                                                </button>
+                                                <a href="{{ url_for('office.session_completed', session_id=session.id) }}" class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 shadow-md">
+                                                    <i class="fas fa-eye mr-1"></i> View
+                                                </a>
                                                 {% if session.recording %}
                                                 <a href="{{ url_for('static', filename=session.recording.recording_path) }}" class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-md" target="_blank">
                                                     <i class="fas fa-video mr-1"></i> Recording
@@ -558,7 +612,7 @@
                                         {% elif time_diff <= 60 %}text-orange-600
                                         {% else %}text-gray-600{% endif %}">
                                         <i class="far fa-clock mr-2"></i>
-                                        {{ session.scheduled_at.strftime('%H:%M') }}
+                                        {{ session.scheduled_at.strftime('%I:%M %p') }}
                                         {% if time_diff <= 15 %}
                                             <span class="ml-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-bold">
                                                 Starting Soon!
@@ -590,21 +644,33 @@
 
                         <!-- Action Buttons -->
                         <div class="flex gap-2 mt-3">
-                            {% if time_diff <= 15 %}
-                                <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" 
-                                   class="flex-1 text-center text-xs px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md font-medium">
-                                    <i class="fas fa-video mr-1"></i> Join Now
-                                </a>
-                            {% elif time_diff <= 60 %}
-                                <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" 
-                                   class="flex-1 text-center text-xs px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md font-medium">
-                                    <i class="fas fa-video mr-1"></i> Join
-                                </a>
+                            {% if session.is_video_session %}
+                                {% if time_diff <= 15 %}
+                                    <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" 
+                                       class="flex-1 text-center text-xs px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md font-medium">
+                                        <i class="fas fa-video mr-1"></i> Join Now
+                                    </a>
+                                {% elif time_diff <= 60 %}
+                                    <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" 
+                                       class="flex-1 text-center text-xs px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md font-medium">
+                                        <i class="fas fa-video mr-1"></i> Join
+                                    </a>
+                                {% else %}
+                                    <button class="flex-1 text-center text-xs px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md send-reminder font-medium"
+                                            data-session-id="{{ session.id }}">
+                                        <i class="fas fa-bell mr-1"></i> Remind
+                                    </button>
+                                {% endif %}
                             {% else %}
                                 <button class="flex-1 text-center text-xs px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md send-reminder font-medium"
                                         data-session-id="{{ session.id }}">
                                     <i class="fas fa-bell mr-1"></i> Remind
                                 </button>
+                            {% endif %}
+                            {% if not session.is_video_session %}
+                                <span class="flex-1 text-center text-[10px] px-3 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium">
+                                    In-Person Session
+                                </span>
                             {% endif %}
                             
                             <button class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 text-xs font-medium"
@@ -657,87 +723,37 @@
                 </div>
             </div>
             {% endif %}
-
-            <!-- Quick Stats Card -->
-            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
-                    <h3 class="text-lg font-bold text-white flex items-center">
-                        <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-chart-line text-white"></i>
-                        </div>
-                        Quick Stats
-                    </h3>
-                </div>
-                
-                <div class="p-4 space-y-3">
-                    <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-calendar-day text-white text-sm"></i>
-                            </div>
-                            <span class="text-sm font-medium text-blue-900">Today</span>
-                        </div>
-                        <span class="text-lg font-bold text-blue-600">{{ today_video_count }}</span>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-play-circle text-white text-sm"></i>
-                            </div>
-                            <span class="text-sm font-medium text-green-900">Active</span>
-                        </div>
-                        <span class="text-lg font-bold text-green-600">{{ active_video_count }}</span>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-clock text-white text-sm"></i>
-                            </div>
-                            <span class="text-sm font-medium text-yellow-900">Pending</span>
-                        </div>
-                        <span class="text-lg font-bold text-yellow-600">{{ upcoming_video_count }}</span>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
 
-<!-- Notes Modal -->
-<div id="notesModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div>
-                    <div class="flex items-start justify-between">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                            <i class="fas fa-sticky-note text-yellow-500 mr-2"></i> Session Notes
-                        </h3>
-                        <button type="button" class="close-modal text-gray-400 hover:text-gray-500">
-                            <i class="fas fa-times"></i>
-                        </button>
+<!-- Calendar Modal -->
+<div id="calendarModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-cal-backdrop></div>
+    <div class="relative z-10 max-w-6xl w-[95vw] mx-auto my-8 animate-fade-in-up">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="far fa-calendar-alt"></i>
                     </div>
-                    <div class="mt-4">
-                        <div class="bg-gray-50 p-4 rounded-md">
-                            <p class="text-sm text-gray-700" id="notesContent"></p>
-                        </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">Calendar Overview</h3>
+                        <p class="text-xs text-white/80">Read-only schedule for counseling sessions</p>
                     </div>
                 </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button type="button" class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm close-modal">
-                    Close
+                <button type="button" id="closeCalendarBtn" class="p-2 rounded-lg hover:bg-white/10 transition" aria-label="Close calendar modal">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
+            <!-- Body -->
+            <div class="p-4">
+                <div id="officeCalendarModal" class="rounded-xl overflow-hidden border border-gray-200"></div>
+            </div>
         </div>
     </div>
-</div>
+ </div>
 
 <!-- Cancel Modal -->
 <div id="cancelModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
@@ -780,59 +796,236 @@
     </div>
 </div>
 
-<!-- Reschedule Modal -->
-<div id="rescheduleModal" class="fixed z-10 inset-0 overflow-y-auto hidden">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div class="sm:flex sm:items-start">
-                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                        <i class="fas fa-calendar-alt text-blue-600"></i>
+<!-- Reschedule Modal (redesigned) -->
+<div id="rescheduleModal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-resch-backdrop></div>
+    <!-- Panel -->
+    <div class="relative z-10 max-w-xl w-[95vw] mx-auto my-10 animate-fade-in-up">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-calendar-alt"></i>
                     </div>
-                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900">
-                            Reschedule Session
-                        </h3>
-                        <div class="mt-2">
-                            <p class="text-sm text-gray-500">
-                                Adjust the date and time for this counseling session.
-                            </p>
-                            <form id="rescheduleForm" class="mt-4">
-                                <input type="hidden" id="rescheduleSessionId" name="session_id">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="new_date" class="block text-sm font-medium text-gray-700">New Date</label>
-                                        <input type="date" id="new_date" name="new_date" 
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                    </div>
-                                    <div>
-                                        <label for="new_time" class="block text-sm font-medium text-gray-700">New Time</label>
-                                        <input type="time" id="new_time" name="new_time" 
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                    </div>
-                                </div>
-                                <div class="mt-4">
-                                    <p class="text-sm text-blue-600 bg-blue-50 p-3 rounded-md">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        The student will be notified of this schedule change.
-                                    </p>
-                                </div>
-                            </form>
+                    <div>
+                        <h3 class="text-lg font-semibold">Reschedule Session</h3>
+                        <p class="text-xs text-white/80" id="resch-student-sub">Select a new date and time</p>
+                    </div>
+                </div>
+                <button type="button" class="p-2 rounded-lg hover:bg-white/10 transition close-modal" aria-label="Close reschedule modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 space-y-5">
+                <!-- Session summary -->
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-gray-900 truncate" id="resch-student-name">&nbsp;</div>
+                            <div class="text-xs text-gray-600 mt-1 flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-1"><i class="far fa-calendar text-blue-500"></i><span id="resch-current-date">—</span></span>
+                                <span class="inline-flex items-center gap-1"><i class="far fa-clock text-green-600"></i><span id="resch-current-time">—</span></span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Form -->
+                <form id="rescheduleForm" class="space-y-4" novalidate>
+                    <input type="hidden" id="rescheduleSessionId" name="session_id">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="new_date" class="block text-sm font-medium text-gray-700">New Date</label>
+                            <div class="relative mt-1">
+                                <input type="date" id="new_date" name="new_date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 pr-10" required>
+                                <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400"><i class="far fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="new_time" class="block text-sm font-medium text-gray-700">New Time</label>
+                            <div class="relative mt-1">
+                                <input type="time" id="new_time" name="new_time" step="3600" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 pr-10" required>
+                                <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400"><i class="far fa-clock"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick picks -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs text-gray-500 mr-1">Quick picks:</span>
+                        <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700" data-resch-quick="+60">+1 hour</button>
+                        <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700" data-resch-quick="tomorrow">Tomorrow same time</button>
+                        <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700" data-resch-quick="nextweek">Next week</button>
+                    </div>
+
+                    <!-- Working hours hint -->
+                    <div id="resch-hours-hint" class="text-xs text-gray-500"></div>
+
+                    <!-- Time-slot picker (optional) -->
+                    <div id="slotPickerWrap" class="hidden space-y-2">
+                        <div class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <i class="far fa-clock text-blue-500"></i>
+                            <span>Available time slots</span>
+                        </div>
+                        <div id="slotPicker" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+                        <div id="slotHint" class="text-xs text-gray-500"></div>
+                    </div>
+
+                    <div id="resch-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"></div>
+
+                    <div class="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        The student will be notified of this schedule change.
+                    </div>
+                </form>
             </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button type="button" id="confirmReschedule" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                    Confirm Reschedule
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 flex flex-col sm:flex-row sm:justify-end gap-2">
+                <button type="button" class="close-modal inline-flex justify-center rounded-lg border border-gray-300 px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" id="confirmReschedule" class="inline-flex justify-center rounded-lg px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 shadow-sm">Confirm Reschedule</button>
+            </div>
+        </div>
+    </div>
+    <!-- /Panel -->
+</div>
+
+<!-- Reschedule Confirmation Modal -->
+<div id="rescheduleConfirmModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative z-10 max-w-md w-[95vw] mx-auto my-10">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold">Session Rescheduled</h3>
+                </div>
+                <button type="button" id="reschConfirmClose" class="p-2 rounded-lg hover:bg-white/10 transition" aria-label="Close">
+                    <i class="fas fa-times"></i>
                 </button>
-                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm close-modal">
-                    Cancel
-                </button>
+            </div>
+            <div class="p-6 space-y-3">
+                <p class="text-gray-700">The session has been rescheduled to:</p>
+                <p id="reschConfirmWhen" class="text-base font-semibold text-gray-900">—</p>
+                <p class="text-sm text-gray-500">A notification has been sent to the student.</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end">
+                <button type="button" id="reschConfirmOk" class="inline-flex justify-center rounded-lg px-4 py-2 bg-emerald-600 text-sm font-medium text-white hover:bg-emerald-700 shadow-sm">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- /Panel -->
+  </div>
+
+<!-- Session Details Modal (enhanced, spacious) -->
+<div id="sessionDetailsModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative z-10 max-w-5xl w-[95vw] mx-auto my-10">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="px-8 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold" id="sd-student-name">Student Name</h3>
+                        <p class="text-xs text-white/80" id="sd-student-number">ID: —</p>
+                    </div>
+                </div>
+                <button id="sd-close" class="p-2 rounded-lg hover:bg-white/10 transition"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-8 grid grid-cols-1 md:grid-cols-12 gap-8">
+                <!-- Student Profile Column -->
+                <div class="md:col-span-4">
+                    <div class="rounded-2xl border border-gray-200 shadow-sm p-6 bg-gradient-to-b from-gray-50 to-white">
+                        <div class="flex flex-col items-center text-center">
+                            <div class="relative mb-4">
+                                <img id="sd-student-avatar" src="" alt="Profile picture" class="hidden w-28 h-28 rounded-2xl object-cover ring-2 ring-white shadow-md" />
+                                <div id="sd-avatar-fallback" class="w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-3xl font-bold shadow-md">S</div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="text-lg font-semibold text-gray-900" id="sd-name-display">&nbsp;</div>
+                                <div class="text-sm text-gray-500">Student</div>
+                            </div>
+                        </div>
+                        <hr class="my-6">
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-center text-gray-700"><i class="fas fa-address-card w-5 text-indigo-600 mr-2"></i><span id="sd-stud-id">—</span></div>
+                            <div class="flex items-center text-gray-700"><i class="fas fa-envelope w-5 text-indigo-600 mr-2"></i><span id="sd-stud-email">—</span></div>
+                            <div class="flex items-center text-gray-700"><i class="fas fa-users w-5 text-indigo-600 mr-2"></i><span id="sd-stud-section">—</span></div>
+                            <div class="flex items-center text-gray-700"><i class="fas fa-building w-5 text-indigo-600 mr-2"></i><span id="sd-stud-dept">—</span></div>
+                            <div class="flex items-center text-gray-700"><i class="fas fa-layer-group w-5 text-indigo-600 mr-2"></i><span id="sd-stud-year">—</span></div>
+                            <div class="flex items-center text-gray-700"><i class="fas fa-school w-5 text-indigo-600 mr-2"></i><span id="sd-stud-campus">—</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Request Details Column -->
+                <div class="md:col-span-8 space-y-6">
+                    <!-- Schedule and Type -->
+                    <div class="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="flex items-center gap-2 text-gray-700"><i class="far fa-calendar text-blue-500"></i><span id="sd-date">—</span></div>
+                            <div class="flex items-center gap-2 text-gray-700"><i class="far fa-clock text-green-600"></i><span id="sd-time">—</span></div>
+                            <div class="flex items-center gap-2"><span id="sd-type" class="px-2 py-1 text-xs rounded-full"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Status and Counselor -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">Status</h4>
+                            <span id="sd-status" class="px-3 py-1 inline-flex text-xs font-semibold rounded-full border"></span>
+                        </div>
+                        <div class="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm sm:col-span-2">
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">Assigned Counselor</h4>
+                            <p id="sd-counselor" class="text-sm text-gray-700">Unassigned</p>
+                        </div>
+                    </div>
+
+                    <!-- Nature of Concern -->
+                    <div class="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center"><i class="fas fa-exclamation-circle text-sm"></i></div>
+                            <h4 class="text-sm font-semibold text-gray-800">Nature of Concern</h4>
+                        </div>
+                        <p id="sd-concern" class="text-sm text-gray-800 font-medium">—</p>
+                        <p id="sd-concern-desc" class="text-sm text-gray-500 mt-2">&nbsp;</p>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center"><i class="fas fa-sticky-note text-sm"></i></div>
+                            <h4 class="text-sm font-semibold text-gray-800">Notes</h4>
+                        </div>
+                        <pre id="sd-notes" class="text-sm text-gray-700 whitespace-pre-wrap">—</pre>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <button id="sd-accept" class="px-4 py-3 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 text-sm font-medium shadow-sm"><i class="fas fa-user-check mr-1"></i><span id="sd-accept-label">Assign & Confirm</span></button>
+                            <button id="sd-resched" class="px-4 py-3 rounded-xl text-white bg-yellow-500 hover:bg-yellow-600 text-sm font-medium shadow-sm"><i class="fas fa-calendar-alt mr-1"></i>Reschedule</button>
+                            <button id="sd-cancel" class="px-4 py-3 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-medium shadow-sm"><i class="fas fa-times mr-1"></i>Cancel</button>
+                        </div>
+                        <div id="sd-join-wrap" class="pt-3 hidden">
+                            <a id="sd-join" href="#" class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-sm font-medium shadow-sm"><i class="fas fa-video mr-2"></i>Join Session</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -843,6 +1036,79 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Working hours and availability configuration (client-side defaults; can be fed by backend later)
+    const WORKING_HOURS = { start: '08:00', end: '17:00' }; // 8 AM to 5 PM
+    const SLOT_STEP_MINUTES = 60; // enforce 1-hour slot size
+    const DISABLE_WEEKENDS = true;
+    // Optional holiday list (YYYY-MM-DD). Hook to backend later.
+    const HOLIDAYS = [];
+
+    function isWeekend(date) {
+        const d = (date instanceof Date) ? date : new Date(date);
+        const day = d.getDay();
+        return day === 0 || day === 6; // Sun or Sat
+    }
+    function isHoliday(dateStr) { return HOLIDAYS.includes(dateStr); }
+    function timeToMinutes(t) { const [h,m] = t.split(':').map(Number); return h*60+(m||0); }
+    function minutesToTime(mins){ const h = String(Math.floor(mins/60)).padStart(2,'0'); const m=String(mins%60).padStart(2,'0'); return `${h}:${m}`; }
+    // Display helper: convert 24-hour "HH:MM" to 12-hour label like "h:MM AM/PM"
+    function formatTime12(t24){
+        if(!t24 || !/^\d{2}:\d{2}$/.test(t24)) return t24 || '';
+        let [hh, mm] = t24.split(':').map(Number);
+        const ampm = hh >= 12 ? 'PM' : 'AM';
+        hh = hh % 12; if (hh === 0) hh = 12;
+        return `${hh}:${String(mm).padStart(2,'0')} ${ampm}`;
+    }
+    // Parse either "HH:MM" or "h:MM AM/PM" to 24-hour "HH:MM"; returns null if not parseable
+    function parseTimeTo24(t){
+        if(!t) return null;
+        t = t.trim();
+        if (/^\d{2}:\d{2}$/.test(t)) return t; // already 24-hour
+        const m = t.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+        if (!m) return null;
+        let hh = parseInt(m[1],10);
+        const mm = m[2];
+        const ap = m[3].toUpperCase();
+        if (ap === 'PM' && hh !== 12) hh += 12;
+        if (ap === 'AM' && hh === 12) hh = 0;
+        return `${String(hh).padStart(2,'0')}:${mm}`;
+    }
+    function clampToWorkingHours(dateObj){
+        const minutes = dateObj.getHours()*60 + dateObj.getMinutes();
+        const startM = timeToMinutes(WORKING_HOURS.start);
+        const endM = timeToMinutes(WORKING_HOURS.end);
+        let clamped = new Date(dateObj);
+        if (minutes < startM) { clamped.setHours(Math.floor(startM/60), startM%60, 0, 0); }
+        if (minutes > endM) { clamped.setHours(Math.floor(endM/60), endM%60, 0, 0); }
+        return clamped;
+    }
+    function getNextBusinessDay(dateObj){
+        const d = new Date(dateObj);
+        do { d.setDate(d.getDate()+1); } while ((DISABLE_WEEKENDS && isWeekend(d)) || isHoliday(formatDateInput(d)));
+        return d;
+    }
+    function getSlotsForDate(dateStr){
+        // Generate slots obeying WORKING_HOURS and DISABLE_WEEKENDS/HOLIDAYS; skip past times if today
+        const slots = [];
+        const date = new Date(dateStr + 'T00:00:00');
+        if ((DISABLE_WEEKENDS && isWeekend(date)) || isHoliday(dateStr)) return slots;
+        const startM = timeToMinutes(WORKING_HOURS.start);
+        const endM = timeToMinutes(WORKING_HOURS.end);
+        const now = new Date();
+        const isToday = formatDateInput(now) === dateStr;
+        let minM = startM;
+        if (isToday) {
+            const minFuture = roundToStep(new Date(now.getTime()+60*60000), 60);
+            minM = Math.max(minM, minFuture.getHours()*60 + minFuture.getMinutes());
+        }
+        // Only include start times whose full 1-hour block fits within working hours
+        const latestStart = endM - SLOT_STEP_MINUTES;
+        for (let m = minM; m <= latestStart; m += SLOT_STEP_MINUTES) {
+            slots.push(minutesToTime(m));
+        }
+        return slots;
+    }
+
     // Date Range Filter
     const dateRangeSelect = document.getElementById('dateRange');
     if (dateRangeSelect) {
@@ -952,29 +1218,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, duration);
     }
     
-    // Notes Modal with enhanced animations
-    const notesModal = document.getElementById('notesModal');
-    const notesContent = document.getElementById('notesContent');
-    
-    document.querySelectorAll('.view-notes').forEach(button => {
-        button.addEventListener('click', function() {
-            const notes = this.dataset.notes;
-            notesContent.textContent = notes;
-            notesModal.classList.remove('hidden');
-            
-            // Add entrance animation
-            const modalContent = notesModal.querySelector('.inline-block');
-            modalContent.style.transform = 'scale(0.95)';
-            modalContent.style.opacity = '0';
-            
-            setTimeout(() => {
-                modalContent.style.transform = 'scale(1)';
-                modalContent.style.opacity = '1';
-                modalContent.style.transition = 'all 0.3s ease-out';
-            }, 50);
-        });
-    });
-    
     // Cancel Session Modal with enhanced UX
     const cancelModal = document.getElementById('cancelModal');
     let sessionToCancel = null;
@@ -1049,37 +1292,255 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Reschedule Session Modal with validation
+    // Reschedule Session Modal with validation (refactored)
     const rescheduleModal = document.getElementById('rescheduleModal');
+    const reschStudentName = document.getElementById('resch-student-name');
+    const reschCurrentDate = document.getElementById('resch-current-date');
+    const reschCurrentTime = document.getElementById('resch-current-time');
+    const reschError = document.getElementById('resch-error');
     let sessionToReschedule = null;
-    
+
+    function formatDateInput(d){
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+    function formatTimeInput(d){
+        const hh = String(d.getHours()).padStart(2,'0');
+        const mi = String(d.getMinutes()).padStart(2,'0');
+        return `${hh}:${mi}`;
+    }
+    function roundToStep(dt, stepMinutes=60){
+        const ms = stepMinutes*60*1000;
+        return new Date(Math.ceil(dt.getTime()/ms)*ms);
+    }
+
+    function setMinConstraints(){
+        const dateEl = document.getElementById('new_date');
+        const timeEl = document.getElementById('new_time');
+        const now = new Date();
+        const todayStr = formatDateInput(now);
+        dateEl.min = todayStr;
+        // If weekends disabled, set dateEl to next business day if currently weekend/holiday
+        if (DISABLE_WEEKENDS || HOLIDAYS.length) {
+            const d = dateEl.value ? new Date(dateEl.value + 'T00:00:00') : now;
+            let candidate = d;
+            const candidateStr = formatDateInput(candidate);
+            if ((DISABLE_WEEKENDS && isWeekend(candidate)) || isHoliday(candidateStr)) {
+                const nextBiz = getNextBusinessDay(candidate);
+                dateEl.value = formatDateInput(nextBiz);
+            }
+        }
+        // If selected date is today, enforce min time = now + 15m
+        if (dateEl.value === todayStr){
+            const minT = roundToStep(new Date(now.getTime()+60*60000));
+            timeEl.min = formatTimeInput(minT);
+        } else {
+            timeEl.removeAttribute('min');
+        }
+        // Enforce working hours hint (show in 12-hour format)
+        const hint = document.getElementById('resch-hours-hint');
+        if (hint) {
+            const w = `${formatTime12(WORKING_HOURS.start)} - ${formatTime12(WORKING_HOURS.end)}${DISABLE_WEEKENDS ? ' (Mon-Fri)' : ''}`;
+            hint.textContent = `Working hours: ${w}`;
+        }
+        // Update slots
+        updateSlotPicker();
+    }
+
+    function openRescheduleModal(sessionId, currentDate, currentTime, contextRow){
+        sessionToReschedule = sessionId;
+        const dateEl = document.getElementById('new_date');
+        const timeEl = document.getElementById('new_time');
+        // Pre-fill
+        dateEl.value = (currentDate && /\d{4}-\d{2}-\d{2}/.test(currentDate)) ? currentDate : '';
+        timeEl.value = (currentTime && /\d{2}:\d{2}/.test(currentTime)) ? currentTime : '';
+        // Min constraints
+        setMinConstraints();
+        // Clear errors
+        reschError?.classList.add('hidden');
+        reschError && (reschError.textContent = '');
+    // Set summary labels (display time in 12-hour format)
+    reschCurrentDate && (reschCurrentDate.textContent = currentDate || '—');
+    reschCurrentTime && (reschCurrentTime.textContent = (currentTime && /\d{2}:\d{2}/.test(currentTime)) ? formatTime12(currentTime) : (currentTime || '—'));
+        // Student name from row dataset if available
+        let studentName = '';
+        if (contextRow && contextRow.getAttribute){
+            const ds = contextRow.getAttribute('data-session');
+            if (ds){
+                try{
+                    const ta = document.createElement('textarea');
+                    ta.innerHTML = ds; const json = JSON.parse(ta.value);
+                    studentName = json.student_name || '';
+                }catch(_){/* ignore */}
+            }
+        }
+        if (!studentName && activeSessionData){ studentName = activeSessionData.student_name || ''; }
+        reschStudentName && (reschStudentName.textContent = studentName || 'Counseling Session');
+
+    // Show modal
+        rescheduleModal.classList.remove('hidden');
+    // Initialize slot picker content
+    updateSlotPicker();
+    }
+
+    // Bind reschedule buttons in table
     document.querySelectorAll('.reschedule-session').forEach(button => {
-        button.addEventListener('click', function() {
-            sessionToReschedule = this.dataset.sessionId;
-            
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const row = this.closest('tr.session-row');
+            const sid = this.dataset.sessionId;
             const currentDate = this.dataset.date;
             const currentTime = this.dataset.time;
-            
-            document.getElementById('new_date').value = currentDate;
-            document.getElementById('new_time').value = currentTime;
-            
-            // Set minimum date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('new_date').min = today;
-            
-            rescheduleModal.classList.remove('hidden');
+            openRescheduleModal(sid, currentDate, currentTime, row);
         });
     });
+
+    // Keep min constraints in sync
+    document.getElementById('new_date')?.addEventListener('change', setMinConstraints);
+    document.getElementById('new_time')?.addEventListener('input', function(){
+        // Normalize to 60-min step
+        if (!this.value) return;
+        const [h,m] = this.value.split(':').map(Number);
+        const d = new Date(); d.setHours(h,m||0,0,0);
+        const rounded = roundToStep(d, 60); // 60-min increments
+        const roundedStr = formatTimeInput(rounded);
+        if (roundedStr !== this.value){ this.value = roundedStr; }
+        // If time falls outside working hours, clamp and inform
+        const startM = timeToMinutes(WORKING_HOURS.start);
+        const endM = timeToMinutes(WORKING_HOURS.end);
+        const curM = timeToMinutes(this.value);
+        if (curM < startM || curM > endM) {
+            const clamp = minutesToTime(Math.min(Math.max(curM, startM), endM));
+            this.value = clamp;
+            const err = document.getElementById('resch-error');
+            if (err) { err.textContent = 'Selected time is outside working hours. Adjusted to nearest allowed time.'; err.classList.remove('hidden'); }
+        }
+    });
+
+    // Quick picks
+    document.querySelectorAll('[data-resch-quick]').forEach(btn => {
+        btn.addEventListener('click', function(){
+            const dateEl = document.getElementById('new_date');
+            const timeEl = document.getElementById('new_time');
+            const now = new Date();
+            let base = null;
+            // If current fields are valid use them as base, else use current schedule if visible
+            if (dateEl.value && timeEl.value){
+                base = new Date(`${dateEl.value}T${timeEl.value}`);
+            } else if (reschCurrentDate?.textContent && reschCurrentTime?.textContent && /\d{4}-\d{2}-\d{2}/.test(reschCurrentDate.textContent)){
+                const timeTxt = (reschCurrentTime.textContent || '').trim();
+                const t24 = parseTimeTo24(timeTxt) || '09:00';
+                base = new Date(`${reschCurrentDate.textContent}T${t24}`);
+            } else {
+                base = now;
+            }
+
+            const kind = this.getAttribute('data-resch-quick');
+            let next;
+            if (kind === '+60'){
+                next = new Date(base.getTime() + 60*60000);
+            } else if (kind === 'tomorrow'){
+                next = new Date(base.getTime() + 24*60*60000);
+            } else if (kind === 'nextweek'){
+                next = new Date(base.getTime() + 7*24*60*60000);
+            }
+            next = roundToStep(next, 60);
+            // Respect weekends/holidays and working hours
+            while ((DISABLE_WEEKENDS && isWeekend(next)) || isHoliday(formatDateInput(next))) {
+                next = getNextBusinessDay(next);
+                next = clampToWorkingHours(next);
+            }
+            dateEl.value = formatDateInput(next);
+            timeEl.value = formatTimeInput(next);
+            setMinConstraints();
+        });
+    });
+
+    // Basic availability check stub (replace with backend call when available)
+    async function checkAvailability(_dateStr, _timeStr, _sessionId){
+        // Placeholder: always return true. Integrate with real endpoint to prevent double-booking.
+        return true;
+    }
+
+    function formatOneHourRangeLabel(hhmm){
+        const [h, m] = (hhmm||'00:00').split(':').map(Number);
+        const start = new Date(); start.setHours(h, m||0, 0, 0);
+        const end = new Date(start.getTime() + 60*60000);
+        const fmt = (d)=>{
+            let hh = d.getHours(); const ap = hh>=12? 'PM':'AM'; hh = hh%12||12;
+            return `${hh}:${String(d.getMinutes()).padStart(2,'0')} ${ap}`;
+        };
+        return `${fmt(start)} - ${fmt(end)}`;
+    }
+
+    async function updateSlotPicker(){
+        const wrap = document.getElementById('slotPickerWrap');
+        const grid = document.getElementById('slotPicker');
+        const dateEl = document.getElementById('new_date');
+        const timeEl = document.getElementById('new_time');
+        const hint = document.getElementById('slotHint');
+        if (!wrap || !grid || !dateEl) return;
+        const dateStr = dateEl.value || '';
+        grid.innerHTML = '';
+        if (!dateStr) { wrap.classList.add('hidden'); return; }
+        // Fetch live availability from backend (enforced 60-minute slots)
+        let slots = [];
+        try {
+            const exclude = (typeof sessionToReschedule === 'number' && !Number.isNaN(sessionToReschedule)) ? `&exclude_session_id=${sessionToReschedule}` : '';
+            const resp = await fetch(`/office/video-session/availability?date=${encodeURIComponent(dateStr)}${exclude}`);
+            if (resp.ok){
+                const data = await resp.json();
+                slots = data.slots || [];
+            }
+        } catch(_) { /* fallback to client generation below */ }
+        if (!slots.length) {
+            // Fallback: generate by client rules if API fails
+            slots = (getSlotsForDate(dateStr) || []).map(t=>({time:t,status:'available'}));
+        }
+        if (!slots.length) {
+            wrap.classList.remove('hidden');
+            hint.textContent = 'No slots available for this date.';
+            return;
+        }
+        hint.textContent = 'Click a 1-hour slot to fill the time field.';
+        wrap.classList.remove('hidden');
+        const currentVal = timeEl?.value;
+        slots.forEach(s => {
+            const t = s.time;
+            const status = s.status || 'available';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const isSelected = (t === currentVal);
+            const isDisabled = status !== 'available';
+            btn.className = 'px-3 py-2 rounded-lg text-xs border ' + (
+                isSelected ? 'bg-blue-600 text-white border-blue-600' :
+                isDisabled ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' :
+                'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+            );
+            // Show a 1-hour range label; keep value as 24h start
+            btn.textContent = formatOneHourRangeLabel(t);
+            btn.setAttribute('data-time24', t);
+            if (!isDisabled){
+                btn.addEventListener('click', ()=>{ if (timeEl) timeEl.value = t; });
+            } else {
+                btn.disabled = true;
+            }
+            grid.appendChild(btn);
+        });
+    }
     
     // Handle reschedule confirmation with enhanced validation
     const confirmRescheduleBtn = document.getElementById('confirmReschedule');
     if (confirmRescheduleBtn) {
-        confirmRescheduleBtn.addEventListener('click', function() {
+        confirmRescheduleBtn.addEventListener('click', async function() {
             const newDate = document.getElementById('new_date').value;
             const newTime = document.getElementById('new_time').value;
             
             if (!newDate || !newTime) {
-                showNotification('Please select both date and time', 'warning');
+                reschError && (reschError.textContent = 'Please select both date and time.');
+                reschError && reschError.classList.remove('hidden');
                 return;
             }
             
@@ -1088,7 +1549,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const now = new Date();
             
             if (selectedDateTime <= now) {
-                showNotification('Please select a future date and time', 'warning');
+                reschError && (reschError.textContent = 'Please select a future date and time.');
+                reschError && reschError.classList.remove('hidden');
                 return;
             }
 
@@ -1097,6 +1559,31 @@ document.addEventListener('DOMContentLoaded', function() {
             this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Rescheduling...';
             this.disabled = true;
             
+            // Optional: client-side working hours and closed-day checks
+            const dateEl = document.getElementById('new_date');
+            const timeEl = document.getElementById('new_time');
+            if ((DISABLE_WEEKENDS && isWeekend(new Date(newDate))) || isHoliday(newDate)){
+                reschError && (reschError.textContent = 'Selected date falls on a non-working day.');
+                reschError && reschError.classList.remove('hidden');
+                return;
+            }
+            const tMin = timeToMinutes(newTime);
+            if (tMin < timeToMinutes(WORKING_HOURS.start) || tMin > timeToMinutes(WORKING_HOURS.end)){
+                reschError && (reschError.textContent = 'Time must be within working hours.');
+                reschError && reschError.classList.remove('hidden');
+                return;
+            }
+
+            // Pre-flight availability check (stub)
+            this.disabled = true;
+            const available = await checkAvailability(newDate, newTime, sessionToReschedule);
+            if (!available) {
+                this.disabled = false;
+                reschError && (reschError.textContent = 'Selected slot is no longer available. Pick another time.');
+                reschError && reschError.classList.remove('hidden');
+                return;
+            }
+
             // Send AJAX request to reschedule the session
             fetch(`/office/video-session/${sessionToReschedule}/reschedule`, {
                 method: 'POST',
@@ -1110,13 +1597,19 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.status === 'success') {
                     rescheduleModal.classList.add('hidden');
-                    showNotification(`Session rescheduled successfully to ${data.new_time}`, 'success');
-                    
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                    // Show confirmation modal instead of immediate reload
+                    let whenRaw = (data.new_time || `${newDate} ${newTime}`);
+                    let whenDisplay = whenRaw.replace('T', ' ');
+                    const match = whenDisplay.match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+                    if (match) {
+                        whenDisplay = `${match[1]} ${formatTime12(match[2])}`;
+                    }
+                    const cm = document.getElementById('rescheduleConfirmModal');
+                    const cw = document.getElementById('reschConfirmWhen');
+                    if (cw) cw.textContent = whenDisplay;
+                    if (cm) cm.classList.remove('hidden');
                 } else {
-                    showNotification('Failed to reschedule session: ' + data.message, 'error');
+                    if (reschError){ reschError.textContent = 'Failed to reschedule: ' + (data.message || 'Unknown error'); reschError.classList.remove('hidden'); }
                     
                     // Reset button
                     this.textContent = originalText;
@@ -1125,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error rescheduling session:', error);
-                showNotification('An error occurred. Please try again.', 'error');
+                if (reschError){ reschError.textContent = 'An unexpected error occurred. Please try again.'; reschError.classList.remove('hidden'); }
                 
                 // Reset button
                 this.textContent = originalText;
@@ -1137,21 +1630,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Enhanced modal close functionality
     document.querySelectorAll('.close-modal').forEach(button => {
         button.addEventListener('click', function() {
-            const modals = [notesModal, cancelModal, rescheduleModal];
+            const modals = [cancelModal, rescheduleModal];
             modals.forEach(modal => {
                 if (modal && !modal.classList.contains('hidden')) {
                     const modalContent = modal.querySelector('.inline-block');
-                    modalContent.style.transform = 'scale(0.95)';
-                    modalContent.style.opacity = '0';
-                    
+                    // gracefully hide (new modal may not have .inline-block)
+                    if (modalContent) { modalContent.style.transform = 'scale(0.95)'; modalContent.style.opacity = '0'; }
                     setTimeout(() => {
                         modal.classList.add('hidden');
-                        modalContent.style.transform = 'scale(1)';
-                        modalContent.style.opacity = '1';
+                        if (modalContent) { modalContent.style.transform = 'scale(1)'; modalContent.style.opacity = '1'; }
+                        if (modal === rescheduleModal){
+                            const f = document.getElementById('rescheduleForm');
+                            f && f.reset();
+                            const reschError = document.getElementById('resch-error');
+                            reschError && reschError.classList.add('hidden');
+                        }
                     }, 200);
                 }
             });
         });
+    });
+
+    // Click backdrop to close redesigned reschedule modal
+    rescheduleModal?.addEventListener('click', function(e){
+        if (e.target && e.target.hasAttribute('data-resch-backdrop')){
+            document.querySelectorAll('.close-modal')[0]?.click();
+        }
     });
 
     // Close modals on ESC key
@@ -1272,6 +1776,220 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Row click -> open details modal
+    const detailsModal = document.getElementById('sessionDetailsModal');
+    const sd = {
+        modal: detailsModal,
+    avatar: document.getElementById('sd-student-avatar'),
+    avatarFallback: document.getElementById('sd-avatar-fallback'),
+        name: document.getElementById('sd-student-name'),
+        number: document.getElementById('sd-student-number'),
+        date: document.getElementById('sd-date'),
+        time: document.getElementById('sd-time'),
+        type: document.getElementById('sd-type'),
+        studId: document.getElementById('sd-stud-id'),
+        studEmail: document.getElementById('sd-stud-email'),
+        studSection: document.getElementById('sd-stud-section'),
+        studDept: document.getElementById('sd-stud-dept'),
+        studYear: document.getElementById('sd-stud-year'),
+        studCampus: document.getElementById('sd-stud-campus'),
+        concern: document.getElementById('sd-concern'),
+        concernDesc: document.getElementById('sd-concern-desc'),
+        notes: document.getElementById('sd-notes'),
+        status: document.getElementById('sd-status'),
+        counselor: document.getElementById('sd-counselor'),
+        accept: document.getElementById('sd-accept'),
+        acceptLabel: document.getElementById('sd-accept-label'),
+        resched: document.getElementById('sd-resched'),
+        cancel: document.getElementById('sd-cancel'),
+        joinWrap: document.getElementById('sd-join-wrap'),
+        join: document.getElementById('sd-join'),
+        close: document.getElementById('sd-close')
+    };
+    let activeSessionId = null;
+    let activeSessionData = null;
+
+    function badgeClasses(status){
+        switch(status){
+            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+            case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-300';
+            case 'in_progress': return 'bg-green-100 text-green-800 border-green-300';
+            case 'completed': return 'bg-gray-100 text-gray-800 border-gray-300';
+            case 'cancelled': return 'bg-red-100 text-red-800 border-red-300';
+            case 'no-show': return 'bg-purple-100 text-purple-800 border-purple-300';
+            default: return 'bg-gray-100 text-gray-800 border-gray-300';
+        }
+    }
+
+    function humanStatus(status){
+        switch(status){
+            case 'pending': return 'Pending';
+            case 'confirmed': return 'Confirmed';
+            case 'in_progress': return 'In Progress';
+            case 'completed': return 'Finished';
+            case 'cancelled': return 'Closed';
+            case 'no-show': return 'No-show';
+            default: return (status||'').replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
+        }
+    }
+
+    function openDetails(row){
+        const dataAttr = row.getAttribute('data-session');
+        if(!dataAttr) return;
+        let data;
+        try{
+            // Unescape HTML entities before parsing JSON to avoid issues with quotes in content
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = dataAttr;
+            const unescaped = textarea.value;
+            data = JSON.parse(unescaped);
+        } catch(e){ return; }
+        activeSessionId = data.id;
+        activeSessionData = data;
+
+        sd.name.textContent = data.student_name || '—';
+        const nameDisplay = document.getElementById('sd-name-display');
+        if (nameDisplay) nameDisplay.textContent = data.student_name || '—';
+        sd.number.textContent = data.student_number ? ('ID: ' + data.student_number) : '—';
+        sd.studId.textContent = data.student_number || '—';
+        sd.studEmail.textContent = data.student_email || '—';
+        sd.studSection.textContent = data.student_section || '—';
+        sd.studDept.textContent = data.student_department || '—';
+        sd.studYear.textContent = data.student_year_level || '—';
+        sd.studCampus.textContent = data.student_campus || '—';
+        // Avatar logic
+        if (sd.avatar && sd.avatarFallback) {
+            if (data.student_profile_pic_url) {
+                sd.avatar.src = data.student_profile_pic_url;
+                sd.avatar.classList.remove('hidden');
+                sd.avatarFallback.classList.add('hidden');
+            } else {
+                // Fallback initials
+                const initials = (data.student_name || '')
+                  .split(' ')
+                  .filter(Boolean)
+                  .map(w => w[0])
+                  .slice(0,2)
+                  .join('')
+                  .toUpperCase() || 'S';
+                sd.avatar.classList.add('hidden');
+                sd.avatarFallback.classList.remove('hidden');
+                sd.avatarFallback.textContent = initials;
+            }
+        }
+        sd.date.textContent = data.scheduled_date || '—';
+        // display time in 12-hour
+        try {
+            sd.time.textContent = data.scheduled_time ? formatTime12(data.scheduled_time) : '—';
+        } catch(_) {
+            sd.time.textContent = data.scheduled_time || '—';
+        }
+        sd.type.textContent = data.is_video_session ? 'Video' : 'In-Person';
+        sd.type.className = 'px-2 py-1 text-xs rounded-full ' + (data.is_video_session ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700');
+        sd.concern.textContent = data.nature_of_concern || '—';
+        sd.concernDesc.textContent = data.concern_description || '';
+        sd.notes.textContent = data.notes || '—';
+    sd.status.textContent = humanStatus(data.status);
+        sd.status.className = 'px-3 py-1 inline-flex text-xs font-semibold rounded-full border ' + badgeClasses(data.status);
+    sd.counselor.textContent = data.counselor || 'Unassigned';
+
+        // Actions availability
+    sd.joinWrap.classList.toggle('hidden', !data.can_join);
+        sd.join.href = `/office/video-session/${data.id}`;
+
+        // Configure unified action button (Assign & Confirm flow)
+        const me = (window.currentUserId || '').toString();
+        const assignedId = (data.counselor_id == null ? null : data.counselor_id.toString());
+        const assignedToMe = assignedId && assignedId === me;
+        sd.accept.disabled = false;
+        sd.accept.classList.remove('opacity-50', 'cursor-not-allowed');
+        sd.accept.dataset.mode = '';
+        sd.accept.className = sd.accept.className.replace(/bg-[^\s]+/g, '').trim();
+        // Keep base classes and ensure primary color
+        sd.accept.classList.add('bg-indigo-600','hover:bg-indigo-700');
+
+        if (data.status === 'pending') {
+            if (assignedToMe) {
+                sd.acceptLabel.textContent = 'Confirm';
+                sd.accept.dataset.mode = 'confirm';
+            } else if (assignedId == null) {
+                sd.acceptLabel.textContent = 'Assign & Confirm';
+                sd.accept.dataset.mode = 'assign-confirm';
+            } else {
+                sd.acceptLabel.textContent = 'Assigned to another';
+                sd.accept.disabled = true;
+                sd.accept.classList.add('opacity-50','cursor-not-allowed');
+            }
+            sd.accept.classList.remove('hidden');
+        } else if (data.status === 'confirmed') {
+            // Already confirmed; no need to show accept
+            sd.accept.classList.add('hidden');
+        } else {
+            // For in_progress, completed, cancelled, etc.
+            sd.accept.classList.add('hidden');
+        }
+
+        // Show modal
+        detailsModal.classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.session-row').forEach(row => {
+        row.addEventListener('click', () => openDetails(row));
+    });
+
+    function closeDetails(){ detailsModal.classList.add('hidden'); }
+    sd.close.addEventListener('click', closeDetails);
+    detailsModal.addEventListener('click', (e)=>{ if(e.target === detailsModal) closeDetails(); });
+
+    // Modal action handlers
+    sd.accept.addEventListener('click', async function(){
+        if(!activeSessionId) return;
+        const mode = this.dataset.mode || '';
+        const originalHTML = this.innerHTML;
+        this.disabled = true; this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Processing...';
+        try {
+            if (mode === 'assign-confirm') {
+                // Assign first
+                const a = await fetch(`/office/video-session/${activeSessionId}/assign`, { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken': getCsrfToken() } });
+                const aj = await a.json();
+                if (aj.status !== 'success') { throw new Error(aj.message || 'Failed to assign'); }
+            }
+            // Confirm
+            const c = await fetch(`/office/video-session/${activeSessionId}/update-status`, { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken': getCsrfToken() }, body:'status=confirmed' });
+            const cj = await c.json();
+            if (cj.status !== 'success') { throw new Error(cj.message || 'Failed to confirm'); }
+            showNotification('Session confirmed', 'success');
+            setTimeout(()=>location.reload(), 800);
+        } catch (err) {
+            showNotification(err.message || 'An error occurred', 'error');
+        } finally {
+            this.disabled = false; this.innerHTML = originalHTML;
+        }
+    });
+
+    sd.resched.addEventListener('click', function(){
+        if(!activeSessionId) return;
+        const date = (sd.date.textContent || '').trim();
+        // parse displayed (12-hour) back to 24-hour for the input value
+        const time12 = (sd.time.textContent || '').trim();
+        const time = parseTimeTo24(time12) || time12;
+        openRescheduleModal(activeSessionId, date, time, null);
+    });
+
+    sd.cancel.addEventListener('click', function(){
+        if(!activeSessionId) return;
+        cancelModal.classList.remove('hidden');
+        sessionToCancel = activeSessionId;
+    });
+
+    // Confirmation modal controls
+    const reschConfirm = document.getElementById('rescheduleConfirmModal');
+    const reschConfirmOk = document.getElementById('reschConfirmOk');
+    const reschConfirmClose = document.getElementById('reschConfirmClose');
+    function closeReschConfirm(){ reschConfirm?.classList.add('hidden'); window.location.reload(); }
+    reschConfirmOk?.addEventListener('click', closeReschConfirm);
+    reschConfirmClose?.addEventListener('click', closeReschConfirm);
+
     // Loading overlay for page transitions
     function showLoadingOverlay() {
         const overlay = document.createElement('div');
@@ -1295,6 +2013,107 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+});
+</script>
+
+<!-- FullCalendar (via CDN) -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" onerror="this.remove()">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js" onerror="this.remove()"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('calendarModal');
+    const openBtn = document.getElementById('openCalendarBtn');
+    const closeBtn = document.getElementById('closeCalendarBtn');
+    const modalCalEl = document.getElementById('officeCalendarModal');
+    let calendar = null;
+
+    function ensureCalendar(){
+        if (!modalCalEl || !(window.FullCalendar && window.FullCalendar.Calendar)) return null;
+        if (calendar) return calendar;
+                calendar = new FullCalendar.Calendar(modalCalEl, {
+            initialView: 'timeGridWeek',
+            height: 700,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            },
+            navLinks: true,
+            nowIndicator: true,
+                        defaultTimedEventDuration: '01:00:00',
+                        displayEventEnd: true,
+            slotDuration: '01:00:00',
+            slotMinTime: '07:00:00',
+            slotMaxTime: '19:00:00',
+            eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
+            events: {
+                url: "{{ url_for('office.office_calendar_events') }}",
+                failure: () => {
+                    const hint = document.createElement('div');
+                    hint.className = 'text-sm text-red-600 p-2';
+                    hint.textContent = 'Failed to load calendar events.';
+                    modalCalEl.parentElement.insertBefore(hint, modalCalEl);
+                }
+            },
+                        eventClassNames: function(arg){
+                                const status = (arg.event.extendedProps && arg.event.extendedProps.status) || '';
+                                const map = {
+                                        pending: 'pg-status-pending',
+                                        confirmed: 'pg-status-confirmed',
+                                        in_progress: 'pg-status-inprogress',
+                                        completed: 'pg-status-completed',
+                                        cancelled: 'pg-status-cancelled',
+                                        'no-show': 'pg-status-noshow'
+                                };
+                                return [map[status] || ''];
+                        },
+            eventContent: function(arg){
+                                // Compact, readable block using custom CSS (avoids Tailwind JIT in JS).
+                                const props = arg.event.extendedProps || {};
+                                const title = arg.event.title || 'Counseling Session';
+                                const student = props.student || props.student_name || '';
+                                const counselor = props.counselor || '';
+                                const status = props.status ? String(props.status).replace('_',' ').toUpperCase() : '';
+                                const start = arg.event.start; const end = arg.event.end;
+                                const fmt = (d)=>{ const h=d.getHours()%12||12; const m=(d.getMinutes()+'' ).padStart(2,'0'); const ap=d.getHours()>=12?'PM':'AM'; return `${h}:${m} ${ap}`; };
+                                const time = (start && end) ? `${fmt(start)} - ${fmt(end)}` : (start ? fmt(start) : '');
+                                const html = `
+                                    <div class="pg-cal-event">
+                                        <div class="pg-lines">
+                                            <div class="pg-line pg-title">${title}${student?` — ${student}`:''}</div>
+                                            ${time?`<div class=\"pg-line\">${time}</div>`:''}
+                                            ${counselor?`<div class=\"pg-line\">Counselor: ${counselor}</div>`:''}
+                                        </div>
+                                        ${status?`<div class=\"pg-badge\">${status}</div>`:''}
+                                    </div>`;
+                                return { html };
+            },
+            eventClick: function(info){
+                const id = info.event.id;
+                const row = document.querySelector(`tr.session-row[data-session*='"id": ${id}']`);
+                if (row){
+                    modal.classList.add('hidden');
+                    row.scrollIntoView({behavior:'smooth', block:'center'});
+                    row.click();
+                }
+            }
+        });
+        return calendar;
+    }
+
+    function openCalendar(){
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        const cal = ensureCalendar();
+        // Must wait a tick to render correctly inside a shown modal
+        setTimeout(()=>{ cal && cal.render(); }, 50);
+    }
+    function closeCalendar(){ modal?.classList.add('hidden'); }
+
+    openBtn?.addEventListener('click', openCalendar);
+    closeBtn?.addEventListener('click', closeCalendar);
+    modal?.addEventListener('click', (e)=>{ if (e.target && e.target.hasAttribute('data-cal-backdrop')) closeCalendar(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !modal.classList.contains('hidden')) closeCalendar(); });
 });
 </script>
 
@@ -1370,5 +2189,44 @@ document.addEventListener('DOMContentLoaded', function() {
         height: 20px;
         animation: spin 1s linear infinite;
     }
+
+    /* Calendar modal event rendering (compact and readable) */
+    .fc-timegrid-event .fc-event-main {
+        padding: 0 !important;
+    }
+    .pg-cal-event {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 8px;
+        padding: 6px 8px;
+        border-radius: 8px;
+    }
+    .pg-lines { min-width: 0; }
+    .pg-line {
+        font-size: 10px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #111827; /* gray-900 */
+    }
+    .pg-title { font-size: 11px; font-weight: 600; }
+    .pg-badge {
+        align-self: start;
+        font-size: 9px;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 9999px;
+        border: 1px solid rgba(0,0,0,0.1);
+        background: #F3F4F6;
+        color: #374151;
+    }
+    /* Status background/accents */
+    .pg-status-pending .fc-event-main { background: #FEF9C3 !important; border-left: 3px solid #F59E0B; }
+    .pg-status-confirmed .fc-event-main { background: #DCFCE7 !important; border-left: 3px solid #16A34A; }
+    .pg-status-inprogress .fc-event-main { background: #D1FAE5 !important; border-left: 3px solid #10B981; }
+    .pg-status-completed .fc-event-main { background: #F3F4F6 !important; border-left: 3px solid #6B7280; }
+    .pg-status-cancelled .fc-event-main { background: #FEE2E2 !important; border-left: 3px solid #EF4444; }
+    .pg-status-noshow .fc-event-main { background: #EDE9FE !important; border-left: 3px solid #8B5CF6; }
 </style>
 {% endblock %}

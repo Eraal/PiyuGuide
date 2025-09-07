@@ -1,6 +1,10 @@
-{% extends "admin/adminbase.html" %} {% block title %}Announcements |
-KapiyuGuide Admin{% endblock %} {% block content %}
-<div class="container mx-auto px-4 py-6">
+{% extends "admin/adminbase.html" %}
+
+{% block title %}Announcements - {{ current_campus_name }} Campus Admin{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/announcement.css') }}">
+<div class="max-w-5xl mx-auto px-4 py-6">
   <!-- Page Header with Subtle Shadow -->
   <div
     class="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white rounded-lg shadow-sm p-4"
@@ -18,88 +22,46 @@ KapiyuGuide Admin{% endblock %} {% block content %}
   </div>
 
   <!-- Filters in Floating Card -->
-  <div
-    class="bg-white p-4 rounded-lg shadow-md mb-6 transition-all duration-200 hover:shadow-lg"
-  >
-    <div class="flex items-center mb-2">
-      <i class="fas fa-filter text-blue-800 mr-2"></i>
-      <h2 class="text-lg font-semibold text-gray-800">Filters</h2>
-    </div>
-    <div class="flex flex-wrap items-center gap-4">
-      <div class="flex-grow md:flex-grow-0 min-w-[180px]">
-        <label
-          for="officeFilter"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Office</label
-        >
-        <div class="relative">
-          <select
-            id="officeFilter"
-            class="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
+  <div class="feed-filters mb-8">
+    <div class="filter-grid">
+      <div>
+        <label for="officeFilter">Office</label>
+        <div class="relative mt-1">
+          <select id="officeFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Offices</option>
             {% for office in offices %}
             <option value="{{ office.id }}">{{ office.name }}</option>
             {% endfor %}
           </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-          >
-            <i class="fas fa-chevron-down text-xs"></i>
-          </div>
+          <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs"><i class="fas fa-chevron-down"></i></span>
         </div>
       </div>
-      <div class="flex-grow md:flex-grow-0 min-w-[180px]">
-        <label
-          for="statusFilter"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Visibility</label
-        >
-        <div class="relative">
-          <select
-            id="statusFilter"
-            class="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
+      <div>
+        <label for="statusFilter">Visibility</label>
+        <div class="relative mt-1">
+          <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All</option>
             <option value="public">Public</option>
             <option value="office">Office-specific</option>
           </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-          >
-            <i class="fas fa-chevron-down text-xs"></i>
-          </div>
+          <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs"><i class="fas fa-chevron-down"></i></span>
         </div>
       </div>
-      <div class="flex-grow md:flex-grow-0 min-w-[180px]">
-        <label
-          for="dateRangeFilter"
-          class="block text-sm font-medium text-gray-700 mb-1"
-          >Date Range</label
-        >
-        <div class="relative">
-          <select
-            id="dateRangeFilter"
-            class="w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
+      <div>
+        <label for="dateRangeFilter">Date Range</label>
+        <div class="relative mt-1">
+          <select id="dateRangeFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Time</option>
             <option value="today">Today</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
           </select>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-          >
-            <i class="fas fa-chevron-down text-xs"></i>
-          </div>
+          <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs"><i class="fas fa-chevron-down"></i></span>
         </div>
       </div>
-      <div class="flex-grow md:flex-grow-0 self-end min-w-[120px]">
-        <button
-          id="applyFilters"
-          class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 w-full flex justify-center items-center"
-        >
-          <i class="fas fa-search mr-2"></i> Apply
+      <div class="flex items-end">
+        <button id="applyFilters" class="w-full h-[42px] bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg flex items-center justify-center gap-2 text-sm">
+          <i class="fas fa-sliders-h"></i> Apply
         </button>
       </div>
     </div>
@@ -108,88 +70,51 @@ KapiyuGuide Admin{% endblock %} {% block content %}
   <!-- Announcements Feed with Modern Card Design -->
   <div class="space-y-6" id="announcements-container">
     {% if announcements %} {% for announcement in announcements %}
-    <div
-      class="announcement-card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 border-l-4 {% if announcement.is_public %}border-green-500{% else %}border-blue-500{% endif %}"
-    >
-      <div class="p-5">
-        <!-- Author Information with Avatar -->
-        <div class="flex items-center mb-4">
-          <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 mr-3">
-            {% if announcement.author.profile_pic %}
-            <img
-              src="{{ url_for('static', filename=announcement.author.profile_pic) }}"
-              alt="Profile"
-              class="h-10 w-10 object-cover"
-            />
+  <div class="ann-card announcement-card p-6 border-l-4 {% if announcement.is_public %}border-green-500{% else %}border-blue-500{% endif %}">
+      <div class="ann-header mb-3">
+        <div class="ann-avatar">
+          {% set pic = announcement.author.profile_pic_path %}
+          {% if pic %}
+          <img src="{{ url_for('static', filename=pic) }}" alt="Profile" class="w-full h-full object-cover" />
+          {% else %}
+          <i class="fas fa-user"></i>
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start gap-2 flex-wrap">
+            <span class="ann-name">{{ announcement.author.get_full_name() }}</span>
+            {% if announcement.is_public %}
+            <span class="ann-badge">Public</span>
             {% else %}
-            <div
-              class="h-10 w-10 flex items-center justify-center text-gray-500"
-            >
-              <i class="fas fa-user"></i>
-            </div>
+            <span class="ann-badge">{{ announcement.target_office.name }}</span>
             {% endif %}
           </div>
-          <div>
-            <div class="font-semibold text-gray-800">
-              {{ announcement.author.get_full_name() }}
-            </div>
-            <div class="flex items-center text-sm text-gray-600">
-              <i class="fas fa-clock text-xs mr-1"></i>
-              <span>{{ announcement.created_at.strftime('%B %d, %Y') }}</span>
-              <span class="mx-2">•</span>
-              {% if announcement.is_public %}
-              <span
-                class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center"
-              >
-                <i class="fas fa-globe-asia text-xs mr-1"></i> Public
-              </span>
-              {% else %}
-              <span
-                class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center"
-              >
-                <i class="fas fa-building text-xs mr-1"></i> {{
-                announcement.target_office.name }}
-              </span>
-              {% endif %}
-            </div>
-          </div>
-          <!-- Action Menu with Enhanced Styling -->
-          <div class="dropdown ml-auto">
-            <button
-              class="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full h-8 w-8 flex items-center justify-center transition-colors duration-200"
-            >
-              <i class="fas fa-ellipsis-v"></i>
-            </button>
-            <div
-              class="dropdown-content text-left bg-white rounded-lg shadow-lg border border-gray-100 py-1 min-w-[150px]"
-            >
-              <a
-                href="#"
-                onclick="openEditAnnouncementModal('{{ announcement.id }}')"
-                class="flex items-center px-4 py-2 hover:bg-blue-50 text-gray-700"
-              >
-                <i class="fas fa-edit mr-2 text-blue-600"></i> Edit
-              </a>
-              <a
-                href="#"
-                onclick="confirmDeleteAnnouncement('{{ announcement.id }}')"
-                class="flex items-center px-4 py-2 hover:bg-red-50 text-red-600"
-              >
-                <i class="fas fa-trash-alt mr-2"></i> Delete
-              </a>
-            </div>
+          <div class="ann-meta mt-1">
+            <i class="fas fa-clock text-xs"></i>
+            <span>{{ announcement.created_at.strftime('%b %d, %Y') }}</span>
+            <span>•</span>
+            <span>{{ announcement.created_at.strftime('%I:%M %p') }}</span>
           </div>
         </div>
-
-        <!-- Announcement Title with Larger Font -->
-        <h3 class="text-xl font-semibold text-gray-800 mb-3">
-          {{ announcement.title }}
-        </h3>
-
-        <!-- Announcement Content -->
-        <div class="announcement-content prose max-w-none text-gray-700 mb-4">
-          <p>{{ announcement.content }}</p>
+        <div class="ann-actions dropdown ml-auto">
+          <button class="text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full h-9 w-9 flex items-center justify-center transition-colors" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-ellipsis-h"></i>
+          </button>
+          <div class="dropdown-content">
+            <a href="#" onclick="openEditAnnouncementModal('{{ announcement.id }}')" class="flex items-center px-4 py-2 hover:bg-blue-50 text-gray-700">
+              <i class="fas fa-edit mr-2 text-blue-600"></i> Edit
+            </a>
+            <a href="#" onclick="confirmDeleteAnnouncement('{{ announcement.id }}')" class="flex items-center px-4 py-2 hover:bg-red-50 text-red-600">
+              <i class="fas fa-trash-alt mr-2"></i> Delete
+            </a>
+          </div>
         </div>
+      </div>
+      <h2 class="ann-title">{{ announcement.title }}</h2>
+      <div class="ann-body mb-3" data-clamped="true" id="body-{{ announcement.id }}">
+        <p>{{ announcement.content }}</p>
+      </div>
+      <button class="show-more-btn" data-target="body-{{ announcement.id }}" onclick="toggleClamp(this)"><span>Show more</span><i class="fas fa-chevron-down text-xs"></i></button>
 
         <!-- Announcement Images with Improved Grid Layout -->
         {% if announcement.images and announcement.images|length > 0 %}
@@ -305,21 +230,20 @@ KapiyuGuide Admin{% endblock %} {% block content %}
         {% endif %}
 
         <!-- Interaction Footer -->
-        <div class="mt-4 pt-3 border-t border-gray-100 flex justify-end">
-          <div class="text-sm text-gray-500">
-            <i class="far fa-eye mr-1"></i> Visible to: {% if
-            announcement.is_public %}
-            <span>All Users</span>
-            {% else %}
-            <span>{{ announcement.target_office.name }} Office</span>
-            {% endif %}
-          </div>
+      <div class="ann-footer">
+        <div class="flex items-center gap-3 text-xs">
+          {% if announcement.is_public %}
+          <span class="visibility-pill"><i class="fas fa-globe"></i> All Users</span>
+          {% else %}
+          <span class="visibility-pill office"><i class="fas fa-building"></i> {{ announcement.target_office.name }} Office</span>
+          {% endif %}
         </div>
+        <div class="text-xs text-gray-400 tracking-wide uppercase font-medium">Announcement</div>
       </div>
     </div>
     {% endfor %} {% else %}
     <!-- Empty State with Improved Styling -->
-    <div class="bg-white rounded-lg shadow-md p-8 text-center">
+  <div class="ann-card p-12 text-center">
       <div class="text-blue-400 mb-4">
         <i class="fas fa-bullhorn fa-4x"></i>
       </div>
@@ -331,7 +255,7 @@ KapiyuGuide Admin{% endblock %} {% block content %}
       </p>
       <button
         onclick="openNewAnnouncementModal()"
-        class="bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center mx-auto"
+    class="bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-6 rounded-full transition-colors duration-200 flex items-center mx-auto shadow"
       >
         <i class="fas fa-plus mr-2"></i> Create Announcement
       </button>
@@ -910,6 +834,23 @@ KapiyuGuide Admin{% endblock %} {% block content %}
 <!-- Reference for Javascript file -->
 
 <script src="{{ url_for('static', filename='js/admin/admin_announcement.js') }}"></script>
+<script>
+  function toggleClamp(btn){
+    const id = btn.getAttribute('data-target');
+    const body = document.getElementById(id);
+    const clamped = body.getAttribute('data-clamped') === 'true';
+    if(clamped){
+      body.setAttribute('data-clamped','false');
+      btn.querySelector('span').textContent = 'Show less';
+      btn.querySelector('i').classList.add('rotate-180');
+    } else {
+      body.setAttribute('data-clamped','true');
+      btn.querySelector('span').textContent = 'Show more';
+      btn.querySelector('i').classList.remove('rotate-180');
+      body.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
+</script>
 
 <!-- Image Preview Modal -->
 <div
@@ -937,4 +878,5 @@ KapiyuGuide Admin{% endblock %} {% block content %}
     </div>
   </div>
 </div>
+<div class="compose-fab" onclick="openNewAnnouncementModal()" title="New Announcement"><i class="fas fa-plus"></i></div>
 {% endblock %}

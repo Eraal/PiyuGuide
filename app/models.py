@@ -16,9 +16,12 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, index=True)  # 'student', 'office_admin', 'super_admin'
+    role = db.Column(db.String(30), nullable=False, index=True)  # 'student', 'office_admin', 'super_admin', 'super_super_admin'
     profile_pic = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True, index=True)  # Controls login permission
+    
+    # Campus assignment for super_admin users
+    campus_id = db.Column(db.Integer, db.ForeignKey('campuses.id', ondelete='SET NULL'), index=True)
     video_call_notifications = db.Column(db.Boolean, default=True)
     video_call_email_reminders = db.Column(db.Boolean, default=True)
     preferred_video_quality = db.Column(db.String(20), default='auto')  # 'auto', 'low', 'medium', 'high'
@@ -37,6 +40,7 @@ class User(db.Model, UserMixin):
 
     student = db.relationship('Student', uselist=False, back_populates='user')
     office_admin = db.relationship('OfficeAdmin', uselist=False, back_populates='user')
+    campus = db.relationship('Campus', back_populates='super_admins')  # For super_admin users only
     notifications = db.relationship('Notification', back_populates='user', lazy=True)
     inquiry_messages = db.relationship('InquiryMessage', back_populates='sender', lazy=True)
     announcements = db.relationship('Announcement', back_populates='author', lazy=True)
@@ -64,6 +68,38 @@ class User(db.Model, UserMixin):
     @property
     def full_name(self):
         return self.get_full_name()
+
+    # --- Profile picture helpers ---
+    def get_profile_pic_path(self):
+        """Return a normalized static-relative path for the user's profile picture.
+
+        Handles legacy stored values such as:
+          - '/static/uploads/profile_pics/filename.jpg'
+          - 'uploads/profile_pics/filename.jpg'
+          - 'profile_pics/filename.jpg'
+          - just 'filename.jpg'
+        Always returns something suitable for: url_for('static', filename=returned_path)
+        or None if no profile picture.
+        """
+        if not self.profile_pic:
+            return None
+        path = self.profile_pic.strip().lstrip('/')
+        # Strip leading 'static/' if present
+        if path.startswith('static/'):
+            path = path[len('static/') :]
+        # If already starts with uploads/ assume correct
+        if path.startswith('uploads/'):
+            return path
+        # If contains profile_pics/ but missing uploads/ prefix
+        if path.startswith('profile_pics/'):
+            return f"uploads/{path}"
+        # Bare filename case
+        return f"uploads/profile_pics/{path}"
+
+    @property
+    def profile_pic_path(self):
+        """Property alias to use in templates."""
+        return self.get_profile_pic_path()
     
     def can_login(self):
         """Check if user can log in (is active and not locked)"""
@@ -99,6 +135,22 @@ class User(db.Model, UserMixin):
         )
         db.session.add(unlock_history)
         return unlock_history
+    
+    def can_access_campus(self, campus_id):
+        """Check if super admin user can access the specified campus"""
+        if self.role != 'super_admin':
+            return True  # Non-super-admin users don't have campus restrictions
+        
+        if not self.campus_id:
+            return False  # Super admin must have a campus assigned
+        
+        return self.campus_id == campus_id
+    
+    def get_accessible_campus_id(self):
+        """Get the campus ID that this user can access"""
+        if self.role == 'super_admin':
+            return self.campus_id
+        return None
 
 # New model to track account lock history
 class AccountLockHistory(db.Model):
@@ -112,17 +164,53 @@ class AccountLockHistory(db.Model):
     
     # Relationships defined via back_populates in User model
 
+class Campus(db.Model):
+    """Model for university campuses"""
+    __tablename__ = 'campuses'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, index=True)  # e.g., "LSPU San Pablo"
+    code = db.Column(db.String(10), nullable=False, unique=True, index=True)  # e.g., "SP", "SC"
+    address = db.Column(db.Text)  # Campus location
+    description = db.Column(db.Text)  # Campus details
+    # Campus-specific branding (applies only to Campus UI/templates)
+    campus_logo_path = db.Column(db.String(255))  # Path under static/ or absolute URL
+    campus_landing_bg_path = db.Column(db.String(255))  # Hero/landing background image
+    campus_theme_key = db.Column(db.String(50), default='blue')  # Predefined theme key (e.g., 'blue', 'emerald', 'violet', 'sunset', 'teal')
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationships
+    offices = db.relationship('Office', back_populates='campus', lazy=True)
+    super_admins = db.relationship('User', back_populates='campus', lazy=True)
+    # Departments under this campus
+    departments = db.relationship('Department', back_populates='campus', lazy=True, cascade='all, delete-orphan')
+    
+    def get_active_offices_count(self):
+        """Get count of all offices in this campus"""
+        from sqlalchemy import func
+        return db.session.query(func.count(Office.id)).filter(Office.campus_id == self.id).scalar() or 0
+    
+    def get_super_admins_count(self):
+        """Get count of super admins assigned to this campus"""
+        return len([admin for admin in self.super_admins if admin.role == 'super_admin' and admin.is_active])
+    
+    def __repr__(self):
+        return f'<Campus {self.name} ({self.code})>'
+
 class Office(db.Model):
     __tablename__ = 'offices'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, index=True)
     description = db.Column(db.Text)
     supports_video = db.Column(db.Boolean, default=False)
+    campus_id = db.Column(db.Integer, db.ForeignKey('campuses.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    # Relationships
+    campus = db.relationship('Campus', back_populates='offices')
     office_admins = db.relationship('OfficeAdmin', back_populates='office', lazy=True)
     inquiries = db.relationship('Inquiry', back_populates='office', lazy=True)
     counseling_sessions = db.relationship('CounselingSession', back_populates='office', lazy=True)
     announcements = db.relationship('Announcement', back_populates='target_office', lazy=True)
-
     supported_concerns = db.relationship('OfficeConcernType', back_populates='office', lazy=True)
 
 
@@ -141,9 +229,27 @@ class Student(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     student_number = db.Column(db.String(50), index=True)
 
+    # New: direct campus assignment for students
+    campus_id = db.Column(db.Integer, db.ForeignKey('campuses.id', ondelete='SET NULL'), index=True)
+
+    # Legacy free-text department (kept for backward compatibility)
+    department = db.Column(db.String(100), index=True)  # e.g., "Computer Science", "Engineering"
+    # New structured department reference
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id', ondelete='SET NULL'), index=True)
+    section = db.Column(db.String(50), index=True)       # e.g., "A", "B", "CS-1", etc.
+    year_level = db.Column(db.String(20), index=True)    # Optional: "1st Year", "2nd Year", etc.
+
     user = db.relationship('User', back_populates='student')
+    campus = db.relationship('Campus')
+    # Relationship to structured Department
+    department_rel = db.relationship('Department')
     inquiries = db.relationship('Inquiry', back_populates='student', lazy=True)
     counseling_sessions = db.relationship('CounselingSession', back_populates='student', lazy=True)
+
+    # Convenience: unified display name for department
+    @property
+    def department_name(self):
+        return self.department_rel.name if getattr(self, 'department_rel', None) else self.department
 
 # Add the missing InquiryConcern model
 class ConcernType(db.Model):
@@ -153,6 +259,9 @@ class ConcernType(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.Text)
     allows_other = db.Column(db.Boolean, default=False)  # Whether this concern type allows "Other" specification
+    # Auto-reply settings: when a student's first message is for this concern type, staff can auto-reply
+    auto_reply_enabled = db.Column(db.Boolean, default=False)
+    auto_reply_message = db.Column(db.Text)
 
     supporting_offices = db.relationship('OfficeConcernType', back_populates='concern_type', lazy=True)
     concerns = db.relationship('InquiryConcern', back_populates='concern_type', lazy=True)
@@ -174,6 +283,14 @@ class OfficeConcernType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     office_id = db.Column(db.Integer, db.ForeignKey('offices.id', ondelete='CASCADE'), nullable=False, index=True)
     concern_type_id = db.Column(db.Integer, db.ForeignKey('concern_types.id', ondelete='CASCADE'), nullable=False, index=True)
+    # Per-office auto-reply settings for this concern type
+    auto_reply_enabled = db.Column(db.Boolean, default=False)
+    auto_reply_message = db.Column(db.Text)
+    # New: context flags to differentiate usage domains
+    # for_inquiries: whether this concern type is selectable for inquiries in this office
+    # for_counseling: whether this concern type is selectable for counseling sessions in this office
+    for_inquiries = db.Column(db.Boolean, nullable=False, default=True)
+    for_counseling = db.Column(db.Boolean, nullable=False, default=False)
     
     office = db.relationship('Office', back_populates='supported_concerns')
     concern_type = db.relationship('ConcernType', back_populates='supporting_offices')
@@ -183,7 +300,8 @@ class InquiryMessage(db.Model):
     __tablename__ = 'inquiry_messages'
     
     id = db.Column(db.Integer, primary_key=True)
-    inquiry_id = db.Column(db.Integer, db.ForeignKey('inquiries.id'), nullable=False)
+    # Ensure DB-level cascade for future migrations; ORM will handle cascade deletes
+    inquiry_id = db.Column(db.Integer, db.ForeignKey('inquiries.id', ondelete='CASCADE'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -195,8 +313,9 @@ class InquiryMessage(db.Model):
     read_at = db.Column(db.DateTime, nullable=True)
     
     # Relationships
-    sender = db.relationship('User', foreign_keys=[sender_id])
-    inquiry = db.relationship('Inquiry', backref=db.backref('messages', order_by=created_at))
+    sender = db.relationship('User', foreign_keys=[sender_id], back_populates='inquiry_messages')
+    # Use explicit relationship with delete-orphan cascade defined on Inquiry.messages
+    inquiry = db.relationship('Inquiry', back_populates='messages')
     attachments = db.relationship('MessageAttachment', back_populates='message', lazy='joined', cascade='all, delete-orphan')
     
     def __repr__(self):
@@ -214,6 +333,13 @@ class Inquiry(db.Model):
 
     student = db.relationship('Student', back_populates='inquiries')
     office = db.relationship('Office', back_populates='inquiries')
+    # Explicit one-to-many to messages with cascade so children are deleted before parent
+    messages = db.relationship(
+        'InquiryMessage',
+        back_populates='inquiry',
+        order_by='InquiryMessage.created_at',
+        cascade='all, delete-orphan'
+    )
     concerns = db.relationship('InquiryConcern', back_populates='inquiry', lazy=True, cascade='all, delete-orphan')
     attachments = db.relationship('InquiryAttachment', back_populates='inquiry', lazy=True, cascade='all, delete-orphan')
     
@@ -294,6 +420,35 @@ class Notification(db.Model):
         db.session.add(notification)
         return notification
 
+    @classmethod
+    def create_campus_update_notification(cls, user_id, campus, old_name, new_name, updated_by_user):
+        """Create a notification for campus name update targeting Super Admins.
+
+        Args:
+            user_id (int): Recipient user id (a super_super_admin).
+            campus (Campus): The campus being updated.
+            old_name (str): Previous campus name.
+            new_name (str): New campus name.
+            updated_by_user (User): Campus admin who made the update.
+
+        Returns:
+            Notification: The unsaved notification instance (added to session).
+        """
+        title = "Campus name updated"
+        message = (
+            f"{updated_by_user.get_full_name()} changed campus name "
+            f"from '{old_name}' to '{new_name}'."
+        )
+        notification = cls(
+            user_id=user_id,
+            title=title,
+            message=message,
+            notification_type='campus_update',
+            link=f"/super-admin/campus/{campus.id}"
+        )
+        db.session.add(notification)
+        return notification
+
 class FileAttachment(db.Model):
     """Base model for file attachments"""
     __tablename__ = 'file_attachments'
@@ -353,6 +508,9 @@ class CounselingSession(db.Model):
     duration_minutes = db.Column(db.Integer, default=60)  # Default session duration
     status = db.Column(db.String(50), default='pending', index=True)
     notes = db.Column(db.Text)
+    # New fields for nature of concern (selected by student when requesting)
+    nature_of_concern_id = db.Column(db.Integer, db.ForeignKey('concern_types.id', ondelete='SET NULL'), index=True)
+    nature_of_concern_description = db.Column(db.Text)  # Optional elaboration provided by student
     
     # Video-specific fields
     is_video_session = db.Column(db.Boolean, default=False)
@@ -374,6 +532,8 @@ class CounselingSession(db.Model):
     office = db.relationship('Office', back_populates='counseling_sessions')
     counselor = db.relationship('User', back_populates='counseling_sessions')
     recording = db.relationship('SessionRecording', uselist=False, back_populates='session', cascade='all, delete-orphan')
+    # Relationship to concern type (re-uses existing ConcernType model)
+    nature_of_concern = db.relationship('ConcernType')
 
     def generate_meeting_details(self):
         """Generate a unique meeting ID and URL for this session"""
@@ -416,6 +576,37 @@ class CounselingSession(db.Model):
             return "student_waiting"
         else:
             return "empty"
+    
+    # Properties for backward compatibility
+    @property
+    def started_at(self):
+        """Alias for call_started_at for backward compatibility"""
+        return self.call_started_at
+    
+    @started_at.setter
+    def started_at(self, value):
+        """Setter for started_at that updates call_started_at"""
+        self.call_started_at = value
+    
+    @property
+    def ended_at(self):
+        """Alias for session_ended_at for backward compatibility"""
+        return self.session_ended_at
+    
+    @ended_at.setter
+    def ended_at(self, value):
+        """Setter for ended_at that updates session_ended_at"""
+        self.session_ended_at = value
+    
+    @property
+    def meeting_link(self):
+        """Alias for meeting_url for backward compatibility"""
+        return self.meeting_url
+    
+    @meeting_link.setter
+    def meeting_link(self, value):
+        """Setter for meeting_link that updates meeting_url"""
+        self.meeting_url = value
 
 # New model for session recording (optional feature)
 class SessionRecording(db.Model):
@@ -461,6 +652,23 @@ class SessionReminder(db.Model):
     session = db.relationship('CounselingSession')
     user = db.relationship('User')
 
+class Department(db.Model):
+    __tablename__ = 'departments'
+    id = db.Column(db.Integer, primary_key=True)
+    campus_id = db.Column(db.Integer, db.ForeignKey('campuses.id', ondelete='CASCADE'), nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False, index=True)
+    code = db.Column(db.String(20), index=True)
+    description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    campus = db.relationship('Campus', back_populates='departments')
+
+    __table_args__ = (
+        db.UniqueConstraint('campus_id', 'name', name='uq_department_campus_name'),
+        db.UniqueConstraint('campus_id', 'code', name='uq_department_campus_code'),
+    )
+
 
 class Announcement(db.Model):
     __tablename__ = 'announcements'
@@ -495,6 +703,7 @@ class AuditLog(db.Model, JsonSerializableMixin):
     actor_role = db.Column(db.String(20), index=True)  # 'student', 'office_admin', 'super_admin'
     action = db.Column(db.String(100), nullable=False, index=True)  # 'Submitted', 'Replied', etc.
     target_type = db.Column(db.String(50), index=True)  # 'user', 'office', 'inquiry', 'counseling_session', etc.
+    target_id = db.Column(db.Integer, index=True)  # Generic target ID for any target type
     inquiry_id = db.Column(db.Integer, db.ForeignKey('inquiries.id', ondelete='SET NULL'), index=True)
     office_id = db.Column(db.Integer, db.ForeignKey('offices.id', ondelete='SET NULL'), index=True)
     status_snapshot = db.Column(db.String(50))
@@ -510,7 +719,7 @@ class AuditLog(db.Model, JsonSerializableMixin):
     office = db.relationship('Office')
 
     @classmethod
-    def log_action(cls, actor, action, target_type=None, inquiry=None, office=None, status=None, is_success=True, 
+    def log_action(cls, actor, action, target_type=None, target_id=None, inquiry=None, office=None, status=None, is_success=True, 
                   failure_reason=None, ip_address=None, user_agent=None, retention_days=365):
         """Helper method to create a new audit log entry"""
         log = cls(
@@ -518,6 +727,7 @@ class AuditLog(db.Model, JsonSerializableMixin):
             actor_role=actor.role if actor else None,
             action=action,
             target_type=target_type,
+            target_id=target_id,
             inquiry_id=inquiry.id if inquiry else None,
             office_id=office.id if office else None,
             status_snapshot=status,
@@ -636,6 +846,207 @@ class SuperAdminActivityLog(db.Model, JsonSerializableMixin):
             target_type=target_type,
             target_user_id=target_user.id if target_user else None,
             target_office_id=target_office.id if target_office else None,
+            details=details,
+            is_success=is_success,
+            failure_reason=failure_reason,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            retention_days=retention_days
+        )
+        db.session.add(log)
+        return log
+
+# System Settings model to store dynamic configuration
+class SystemSettings(db.Model):
+    """Model to store system-wide configuration settings"""
+    __tablename__ = 'system_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    setting_key = db.Column(db.String(100), nullable=False, unique=True, index=True)
+    setting_value = db.Column(db.Text, nullable=False)
+    setting_type = db.Column(db.String(50), default='string')  # 'string', 'integer', 'boolean', 'json'
+    description = db.Column(db.Text)
+    is_public = db.Column(db.Boolean, default=True)  # Whether this setting is public or admin-only
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), index=True)
+    
+    # Relationship
+    updated_by = db.relationship('User')
+    
+    @classmethod
+    def get_setting(cls, key, default=None):
+        """Get a setting value by key"""
+        setting = cls.query.filter_by(setting_key=key).first()
+        if setting:
+            if setting.setting_type == 'boolean':
+                return setting.setting_value.lower() in ('true', '1', 'yes')
+            elif setting.setting_type == 'integer':
+                try:
+                    return int(setting.setting_value)
+                except ValueError:
+                    return default
+            elif setting.setting_type == 'json':
+                try:
+                    import json
+                    return json.loads(setting.setting_value)
+                except (json.JSONDecodeError, ValueError):
+                    return default
+            else:
+                return setting.setting_value
+        return default
+    
+    @classmethod
+    def set_setting(cls, key, value, setting_type='string', description=None, is_public=True, updated_by=None):
+        """Set or update a setting value"""
+        setting = cls.query.filter_by(setting_key=key).first()
+        
+        # Convert value to string for storage
+        if setting_type == 'json':
+            import json
+            str_value = json.dumps(value)
+        elif setting_type == 'boolean':
+            str_value = str(bool(value)).lower()
+        else:
+            str_value = str(value)
+        
+        if setting:
+            setting.setting_value = str_value
+            setting.setting_type = setting_type
+            setting.updated_at = datetime.utcnow()
+            if updated_by:
+                setting.updated_by_id = updated_by.id
+            if description:
+                setting.description = description
+        else:
+            setting = cls(
+                setting_key=key,
+                setting_value=str_value,
+                setting_type=setting_type,
+                description=description,
+                is_public=is_public,
+                updated_by_id=updated_by.id if updated_by else None
+            )
+            db.session.add(setting)
+        
+        return setting
+    
+    @classmethod
+    def get_current_campus_name(cls):
+        """Get the current active campus name for display"""
+        return cls.get_setting('current_campus_name', 'KapiyuGuide')
+    
+    @classmethod
+    def set_current_campus_name(cls, campus_name, updated_by=None):
+        """Set the current active campus name"""
+        return cls.set_setting(
+            'current_campus_name', 
+            campus_name, 
+            'string', 
+            'The current active campus name displayed throughout the system',
+            True,
+            updated_by
+        )
+
+    # Branding helpers
+    @classmethod
+    def get_brand_title(cls, default='PiyuGuide'):
+        """Get the system brand/application title"""
+        return cls.get_setting('system_brand_title', default)
+
+    @classmethod
+    def set_brand_title(cls, title, updated_by=None):
+        """Set the system brand/application title"""
+        return cls.set_setting(
+            'system_brand_title',
+            title,
+            'string',
+            'The system-wide application title/brand displayed across the UI',
+            True,
+            updated_by
+        )
+
+    @classmethod
+    def get_brand_logo_path(cls, default='images/schoollogo.png'):
+        """Get the static-relative path or absolute URL for the brand logo"""
+        return cls.get_setting('system_brand_logo_path', default)
+
+    @classmethod
+    def set_brand_logo_path(cls, path, updated_by=None):
+        """Set the brand logo path (relative to /static or absolute URL)"""
+        return cls.set_setting(
+            'system_brand_logo_path',
+            path,
+            'string',
+            'Path (relative to static/) or absolute URL to the brand logo image',
+            True,
+            updated_by
+        )
+
+    @classmethod
+    def get_brand_tagline(cls, default='Campus Inquiry Management System'):
+        """Get the system brand tagline/subtitle"""
+        return cls.get_setting('system_brand_tagline', default)
+
+    @classmethod
+    def set_brand_tagline(cls, tagline, updated_by=None):
+        """Set the system brand tagline/subtitle"""
+        return cls.set_setting(
+            'system_brand_tagline',
+            tagline,
+            'string',
+            'Short subtitle shown under the brand title in headers',
+            True,
+            updated_by
+        )
+
+    @classmethod
+    def get_favicon_path(cls, default='images/schoollogo.png'):
+        """Get favicon path or URL"""
+        return cls.get_setting('system_favicon_path', default)
+
+    @classmethod
+    def set_favicon_path(cls, path, updated_by=None):
+        """Set favicon path or URL"""
+        return cls.set_setting(
+            'system_favicon_path',
+            path,
+            'string',
+            'Favicon path (relative to static/) or absolute URL',
+            True,
+            updated_by
+        )
+
+# Super Super Admin activity log to track super super admin actions
+class SuperSuperAdminActivityLog(db.Model, JsonSerializableMixin):
+    __tablename__ = 'super_super_admin_activity_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    super_super_admin_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), index=True)
+    action = db.Column(db.String(100), nullable=False, index=True)  # e.g. 'Created Campus', 'Assigned Super Admin'
+    target_type = db.Column(db.String(50), index=True)  # 'campus', 'super_admin', 'system', etc.
+    target_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), index=True)
+    target_campus_id = db.Column(db.Integer, db.ForeignKey('campuses.id', ondelete='SET NULL'), index=True)
+    details = db.Column(db.Text)  # Optional: more details
+    is_success = db.Column(db.Boolean, default=True)
+    failure_reason = db.Column(db.String(255))
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(255))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    retention_days = db.Column(db.Integer, default=1095)  # Super super admin logs kept longest (3 years)
+
+    super_super_admin = db.relationship('User', foreign_keys=[super_super_admin_id])
+    target_user = db.relationship('User', foreign_keys=[target_user_id])
+    target_campus = db.relationship('Campus')
+
+    @classmethod
+    def log_action(cls, super_super_admin, action, target_type=None, target_user=None, target_campus=None, 
+                  details=None, is_success=True, failure_reason=None, ip_address=None, 
+                  user_agent=None, retention_days=1095):
+        """Helper method to create a new super super admin activity log entry"""
+        log = cls(
+            super_super_admin_id=super_super_admin.id,
+            action=action,
+            target_type=target_type,
+            target_user_id=target_user.id if target_user else None,
+            target_campus_id=target_campus.id if target_campus else None,
             details=details,
             is_success=is_success,
             failure_reason=failure_reason,

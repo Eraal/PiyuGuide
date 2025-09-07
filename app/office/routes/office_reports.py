@@ -3,20 +3,48 @@ from app.models import (
     Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, 
     OfficeLoginLog, AuditLog, Announcement, ConcernType, OfficeConcernType
 )
-from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, send_file
+from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, send_file, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, case, desc, or_, and_
 from app.office import office_bp
 import io
 import csv
+import os
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+
+def get_logo_path(office=None):
+    """Return the most appropriate logo path.
+
+    Fallback chain:
+    1. Office-specific branding folder: static/uploads/branding/<office_id>.png|jpg
+    2. Default school logo in static/images/schoollogo.png
+    3. Returns None if nothing exists.
+    """
+    try:
+        base = current_app.root_path
+        # Office specific
+        if office and getattr(office, 'id', None):
+            branding_dir = os.path.join(base, 'static', 'uploads', 'branding')
+            for ext in ('png', 'jpg', 'jpeg', 'gif'):
+                candidate = os.path.join(branding_dir, f"{office.id}.{ext}")
+                if os.path.exists(candidate):
+                    return candidate
+        # Default
+        default_logo = os.path.join(base, 'static', 'images', 'schoollogo.png')
+        if os.path.exists(default_logo):
+            return default_logo
+    except Exception:
+        pass
+    return None
 
 
 @office_bp.route('/reports')
@@ -188,7 +216,7 @@ def generate_inquiries_report(office_id, start_date, end_date, format_type, filt
     elif format_type == 'excel':
         return generate_excel_response(inquiries, 'inquiries')
     elif format_type == 'pdf':
-        return generate_pdf_response(inquiries, 'inquiries')
+        return generate_pdf_response(inquiries, 'inquiries', start_date, end_date)
     
     return jsonify({'error': 'Invalid format type'}), 400
 
@@ -212,7 +240,7 @@ def generate_counseling_report(office_id, start_date, end_date, format_type, fil
     elif format_type == 'excel':
         return generate_excel_response(sessions, 'counseling')
     elif format_type == 'pdf':
-        return generate_pdf_response(sessions, 'counseling')
+        return generate_pdf_response(sessions, 'counseling', start_date, end_date)
     
     return jsonify({'error': 'Invalid format type'}), 400
 
@@ -229,7 +257,7 @@ def generate_summary_report(office_id, start_date, end_date, format_type, filter
     stats = get_detailed_stats(office_id, start_date, end_date)
     
     if format_type == 'pdf':
-        return generate_summary_pdf(stats)
+        return generate_summary_pdf(stats, office_id, start_date, end_date)
     elif format_type == 'excel':
         return generate_summary_excel(stats)
     
@@ -378,219 +406,289 @@ def generate_excel_response(data, report_type):
     )
 
 
-def generate_pdf_response(data, report_type):
-    """Generate PDF response with enhanced styling"""
+def generate_pdf_response(data, report_type, start_date, end_date):
+    """Generate PDF response with modern, professional styling.
+
+    Enhancements:
+    - Unified header & footer with logo, title, timestamp, page numbers
+    - Clear sections (Summary / Details)
+    - Balanced spacing & consistent font sizing
+    - Status color badges (cell background colors)
+    - Compact metric cards layout instead of plain key/value list
+    - Graceful handling of empty datasets
+    """
     output = io.BytesIO()
-    
-    # Custom page template with margins
+
+    # Capture generation timestamp once
+    generated_at = datetime.now()
+    generated_at_text = generated_at.strftime('%B %d, %Y • %I:%M %p')
+
+    # Build dynamic period description
+    if data:
+        try:
+            # Derive actual min/max from records if possible
+            if report_type == 'inquiries':
+                dates = [i.created_at for i in data if getattr(i, 'created_at', None)]
+            else:
+                dates = [s.scheduled_at for s in data if getattr(s, 'scheduled_at', None)]
+            if dates:
+                actual_start = min(dates).strftime('%b %d, %Y')
+                actual_end = max(dates).strftime('%b %d, %Y')
+                period_text = f"{actual_start} – {actual_end}"
+            else:
+                period_text = f"{start_date.strftime('%b %d, %Y')} – {end_date.strftime('%b %d, %Y')}"
+        except Exception:
+            period_text = f"{start_date.strftime('%b %d, %Y')} – {end_date.strftime('%b %d, %Y')}"
+    else:
+        period_text = f"{start_date.strftime('%b %d, %Y')} – {end_date.strftime('%b %d, %Y')}"
+
+    # Document with custom margins
     doc = SimpleDocTemplate(
-        output, 
+        output,
         pagesize=A4,
-        leftMargin=0.75*inch,
-        rightMargin=0.75*inch,
-        topMargin=1*inch,
-        bottomMargin=0.75*inch
+        leftMargin=0.8 * inch,
+        rightMargin=0.8 * inch,
+        topMargin=1.1 * inch,
+        bottomMargin=0.8 * inch
     )
-    story = []
-    
-    # Enhanced Styles
+
     styles = getSampleStyleSheet()
-    
-    # Header style with gradient-like effect
-    header_style = ParagraphStyle(
-        'CustomHeader',
-        parent=styles['Normal'],
-        fontSize=24,
-        textColor=colors.HexColor('#1a365d'),
-        fontName='Helvetica-Bold',
-        alignment=1,  # Center
-        spaceAfter=10
-    )
-    
-    # Subtitle style
-    subtitle_style = ParagraphStyle(
-        'CustomSubtitle',
-        parent=styles['Normal'],
-        fontSize=12,
-        textColor=colors.HexColor('#4a5568'),
-        fontName='Helvetica',
-        alignment=1,  # Center
-        spaceAfter=30
-    )
-    
-    # Section header style
+    # Core styles
+    h_style = ParagraphStyle(
+        'HeadingMain', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=18,
+        textColor=colors.HexColor('#1f2937'), spaceAfter=4, leading=22)
+    sub_style = ParagraphStyle(
+        'SubHeading', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#4b5563'),
+        spaceAfter=16, leading=14, alignment=0)
     section_style = ParagraphStyle(
-        'SectionHeader',
-        parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.HexColor('#2d3748'),
-        fontName='Helvetica-Bold',
-        spaceBefore=20,
-        spaceAfter=10
-    )
-    
-    # Add header with branding
-    story.append(Paragraph("📊 KapiyuGuide Reports", header_style))
-    
-    # Current date and report type
-    current_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
-    story.append(Paragraph(f"{report_type.title()} Report - Generated on {current_date}", subtitle_style))
-    
-    # Add a decorative line
-    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#4299e1')))
-    story.append(Spacer(1, 20))
-    
+        'Section', parent=styles['Heading2'], fontSize=13, fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#111827'), spaceBefore=18, spaceAfter=10)
+    small_label = ParagraphStyle(
+        'SmallLabel', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#6b7280'), leading=10)
+    empty_style = ParagraphStyle(
+        'Empty', parent=styles['Normal'], fontSize=11, textColor=colors.HexColor('#6b7280'),
+        alignment=1, spaceBefore=30)
+
+    story = []
+
+    # Title block (content - header graphics drawn in canvas)
+    # Resolve office & campus for contextual header details
+    office = Office.query.get(current_user.office_admin.office_id) if current_user and getattr(current_user, 'office_admin', None) else None
+    campus_name = office.campus.name if office and office.campus else 'Campus'
+    office_name = office.name if office else 'Office'
+    story.append(Paragraph(f"{report_type.title()} Report", h_style))
+    story.append(Paragraph(f"<b>{campus_name} • {office_name}</b><br/>Reporting Period: <b>{period_text}</b><br/>Generated: {generated_at_text}", sub_style))
+
+    # --- SUMMARY / METRICS SECTION ---
     if report_type == 'inquiries':
-        # Summary section for inquiries
-        story.append(Paragraph("📋 Inquiry Summary", section_style))
-        
+        story.append(Paragraph('Summary Overview', section_style))
+        total = len(data)
+        # Status counts
+        status_counts = {}
+        for i in data:
+            st = i.status.replace('_', ' ').title()
+            status_counts[st] = status_counts.get(st, 0) + 1
+
+        # Build status row (cards)
+        status_row_headers = []
+        status_row_values = []
+        palette = ['#1d4ed8', '#059669', '#d97706', '#dc2626', '#6366f1']
+        for idx, (st, count) in enumerate(sorted(status_counts.items())):
+            color = colors.HexColor(palette[idx % len(palette)])
+            status_row_headers.append(Paragraph(f"<font color='{color}'>■</font> {st}", styles['Normal']))
+            status_row_values.append(Paragraph(f"<b>{count}</b>", styles['Normal']))
+
         summary_data = [
-            ['Total Inquiries:', str(len(data))],
-            ['Report Period:', f"Various dates (Last {len(data)} inquiries)"],
-            ['Status Breakdown:', get_status_breakdown_text(data)]
+            [Paragraph('<b>Total Inquiries</b>', styles['Normal']), Paragraph(f"<b>{total}</b>", styles['Normal'])]
         ]
-        
-        summary_table = Table(summary_data, colWidths=[2*inch, 4*inch])
+        if status_row_headers:
+            summary_data.append(status_row_headers)
+            summary_data.append(status_row_values)
+
+        summary_table = Table(summary_data, hAlign='LEFT')
         summary_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+            ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#ffffff')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#111827')),
+            ('LINEBELOW', (0, 0), (-1, 0), 0.6, colors.HexColor('#e5e7eb')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8), ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6)
         ]))
-        
         story.append(summary_table)
-        story.append(Spacer(1, 20))
-        
-        # Main data section
-        story.append(Paragraph("📝 Detailed Inquiry List", section_style))
-        
-        # Enhanced table data with better formatting
-        table_data = [['ID', 'Subject', 'Student', 'Status', 'Date', 'Concerns']]
-        
-        for inquiry in data:
-            concerns = ', '.join([concern.concern_type.name for concern in inquiry.concerns])
-            # Better text wrapping and formatting
-            subject_text = inquiry.subject[:35] + '...' if len(inquiry.subject) > 35 else inquiry.subject
-            concerns_text = concerns[:40] + '...' if len(concerns) > 40 else concerns
-            
-            # Status formatting with color coding
-            status_text = inquiry.status.replace('_', ' ').title()
-            
-            table_data.append([
-                str(inquiry.id),
-                subject_text,
-                inquiry.student.user.get_full_name(),
-                status_text,
-                inquiry.created_at.strftime('%m/%d/%Y'),
-                concerns_text
-            ])
-    
+
     elif report_type == 'counseling':
-        # Summary section for counseling
-        story.append(Paragraph("🎯 Counseling Session Summary", section_style))
-        
+        story.append(Paragraph('Summary Overview', section_style))
+        total = len(data)
         video_count = len([s for s in data if s.is_video_session])
-        in_person_count = len(data) - video_count
-        
+        in_person_count = total - video_count
+        status_counts = {}
+        for s in data:
+            st = s.status.replace('_', ' ').title()
+            status_counts[st] = status_counts.get(st, 0) + 1
+        status_cells = []
+        for st, count in sorted(status_counts.items()):
+            status_cells.append(Paragraph(f"<b>{count}</b><br/><font size=8 color='#6b7280'>{st}</font>", styles['Normal']))
         summary_data = [
-            ['Total Sessions:', str(len(data))],
-            ['Video Sessions:', str(video_count)],
-            ['In-Person Sessions:', str(in_person_count)],
-            ['Status Breakdown:', get_session_status_breakdown_text(data)]
+            [Paragraph('<b>Total Sessions</b>', styles['Normal']), Paragraph(f"<b>{total}</b>", styles['Normal']),
+             Paragraph('<b>Video</b>', styles['Normal']), Paragraph(str(video_count), styles['Normal']),
+             Paragraph('<b>In-Person</b>', styles['Normal']), Paragraph(str(in_person_count), styles['Normal'])]
         ]
-        
-        summary_table = Table(summary_data, colWidths=[2*inch, 4*inch])
+        if status_cells:
+            summary_data.append(status_cells)
+        summary_table = Table(summary_data, hAlign='LEFT')
         summary_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#111827')),
+            ('LINEBELOW', (0, 0), (-1, 0), 0.6, colors.HexColor('#e5e7eb')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8), ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6)
         ]))
-        
         story.append(summary_table)
-        story.append(Spacer(1, 20))
-        
-        # Main data section
-        story.append(Paragraph("📅 Session Details", section_style))
-        
-        table_data = [['ID', 'Student', 'Status', 'Scheduled', 'Duration', 'Type']]
-        
-        for session in data:
-            duration_text = f"{session.duration_minutes}min" if session.duration_minutes else 'N/A'
-            type_text = '🎥 Video' if session.is_video_session else '👥 In-Person'
-            status_text = session.status.replace('_', ' ').title()
-            
-            table_data.append([
-                str(session.id),
-                session.student.user.get_full_name(),
-                status_text,
-                session.scheduled_at.strftime('%m/%d/%Y %I:%M %p') if session.scheduled_at else 'N/A',
-                duration_text,
-                type_text
-            ])
-    
-    # Enhanced table styling
-    col_widths = [0.8*inch, 2.2*inch, 1.8*inch, 1.2*inch, 1.2*inch, 1.3*inch] if report_type == 'inquiries' else [0.6*inch, 2*inch, 1.2*inch, 1.8*inch, 0.8*inch, 1.1*inch]
-    
-    table = Table(table_data, colWidths=col_widths)
-    table.setStyle(TableStyle([
-        # Header styling
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2b6cb0')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        
-        # Data rows styling
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#2d3748')),
-        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # ID column center
-        ('ALIGN', (1, 1), (-1, -1), 'LEFT'),   # Other columns left
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        
-        # Alternating row colors
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f7fafc')]),
-        
-        # Grid and borders
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0')),
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#2b6cb0')),
-        
-        # Padding
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-    ]))
-    
-    story.append(table)
-    
-    # Footer with generation info
-    story.append(Spacer(1, 30))
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.HexColor('#718096'),
-        alignment=1,  # Center
-    )
-    story.append(Paragraph(f"Generated by KapiyuGuide System • {current_date} • Confidential", footer_style))
-    
-    doc.build(story)
-    
+
+    # Detailed table section
+    story.append(Paragraph('Detailed Records', section_style))
+
+    if not data:
+        story.append(Paragraph('No records found for the selected criteria.', empty_style))
+    else:
+        if report_type == 'inquiries':
+            table_data = [['ID', 'Subject', 'Student', 'Status', 'Date', 'Concerns']]
+            status_colors = {}
+            for inquiry in data:
+                concerns = ', '.join([c.concern_type.name for c in inquiry.concerns])
+                subject_text = inquiry.subject if len(inquiry.subject) <= 60 else inquiry.subject[:57] + '…'
+                concerns_text = concerns if len(concerns) <= 55 else concerns[:52] + '…'
+                status = inquiry.status.replace('_', ' ').title()
+                table_data.append([
+                    str(inquiry.id),
+                    subject_text,
+                    inquiry.student.user.get_full_name(),
+                    status,
+                    inquiry.created_at.strftime('%m/%d/%Y'),
+                    concerns_text
+                ])
+                if status not in status_colors:
+                    # Assign stable color
+                    mapping = {
+                        'Pending': '#f59e0b', 'In Progress': '#3b82f6', 'Resolved': '#10b981',
+                        'Closed': '#6b7280'
+                    }
+                    status_colors[status] = mapping.get(status, '#6366f1')
+            col_widths = [0.6*inch, 2.4*inch, 1.6*inch, 1.0*inch, 0.9*inch, 1.6*inch]
+        else:  # counseling
+            table_data = [['ID', 'Student', 'Status', 'Scheduled', 'Duration', 'Type']]
+            status_colors = {}
+            for session in data:
+                status = session.status.replace('_', ' ').title()
+                table_data.append([
+                    str(session.id),
+                    session.student.user.get_full_name(),
+                    status,
+                    session.scheduled_at.strftime('%m/%d/%Y %I:%M %p') if session.scheduled_at else '—',
+                    f"{session.duration_minutes}m" if session.duration_minutes else '—',
+                    'Video' if session.is_video_session else 'In-Person'
+                ])
+                if status not in status_colors:
+                    mapping = {
+                        'Scheduled': '#3b82f6', 'Completed': '#10b981', 'Cancelled': '#dc2626',
+                        'In Progress': '#6366f1'
+                    }
+                    status_colors[status] = mapping.get(status, '#6b7280')
+            col_widths = [0.5*inch, 2.1*inch, 1.1*inch, 1.6*inch, 0.8*inch, 1.0*inch]
+
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        # Base style
+        table_style = [
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9.5),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, 0), 7), ('BOTTOMPADDING', (0, 0), (-1, 0), 7),
+            ('FONTSIZE', (0, 1), (-1, -1), 8.5),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+            ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e5e7eb')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5), ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+        ]
+        # Center numeric/id columns
+        table_style += [('ALIGN', (0, 1), (0, -1), 'CENTER')]
+        # Status column shading
+        status_col_index = 3 if report_type == 'inquiries' else 2
+        for row_idx in range(1, len(table_data)):
+            status_value = table_data[row_idx][status_col_index]
+            hex_color = status_colors.get(status_value, '#6b7280')
+            table_style.append(('BACKGROUND', (status_col_index, row_idx), (status_col_index, row_idx), colors.HexColor(hex_color)))
+            table_style.append(('TEXTCOLOR', (status_col_index, row_idx), (status_col_index, row_idx), colors.white))
+            table_style.append(('FONTNAME', (status_col_index, row_idx), (status_col_index, row_idx), 'Helvetica-Bold'))
+
+        table.setStyle(TableStyle(table_style))
+        story.append(table)
+
+        # Legend
+        legend_parts = []
+        for st, clr in status_colors.items():
+            legend_parts.append(f"<font color='{clr}'>■</font> {st}")
+        if legend_parts:
+            legend_para = Paragraph('Status Legend: ' + ' &nbsp; '.join(legend_parts), small_label)
+            story.append(Spacer(1, 10))
+            story.append(legend_para)
+
+    # Canvas header/footer callbacks with professional logo placement
+    def _header_footer(canvas, doc):
+        canvas.saveState()
+        header_height = 50
+        canvas.setFillColor(colors.HexColor('#111827'))
+        canvas.rect(0, A4[1] - header_height, A4[0], header_height, stroke=0, fill=1)
+
+        # Resolve office early (used for both text and potential branded logo)
+        office = Office.query.get(current_user.office_admin.office_id) if current_user and getattr(current_user, 'office_admin', None) else None
+        campus_name = office.campus.name if office and office.campus else ''
+        office_name = office.name if office else ''
+
+        # Determine logo path (office-specific fallback chain)
+        logo_path = get_logo_path(office)
+        text_x = doc.leftMargin
+        if logo_path:
+            try:
+                img = ImageReader(logo_path)
+                iw, ih = img.getSize()
+                max_h = 38
+                max_w = 120
+                scale = min(max_w / iw, max_h / ih)
+                dw, dh = iw * scale, ih * scale
+                # Center vertically in header bar
+                y = A4[1] - header_height + (header_height - dh) / 2
+                canvas.drawImage(logo_path, doc.leftMargin, y, width=dw, height=dh, preserveAspectRatio=True, mask='auto')
+                text_x = doc.leftMargin + dw + 12
+            except Exception:
+                # On failure, keep default text_x
+                pass
+        else:
+            # If no logo, nudge text slightly for visual balance
+            text_x = doc.leftMargin + 2
+
+        canvas.setFillColor(colors.white)
+        canvas.setFont('Helvetica-Bold', 12)
+        canvas.drawString(text_x, A4[1] - 28, 'PiyuGuide Reports')
+        canvas.setFont('Helvetica', 8)
+        canvas.drawString(text_x, A4[1] - 40, f'{campus_name} • {office_name} • {report_type.title()} • {period_text}')
+
+        # Footer (page metadata)
+        canvas.setFillColor(colors.HexColor('#6b7280'))
+        canvas.setFont('Helvetica', 7)
+        page_num = canvas.getPageNumber()
+        footer_text = f"Generated {generated_at_text} • Page {page_num}"
+        canvas.drawString(doc.leftMargin, 0.55 * inch, footer_text)
+        canvas.drawRightString(A4[0] - doc.rightMargin, 0.55 * inch, 'Confidential')
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+
     output.seek(0)
     return Response(
         output.getvalue(),
@@ -599,221 +697,155 @@ def generate_pdf_response(data, report_type):
     )
 
 
-def generate_summary_pdf(stats):
-    """Generate enhanced summary PDF report"""
+def generate_summary_pdf(stats, office_id, start_date, end_date):
+    """Generate enhanced summary PDF report with unified styling (header/footer, metric cards, insights), brand rename, and campus/office context."""
     output = io.BytesIO()
-    
-    # Custom page setup with margins
+    generated_at = datetime.now()
+    generated_at_text = generated_at.strftime('%B %d, %Y • %I:%M %p')
+
     doc = SimpleDocTemplate(
-        output, 
+        output,
         pagesize=A4,
-        leftMargin=0.75*inch,
-        rightMargin=0.75*inch,
-        topMargin=1*inch,
-        bottomMargin=0.75*inch
+        leftMargin=0.85 * inch,
+        rightMargin=0.85 * inch,
+        topMargin=1.2 * inch,
+        bottomMargin=0.85 * inch
     )
-    story = []
-    
     styles = getSampleStyleSheet()
-    
-    # Enhanced header styles
-    main_title_style = ParagraphStyle(
-        'MainTitle',
-        parent=styles['Normal'],
-        fontSize=28,
-        textColor=colors.HexColor('#1a202c'),
-        fontName='Helvetica-Bold',
-        alignment=1,  # Center
-        spaceAfter=5
-    )
-    
-    subtitle_style = ParagraphStyle(
-        'Subtitle',
-        parent=styles['Normal'],
-        fontSize=14,
-        textColor=colors.HexColor('#4a5568'),
-        fontName='Helvetica',
-        alignment=1,  # Center
-        spaceAfter=30
-    )
-    
-    section_title_style = ParagraphStyle(
-        'SectionTitle',
-        parent=styles['Heading2'],
-        fontSize=16,
-        textColor=colors.HexColor('#2b6cb0'),
-        fontName='Helvetica-Bold',
-        spaceBefore=25,
-        spaceAfter=15,
-        borderWidth=0,
-        borderPadding=0,
-        leftIndent=0
-    )
-    
-    highlight_style = ParagraphStyle(
-        'Highlight',
-        parent=styles['Normal'],
-        fontSize=12,
-        textColor=colors.HexColor('#2d3748'),
-        fontName='Helvetica',
-        alignment=1,
-        spaceBefore=10,
-        spaceAfter=20
-    )
-    
-    # Header section with branding
-    story.append(Paragraph("📊 KapiyuGuide Office Analytics", main_title_style))
-    
-    current_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
-    story.append(Paragraph(f"Monthly Summary Report - Generated on {current_date}", subtitle_style))
-    
-    # Add decorative line
-    story.append(HRFlowable(width="100%", thickness=3, color=colors.HexColor('#3182ce')))
-    story.append(Spacer(1, 30))
-    
-    # Executive Summary Box
-    story.append(Paragraph("📋 Executive Summary", section_title_style))
-    
-    # Calculate some insights
+
+    title_style = ParagraphStyle('Title', parent=styles['Normal'], fontSize=20, fontName='Helvetica-Bold',
+                                 textColor=colors.HexColor('#111827'), spaceAfter=6, leading=24)
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#4b5563'),
+                               spaceAfter=18, leading=14)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=14, fontName='Helvetica-Bold',
+                                   textColor=colors.HexColor('#111827'), spaceBefore=16, spaceAfter=12)
+    insight_style = ParagraphStyle('Insight', parent=styles['Normal'], fontSize=10.5, leading=14,
+                                   textColor=colors.HexColor('#1f2937'), spaceBefore=6, spaceAfter=6)
+    small_muted = ParagraphStyle('Muted', parent=styles['Normal'], fontSize=7.5, textColor=colors.HexColor('#6b7280'))
+
+    story = []
+    office = Office.query.get(office_id)
+    campus_name = office.campus.name if office and office.campus else 'Campus'
+    office_name = office.name if office else 'Office'
+    period_text = f"{start_date.strftime('%b %d, %Y')} – {end_date.strftime('%b %d, %Y')}"
+    story.append(Paragraph('Monthly Summary Report', title_style))
+    story.append(Paragraph(f'<b>{campus_name} • {office_name}</b><br/>Period: {period_text}<br/>Generated: {generated_at_text}', sub_style))
+
+    # EXEC SUMMARY
+    story.append(Paragraph('Executive Overview', section_style))
     total_interactions = stats['total_inquiries'] + stats['total_sessions']
-    monthly_growth = ((stats['inquiries_this_month'] + stats['sessions_this_month']) / max(total_interactions, 1)) * 100
-    
-    summary_text = f"""
-    <b>Total Student Interactions:</b> {total_interactions}<br/>
-    <b>Monthly Activity Rate:</b> {monthly_growth:.1f}% of total volume<br/>
-    <b>Response Efficiency:</b> {stats['response_rate']}% inquiry resolution rate<br/>
-    <b>Service Quality:</b> {stats['avg_resolution_time']} average response time
-    """
-    
-    summary_para = Paragraph(summary_text, highlight_style)
-    story.append(summary_para)
-    story.append(Spacer(1, 20))
-    
-    # Key Metrics Section
-    story.append(Paragraph("📈 Key Performance Metrics", section_title_style))
-    
-    # Enhanced statistics table with better styling
-    metrics_data = [
-        ['📝 Student Inquiries', '', '🎯 Counseling Services', ''],
-        ['Total Inquiries', f"{stats['total_inquiries']:,}", 'Total Sessions', f"{stats['total_sessions']:,}"],
-        ['This Month', f"{stats['inquiries_this_month']:,}", 'This Month', f"{stats['sessions_this_month']:,}"],
-        ['', '', '', ''],
-        ['📊 Performance Indicators', '', '⏱️ Service Quality', ''],
-        ['Response Rate', f"{stats['response_rate']}%", 'Avg Resolution Time', stats['avg_resolution_time']],
-    ]
-    
-    metrics_table = Table(metrics_data, colWidths=[2.2*inch, 1.3*inch, 2.2*inch, 1.3*inch])
-    metrics_table.setStyle(TableStyle([
-        # Header rows styling
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
-        ('BACKGROUND', (0, 4), (-1, 4), colors.HexColor('#e2e8f0')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
-        ('TEXTCOLOR', (0, 4), (-1, 4), colors.HexColor('#2d3748')),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 4), (-1, 4), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('FONTSIZE', (0, 4), (-1, 4), 12),
-        
-        # Data rows styling
-        ('FONTNAME', (0, 1), (-1, 3), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 1), (-1, 3), 'Helvetica'),
-        ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 5), (-1, 5), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 11),
-        ('TEXTCOLOR', (0, 1), (0, 3), colors.HexColor('#2b6cb0')),
-        ('TEXTCOLOR', (2, 1), (2, 3), colors.HexColor('#2b6cb0')),
-        ('TEXTCOLOR', (0, 5), (0, 5), colors.HexColor('#2b6cb0')),
-        ('TEXTCOLOR', (2, 5), (2, 5), colors.HexColor('#2b6cb0')),
-        ('TEXTCOLOR', (1, 1), (1, -1), colors.HexColor('#1a202c')),
-        ('TEXTCOLOR', (3, 1), (3, -1), colors.HexColor('#1a202c')),
-        
-        # Alignment
-        ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
-        ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        
-        # Borders and spacing
-        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#cbd5e0')),
-        ('LINEBELOW', (0, 4), (-1, 4), 1, colors.HexColor('#cbd5e0')),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 12),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-        
-        # Alternating backgrounds for data rows
-        ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f7fafc')),
-        ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f7fafc')),
-        ('BACKGROUND', (0, 5), (-1, 5), colors.HexColor('#f7fafc')),
-    ]))
-    
-    story.append(metrics_table)
-    story.append(Spacer(1, 30))
-    
-    # Insights and Recommendations Section
-    story.append(Paragraph("💡 Key Insights & Recommendations", section_title_style))
-    
-    # Generate dynamic insights based on data
-    insights = []
-    
-    if stats['response_rate'] >= 80:
-        insights.append("✅ <b>Excellent Response Rate:</b> Your team maintains a strong {:.1f}% response rate, indicating effective inquiry management.".format(stats['response_rate']))
-    elif stats['response_rate'] >= 60:
-        insights.append("⚠️ <b>Good Response Rate:</b> At {:.1f}%, there's room for improvement in inquiry response efficiency.".format(stats['response_rate']))
-    else:
-        insights.append("🔴 <b>Response Rate Attention Needed:</b> The {:.1f}% response rate suggests a need for process optimization.".format(stats['response_rate']))
-    
-    if stats['sessions_this_month'] > stats['inquiries_this_month']:
-        insights.append("📈 <b>High Counseling Demand:</b> Counseling sessions exceed inquiry volume, indicating strong student engagement.")
-    else:
-        insights.append("📋 <b>Inquiry-Driven Activity:</b> Student inquiries are the primary engagement channel this month.")
-    
     monthly_total = stats['inquiries_this_month'] + stats['sessions_this_month']
-    if monthly_total > 50:
-        insights.append("🚀 <b>High Activity Volume:</b> With {} total interactions this month, your office is highly active.".format(monthly_total))
-    elif monthly_total > 20:
-        insights.append("📊 <b>Moderate Activity:</b> {} interactions this month shows steady student engagement.".format(monthly_total))
+    if total_interactions:
+        activity_ratio = (monthly_total / total_interactions) * 100
     else:
-        insights.append("📈 <b>Growth Opportunity:</b> {} interactions suggest potential for increased outreach and engagement.".format(monthly_total))
-    
-    for insight in insights:
-        story.append(Paragraph(insight, ParagraphStyle(
-            'Insight',
-            parent=styles['Normal'],
-            fontSize=11,
-            textColor=colors.HexColor('#2d3748'),
-            fontName='Helvetica',
-            spaceBefore=8,
-            spaceAfter=8,
-            leftIndent=20,
-            bulletIndent=10
-        )))
-    
-    story.append(Spacer(1, 30))
-    
-    # Footer section
-    footer_box_style = ParagraphStyle(
-        'FooterBox',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.HexColor('#718096'),
-        fontName='Helvetica',
-        alignment=1,
-        spaceBefore=20
-    )
-    
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
-    story.append(Spacer(1, 10))
-    
-    footer_text = f"""
-    <b>Report Generated:</b> {current_date}<br/>
-    <b>System:</b> KapiyuGuide Office Management Platform<br/>
-    <i>This report contains confidential information intended for authorized personnel only.</i>
-    """
-    
-    story.append(Paragraph(footer_text, footer_box_style))
-    
-    doc.build(story)
-    
+        activity_ratio = 0
+    exec_data = [
+        ['Total Interactions', f"{total_interactions:,}"],
+        ['Monthly Activity Share', f"{activity_ratio:.1f}%"],
+        ['Inquiry Response Rate', f"{stats['response_rate']}%"],
+        ['Avg Resolution Time', stats['avg_resolution_time']]
+    ]
+    exec_table = Table(exec_data, colWidths=[2.2*inch, 2.2*inch, 2.2*inch, 2.2*inch])
+    exec_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e5e7eb')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#111827')),
+        ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8)
+    ]))
+    story.append(exec_table)
+
+    # Metrics split
+    story.append(Paragraph('Core Metrics', section_style))
+    metrics_data = [
+        ['Metric', 'Value', 'Metric', 'Value'],
+        ['Total Inquiries', f"{stats['total_inquiries']:,}", 'Total Sessions', f"{stats['total_sessions']:,}"],
+        ['Inquiries (This Month)', f"{stats['inquiries_this_month']:,}", 'Sessions (This Month)', f"{stats['sessions_this_month']:,}"],
+        ['Response Rate', f"{stats['response_rate']}%", 'Avg Resolution Time', stats['avg_resolution_time']]
+    ]
+    metrics_table = Table(metrics_data, colWidths=[1.9*inch, 1.3*inch, 1.9*inch, 1.3*inch], hAlign='LEFT')
+    metrics_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f2937')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('ALIGN', (1, 1), (1, -1), 'RIGHT'), ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#ffffff'), colors.HexColor('#f9fafb')]),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e5e7eb')),
+        ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8), ('RIGHTPADDING', (0, 0), (-1, -1), 8)
+    ]))
+    story.append(metrics_table)
+
+    # Insights
+    story.append(Paragraph('Insights & Recommendations', section_style))
+    insights = []
+    rr = stats['response_rate']
+    if rr >= 80:
+        insights.append('Strong inquiry management efficiency maintained (≥80% response).')
+    elif rr >= 60:
+        insights.append('Response performance moderate; consider process tuning to reach 80%.')
+    else:
+        insights.append('Low response rate; prioritize workflow optimization and staffing review.')
+    if stats['sessions_this_month'] > stats['inquiries_this_month']:
+        insights.append('Counseling engagement outpaces inquiry submissions—leverage success stories.')
+    else:
+        insights.append('Inquiry volume drives engagement—consider proactive outreach to convert inquiries to sessions.')
+    if monthly_total > 50:
+        insights.append('High monthly interaction volume indicates sustained demand; monitor capacity.')
+    elif monthly_total < 15:
+        insights.append('Low interaction volume—evaluate awareness campaigns or channel accessibility.')
+    for text in insights:
+        story.append(Paragraph(f'• {text}', insight_style))
+
+    story.append(Spacer(1, 18))
+    story.append(Paragraph('This report is generated automatically and intended for internal strategic planning.', small_muted))
+
+    def _header_footer(canvas, doc):
+        canvas.saveState()
+        header_height = 50
+        canvas.setFillColor(colors.HexColor('#111827'))
+        canvas.rect(0, A4[1] - header_height, A4[0], header_height, stroke=0, fill=1)
+
+        office_local = Office.query.get(office_id)
+        campus_name = office_local.campus.name if office_local and office_local.campus else ''
+        office_name = office_local.name if office_local else ''
+
+        logo_path = get_logo_path(office_local)
+        text_x = doc.leftMargin
+        if logo_path:
+            try:
+                img = ImageReader(logo_path)
+                iw, ih = img.getSize()
+                max_h = 38
+                max_w = 120
+                scale = min(max_w / iw, max_h / ih)
+                dw, dh = iw * scale, ih * scale
+                y = A4[1] - header_height + (header_height - dh) / 2
+                canvas.drawImage(logo_path, doc.leftMargin, y, width=dw, height=dh, preserveAspectRatio=True, mask='auto')
+                text_x = doc.leftMargin + dw + 12
+            except Exception:
+                pass
+        else:
+            text_x = doc.leftMargin + 2
+
+        canvas.setFillColor(colors.white)
+        canvas.setFont('Helvetica-Bold', 12)
+        canvas.drawString(text_x, A4[1] - 28, 'PiyuGuide Summary')
+        canvas.setFont('Helvetica', 8)
+        canvas.drawString(text_x, A4[1] - 40, f'{campus_name} • {office_name} • Monthly Performance Overview')
+
+        canvas.setFillColor(colors.HexColor('#6b7280'))
+        canvas.setFont('Helvetica', 7)
+        page_num = canvas.getPageNumber()
+        canvas.drawString(doc.leftMargin, 0.55 * inch, f'Generated {generated_at_text} • Page {page_num}')
+        canvas.drawRightString(A4[0] - doc.rightMargin, 0.55 * inch, 'Confidential')
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+
     output.seek(0)
     return Response(
         output.getvalue(),

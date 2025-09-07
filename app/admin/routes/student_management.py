@@ -1,4 +1,4 @@
-from app.models import Inquiry, InquiryMessage, User, Office, db, OfficeAdmin, Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, OfficeLoginLog, AuditLog, AccountLockHistory
+from app.models import Inquiry, InquiryMessage, User, Office, db, OfficeAdmin, Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, OfficeLoginLog, AuditLog, AccountLockHistory, Department
 from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user
@@ -8,26 +8,46 @@ from sqlalchemy import func, case, or_
 import random
 import os
 from app.admin import admin_bp
+from app.utils.decorators import campus_access_required
 
 
 ################################################ STUDENT #####################################################################
 
 @admin_bp.route('/student_manage')
 @login_required
+@campus_access_required
 def student_manage():
     # Check if the user is a super_admin
     if current_user.role != 'super_admin':
         flash('Access denied. You do not have permission to view this page.', 'danger')
         return redirect(url_for('main.index'))
     
-    students = Student.query.join(User).all()
+    # Restrict to students that belong to the currently logged-in campus via Student.campus_id
+    campus_id = getattr(current_user, 'campus_id', None)
     
-    total_students = Student.query.count()
-    active_students = Student.query.join(User).filter(User.is_active == True).count()
-    inactive_students = total_students - active_students
+    # Base query: students directly assigned to campus
+    students_base = (db.session.query(Student)
+                     .join(User, User.id == Student.user_id)
+                     .filter(Student.campus_id == campus_id))
+    
+    students = students_base.order_by(User.last_name.asc(), User.first_name.asc()).all()
+    
+    # Stats scoped to campus
+    total_students = (db.session.query(func.count(Student.id))
+                      .filter(Student.campus_id == campus_id)
+                      .scalar() or 0)
+    
+    active_students = (db.session.query(func.count(Student.id))
+                       .join(User, User.id == Student.user_id)
+                       .filter(Student.campus_id == campus_id, User.is_active == True)
+                       .scalar() or 0)
+    inactive_students = (total_students - active_students) if total_students else 0
 
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    recently_registered = Student.query.join(User).filter(User.created_at >= seven_days_ago).count()
+    recently_registered = (db.session.query(func.count(Student.id))
+                           .join(User, User.id == Student.user_id)
+                           .filter(Student.campus_id == campus_id, User.created_at >= seven_days_ago)
+                           .scalar() or 0)
     
     return render_template('admin/studentmanage.html',
                            students=students,
@@ -121,8 +141,17 @@ def view_student(student_id):
             student.user.last_name = request.form.get('last_name')
             student.user.email = request.form.get('email')
             
-            student.phone_number = request.form.get('phone_number')
-            student.address = request.form.get('address')
+            # Update student-specific fields
+            student.student_number = request.form.get('student_number')
+            # Structured department assignment
+            dept_id = request.form.get('department_id', type=int)
+            if dept_id:
+                dept = Department.query.filter_by(id=dept_id, campus_id=student.campus_id, is_active=True).first()
+                if dept:
+                    student.department_id = dept.id
+                    student.department = None
+            student.year_level = request.form.get('year_level')
+            student.section = request.form.get('section')
             
 
             if 'reset_password' in request.form:
@@ -141,4 +170,8 @@ def view_student(student_id):
             db.session.rollback()
             flash(f'Error updating student: {str(e)}', 'danger')
     
-    return render_template('admin/view_student.html', student=student)
+    # GET or after POST fall-through: provide departments for student's campus
+    departments = []
+    if student.campus_id:
+        departments = Department.query.filter_by(campus_id=student.campus_id, is_active=True).order_by(Department.name.asc()).all()
+    return render_template('admin/view_student.html', student=student, departments=departments)

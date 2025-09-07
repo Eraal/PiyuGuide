@@ -2,13 +2,29 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from app.extensions import db
 from flask_wtf.csrf import CSRFProtect
-from app.models import Announcement, Office, AuditLog, User, AnnouncementImage
+from app.models import Announcement, Office, AuditLog, User, AnnouncementImage, Notification, OfficeAdmin
 from datetime import datetime, timedelta
 from sqlalchemy import desc
 from app.admin import admin_bp
 import os
 from werkzeug.utils import secure_filename
 from uuid import uuid4
+try:
+    from app.websockets.campus_admin import push_campus_admin_announcement
+    from app.websockets.student import (
+        push_student_announcement_public,
+        push_student_announcement_to_office,
+    )
+    from app.websockets.office import (
+        push_office_notification_to_office,
+        push_office_notification_broadcast,
+    )
+except Exception:
+    push_campus_admin_announcement = None
+    push_student_announcement_public = None
+    push_student_announcement_to_office = None
+    push_office_notification_to_office = None
+    push_office_notification_broadcast = None
 
 
 def allowed_file(filename):
@@ -164,6 +180,127 @@ def create_announcement():
             )
         
         db.session.commit()
+
+        # After commit: create campus admin notifications & broadcast real-time
+        try:
+            # Also create Office Admin notifications so Office module has persisted items
+            try:
+                from app.utils.smart_notifications import SmartNotificationManager
+                if new_announcement.is_public:
+                    # Notify all office admins except the author
+                    office_admins = OfficeAdmin.query.filter(OfficeAdmin.user_id != current_user.id).all()
+                    for oa in office_admins:
+                        SmartNotificationManager.create_announcement_notification(new_announcement, oa.user_id)
+                else:
+                    # Target a specific office's admins
+                    if new_announcement.target_office_id:
+                        office_admin_user_ids = SmartNotificationManager.get_office_admin_for_notification(
+                            new_announcement.target_office_id,
+                            exclude_user_id=current_user.id
+                        )
+                        for uid in office_admin_user_ids:
+                            SmartNotificationManager.create_announcement_notification(new_announcement, uid)
+            except Exception:
+                db.session.rollback()
+
+            # Determine campus context
+            campus_id = None
+            if new_announcement.target_office_id:
+                office = Office.query.get(new_announcement.target_office_id)
+                if office:
+                    campus_id = office.campus_id
+            if not campus_id and current_user.role == 'super_admin':
+                campus_id = current_user.campus_id
+            if not campus_id and current_user.role == 'office_admin':
+                campus_id = current_user.office_admin.office.campus_id if current_user.office_admin else None
+
+            if campus_id:
+                # Collect campus admins except author
+                campus_admins = User.query.filter_by(role='super_admin', campus_id=campus_id).all()
+                payload = {
+                    'title': new_announcement.title,
+                    'content': (new_announcement.content[:140] + '...') if len(new_announcement.content) > 140 else new_announcement.content,
+                    'announcement_id': new_announcement.id,
+                    'author': current_user.get_full_name(),
+                    'author_role': current_user.role,
+                    'timestamp': new_announcement.created_at.isoformat(),
+                    'is_public': new_announcement.is_public,
+                    'target_office_id': new_announcement.target_office_id,
+                    'campus_id': campus_id,
+                    'author_id': current_user.id
+                }
+                # Create per-user Notification rows (type campus_announcement)
+                created_any = False
+                for admin_user in campus_admins:
+                    if admin_user.id == current_user.id:
+                        continue
+                    notif = Notification(
+                        user_id=admin_user.id,
+                        title=f"New Announcement: {new_announcement.title[:60]}",
+                        message=f"Posted by {payload['author']}",
+                        notification_type='campus_announcement',
+                        announcement_id=new_announcement.id,
+                        is_read=False,
+                        created_at=new_announcement.created_at,
+                        link=f"/admin/admin_announcement#ann-{new_announcement.id}"
+                    )
+                    db.session.add(notif)
+                    created_any = True
+                if created_any:
+                    db.session.commit()
+                # Broadcast websocket event
+                if push_campus_admin_announcement:
+                    push_campus_admin_announcement(campus_id, payload)
+                # Office module real-time notification for admins (per-user with notification_id)
+                try:
+                    from app.websockets.office import push_office_notification_to_user
+                    from app.utils.smart_notifications import SmartNotificationManager
+                    def emit_to_user(uid: int):
+                        try:
+                            notif = Notification.query.filter_by(user_id=uid, announcement_id=new_announcement.id, notification_type='announcement').order_by(Notification.created_at.desc()).first()
+                            payload = {
+                                'category': 'announcement',
+                                'type': 'announcement',
+                                'title': f"New Announcement: {new_announcement.title[:60]}",
+                                'message': (new_announcement.content[:160] + '...') if len(new_announcement.content) > 160 else new_announcement.content,
+                                'announcement_id': new_announcement.id,
+                                'notification_id': getattr(notif, 'id', None),
+                                'created_at': new_announcement.created_at.strftime('%b %d, %H:%M'),
+                                'link': f"/admin/admin_announcement#ann-{new_announcement.id}"
+                            }
+                            if push_office_notification_to_user:
+                                push_office_notification_to_user(uid, payload)
+                        except Exception:
+                            pass
+                    if new_announcement.is_public:
+                        admins = OfficeAdmin.query.filter(OfficeAdmin.user_id != current_user.id).all()
+                        for oa in admins:
+                            emit_to_user(oa.user_id)
+                    else:
+                        if new_announcement.target_office_id:
+                            uids = SmartNotificationManager.get_office_admin_for_notification(new_announcement.target_office_id, exclude_user_id=current_user.id)
+                            for uid in uids:
+                                emit_to_user(uid)
+                except Exception:
+                    pass
+                # Broadcast to students (public or office-targeted)
+                student_payload = {
+                    'notification_type': 'announcement',
+                    'title': new_announcement.title,
+                    'message': (new_announcement.content[:140] + '...') if len(new_announcement.content) > 140 else new_announcement.content,
+                    'announcement_id': new_announcement.id,
+                    'timestamp': new_announcement.created_at.isoformat(),
+                }
+                if new_announcement.is_public:
+                    if push_student_announcement_public:
+                        push_student_announcement_public(dict(student_payload))
+                else:
+                    if new_announcement.target_office_id and push_student_announcement_to_office:
+                        push_student_announcement_to_office(new_announcement.target_office_id, dict(student_payload))
+        except Exception as _e:
+            db.session.rollback()
+            # Swallow errors to not break UX; could log
+
         flash('Announcement created successfully!', 'success')
         
     except Exception as e:
@@ -293,6 +430,35 @@ def update_announcement():
             )
         
         db.session.commit()
+
+        # Broadcast update (optional) – treat as new for campus admins
+        try:
+            campus_id = None
+            if announcement.target_office_id:
+                office = Office.query.get(announcement.target_office_id)
+                if office:
+                    campus_id = office.campus_id
+            if not campus_id and current_user.role == 'super_admin':
+                campus_id = current_user.campus_id
+            if not campus_id and current_user.role == 'office_admin':
+                campus_id = current_user.office_admin.office.campus_id if current_user.office_admin else None
+            if campus_id and push_campus_admin_announcement:
+                push_campus_admin_announcement(campus_id, {
+                    'title': announcement.title + ' (Updated)',
+                    'content': (announcement.content[:140] + '...') if len(announcement.content) > 140 else announcement.content,
+                    'announcement_id': announcement.id,
+                    'author': current_user.get_full_name(),
+                    'author_role': current_user.role,
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'is_public': announcement.is_public,
+                    'target_office_id': announcement.target_office_id,
+                    'campus_id': campus_id,
+                    'author_id': current_user.id,
+                    'updated': True
+                })
+        except Exception:
+            pass
+
         flash('Announcement updated successfully!', 'success')
         
     except Exception as e:
@@ -399,6 +565,66 @@ def delete_announcement_image():
     
     # Return to the edit announcement page
     return redirect(url_for('admin.announcement'))
+
+
+@admin_bp.route('/api/notifications/mark-all-campus-announcements-read', methods=['POST'])
+@login_required
+def mark_all_campus_announcements_read():
+    """Mark all campus announcement notifications as read for the current campus admin."""
+    if current_user.role != 'super_admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        updated = Notification.query.filter_by(
+            user_id=current_user.id,
+            notification_type='campus_announcement',
+            is_read=False
+        ).update({ 'is_read': True })
+        db.session.commit()
+        # Count remaining unread after update (should be zero, but recompute for safety)
+        unread_remaining = Notification.query.filter_by(
+            user_id=current_user.id,
+            notification_type='campus_announcement',
+            is_read=False
+        ).count()
+        return jsonify({'status': 'ok', 'updated': updated, 'unread_remaining': unread_remaining})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/notifications/campus-announcements', methods=['GET'])
+@login_required
+def get_campus_announcement_notifications():
+    """Return recent campus announcement notifications for the campus admin dropdown refresh.
+
+    Query Params:
+        limit (int, optional): Max number of notifications to return (default 8, max 25)
+    Response: JSON list of notification objects with fields consumed by adminbase.js refresh logic.
+    """
+    if current_user.role != 'super_admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        limit = request.args.get('limit', 8, type=int)
+        if limit > 25:
+            limit = 25
+        notifications = (Notification.query
+                          .filter_by(user_id=current_user.id, notification_type='campus_announcement')
+                          .order_by(Notification.created_at.desc())
+                          .limit(limit)
+                          .all())
+        payload = [
+            {
+                'id': n.id,
+                'title': n.title,
+                'message': n.message,
+                'is_read': n.is_read,
+                'created_at': n.created_at.strftime('%b %d, %H:%M'),
+                'link': n.link
+            } for n in notifications
+        ]
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/api/announcements', methods=['GET'])

@@ -1,0 +1,171 @@
+{% extends 'super_admin/base.html' %}
+
+{% block title %}Account Settings{% endblock %}
+{% block page_title %}Account Settings{% endblock %}
+{% block page_subtitle %}Update your profile, avatar, and password{% endblock %}
+
+{% block extra_css %}
+<style>
+  .card { border:1px solid #e5e7eb; }
+  .card-header { border-bottom:1px solid #e5e7eb; }
+  .dropzone { border:2px dashed #cbd5e1; }
+  .dropzone.dragover { border-color:#3b82f6; background:#eff6ff; }
+  .avatar-ring { box-shadow: 0 0 0 4px rgba(59,130,246,0.15); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header Card -->
+  <div class="bg-white rounded-xl card p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="h-12 w-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow">
+        <i class="fas fa-user-gear"></i>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">Signed in as</div>
+        <div class="text-xl font-semibold text-gray-900">{{ current_user.first_name }} {{ current_user.last_name }}</div>
+        <div class="text-xs text-gray-500">{{ current_user.email }}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <a class="inline-flex items-center px-3 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-50"
+         href="{{ url_for('super_admin.profile') }}">
+        <i class="fas fa-id-card mr-2"></i> Profile
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <!-- Left: Avatar -->
+    <div class="xl:col-span-1">
+      <div class="bg-white rounded-xl card overflow-hidden">
+        <div class="card-header px-6 py-4 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Profile Picture</h3>
+          <form action="{{ url_for('super_admin.remove_profile_picture') }}" method="post" onsubmit="return confirm('Remove profile picture?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="text-sm text-red-600 hover:text-red-700" type="submit">
+              <i class="fa-solid fa-trash mr-1"></i> Remove
+            </button>
+          </form>
+        </div>
+        <div class="p-6">
+          <div class="flex flex-col items-center gap-4">
+            {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+            <img id="avatarPreview" class="h-28 w-28 rounded-full object-cover avatar-ring" src="{{ avatar_url or url_for('static', filename='images/default.jpg') }}" alt="Avatar">
+            <form id="avatarForm" action="{{ url_for('super_admin.update_profile_picture') }}" method="post" enctype="multipart/form-data" class="w-full">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div id="dropzone" class="dropzone rounded-lg p-4 text-center text-sm text-gray-500 cursor-pointer">
+                <input id="avatarInput" name="profile_pic" type="file" accept="image/*" class="hidden">
+                <i class="fa-regular fa-image text-blue-600 text-xl"></i>
+                <p class="mt-2"><span class="font-medium text-gray-700">Click to upload</span> or drag and drop</p>
+                <p class="text-xs text-gray-400">PNG, JPG, JPEG, GIF, WEBP (max 16MB)</p>
+              </div>
+              <div class="mt-4 flex items-center justify-end gap-2">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow hover:bg-blue-700 disabled:opacity-50" disabled id="avatarSaveBtn">
+                  <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Save Avatar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Profile + Password -->
+    <div class="xl:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl card">
+        <div class="card-header px-6 py-4">
+          <h3 class="text-base font-semibold">Profile Information</h3>
+        </div>
+        <form action="{{ url_for('super_admin.update_profile') }}" method="post" class="p-6 space-y-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">First Name</label>
+              <input name="first_name" type="text" value="{{ current_user.first_name }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Middle Name</label>
+              <input name="middle_name" type="text" value="{{ current_user.middle_name or '' }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Last Name</label>
+              <input name="last_name" type="text" value="{{ current_user.last_name }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+            <div class="md:col-span-3">
+              <label class="block text-sm font-medium text-gray-700">Email</label>
+              <input name="email" type="email" value="{{ current_user.email }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+          </div>
+          <div class="flex items-center justify-end">
+            <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow hover:bg-blue-700">
+              <i class="fas fa-save mr-2"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="bg-white rounded-xl card">
+        <div class="card-header px-6 py-4">
+          <h3 class="text-base font-semibold">Change Password</h3>
+        </div>
+        <form action="{{ url_for('super_admin.change_password') }}" method="post" class="p-6 space-y-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-1">
+              <label class="block text-sm font-medium text-gray-700">Current Password</label>
+              <input name="current_password" type="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">New Password</label>
+              <input name="new_password" type="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+              <input name="confirm_password" type="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600"/>
+            </div>
+          </div>
+          <div class="flex items-center justify-end">
+            <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md shadow hover:bg-gray-900">
+              <i class="fas fa-key mr-2"></i> Change Password
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const input = document.getElementById('avatarInput');
+  const preview = document.getElementById('avatarPreview');
+  const saveBtn = document.getElementById('avatarSaveBtn');
+
+  function handleFiles(files) {
+    if (!files || !files[0]) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.src = e.target.result;
+      saveBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+    input.files = files;
+  }
+
+  dropzone.addEventListener('click', () => input.click());
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+  input.addEventListener('change', (e) => handleFiles(e.target.files));
+</script>
+{% endblock %}

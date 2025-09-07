@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{% if current_campus %}{{ current_campus.name }}{% else %}{{ brand_title or current_campus_name }}{% endif %}{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Marcellus+SC&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="{{ url_for('static', filename='css/customs.css') }}"
+      rel="stylesheet"
+    />
+
+    <!-- Custom CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/custom.css') }}"
+    />
+    <!-- Flash Screen -->
+    <meta
+      name="csrf-token"
+      content="{{ csrf_token() if csrf_token is defined else '' }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Chat-related scripts -->
+    {% if current_user.is_authenticated %}
+   
+    {% endif %} {% block extra_css %} {% endblock %}
+
+  
+
+    <!-- Campus-scoped theme styles -->
+    {% set _theme_key = (current_campus.campus_theme_key if current_campus and current_campus.campus_theme_key else 'blue') %}
+    {% set _campus_logo_path = (current_campus.campus_logo_path if current_campus and current_campus.campus_logo_path else None) %}
+    {% if _campus_logo_path %}
+      {% if _campus_logo_path.startswith('http') or _campus_logo_path.startswith('/') %}
+        {% set campus_logo_url = _campus_logo_path %}
+      {% else %}
+        {% set campus_logo_url = url_for('static', filename=_campus_logo_path) %}
+      {% endif %}
+    {% else %}
+      {% set campus_logo_url = brand_logo_url %}
+    {% endif %}
+
+    <style>
+      /* Predefined campus themes (scoped) */
+      body.campus-theme {
+        /* default (blue) */
+        --campus-primary: #2a4e92;
+        --campus-primary-600: #1d4ed8;
+        --campus-primary-700: #1e40af;
+        --campus-gradient-from: #1e3a8a;
+        --campus-gradient-to: #3b82f6;
+      }
+      body.campus-theme.theme-emerald { --campus-primary:#065f46; --campus-primary-600:#059669; --campus-primary-700:#047857; --campus-gradient-from:#065f46; --campus-gradient-to:#10b981; }
+      body.campus-theme.theme-violet { --campus-primary:#5b21b6; --campus-primary-600:#7c3aed; --campus-primary-700:#6d28d9; --campus-gradient-from:#4c1d95; --campus-gradient-to:#8b5cf6; }
+      body.campus-theme.theme-sunset { --campus-primary:#b91c1c; --campus-primary-600:#f97316; --campus-primary-700:#ea580c; --campus-gradient-from:#b91c1c; --campus-gradient-to:#f59e0b; }
+      body.campus-theme.theme-teal { --campus-primary:#134e4a; --campus-primary-600:#0d9488; --campus-primary-700:#0f766e; --campus-gradient-from:#0f766e; --campus-gradient-to:#14b8a6; }
+      body.campus-theme.theme-indigo { --campus-primary:#3730a3; --campus-primary-600:#4f46e5; --campus-primary-700:#4338ca; --campus-gradient-from:#312e81; --campus-gradient-to:#6366f1; }
+
+      /* Utility hooks to use theme vars */
+      .campus-header-bg { background-color: var(--campus-primary) !important; }
+      .campus-footer-bg { background-color: var(--campus-primary-700) !important; }
+      .campus-link-hover:hover { color: rgba(255,255,255,0.8) !important; }
+    </style>
+
+    <!-- Additional Styles -->
+    <style>
+      /* Add typing dots animation */
+      @keyframes typingDots {
+        0% {
+          content: "";
+        }
+        25% {
+          content: ".";
+        }
+        50% {
+          content: "..";
+        }
+        75% {
+          content: "...";
+        }
+        100% {
+          content: "";
+        }
+      }
+
+      .animate-typing-dots::after {
+        content: "...";
+        display: inline-block;
+        animation: typingDots 1.4s infinite both;
+      }
+
+      /* Message status indicator styles */
+      .message-status.text-green-600,
+      .message-status.text-blue-600,
+      .message-status.text-gray-500 {
+        transition: all 0.3s ease;
+      }
+
+      /* Typing animation for chat */
+      .typing-dots {
+        display: inline-block;
+      }
+
+      .animate-typing-dots::after {
+        content: "...";
+        animation: typingDots 1.4s infinite both;
+      }
+
+      /* Message status styles */
+      .message-status {
+        opacity: 0.75;
+      }
+
+      .message-bubble[data-sender-id]:not(.message-read) {
+        position: relative;
+      }
+
+      /* Message bubble styles */
+      .message-bubble {
+        border-radius: 1rem;
+        margin-bottom: 10px;
+        max-width: 80%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      .message-sent {
+        background-color: #dcf8c6;
+        margin-left: auto;
+        border-bottom-right-radius: 0;
+      }
+
+      .message-received {
+        background-color: #f1f0f0;
+        margin-right: auto;
+        border-bottom-left-radius: 0;
+      }
+
+      .message-status {
+        font-size: 0.7rem;
+        color: #888;
+      }
+
+      /* Connection status indicator */
+      #connection-status {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+      }
+    </style>
+  </head>
+  <body
+    class="font-poppins campus-theme theme-{{ _theme_key }}"
+    {%
+    if
+    current_user.is_authenticated
+    %}
+    data-user-id="{{ current_user.id }}"
+    data-user-role="{{ current_user.role }}"
+    data-user-name="{{ current_user.get_full_name() }}"
+    {%
+    endif
+    %}
+  >
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %}
+    <div class="flash-messages fixed top-16 left-0 right-0 z-50 px-4">
+      {% for category, message in messages %}
+      <div
+        class="flash-message relative border-l-4 p-4 mb-3 rounded shadow-md w-full mx-auto transition ease-in-out duration-300 {% if category == 'success' %}border-green-500 bg-green-200 text-green-700 {% elif category == 'error' %}border-red-500 bg-red-200 text-red-700 {% elif category == 'warning' %}border-yellow-500 bg-yellow-200 text-yellow-700 {% else %}border-blue-500 bg-blue-50 text-blue-700{% endif %}"
+        role="alert"
+        aria-live="polite"
+      >
+        <div class="flex items-center pr-8">
+          {% if category == 'success' %}
+          <i class="fas fa-check-circle mr-2" aria-hidden="true"></i>
+          {% elif category == 'error' %}
+          <i class="fas fa-exclamation-circle mr-2" aria-hidden="true"></i>
+          {% elif category == 'warning' %}
+          <i class="fas fa-exclamation-triangle mr-2" aria-hidden="true"></i>
+          {% else %}
+          <i class="fas fa-info-circle mr-2" aria-hidden="true"></i>
+          {% endif %}
+          <span>{{ message }}</span>
+        </div>
+        <button
+          type="button"
+          class="close-flash absolute top-3 right-3 text-gray-600 hover:text-gray-800"
+          aria-label="Dismiss notification"
+        >
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+    <!-- Notification sound for chat -->
+    {% if current_user.is_authenticated %}
+    <audio id="notificationSound" preload="auto">
+      <source
+        src="{{ url_for('static', filename='sounds/notification.mp3') }}"
+        type="audio/mpeg"
+      />
+    </audio>
+    {% endif %}
+
+    <!-- Header -->
+  <header class="text-white shadow-md campus-header-bg">
+      <div
+        class="container mx-auto px-4 py-3 flex justify-between items-center"
+      >
+        <div class="flex items-center space-x-2 md:space-x-3">
+      {% if current_campus %}
+          <a href="{{ url_for('main.campus_landing', campus_id=current_campus.id) }}" class="block hover:scale-105 transition-transform duration-200">
+            <img
+              src="{{ campus_logo_url }}"
+              alt="{{ brand_title or current_campus.name }} Logo - Go to campus home"
+        class="h-8 md:h-10 rounded-full bg-white/0"
+              title="Go to {{ current_campus.name }} home"
+            />
+          </a>
+          {% else %}
+          <a href="{{ url_for('main.campus_selection') }}" class="block hover:scale-105 transition-transform duration-200">
+            <img
+              src="{{ campus_logo_url }}"
+              alt="{{ brand_title or 'App' }} Logo - Select campus"
+              class="h-8 md:h-10 rounded-full bg-white/0"
+              title="Select campus"
+            />
+          </a>
+          {% endif %}
+          <div>
+            {% if current_campus %}
+            <a
+              href="{{ url_for('main.campus_landing', campus_id=current_campus.id) }}"
+              class="text-lg md:text-xl font-marcellus block leading-tight hover:text-blue-200 transition-colors duration-200"
+              title="Go to {{ current_campus.name }} home"
+              >{{ current_campus.name }}</a
+            >
+            {% else %}
+            <a
+              href="{{ url_for('main.campus_selection') }}"
+              class="text-lg md:text-xl font-marcellus block leading-tight hover:text-blue-200 transition-colors duration-200"
+              title="Select campus"
+              >{{ brand_title or 'KapiyuGuide' }}</a
+            >
+            {% endif %}
+            {% if current_campus %}
+            <span class="text-xs md:text-sm text-blue-100 block"
+              >{{ current_campus.name }}{% if current_campus.code %} ({{ current_campus.code }}){% endif %}</span
+            >
+            {% else %}
+            <span class="text-xs md:text-sm text-blue-100 block"
+              >{{ current_campus_name }}</span
+            >
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-button" class="md:hidden flex items-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+
+        <!-- Desktop Navigation -->
+        <nav class="hidden md:flex space-x-6 font-poppins font-bold">
+          {% if current_campus %}
+          <a
+            href="{{ url_for('main.campus_landing', campus_id=current_campus.id) }}"
+            class="px-2 py-1 transition {% if request.endpoint == 'main.campus_landing' %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
+            >Home</a
+          >
+          <a
+            href="{{ url_for('main.campus_offices', campus_id=current_campus.id) }}"
+            class="px-2 py-1 transition {% if request.endpoint == 'main.campus_offices' %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
+            >Offices</a
+          >
+          <a
+            href="{{ url_for('main.campus_securityprivacy', campus_id=current_campus.id) }}"
+            class="px-2 py-1 transition {% if request.endpoint == 'main.campus_securityprivacy' %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
+            >Security & Privacy</a
+          >
+          <a
+            href="{{ url_for('main.campus_selection') }}"
+            class="px-2 py-1 transition hover:text-blue-200"
+            title="Change campus"
+            >Campuses</a
+          >
+          {% else %}
+          <a
+            href="{{ url_for('main.index') }}"
+            class="px-2 py-1 transition {% if request.path == url_for('main.index') %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
+            >Home</a
+          >
+          <a
+            href="{{ url_for('main.offices') }}"
+            class="px-2 py-1 transition {% if request.path == url_for('main.offices') %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
+            >Offices</a
+          >
+          <a
+            href="{{ url_for('main.securityprivacy') }}"
+            class="px-2 py-1 transition {% if request.path == url_for('main.securityprivacy') %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
+            >Security & Privacy</a
+          >
+          <a
+            href="{{ url_for('main.campus_selection') }}"
+            class="px-2 py-1 transition hover:text-blue-200"
+            >Campuses</a
+          >
+          {% endif %}
+        </nav>
+
+        <div class="hidden md:flex items-center space-x-3">
+          {% if current_campus %}
+          <a
+            href="{{ url_for('auth.login', campus_id=current_campus.id) }}"
+            class="border border-white px-3 py-1 rounded hover:bg-blue-700 transition"
+            >Log in</a>
+          <a
+            href="{{ url_for('auth.register', campus_id=current_campus.id) }}"
+            class="bg-white text-blue-800 px-3 py-1 rounded hover:bg-blue-100 transition"
+            >Sign up</a>
+          {% else %}
+          <a
+            href="{{ url_for('auth.login') }}"
+            class="border border-white px-3 py-1 rounded hover:bg-blue-700 transition"
+            >Log in</a>
+          <a
+            href="{{ url_for('auth.register') }}"
+            class="bg-white text-blue-800 px-3 py-1 rounded hover:bg-blue-100 transition"
+            >Sign up</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Mobile Navigation Menu -->
+      <div id="mobile-menu" class="hidden md:hidden">
+        <nav class="px-4 pt-2 pb-4 space-y-3 font-poppins font-bold">
+          {% if current_campus %}
+          <a
+            href="{{ url_for('main.campus_landing', campus_id=current_campus.id) }}"
+            class="block hover:text-blue-200 transition"
+            >Home</a
+          >
+          <a
+            href="{{ url_for('main.campus_offices', campus_id=current_campus.id) }}"
+            class="block hover:text-blue-200 transition"
+            >Offices</a
+          >
+          <a
+            href="{{ url_for('main.campus_securityprivacy', campus_id=current_campus.id) }}"
+            class="block hover:text-blue-200 transition"
+            >Security & Privacy</a
+          >
+          <a
+            href="{{ url_for('main.campus_selection') }}"
+            class="block hover:text-blue-200 transition"
+            title="Change campus"
+            >Campuses</a
+          >
+          {% else %}
+          <a
+            href="{{ url_for('main.index') }}"
+            class="block hover:text-blue-200 transition"
+            >Home</a
+          >
+          <a
+            href="{{ url_for('main.offices') }}"
+            class="block hover:text-blue-200 transition"
+            >Offices</a
+          >
+          <a
+            href="{{ url_for('main.securityprivacy') }}"
+            class="block hover:text-blue-200 transition"
+            >Security & Privacy</a
+          >
+          <a
+            href="{{ url_for('main.campus_selection') }}"
+            class="block hover:text-blue-200 transition"
+            >Campuses</a
+          >
+          {% endif %}
+          <div class="flex space-x-3 pt-2">
+            {% if current_campus %}
+            <a
+              href="{{ url_for('auth.login', campus_id=current_campus.id) }}"
+              class="border border-white px-3 py-1 rounded hover:bg-blue-700 transition"
+              >Log in</a>
+            <a
+              href="{{ url_for('auth.register', campus_id=current_campus.id) }}"
+              class="bg-white text-blue-800 px-3 py-1 rounded hover:bg-blue-100 transition"
+              >Sign up</a>
+            {% else %}
+            <a
+              href="{{ url_for('auth.login') }}"
+              class="border border-white px-3 py-1 rounded hover:bg-blue-700 transition"
+              >Log in</a>
+            <a
+              href="{{ url_for('auth.register') }}"
+              class="bg-white text-blue-800 px-3 py-1 rounded hover:bg-blue-100 transition"
+              >Sign up</a>
+            {% endif %}
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>{% block content %}{% endblock %}</main>
+
+    <!-- Footer -->
+  <footer class="text-white text-center py-4 mt-0 campus-footer-bg">
+      {% if current_campus and current_campus.address %}
+      <p class="text-xs text-blue-200 mb-1">
+        <i class="fas fa-map-marker-alt mr-1"></i>{{ current_campus.address }}
+      </p>
+      {% endif %}
+      <p class="text-sm">© 2025 | {% if current_campus %}{{ current_campus.name }}{% else %}KapiyuGuide{% endif %} | All rights reserved.</p>
+    </footer>
+
+
+   
+
+    <!-- JavaScript -->
+    <script>
+      // Mobile menu toggle + flash message controls
+      document.addEventListener("DOMContentLoaded", function () {
+        const mobileMenuButton = document.getElementById("mobile-menu-button");
+        const mobileMenu = document.getElementById("mobile-menu");
+        if (mobileMenuButton && mobileMenu) {
+          mobileMenu.classList.add('hidden');
+          mobileMenuButton.addEventListener("click", function () {
+            mobileMenu.classList.toggle("hidden");
+          });
+        }
+
+        // Flash message close and auto-dismiss
+        const flashContainer = document.querySelector('.flash-messages');
+        if (flashContainer) {
+          const messages = Array.from(flashContainer.querySelectorAll('.flash-message'));
+          const fadeOut = (el) => {
+            el.style.transition = 'opacity 300ms ease, transform 300ms ease';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-6px)';
+            setTimeout(() => el.remove(), 320);
+          };
+          messages.forEach((msg, idx) => {
+            const btn = msg.querySelector('.close-flash');
+            if (btn) {
+              btn.addEventListener('click', () => fadeOut(msg));
+            }
+            setTimeout(() => fadeOut(msg), 5000 + (idx * 150));
+          });
+        }
+      });
+    </script>
+
+    {% block extra_js %} {% endblock %}
+  </body>
+</html>

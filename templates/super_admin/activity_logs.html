@@ -1,0 +1,181 @@
+{% extends 'super_admin/base.html' %}
+
+{% block title %}Super Admin Activity Logs • {{ brand_title or 'PiyuGuide' }}{% endblock %}
+{% block page_title %}Super Admin Activity Logs{% endblock %}
+{% block page_subtitle %}A dedicated timeline of actions performed by campus super admins{% endblock %}
+
+{% block extra_css %}
+<style>
+  .card { box-shadow: 0 10px 30px rgba(17, 24, 39, 0.05); }
+  .chip { background: linear-gradient(135deg, #eef2ff, #eff6ff); }
+  .row-hover:hover { background-color: #f9fafb; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header / Summary -->
+  <div class="bg-white rounded-xl border border-gray-200 card p-5 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="h-10 w-10 rounded-lg bg-blue-600/10 text-blue-700 flex items-center justify-center">
+        <i class="fa-solid fa-clipboard-list"></i>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900">Super Admin Activity</h3>
+        <p class="text-sm text-gray-600">Exclusive log for campus admin actions with rich filters and export controls.</p>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2">
+      <span class="chip inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm text-gray-700">
+        <i class="fa-solid fa-clock text-blue-600"></i>
+        Updated now
+      </span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="bg-white rounded-xl border border-gray-200 card p-5">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Search</label>
+        <input type="text" name="search" value="{{ search_term }}" placeholder="Name, email, action, details..." class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-600 focus:border-blue-600" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Action</label>
+        <select name="action" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-600 focus:border-blue-600">
+          <option value="">All</option>
+          {% for a in unique_actions %}
+            <option value="{{ a }}" {% if action_filter==a %}selected{% endif %}>{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Target</label>
+        <select name="target" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-600 focus:border-blue-600">
+          <option value="">All</option>
+          {% for t in unique_targets %}
+            <option value="{{ t }}" {% if target_filter==t %}selected{% endif %}>{{ t|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Status</label>
+        <select name="status" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-600 focus:border-blue-600">
+          <option value="">All</option>
+          <option value="success" {% if status_filter=='success' %}selected{% endif %}>Success</option>
+          <option value="failed" {% if status_filter=='failed' %}selected{% endif %}>Failed</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">From</label>
+          <input type="date" name="date_from" value="{{ date_from }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-600 focus:border-blue-600" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">To</label>
+          <input type="date" name="date_to" value="{{ date_to }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-600 focus:border-blue-600" />
+        </div>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center justify-end gap-2">
+      <a href="{{ url_for('super_admin.activity_logs') }}" class="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50">Reset</a>
+      <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply Filters</button>
+    </div>
+  </form>
+
+  <!-- Logs Table -->
+  <div class="bg-white rounded-xl border border-gray-200 card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full">
+        <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+          <tr>
+            <th class="px-6 py-3 text-left">Timestamp</th>
+            <th class="px-6 py-3 text-left">Super Admin</th>
+            <th class="px-6 py-3 text-left">Action</th>
+            <th class="px-6 py-3 text-left">Target</th>
+            <th class="px-6 py-3 text-left">Details</th>
+            <th class="px-6 py-3 text-left">Status</th>
+            <th class="px-6 py-3 text-left">IP</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 text-sm">
+          {% if logs.items %}
+            {% for row in logs.items %}
+              {# Support both tuple rows (log, admin) and single model rows #}
+              {% set has_two = row is sequence and (row|length) > 1 %}
+              {% set log = row[0] if has_two else row %}
+              {% set admin = (row[1] if has_two else (log.super_admin if log is not string else None)) %}
+              <tr class="row-hover">
+                <td class="px-6 py-3 whitespace-nowrap text-gray-700">
+                  <div class="flex items-center gap-2">
+                    <i class="fa-regular fa-clock text-gray-400"></i>
+                    {{ log.timestamp.strftime('%b %d, %Y %I:%M %p') if log.timestamp else '-' }}
+                  </div>
+                </td>
+                <td class="px-6 py-3 whitespace-nowrap">
+                  <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 rounded-full bg-blue-600/10 text-blue-700 flex items-center justify-center">
+                      <i class="fa-solid fa-user-shield text-[11px]"></i>
+                    </div>
+                    <div>
+                      <div class="font-medium text-gray-900">{{ (admin.first_name ~ ' ' ~ admin.last_name) if admin else 'Unknown' }}</div>
+                      <div class="text-xs text-gray-500">{{ admin.email if admin else '' }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-3">
+                  <span class="inline-flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-amber-500"></i>
+                    <span class="font-medium text-gray-900">{{ log.action }}</span>
+                  </span>
+                </td>
+                <td class="px-6 py-3">
+                  <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">{{ log.target_type or '-' }}</span>
+                </td>
+                <td class="px-6 py-3 max-w-xl">
+                  <div class="text-gray-700 truncate" title="{{ log.details or '' }}">{{ log.details or '-' }}</div>
+                </td>
+                <td class="px-6 py-3">
+                  {% if log.is_success %}
+                    <span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-100 px-2 py-1 rounded-full text-xs">
+                      <i class="fa-solid fa-check-circle"></i> Success
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center gap-1 text-red-700 bg-red-50 border border-red-100 px-2 py-1 rounded-full text-xs" title="{{ log.failure_reason or '' }}">
+                      <i class="fa-solid fa-circle-xmark"></i> Failed
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-3 text-gray-500">{{ log.ip_address or '-' }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="px-6 py-6 text-center text-gray-500">No logs found for the selected filters.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+    <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
+      <div class="text-sm text-gray-600">Page {{ logs.page }} of {{ logs.pages }}</div>
+      <div class="flex items-center gap-2">
+        {% if logs.has_prev %}
+          <a class="px-3 py-1.5 rounded border hover:bg-white" href="{{ url_for('super_admin.activity_logs', page=logs.prev_num, search=search_term, action=action_filter, target=target_filter, status=status_filter, date_from=date_from, date_to=date_to) }}">Previous</a>
+        {% else %}
+          <span class="px-3 py-1.5 rounded border text-gray-400 cursor-not-allowed">Previous</span>
+        {% endif %}
+        {% if logs.has_next %}
+          <a class="px-3 py-1.5 rounded border hover:bg-white" href="{{ url_for('super_admin.activity_logs', page=logs.next_num, search=search_term, action=action_filter, target=target_filter, status=status_filter, date_from=date_from, date_to=date_to) }}">Next</a>
+        {% else %}
+          <span class="px-3 py-1.5 rounded border text-gray-400 cursor-not-allowed">Next</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

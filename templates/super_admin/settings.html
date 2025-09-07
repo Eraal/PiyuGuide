@@ -1,0 +1,354 @@
+{% extends 'super_admin/base.html' %}
+
+{% block title %}{{ brand_title or 'PiyuGuide' }} • System Settings{% endblock %}
+{% block page_title %}System Settings{% endblock %}
+{% block page_subtitle %}Configure global branding & platform experience{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+  <!-- Modern Hero / Brand Overview -->
+  <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white shadow-2xl border border-white/10">
+    <div class="absolute inset-0 opacity-30 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_60%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.15),transparent_65%)]"></div>
+    <div class="absolute -top-10 -right-10 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-16 -left-16 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl"></div>
+    <div class="relative p-8 lg:p-10 flex flex-col lg:flex-row gap-10 lg:items-center">
+      <div class="flex items-center gap-6 flex-1">
+        <div class="relative group">
+          <div class="h-24 w-24 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden shadow-inner">
+            <img id="brandHeroLogo" src="{{ brand_logo_url }}" alt="Logo" class="h-20 w-20 object-contain transition-transform duration-300 group-hover:scale-105"/>
+          </div>
+          <div class="absolute -bottom-2 -right-2 bg-emerald-500 text-xs font-semibold px-2 py-1 rounded shadow ring-2 ring-indigo-900/60">LIVE</div>
+        </div>
+        <div class="space-y-1">
+          <h1 id="brandHeroTitle" class="text-3xl md:text-4xl font-bold tracking-tight">{{ brand_title or 'PiyuGuide' }}</h1>
+          <p id="brandHeroTagline" class="text-indigo-200 text-sm md:text-base">{{ brand_tagline or 'Campus Inquiry Management System' }}</p>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium bg-white/10 px-3 py-1 rounded-full"><i class="fas fa-palette"></i> Branding</span>
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium bg-white/10 px-3 py-1 rounded-full"><i class="fas fa-cog"></i> Experience</span>
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium bg-white/10 px-3 py-1 rounded-full"><i class="fas fa-bolt"></i> Live Update</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full lg:w-auto">
+        <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+          <div class="text-xs uppercase tracking-wide text-indigo-200 font-medium mb-1 flex items-center gap-1"><i class="fas fa-font"></i> Title Length</div>
+          <div class="text-lg font-semibold" id="metricTitleLen">—</div>
+        </div>
+        <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+          <div class="text-xs uppercase tracking-wide text-indigo-200 font-medium mb-1 flex items-center gap-1"><i class="fas fa-quote-left"></i> Tagline Len</div>
+          <div class="text-lg font-semibold" id="metricTaglineLen">—</div>
+        </div>
+        <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10 col-span-2 md:col-span-1">
+          <div class="text-xs uppercase tracking-wide text-indigo-200 font-medium mb-1 flex items-center gap-1"><i class="fas fa-image"></i> Logo</div>
+          <div class="text-sm font-semibold truncate max-w-[120px]" title="{{ brand_logo_path }}">{{ brand_logo_path or '—' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="relative px-8 pb-8 -mt-4">
+      <div class="bg-indigo-800/40 rounded-2xl border border-white/10 p-4 flex items-center gap-3 text-sm text-indigo-100">
+        <i class="fas fa-info-circle text-indigo-200"></i>
+        <span>Updates save instantly after submission & propagate across admin surfaces.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Sections -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+    <!-- Left (forms) -->
+    <div class="space-y-8 xl:col-span-2">
+      <!-- Branding Card -->
+      <div class="relative group rounded-3xl bg-white shadow-sm border border-gray-200/80 overflow-hidden">
+        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_85%_15%,rgba(99,102,241,0.08),transparent_60%)]"></div>
+        <div class="relative p-8 md:p-10">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-8">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight flex items-center gap-3">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shadow-inner"><i class="fas fa-palette"></i></span>
+                Branding
+              </h2>
+              <p class="text-sm text-gray-500 mt-2 max-w-prose">Control global identity elements displayed in headers, metadata, notifications and marketing surfaces.</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-gray-500">
+              <span class="inline-flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full"><i class="fas fa-shield-alt text-emerald-500"></i> Secure</span>
+              <span class="inline-flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full"><i class="fas fa-sync-alt text-indigo-500"></i> Live</span>
+            </div>
+          </div>
+          <form action="{{ url_for('super_admin.update_branding') }}" method="post" enctype="multipart/form-data" class="space-y-10" id="brandingForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+            <!-- Title / Tagline -->
+            <section class="space-y-6">
+              <div class="grid sm:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                  <label for="brand_title" class="text-sm font-medium text-gray-700 flex items-center gap-1"><i class="fas fa-heading text-indigo-500"></i> Application Title</label>
+                  <div class="relative">
+                    <input id="brand_title" name="brand_title" type="text" value="{{ brand_title or '' }}" maxlength="60" class="peer w-full rounded-xl border-gray-300 bg-white focus:border-indigo-600 focus:ring-indigo-600 shadow-sm text-sm px-4 py-3 transition" placeholder="PiyuGuide" />
+                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400 peer-focus:text-indigo-500" id="brandTitleCounter"></div>
+                  </div>
+                  <p class="text-xs text-gray-500">Shown in window titles & navigation. Keep concise.</p>
+                </div>
+                <div class="space-y-2">
+                  <label for="brand_tagline" class="text-sm font-medium text-gray-700 flex items-center gap-1"><i class="fas fa-quote-left text-indigo-500"></i> Tagline</label>
+                  <div class="relative">
+                    <input id="brand_tagline" name="brand_tagline" type="text" value="{{ brand_tagline or '' }}" maxlength="120" class="peer w-full rounded-xl border-gray-300 bg-white focus:border-indigo-600 focus:ring-indigo-600 shadow-sm text-sm px-4 py-3 transition" placeholder="Campus Inquiry Management System" />
+                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400 peer-focus:text-indigo-500" id="brandTaglineCounter"></div>
+                  </div>
+                  <p class="text-xs text-gray-500">Used beneath the brand & in meta descriptions.</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Logo & Favicon -->
+            <section class="space-y-8">
+              <div class="grid md:grid-cols-2 gap-8">
+                <!-- Logo Upload -->
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-700 flex items-center gap-2"><i class="fas fa-image text-indigo-500"></i> Logo</label>
+                    <span class="text-[11px] uppercase tracking-wide font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Primary</span>
+                  </div>
+                  <div class="flex items-center gap-5">
+                    <div class="h-20 w-20 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+                      <img id="logoPreview" src="{{ brand_logo_url }}" alt="Logo Preview" class="h-full w-full object-contain"/>
+                    </div>
+                    <div class="flex-1 space-y-3">
+                      <input id="brand_logo_file" name="brand_logo_file" type="file" accept="image/*" class="block w-full text-xs text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-indigo-700 cursor-pointer"/>
+                      <p class="text-[11px] text-gray-500 leading-relaxed">PNG, JPG, GIF, WebP. Recommended square ≥ 256px. Transparent background preferred.</p>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <label for="brand_logo_url" class="text-sm font-medium text-gray-700">Or External Logo URL</label>
+                    <input id="brand_logo_url" name="brand_logo_url" type="url" value="" placeholder="https://cdn.example.com/logo.svg" class="w-full rounded-xl border-gray-300 focus:border-indigo-600 focus:ring-indigo-600 shadow-sm text-sm px-4 py-3" />
+                    <p class="text-xs text-gray-500">Direct link or path relative to /static.</p>
+                  </div>
+                </div>
+                <!-- Favicon Upload -->
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-700 flex items-center gap-2"><i class="fas fa-fire text-indigo-500"></i> Favicon</label>
+                    <span class="text-[11px] uppercase tracking-wide font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Browser</span>
+                  </div>
+                  <div class="flex items-center gap-5">
+                    <div class="h-14 w-14 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+                      <img id="faviconPreview" src="{{ favicon_url }}" alt="Favicon" class="h-full w-full object-contain"/>
+                    </div>
+                    <div class="flex-1 space-y-3">
+                      <input id="favicon_file" name="favicon_file" type="file" accept="image/*" class="block w-full text-xs text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-indigo-700 cursor-pointer"/>
+                      <p class="text-[11px] text-gray-500 leading-relaxed">Square PNG / ICO. 32×32 or 64×64 recommended.</p>
+                    </div>
+                  </div>
+                  <div class="grid sm:grid-cols-2 gap-4 text-[11px] text-gray-500">
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> Min 32px</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> High contrast</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> Transparent OK</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> Square aspect</div>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 p-5 border border-indigo-100 flex flex-col md:flex-row md:items-center gap-5 text-xs text-gray-600">
+                <div class="flex items-center gap-2 font-medium text-indigo-700"><i class="fas fa-lightbulb"></i> Tip</div>
+                <p class="leading-relaxed">Use an SVG logo for crisp scaling. Large PNGs are automatically resized for performance.</p>
+              </div>
+            </section>
+
+            <!-- Actions -->
+            <div class="flex flex-col sm:flex-row gap-4 pt-4">
+              <button type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition">
+                <i class="fas fa-save"></i>
+                <span>Save Branding</span>
+              </button>
+              <a href="{{ url_for('super_admin.dashboard') }}" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-gray-700 text-sm font-semibold shadow border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-300/50 transition">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+              </a>
+              <button type="reset" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold shadow hover:bg-gray-200 focus:outline-none focus:ring-4 focus:ring-gray-300/50 transition" id="resetBrandingBtn">
+                <i class="fas fa-undo"></i>
+                <span>Reset (Unsaved)</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Experience Card -->
+      <div class="relative group rounded-3xl bg-white shadow-sm border border-gray-200/80 overflow-hidden">
+        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_15%_85%,rgba(99,102,241,0.07),transparent_60%)]"></div>
+        <div class="relative p-8 md:p-10">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-8">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight flex items-center gap-3">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shadow-inner"><i class="fas fa-cog"></i></span>
+                Experience Defaults
+              </h2>
+              <p class="text-sm text-gray-500 mt-2 max-w-prose">Configure fallback campus context & platform-wide default identifiers displayed when scope is not explicit.</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-gray-500">
+              <span class="inline-flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full"><i class="fas fa-layer-group text-emerald-500"></i> Context</span>
+            </div>
+          </div>
+          <form action="{{ url_for('super_admin.update_branding') }}" method="post" class="space-y-8" id="experienceForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 flex items-center gap-2" for="current_campus_name"><i class="fas fa-university text-emerald-500"></i> Default Campus Name</label>
+              <input id="current_campus_name" name="current_campus_name" type="text" value="{{ current_campus_name }}" maxlength="80" class="w-full rounded-xl border-gray-300 focus:border-emerald-600 focus:ring-emerald-600 shadow-sm text-sm px-4 py-3" placeholder="Global Campus" />
+              <p class="text-xs text-gray-500">Displayed when a campus-specific context isn’t selected.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 pt-2">
+              <button type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition">
+                <i class="fas fa-save"></i>
+                <span>Save Experience</span>
+              </button>
+              <button type="reset" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold shadow hover:bg-gray-200 focus:outline-none focus:ring-4 focus:ring-gray-300/50 transition">
+                <i class="fas fa-undo"></i>
+                <span>Reset</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side Panel (Context / Preview) -->
+    <aside class="space-y-8">
+      <!-- Live Preview Card -->
+      <div class="rounded-3xl bg-white shadow-sm border border-gray-200/80 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"><i class="fas fa-eye"></i></span>
+          <div>
+            <h3 class="font-semibold">Live Preview</h3>
+            <p class="text-xs text-gray-500">Real-time brand reflection</p>
+          </div>
+        </div>
+        <div class="p-6 space-y-6">
+          <div class="rounded-2xl border border-dashed border-gray-200 p-5 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="h-12 w-12 rounded-xl bg-gray-50 border flex items-center justify-center overflow-hidden">
+                <img id="previewLogoMini" src="{{ brand_logo_url }}" class="h-10 w-10 object-contain" alt="Logo mini"/>
+              </div>
+              <div class="min-w-0">
+                <div id="previewTitle" class="text-sm font-semibold truncate">{{ brand_title or 'PiyuGuide' }}</div>
+                <div id="previewTagline" class="text-xs text-gray-500 truncate">{{ brand_tagline or 'Campus Inquiry Management System' }}</div>
+              </div>
+            </div>
+            <div class="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 rounded-full"></div>
+            <ul class="space-y-1 text-[11px] text-gray-500" id="validationList">
+              <li class="flex items-center gap-2" data-val="title-short"><i class="far fa-circle text-gray-400"></i> Title length optimal (&lt;= 40)</li>
+              <li class="flex items-center gap-2" data-val="tagline-short"><i class="far fa-circle text-gray-400"></i> Tagline concise (&lt;= 90)</li>
+              <li class="flex items-center gap-2" data-val="logo-loaded"><i class="far fa-circle text-gray-400"></i> Logo loads</li>
+            </ul>
+          </div>
+          <div class="rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 p-4 border border-indigo-100 text-[11px] leading-relaxed text-gray-600">
+            Optimize title & tagline for clarity. Use high-contrast favicon for best browser display.
+          </div>
+        </div>
+      </div>
+      <!-- Help Card -->
+      <div class="rounded-3xl bg-white shadow-sm border border-gray-200/80 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-600"><i class="fas fa-question-circle"></i></span>
+          <div>
+            <h3 class="font-semibold">Guidelines</h3>
+            <p class="text-xs text-gray-500">Branding best practices</p>
+          </div>
+        </div>
+        <div class="p-6 text-xs text-gray-600 space-y-4 leading-relaxed">
+          <p><span class="font-semibold text-gray-800">Consistency:</span> Keep your title short & recognizable across internal and external materials.</p>
+          <p><span class="font-semibold text-gray-800">Performance:</span> SVG or optimized PNG logos reduce load times. Avoid images over 200KB.</p>
+          <p><span class="font-semibold text-gray-800">Accessibility:</span> Ensure sufficient color contrast. Avoid embedding text into the favicon.</p>
+          <p class="text-[11px] text-gray-400">Settings changes are logged in audit trails where enabled.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Modern Settings Enhancements Script -->
+<script>
+  (function() {
+    const titleInput = document.getElementById('brand_title');
+    const taglineInput = document.getElementById('brand_tagline');
+    const titleCounter = document.getElementById('brandTitleCounter');
+    const taglineCounter = document.getElementById('brandTaglineCounter');
+    const metricTitleLen = document.getElementById('metricTitleLen');
+    const metricTaglineLen = document.getElementById('metricTaglineLen');
+    const heroTitle = document.getElementById('brandHeroTitle');
+    const heroTagline = document.getElementById('brandHeroTagline');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewTagline = document.getElementById('previewTagline');
+    const validationList = document.getElementById('validationList');
+    const logoFile = document.getElementById('brand_logo_file');
+    const faviconFile = document.getElementById('favicon_file');
+    const logoPreview = document.getElementById('logoPreview');
+    const faviconPreview = document.getElementById('faviconPreview');
+    const heroLogo = document.getElementById('brandHeroLogo');
+    const previewLogoMini = document.getElementById('previewLogoMini');
+    const resetBtn = document.getElementById('resetBrandingBtn');
+
+    const initial = {
+      title: titleInput ? titleInput.value : '',
+      tagline: taglineInput ? taglineInput.value : '',
+      logoSrc: logoPreview ? logoPreview.src : '',
+      faviconSrc: faviconPreview ? faviconPreview.src : ''
+    };
+
+    function updateMetrics() {
+      if (!titleInput || !taglineInput) return;
+      const tLen = titleInput.value.trim().length;
+      const gLen = taglineInput.value.trim().length;
+      if (titleCounter) titleCounter.textContent = tLen + '/' + titleInput.maxLength;
+      if (taglineCounter) taglineCounter.textContent = gLen + '/' + taglineInput.maxLength;
+      if (metricTitleLen) metricTitleLen.textContent = tLen;
+      if (metricTaglineLen) metricTaglineLen.textContent = gLen;
+      if (heroTitle) heroTitle.textContent = titleInput.value || 'PiyuGuide';
+      if (heroTagline) heroTagline.textContent = taglineInput.value || 'Campus Inquiry Management System';
+      if (previewTitle) previewTitle.textContent = titleInput.value || 'PiyuGuide';
+      if (previewTagline) previewTagline.textContent = taglineInput.value || 'Campus Inquiry Management System';
+      updateValidation(tLen, gLen);
+    }
+
+    function updateValidation(tLen, gLen) {
+      const rules = [
+        { key: 'title-short', ok: tLen <= 40 && tLen > 0 },
+        { key: 'tagline-short', ok: gLen <= 90 && gLen > 0 },
+        { key: 'logo-loaded', ok: !!(logoPreview && logoPreview.complete) }
+      ];
+      rules.forEach(rule => {
+        const li = validationList.querySelector(`[data-val="${rule.key}"] i`);
+        if (!li) return;
+        li.className = rule.ok ? 'fas fa-check-circle text-emerald-500' : 'far fa-circle text-gray-400';
+      });
+    }
+
+    function attachFilePreview(input, imgEls) {
+      if (!input) return;
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          imgEls.forEach(el => { if (el) el.src = e.target.result; });
+          if (input === logoFile) updateValidation(titleInput.value.length, taglineInput.value.length);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (titleInput) titleInput.addEventListener('input', updateMetrics);
+    if (taglineInput) taglineInput.addEventListener('input', updateMetrics);
+    attachFilePreview(logoFile, [logoPreview, heroLogo, previewLogoMini]);
+    attachFilePreview(faviconFile, [faviconPreview]);
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        if (titleInput) titleInput.value = initial.title;
+        if (taglineInput) taglineInput.value = initial.tagline;
+        if (logoPreview && initial.logoSrc) [logoPreview, heroLogo, previewLogoMini].forEach(el => el.src = initial.logoSrc);
+        if (faviconPreview && initial.faviconSrc) faviconPreview.src = initial.faviconSrc;
+        updateMetrics();
+      });
+    }
+
+    window.addEventListener('load', updateMetrics);
+  })();
+</script>
+{% endblock %}

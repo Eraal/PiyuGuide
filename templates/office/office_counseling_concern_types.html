@@ -1,0 +1,343 @@
+{% extends "office/office_base.html" %}
+{% block title %}Manage Counseling Concern Types - {{ office.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/office_concern_types.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-indigo-50">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="relative mb-8">
+      <div class="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-indigo-600/5 rounded-3xl"></div>
+      <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-400/20 to-indigo-500/20 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-400/20 to-emerald-500/20 rounded-full blur-2xl"></div>
+      <div class="relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div class="flex-1">
+            <nav class="mb-4">
+              <ol class="flex items-center space-x-2 text-sm">
+                <li>
+                  <a href="{{ url_for('office.dashboard') }}" class="flex items-center text-emerald-600 hover:text-emerald-800 font-medium transition-colors">
+                    <i class="fas fa-home mr-1"></i>Dashboard
+                  </a>
+                </li>
+                <li class="flex items-center">
+                  <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                  <span class="text-gray-700 font-medium">Counseling Concern Types</span>
+                </li>
+              </ol>
+            </nav>
+            <div class="mb-4">
+              <h1 class="text-4xl font-bold text-gray-900 mb-3 flex items-center">
+                <div class="w-12 h-12 bg-gradient-to-r from-emerald-600 to-indigo-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                  <i class="fas fa-brain text-white text-lg"></i>
+                </div>
+                Counseling Concern Types
+              </h1>
+              <p class="text-gray-600 text-lg leading-relaxed">
+                Manage the types of concerns students can select when requesting <span class="font-semibold text-emerald-600">counseling sessions</span> with {{ office.name }}.
+              </p>
+            </div>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button type="button" onclick="openAddModal()" class="group flex items-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+              <i class="fas fa-plus-circle mr-2 group-hover:scale-110 transition-transform"></i>
+              Add New Type
+            </button>
+            <button type="button" onclick="refreshStats()" class="group flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+              <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-500"></i>
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="group relative">
+        <div class="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-emerald-700/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/20">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-lg">
+              <i class="fas fa-tags text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <div class="text-3xl font-bold text-gray-900">{{ supported_concern_types|length }}</div>
+              <div class="text-sm text-gray-500">Active Types</div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Supported Types</h3>
+            <div class="flex items-center text-emerald-600"><i class="fas fa-check-circle mr-1"></i><span class="text-sm font-medium">Active</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="group relative">
+        <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-indigo-700/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/20">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg">
+              <i class="fas fa-hand-holding-heart text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <div class="text-3xl font-bold text-gray-900">
+                {% set total_sessions = concern_stats.values() | sum(attribute='total_sessions') %}
+                {{ total_sessions }}
+              </div>
+              <div class="text-sm text-gray-500">All Time</div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Total Sessions</h3>
+            <div class="flex items-center text-indigo-600"><i class="fas fa-chart-line mr-1"></i><span class="text-sm font-medium">Growth</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="group relative">
+        <div class="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-purple-700/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/20">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg">
+              <i class="fas fa-clock text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <div class="text-3xl font-bold text-gray-900">
+                {% set recent_sessions = concern_stats.values() | sum(attribute='recent_sessions') %}
+                {{ recent_sessions }}
+              </div>
+              <div class="text-sm text-gray-500">Last 30 Days</div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Recent Activity</h3>
+            <div class="flex items-center text-purple-600"><i class="fas fa-trending-up mr-1"></i><span class="text-sm font-medium">Trending</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="group relative">
+        <div class="absolute inset-0 bg-gradient-to-r from-orange-600/20 to-red-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/20">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg">
+              <i class="fas fa-fire text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              {% if most_active_concerns %}
+                <div class="text-2xl font-bold text-gray-900">{{ most_active_concerns[0][1]['recent_sessions'] }}</div>
+                <div class="text-sm text-gray-500">Sessions</div>
+              {% else %}
+                <div class="text-2xl font-bold text-gray-900">0</div>
+                <div class="text-sm text-gray-500">No Data</div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Most Active Type</h3>
+            <div class="flex items-center text-red-600"><i class="fas fa-bolt mr-1"></i><span class="text-sm font-medium">{{ most_active_concerns[0][0].name if most_active_concerns else 'N/A' }}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supported Types List -->
+    <div class="mb-10">
+      <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Your Office's Counseling Concern Types</h2>
+            <p class="text-gray-600">Manage the counseling-related concerns your office can handle and track their performance in student session requests.</p>
+          </div>
+          <div>
+            <button onclick="openAddModal()" class="inline-flex items-center px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-sm font-semibold rounded-xl shadow hover:shadow-lg transition">
+              <i class="fas fa-plus-circle mr-2"></i>Add Type
+            </button>
+          </div>
+        </div>
+        {% if supported_concern_types %}
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for concern_type in supported_concern_types %}
+              <div class="group bg-white rounded-2xl border border-gray-200 shadow hover:shadow-lg transition p-6 relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-emerald-100 to-indigo-100 rounded-full opacity-60 group-hover:opacity-90 blur-2xl transition"></div>
+                <div class="relative">
+                  <div class="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 class="text-xl font-bold text-gray-900 mb-1">{{ concern_type.name }}</h3>
+                      {% if concern_type.description %}
+                        <p class="text-gray-600 text-sm leading-relaxed">{{ concern_type.description }}</p>
+                      {% endif %}
+                    </div>
+                    <div class="flex space-x-2">
+                      <button class="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400 edit-btn" title="Edit"
+                        data-id="{{ concern_type.id }}"
+                        data-name="{{ concern_type.name|e }}"
+                        data-description="{{ concern_type.description|e }}"
+                        data-allows="{{ 'true' if concern_type.allows_other else 'false' }}">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <form method="post" onsubmit="return confirm('Remove this concern type from your counseling support list?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="concern_type_id" value="{{ concern_type.id }}">
+                        <button class="p-2 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white text-xs shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-400" title="Remove">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div class="bg-gradient-to-br from-emerald-50 to-indigo-50 rounded-xl p-4 border border-emerald-100">
+                      <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Sessions</div>
+                      <div class="text-2xl font-bold text-emerald-700">{{ concern_stats[concern_type.id].total_sessions }}</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
+                      <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last 30 Days</div>
+                      <div class="text-2xl font-bold text-purple-700">{{ concern_stats[concern_type.id].recent_sessions }}</div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {{ 'bg-green-100 text-green-800 border border-green-200' if concern_type.allows_other else 'bg-gray-100 text-gray-800 border border-gray-200' }}">
+                      <i class="fas fa-{{ 'check-circle' if concern_type.allows_other else 'minus-circle' }} mr-2"></i>
+                      {{ 'Allows "Other" specifications' if concern_type.allows_other else 'Standard options only' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-20">
+            <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-full text-white shadow-lg mb-6">
+              <i class="fas fa-brain text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-4">No Counseling Concern Types Yet</h3>
+            <p class="text-gray-600 mb-6 max-w-2xl mx-auto">Start supporting counseling requests by adding your first concern type. These help categorize student counseling needs and power analytics.</p>
+            <button onclick="openAddModal()" class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition">Add Your First Type</button>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Modals (Add / Edit) - simplified reuse of existing pattern -->
+    <div id="addConcernModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div class="bg-gradient-to-r from-emerald-600 to-indigo-600 p-6 text-white">
+          <h2 class="text-2xl font-bold flex items-center"><i class="fas fa-plus-circle mr-3"></i> Add Counseling Concern Type</h2>
+          <p class="text-emerald-100 mt-2">Create a new counseling concern type for your office to support.</p>
+        </div>
+        <form method="post" class="p-6 space-y-6">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="add">
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 mb-1" for="concern_name">Concern Type Name <span class="text-red-500">*</span></label>
+            <input id="concern_name" name="concern_name" required maxlength="100" type="text" class="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50" placeholder="e.g. Personal Counseling" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 mb-1" for="concern_description">Description <span class="text-red-500">*</span></label>
+            <textarea id="concern_description" name="concern_description" required maxlength="500" rows="4" class="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50" placeholder="Describe this counseling concern type..."></textarea>
+          </div>
+          <div class="flex items-start space-x-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="allows_other" class="sr-only peer">
+              <div class="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-emerald-300 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span class="ml-3 text-sm font-medium text-gray-700">Allow "Other" specification</span>
+            </label>
+          </div>
+          <div class="flex items-start space-x-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="also_inquiries" class="sr-only peer">
+              <div class="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-emerald-300 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span class="ml-3 text-sm font-medium text-gray-700">Also enable for Inquiries</span>
+            </label>
+          </div>
+          <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+            <button type="button" onclick="closeAddModal()" class="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200">Cancel</button>
+            <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold shadow hover:shadow-lg">Create Type</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="editConcernModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-600 to-emerald-600 p-6 text-white">
+          <h2 class="text-2xl font-bold flex items-center"><i class="fas fa-edit mr-3"></i> Edit Counseling Concern Type</h2>
+          <p class="text-indigo-100 mt-2">Update the details of this counseling concern type.</p>
+        </div>
+        <form method="post" class="p-6 space-y-6">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="edit">
+          <input type="hidden" name="concern_type_id" id="edit_concern_type_id">
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 mb-1" for="edit_concern_name">Concern Type Name <span class="text-red-500">*</span></label>
+            <input id="edit_concern_name" name="concern_name" required maxlength="100" type="text" class="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 mb-1" for="edit_concern_description">Description <span class="text-red-500">*</span></label>
+            <textarea id="edit_concern_description" name="concern_description" required maxlength="500" rows="4" class="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"></textarea>
+          </div>
+          <div class="flex items-start space-x-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="allows_other" id="edit_allows_other" class="sr-only peer">
+              <div class="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-indigo-300 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+              <span class="ml-3 text-sm font-medium text-gray-700">Allow "Other" specification</span>
+            </label>
+          </div>
+          <div class="flex items-start space-x-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="toggle_inquiries" id="edit_toggle_inquiries" class="sr-only peer">
+              <div class="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-indigo-300 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+              <span class="ml-3 text-sm font-medium text-gray-700">Enable for Inquiries</span>
+            </label>
+          </div>
+          <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+            <button type="button" onclick="closeEditModal()" class="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200">Cancel</button>
+            <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold shadow hover:shadow-lg">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openAddModal(){document.getElementById('addConcernModal').classList.remove('hidden');}
+function closeAddModal(){document.getElementById('addConcernModal').classList.add('hidden');}
+function openEditModalFromButton(btn){
+  const id = btn.dataset.id;
+  fetch(`/office/counseling-concern-types/${id}`)
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.status==='success'){
+        document.getElementById('edit_concern_type_id').value=data.id;
+        document.getElementById('edit_concern_name').value=data.name || '';
+        document.getElementById('edit_concern_description').value=data.description || '';
+        document.getElementById('edit_allows_other').checked = !!data.allows_other;
+        if('for_inquiries' in data){
+          document.getElementById('edit_toggle_inquiries').checked = !!data.for_inquiries;
+        }
+        document.getElementById('editConcernModal').classList.remove('hidden');
+      } else {
+        alert(data.error || 'Failed to load concern type');
+      }
+    })
+    .catch(()=>alert('Failed to load concern type'));
+}
+document.addEventListener('click', e=>{
+  if(e.target.closest('.edit-btn')){
+    openEditModalFromButton(e.target.closest('.edit-btn'));
+  }
+});
+function closeEditModal(){document.getElementById('editConcernModal').classList.add('hidden');}
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAddModal();closeEditModal();}})
+function refreshStats(){location.reload();}
+</script>
+{% endblock %}

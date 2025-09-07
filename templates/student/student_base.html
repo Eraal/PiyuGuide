@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}KapiyuGuide - Student Portal{% endblock %}</title>
+  <title>{% block title %}{{ brand_title or 'PiyuGuide' }} — {{ current_campus_name or 'Student Portal' }}{% endblock %}</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
@@ -117,6 +117,7 @@
       }
 
       .dropdown-content {
+        /* Default hidden; toggled via JS to avoid sticky :hover on touch */
         display: none;
         position: absolute;
         right: 0;
@@ -128,11 +129,6 @@
         border: 1px solid #e2e8f0;
         overflow: hidden;
         backdrop-filter: blur(8px);
-      }
-
-      .dropdown:hover .dropdown-content {
-        display: block;
-        animation: fadeInUp 0.2s ease-out;
       }
 
       @keyframes fadeInUp {
@@ -346,8 +342,11 @@
             <button
               id="mobileMenuBtn"
               class="md:hidden text-white focus:outline-none"
+              aria-controls="sidebar"
+              aria-expanded="false"
             >
-              <i class="fas fa-bars text-xl"></i>
+              <i class="fas fa-bars text-xl" aria-hidden="true"></i>
+              <span class="sr-only">Open navigation menu</span>
             </button>
 
             <!-- Logo -->
@@ -356,13 +355,13 @@
               class="flex items-center"
             >
               <img
-                src="/static/images/schoollogo.png"
-                alt="KapiyuGuide Logo"
+                src="{{ brand_logo_url or url_for('static', filename='images/schoollogo.png') }}"
+                alt="{{ brand_title or 'PiyuGuide' }} Logo"
                 class="h-10 w-10 rounded-full border-2 border-white/20 shadow-lg"
               />
               <div class="ml-3">
-                <span class="text-xl font-bold tracking-tight">KapiyuGuide</span>
-                <p class="text-sm text-blue-100 font-medium">Student Portal</p>
+                <span class="text-xl font-bold tracking-tight">{{ brand_title or 'PiyuGuide' }}</span>
+                <p class="text-sm text-blue-100 font-medium">{{ current_campus_name or 'Student Portal' }}</p>
               </div>
             </a>
           </div>
@@ -375,140 +374,78 @@
               </span>
             </div>
 
-            <!-- Notifications Dropdown -->
-            <div class="dropdown relative" id="notificationsDropdown">
-              <button class="text-white focus:outline-none relative">
-                <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-200">
-                  <i class="fas fa-bell text-lg"></i>
-                  {% if unread_notifications_count and unread_notifications_count > 0 %}
-                  <span class="notification-badge">{{ unread_notifications_count }}</span>
-                  {% endif %}
-                </div>
+            <!-- Unified Notifications (Office-style for Students) -->
+            <div class="relative" id="student-ann-bell-wrapper">
+              <button id="student-ann-bell" class="group relative w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30">
+                <i class="fas fa-bell text-lg text-white transition-transform group-hover:scale-110"></i>
+                <span id="student-ann-badge" class="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] leading-[18px] rounded-full text-center font-semibold shadow {% if unread_notifications_count == 0 %}hidden{% endif %}">{{ unread_notifications_count }}</span>
               </button>
-
-              <!-- Notifications Panel -->
-              <div
-                class="dropdown-content w-80 mt-2 text-gray-800"
-                id="notificationsPanel"
-              >
-                <div
-                  class="px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 font-semibold border-b border-blue-200"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                      <i class="fas fa-bell mr-2 text-blue-600"></i>
-                      <span>Notifications</span>
-                    </div>
-                    <a
-                      href="#"
-                      class="text-xs text-blue-600 hover:text-blue-800"
-                      id="markAllAsRead"
-                      >Mark all as read</a
-                    >
+              <div id="student-ann-dropdown" class="absolute right-0 mt-3 w-[430px] bg-white/95 rounded-2xl border border-gray-200 z-50 overflow-hidden hidden">
+                <div class="px-5 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100/70 backdrop-blur-sm border-b border-gray-200/70">
+                  <div class="font-semibold text-gray-800 flex items-center gap-2 text-sm tracking-wide"><span class="relative inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow"><i class="fas fa-bell"></i></span><span>Notifications</span></div>
+                  <div class="flex items-center gap-3">
+                    <button id="student-ann-refresh" class="text-xs px-2.5 py-1.5 rounded-lg bg-white/70 hover:bg-white text-blue-700 font-medium shadow-sm border border-blue-100 transition">Refresh</button>
+                    <button id="student-ann-mark-all" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition">Mark all read</button>
                   </div>
                 </div>
-                <div
-                  class="max-h-96 overflow-y-auto"
-                  id="notificationsContainer"
-                >
-                  {% if notifications %} {% for notification in notifications %}
-                  <div
-                    class="notification-item p-3 border-b hover:bg-gray-50 {% if not notification.is_read %}unread{% endif %} cursor-pointer"
-                    data-notification-id="{{ notification.id }}"
-                    {%
-                    if
-                    notification.inquiry_id
-                    %}
-                    data-inquiry-id="{{ notification.inquiry_id }}"
-                    {%
-                    elif
-                    notification.announcement_id
-                    %}
-                    data-announcement-id="{{ notification.announcement_id }}"
-                    {%
-                    endif
-                    %}
-                    {%
-                    if
-                    notification.source_office_id
-                    %}
-                    data-office-id="{{ notification.source_office_id }}"
-                    {%
-                    endif
-                    %}
-                  >
-                    <div class="flex items-start">
-                      <div class="flex-shrink-0 pt-1">
-                        <i
-                          class="fas {% if notification.notification_type == 'inquiry_reply' %}fa-reply {% elif notification.notification_type == 'announcement' %}fa-bullhorn {% elif notification.notification_type == 'status_change' %}fa-sync {% else %}fa-info-circle{% endif %} text-blue-500"
-                        ></i>
+        <div id="student-ann-list" class="max-h-96 overflow-y-auto divide-y divide-transparent">
+                  {% if notifications %}
+                    {% for n in notifications %}
+          <a href="{% if n.inquiry_id %}{{ url_for('student.view_inquiry', inquiry_id=n.inquiry_id) }}{% elif n.announcement_id %}{{ url_for('student.view_announcement', announcement_id=n.announcement_id) }}{% else %}{{ url_for('student.notifications') }}{% endif %}"
+             data-id="{{ n.id }}"
+             {% if n.announcement_id %} data-announcement-id="{{ n.announcement_id }}"{% endif %}
+             class="office-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}"
+             data-title="{{ n.title|e }}" data-message="{{ n.message|e }}">
+                      <div class="icon-pill bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+                      <div class="ann-body">
+                        <div class="ann-title">{{ n.title }}</div>
+                        <div class="ann-msg line-clamp-2">{{ n.message }}</div>
+                        <div class="ann-meta"><i class="fas fa-clock"></i>{{ n.created_at|dt12 }}</div>
                       </div>
-                      <div class="ml-3 flex-grow notification-content">
-                        <div class="text-sm font-medium text-gray-900">
-                          {% if notification.source_office %} {% if
-                          notification.notification_type == 'inquiry_reply' %}
-                          {{ notification.source_office.name }} replied {% elif
-                          notification.notification_type == 'announcement' %}
-                          New Announcement from {{
-                          notification.source_office.name }} {% elif
-                          notification.notification_type == 'status_change' %}
-                          {{ notification.source_office.name }} updated status
-                          {% else %} {{ notification.title }} {% endif %} {%
-                          else %} {{ notification.title }} {% endif %}
-                        </div>
-                        <div
-                          class="text-xs text-gray-600 mt-1 notification-preview"
-                        >
-                          {{ notification.message }}
-                        </div>
-                        <div class="text-xs text-gray-400 mt-1">
-                          {{ notification.created_at.strftime('%b %d, %Y %H:%M')
-                          }}
-                        </div>
-                      </div>
-                      <button
-                        class="notification-close text-gray-400 hover:text-gray-600 ml-2"
-                        aria-label="Dismiss notification"
-                      >
-                        <i class="fas fa-times"></i>
-                      </button>
-                    </div>
-                  </div>
-                  {% endfor %} {% else %}
-                  <div class="p-3 text-center text-gray-500">
-                    <i class="far fa-bell-slash text-gray-300 text-lg mb-2"></i>
-                    <p>No notifications</p>
+                    </a>
+                    {% endfor %}
+                  {% else %}
+                  <div class="office-ann-empty text-gray-500 text-sm">
+                    <i class="fas fa-bell-slash text-3xl mb-3 block"></i>
+                    <p class="font-medium">No notifications yet</p>
+                    <p class="text-xs mt-1 text-gray-400">You're all caught up!</p>
                   </div>
                   {% endif %}
                 </div>
-                <div class="py-2 px-3 bg-gray-100 text-center">
-                  <a
-                    href="{{ url_for('student.notifications') }}"
-                    class="text-sm text-blue-600 hover:underline"
-                    >View all notifications</a
-                  >
+                <div class="border-t border-gray-100/80 bg-gray-50/60 backdrop-blur-sm flex items-center justify-between px-5 py-3">
+                  <a href="{{ url_for('student.notifications') }}" class="text-[11px] tracking-wide font-semibold text-blue-700 hover:text-blue-900 uppercase flex items-center gap-1">View All <i class="fas fa-arrow-right text-[10px]"></i></a>
+                  <span class="text-[10px] text-gray-400 font-medium select-none">Real-time updates</span>
                 </div>
               </div>
             </div>
 
             <!-- User Dropdown -->
             <div class="dropdown" id="userDropdown">
-              <button class="text-white focus:outline-none">
-                <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-200">
-                  {% if current_user.profile_pic %}
-                  <img
-                    src="{{ current_user.profile_pic }}"
-                    alt="Profile"
-                    class="w-full h-full rounded-full object-cover"
-                  />
-                  {% else %}
-                  <span class="font-medium text-sm">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
-                  {% endif %}
-                </div>
+              <!-- Avatar now toggles the dropdown menu directly (no extra caret) -->
+              <button
+                id="userMenuToggle"
+                class="group relative w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-controls="userMenu"
+                title="Open user menu"
+              >
+                {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+                {% if avatar_url %}
+                <img
+                  src="{{ avatar_url }}"
+                  alt="User avatar"
+                  class="w-full h-full rounded-full object-cover"
+                />
+                {% else %}
+                <span class="font-semibold text-sm text-white">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
+                {% endif %}
+                <!-- subtle online dot -->
+                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-indigo-700/40 bg-green-400"></span>
               </button>
 
               <!-- User Dropdown Menu -->
-              <div class="dropdown-content text-gray-800 mt-2" id="userMenu">
+        <div class="dropdown-content text-gray-800 mt-2" id="userMenu" role="menu" aria-labelledby="userMenuToggle">
                 <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
                   <div class="flex items-center">
                     <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold mr-3">
@@ -522,12 +459,14 @@
                 </div>                <a
                   href="{{ url_for('student.profile') }}"
                   class="block px-4 py-3 hover:bg-blue-50 transition-colors duration-200"
+          role="menuitem"
                 >
                   <i class="fas fa-user-circle mr-3 text-blue-600"></i> My Profile
                 </a>
                 <a
                   href="{{ url_for('student.account_settings') }}"
                   class="block px-4 py-3 hover:bg-blue-50 transition-colors duration-200"
+          role="menuitem"
                 >
                   <i class="fas fa-cog mr-3 text-gray-600"></i> Account Settings
                 </a>
@@ -535,6 +474,7 @@
                 <a
                   href="{{ url_for('auth.logout') }}"
                   class="block px-4 py-3 hover:bg-red-50 text-red-600 transition-colors duration-200"
+          role="menuitem"
                 >                  <i class="fas fa-sign-out-alt mr-3"></i> Logout
                 </a>
               </div>
@@ -545,16 +485,25 @@
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-      <!-- Sidebar - Desktop -->
-      <aside class="sidebar-gradient w-72 flex-shrink-0 overflow-y-auto shadow-xl relative z-20" id="sidebar">
-        <div class="h-full flex flex-col">          <!-- Student Profile Section -->
+      <!-- Sidebar - Responsive -->
+  <aside class="sidebar-gradient w-72 flex-shrink-0 overflow-y-auto shadow-xl z-40 md:z-auto hidden md:block fixed md:static inset-y-0 left-0 transform transition-transform duration-300 -translate-x-full md:translate-x-0" id="sidebar" role="navigation" aria-label="Student navigation">
+        <div class="h-full flex flex-col">
+          <!-- Mobile header with close button -->
+          <div class="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white/80 backdrop-blur">
+            <span class="text-sm font-semibold text-gray-700">Menu</span>
+            <button id="sidebarCloseBtn" class="text-gray-600 hover:text-gray-800 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Close sidebar">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <!-- Student Profile Section -->
           <div class="profile-section">
             <div class="flex items-center">
               <div class="relative mr-4">
                 <div class="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg ring-2 ring-white ring-opacity-60">
-                  {% if current_user.profile_pic %}
+                  {% set side_avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+                  {% if side_avatar_url %}
                   <img
-                    src="{{ current_user.profile_pic }}"
+                    src="{{ side_avatar_url }}"
                     alt="Profile Picture"
                     class="w-full h-full object-cover"
                   />
@@ -737,12 +686,13 @@
         </div>
       </aside>      <!-- Mobile Sidebar Overlay -->
       <div
-        class="fixed inset-0 bg-black opacity-50 z-20 hidden"
+        class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"
         id="sidebarOverlay"
+        aria-hidden="true"
       ></div>
 
-      <!-- Main Content -->
-      <main class="flex-1 overflow-x-hidden overflow-y-auto main-content">
+  <!-- Main Content -->
+  <main class="flex-1 min-w-0 overflow-x-hidden overflow-y-auto main-content">
         <div class="container mx-auto px-4 py-6">
           <!-- Flash Messages -->
           {% with messages = get_flashed_messages(with_categories=true) %} {% if
@@ -796,74 +746,483 @@
     </div>
 
     <!-- Audio for notifications -->
-    <audio
-      id="notificationSound"
-      src="/static/sounds/notification.mp3"
-      preload="auto"
-    ></audio>    <script>
+    <audio id="notification-sound" preload="auto" style="display: none">
+      <source src="{{ url_for('static', filename='sounds/notification.mp3') }}" type="audio/mpeg" />
+    </audio>
+
+    <!-- Reminder Popup Modal -->
+    <div id="reminderModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="reminderTitle" aria-describedby="reminderMessage">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative h-full w-full flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+          <div class="px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <i class="fas fa-bell"></i>
+              </div>
+              <h3 id="reminderTitle" class="font-semibold">Session Reminder</h3>
+            </div>
+            <button id="reminderCloseBtn" class="text-white/80 hover:text-white" aria-label="Close reminder dialog">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="px-5 py-4">
+            <p id="reminderMessage" class="text-gray-700"></p>
+          </div>
+          <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-2">
+            <button id="reminderDismissBtn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Dismiss</button>
+            <a id="reminderActionLink" href="#" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Open</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Announcement Details Modal -->
+    <div id="announcementModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="announcementTitle">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative h-full w-full flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl rounded-xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+          <div class="px-5 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <i class="fas fa-bullhorn"></i>
+              </div>
+              <div>
+                <div id="announcementHeaderOffice" class="text-xs text-white/80"></div>
+                <h3 id="announcementTitle" class="font-semibold">Announcement</h3>
+              </div>
+            </div>
+            <button id="announcementCloseBtn" class="text-white/80 hover:text-white" aria-label="Close announcement dialog">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="px-5 py-4 space-y-3">
+            <div id="announcementMeta" class="text-xs text-gray-500 flex flex-wrap items-center gap-3"></div>
+            <div id="announcementContent" class="prose max-w-none text-gray-800"></div>
+            <div id="announcementImages" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
+          </div>
+          <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-2">
+            <a id="announcementOpenPage" href="#" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Open Full Page</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Office-style notification/ toast CSS (minimal reuse via class names used above)
+      const studentNotifStyles = document.createElement('style');
+      studentNotifStyles.textContent = `
+        #student-ann-bell-wrapper { position: relative; z-index: 1000; }
+        #student-ann-dropdown { backdrop-filter: saturate(1.2) blur(8px); box-shadow: 0 8px 24px -4px rgba(17,24,39,0.15), 0 4px 12px -2px rgba(17,24,39,0.08); transform-origin: top right; opacity:0; transform: translateY(-8px) scale(.96); transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .32s cubic-bezier(.4,0,.2,1); }
+        #student-ann-dropdown.open { opacity:1; transform: translateY(0) scale(1); }
+        #student-ann-dropdown.closing { opacity:0; transform: translateY(-6px) scale(.95); pointer-events:none; }
+        .office-ann-item { position:relative; display:flex; gap:.75rem; }
+        .office-ann-item .icon-pill { flex-shrink:0; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:600; }
+        .office-ann-item.unread { background:linear-gradient(90deg, rgba(59,130,246,0.10), rgba(99,102,241,0)); }
+        .office-ann-item:hover { background:linear-gradient(90deg, rgba(59,130,246,0.16), rgba(99,102,241,0.04)); }
+        .office-ann-item .ann-body { flex:1; min-width:0; }
+        .office-ann-item .ann-title { font-weight:600; font-size:.78rem; line-height:1.1rem; color:#1f2937; letter-spacing:.3px; }
+        .office-ann-item .ann-msg { font-size:.67rem; color:#4b5563; line-height:1rem; margin-top:2px; }
+        .office-ann-item .ann-meta { font-size:.6rem; color:#9ca3af; margin-top:4px; display:flex; align-items:center; gap:4px; text-transform:uppercase; font-weight:500; letter-spacing:.5px; }
+        .office-ann-empty { padding:3.5rem 1.25rem; text-align:center; }
+        .toast-zone { position:fixed; top:5rem; right:1.25rem; display:flex; flex-direction:column; gap:.75rem; z-index:70; width:clamp(260px, 30vw, 380px); pointer-events:none; }
+        .toast { position:relative; background:#ffffff; border-radius:18px; padding:.9rem 1rem 1rem 1rem; box-shadow:0 10px 25px -5px rgba(17,24,39,0.18), 0 4px 10px -3px rgba(17,24,39,0.08); display:flex; gap:.85rem; transform:translateX(40px) scale(.96); opacity:0; animation:toastIn .55s cubic-bezier(.68,-0.55,.27,1.55) forwards; border:1px solid #e5e7eb; backdrop-filter:saturate(1.2) blur(6px); pointer-events:auto; }
+        .toast.closing { animation:toastOut .35s ease forwards; }
+        .toast .toast-icon-wrapper { position:relative; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.05rem; font-weight:600; box-shadow:0 4px 12px -2px rgba(0,0,0,.2); }
+        .toast.type-info { --bar-color:#3b82f6; --bar-color-alt:#1d4ed8; }
+        .toast.type-success { --bar-color:#10b981; --bar-color-alt:#059669; }
+        .toast.type-warning { --bar-color:#f59e0b; --bar-color-alt:#d97706; }
+        .toast.type-error { --bar-color:#ef4444; --bar-color-alt:#dc2626; }
+        .toast .progress-bar { position:absolute; left:8px; right:8px; bottom:6px; height:4px; border-radius:2px; overflow:hidden; background:#e5e7eb; }
+        .toast .progress-fill { height:100%; width:100%; transform-origin:left; animation:toastProgress linear forwards; background:linear-gradient(90deg,var(--bar-color,#3b82f6),var(--bar-color-alt,#1d4ed8)); }
+        @keyframes toastIn { 0% { opacity:0; transform:translateX(50px) scale(.9); } 60% { opacity:1; transform:translateX(-4px) scale(1.02); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+        @keyframes toastOut { 0% { opacity:1; transform:translateX(0) scale(1); } 100% { opacity:0; transform:translateX(40px) scale(.9); } }
+        @keyframes toastProgress { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+      `;
+      document.head.appendChild(studentNotifStyles);
+
       document.addEventListener("DOMContentLoaded", function () {
-        // Mobile menu toggle
+        // Prime notification audio to satisfy autoplay policies
+        const notifAudio = document.getElementById('notification-sound');
+        const primeAudio = () => {
+          if (!notifAudio) return;
+          try {
+            const p = notifAudio.play();
+            if (p && typeof p.then === 'function') {
+              p.then(() => { notifAudio.pause(); notifAudio.currentTime = 0; })
+               .catch(() => {});
+            } else {
+              notifAudio.pause();
+              notifAudio.currentTime = 0;
+            }
+          } catch(_) {}
+          document.removeEventListener('click', primeAudio, true);
+          document.removeEventListener('touchstart', primeAudio, true);
+        };
+        document.addEventListener('click', primeAudio, true);
+        document.addEventListener('touchstart', primeAudio, true);
+        // Reminder modal helpers
+        const reminderModal = document.getElementById("reminderModal");
+        const reminderTitleEl = document.getElementById("reminderTitle");
+        const reminderMessageEl = document.getElementById("reminderMessage");
+        const reminderActionLink = document.getElementById("reminderActionLink");
+        const reminderCloseBtn = document.getElementById("reminderCloseBtn");
+        const reminderDismissBtn = document.getElementById("reminderDismissBtn");
+
+        function showReminderModal(data) {
+          // Only show for reminder-type notifications
+          if (!data || data.notification_type !== "reminder") return;
+          reminderTitleEl.textContent = data.title || "Session Reminder";
+          reminderMessageEl.textContent = data.message || "You have an upcoming session.";
+          if (data.link) {
+            reminderActionLink.href = data.link;
+            reminderActionLink.classList.remove("hidden");
+          } else {
+            reminderActionLink.href = "#";
+            reminderActionLink.classList.add("hidden");
+          }
+          reminderModal.classList.remove("hidden");
+        }
+
+        function hideReminderModal() {
+          reminderModal.classList.add("hidden");
+        }
+
+        if (reminderCloseBtn) reminderCloseBtn.addEventListener("click", hideReminderModal);
+        if (reminderDismissBtn) reminderDismissBtn.addEventListener("click", hideReminderModal);
+        // Close when clicking backdrop
+        if (reminderModal) {
+          reminderModal.addEventListener("click", function (e) {
+            if (e.target === reminderModal || e.target.classList.contains("backdrop-blur-sm")) {
+              hideReminderModal();
+            }
+          });
+        }
+        // Mobile menu toggle and responsive handling
         const mobileMenuBtn = document.getElementById("mobileMenuBtn");
         const sidebar = document.getElementById("sidebar");
         const sidebarOverlay = document.getElementById("sidebarOverlay");
 
-        mobileMenuBtn.addEventListener("click", function () {
-          sidebar.classList.toggle("hidden");
-          sidebar.classList.toggle("fixed");
-          sidebar.classList.toggle("z-30");
-          sidebar.classList.toggle("inset-y-0");
-          sidebar.classList.toggle("left-0");
-          sidebarOverlay.classList.toggle("hidden");
-        });
+        const isMobile = () => window.matchMedia('(max-width: 767.98px)').matches;
 
-        sidebarOverlay.addEventListener("click", function () {
-          sidebar.classList.add("hidden");
-          sidebar.classList.remove("fixed", "z-30", "inset-y-0", "left-0");
-          sidebarOverlay.classList.add("hidden");
-        });
+  const openSidebar = () => {
+          // Prepare for animation
+          sidebar.classList.remove('hidden');
+          sidebarOverlay.classList.remove('hidden');
+          requestAnimationFrame(() => {
+            sidebar.classList.remove('-translate-x-full');
+            mobileMenuBtn.setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden';
+          });
+        };
 
-        // Dropdown functionality
-        const dropdowns = document.querySelectorAll('.dropdown');
-        
-        dropdowns.forEach(dropdown => {
-          const button = dropdown.querySelector('button');
-          const content = dropdown.querySelector('.dropdown-content');
-          
-          if (button && content) {
-            button.addEventListener('click', function(e) {
-              e.stopPropagation();
-              
-              // Close other dropdowns
-              dropdowns.forEach(otherDropdown => {
-                if (otherDropdown !== dropdown) {
-                  const otherContent = otherDropdown.querySelector('.dropdown-content');
-                  if (otherContent) {
-                    otherContent.style.display = 'none';
-                  }
-                }
-              });
-              
-              // Toggle current dropdown
-              if (content.style.display === 'block') {
-                content.style.display = 'none';
-              } else {
-                content.style.display = 'block';
-              }
-            });
+        const closeSidebar = () => {
+          sidebar.classList.add('-translate-x-full');
+          mobileMenuBtn.setAttribute('aria-expanded', 'false');
+          document.body.style.overflow = '';
+          // Hide after transition completes
+          setTimeout(() => {
+            if (isMobile()) {
+              sidebar.classList.add('hidden');
+              sidebarOverlay.classList.add('hidden');
+            } else {
+              sidebar.classList.remove('hidden');
+              sidebarOverlay.classList.add('hidden');
+            }
+          }, 250);
+        };
+
+        // Ensure correct initial state
+    const setInitialSidebarState = () => {
+          if (isMobile()) {
+            sidebar.classList.add('hidden', '-translate-x-full', 'fixed', 'inset-y-0', 'left-0');
+            sidebarOverlay.classList.add('hidden');
+            mobileMenuBtn.setAttribute('aria-expanded', 'false');
+          } else {
+      sidebar.classList.remove('hidden', '-translate-x-full');
+      sidebar.classList.add('md:translate-x-0');
+            sidebarOverlay.classList.add('hidden');
+            mobileMenuBtn.setAttribute('aria-expanded', 'false');
+          }
+        };
+
+        setInitialSidebarState();
+
+        mobileMenuBtn.addEventListener('click', function () {
+          if (sidebar.classList.contains('hidden') || sidebar.classList.contains('-translate-x-full')) {
+            openSidebar();
+          } else {
+            closeSidebar();
           }
         });
 
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', function(e) {
-          dropdowns.forEach(dropdown => {
-            if (!dropdown.contains(e.target)) {
-              const content = dropdown.querySelector('.dropdown-content');
-              if (content) {
-                content.style.display = 'none';
-              }
-            }
-          });
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // Close button inside sidebar (mobile only visible)
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+        if (sidebarCloseBtn) {
+          sidebarCloseBtn.addEventListener('click', closeSidebar);
+        }
+
+        // Handle viewport resize to avoid stuck states
+        let resizeTimeout;
+        window.addEventListener('resize', function () {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            setInitialSidebarState();
+          }, 150);
         });
+
+        // Student unified dropdown open/close (office-style)
+        (function(){
+          const bellBtn = document.getElementById('student-ann-bell');
+          const dropdown = document.getElementById('student-ann-dropdown');
+          const list = document.getElementById('student-ann-list');
+          const badge = document.getElementById('student-ann-badge');
+          const markAll = document.getElementById('student-ann-mark-all');
+          const refreshBtn = document.getElementById('student-ann-refresh');
+
+          // Toast zone shared
+          let toastZone = document.querySelector('.toast-zone');
+          if(!toastZone){ toastZone = document.createElement('div'); toastZone.className='toast-zone'; document.body.appendChild(toastZone); }
+
+          function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+          function formatPHT(input){
+            try{
+              let d;
+              if(!input){ d = new Date(); }
+              else if(typeof input === 'number'){ d = new Date(input); }
+              else if(typeof input === 'string'){
+                const t = Date.parse(input);
+                d = isNaN(t) ? new Date() : new Date(t);
+              } else if(input instanceof Date){ d = input; } else { d = new Date(); }
+              const opts = { timeZone: 'Asia/Manila', month: 'short', day: '2-digit', hour: '2-digit', minute:'2-digit', hour12: true };
+              const parts = new Intl.DateTimeFormat('en-US', opts).formatToParts(d);
+              const map = Object.fromEntries(parts.map(p=>[p.type,p.value]));
+              return `${map.month} ${map.day}, ${map.hour}:${map.minute} ${map.dayPeriod}`;
+            }catch(_){ return new Date().toLocaleString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true }); }
+          }
+          function incrementBadge(){ if (!badge) return; let n=parseInt(badge.textContent||'0'); n+=1; badge.textContent=String(n); badge.classList.remove('hidden'); }
+          function setBadgeCount(n){ if(!badge) return; if(n<=0){badge.textContent='0'; badge.classList.add('hidden');} else {badge.textContent=String(n); badge.classList.remove('hidden');} }
+          function buildItem(data){
+            const a = document.createElement('a');
+            const href = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcement/${data.announcement_id}` : (data.link || "{{ url_for('student.notifications') }}"));
+            a.href = href; a.className='office-ann-item unread px-4 py-3 transition-colors'; a.dataset.id = data.id || data.notification_id || '';
+            if (data.announcement_id) a.dataset.announcementId = String(data.announcement_id);
+            const ts = formatPHT(data.created_at || data.timestamp || Date.now());
+            const source = escapeHtml(data.target_office_name || data.posted_by_office_name || 'Announcement');
+            const title = escapeHtml(data.title||'Notification');
+            const msg = escapeHtml(data.message||'');
+            a.innerHTML = `
+              <div class="icon-pill bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+              <div class="ann-body">
+                <div class="ann-title">${source ? source + ' — ' : ''}${title}</div>
+                <div class="ann-msg line-clamp-2">${msg}</div>
+                <div class="ann-meta"><i class="fas fa-clock"></i>${ts}</div>
+              </div>`; return a;
+          }
+          function prependItem(data){ if(!list) return; const el = buildItem(data); list.prepend(el); }
+
+          function showToast({title='Notification', message='', type='info', duration=6500, link=null}){
+            const t = document.createElement('div');
+            t.className = `toast type-${type}`; t.setAttribute('role','alert'); t.setAttribute('aria-live','polite');
+            const iconMap = { info:'fa-bell', success:'fa-check', warning:'fa-exclamation', error:'fa-times' };
+            const icon = iconMap[type] || iconMap.info;
+            const progress = `<div class="progress-bar"><div class="progress-fill" style="animation-duration:${duration}ms"></div></div>`;
+            t.innerHTML = `
+              <div class="toast-icon-wrapper" style="background:linear-gradient(135deg,var(--bar-color),var(--bar-color-alt));">
+                <i class="fa-solid ${icon} toast-icon"></i>
+              </div>
+              <div class="toast-content">
+                <div class="toast-title">${escapeHtml(title)}</div>
+                <div class="toast-message">${escapeHtml(message)}</div>
+              </div>
+              <button class="toast-close" aria-label="Close notification">&times;</button>
+              ${progress}`;
+            if(link){ t.classList.add('cursor-pointer'); t.addEventListener('click', (ev)=>{ if(ev.target.closest('.toast-close')) return; window.location.href = link; }); }
+            const close = ()=>{ if(t.classList.contains('closing')) return; t.classList.add('closing'); setTimeout(()=>t.remove(),340); };
+            t.querySelector('.toast-close').addEventListener('click', close);
+            setTimeout(close, duration+200);
+            toastZone.appendChild(t);
+            return t;
+          }
+
+          function openDropdown(){ if(!dropdown || dropdown.classList.contains('open')) return; dropdown.classList.remove('hidden','closing'); requestAnimationFrame(()=>dropdown.classList.add('open')); }
+          function closeDropdown(){ if(!dropdown || dropdown.classList.contains('hidden')) return; dropdown.classList.add('closing'); dropdown.classList.remove('open'); setTimeout(()=>dropdown.classList.add('hidden'),220); }
+          if(bellBtn){
+            bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.contains('open')?closeDropdown():openDropdown(); });
+            document.addEventListener('click', (e)=>{ if(dropdown && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) closeDropdown(); });
+            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDropdown(); });
+          }
+
+          // Announcement modal support
+          const annModal = document.getElementById('announcementModal');
+          const annClose = document.getElementById('announcementCloseBtn');
+          const annHeaderOffice = document.getElementById('announcementHeaderOffice');
+          const annTitle = document.getElementById('announcementTitle');
+          const annMeta = document.getElementById('announcementMeta');
+          const annContent = document.getElementById('announcementContent');
+          const annImages = document.getElementById('announcementImages');
+          const annOpenPage = document.getElementById('announcementOpenPage');
+
+          function openAnnouncementModal(announcementId){
+            if(!announcementId) return false;
+            fetch(`/student/api/announcement/${announcementId}`)
+              .then(async res => {
+                if(!res.ok){ throw new Error('Fetch failed'); }
+                return res.json();
+              })
+              .then(data => {
+                // Populate modal
+                const officeBits = [data.office_name || data.posted_by_office_name || '', data.campus_name || ''].filter(Boolean);
+                annHeaderOffice.textContent = officeBits.join(' • ');
+                annTitle.textContent = data.title || 'Announcement';
+                const meta = [];
+                if (data.author_name) meta.push(`${data.author_name}${data.author_role? ' ('+data.author_role.replace(/_/g,' ')+')':''}`);
+                if (data.created_at) meta.push(new Date(data.created_at).toLocaleString());
+                annMeta.textContent = meta.join(' • ');
+                annContent.innerHTML = '';
+                const p = document.createElement('p'); p.textContent = data.content || ''; annContent.appendChild(p);
+                annImages.innerHTML='';
+                if (Array.isArray(data.images)){
+                  data.images.forEach(img => {
+                    if(!img || !img.url) return;
+                    const a = document.createElement('a'); a.href = img.url; a.target='_blank'; a.rel='noopener';
+                    const im = document.createElement('img'); im.src = img.url; im.alt = img.caption||'Announcement image'; im.className='w-full h-28 object-cover rounded-lg border';
+                    a.appendChild(im);
+                    annImages.appendChild(a);
+                  });
+                }
+                annOpenPage.href = data.link || `/student/announcement/${announcementId}`;
+                annModal.classList.remove('hidden');
+              })
+              .catch(() => { window.location.href = `/student/announcement/${announcementId}`; });
+            return true;
+          }
+
+          function closeAnnouncementModal(){ annModal.classList.add('hidden'); }
+          if(annClose) annClose.addEventListener('click', closeAnnouncementModal);
+          if(annModal){ annModal.addEventListener('click', (e)=>{ if(e.target===annModal || e.target.classList.contains('backdrop-blur-sm')) closeAnnouncementModal(); }); }
+
+          if(list){
+            list.addEventListener('click', async (e)=>{
+              const a = e.target.closest('.office-ann-item');
+              if(!a) return;
+              // Intercept announcement click to open modal
+              const annId = a.dataset.announcementId;
+              if(annId){ e.preventDefault(); openAnnouncementModal(annId); }
+
+              if(a.classList.contains('unread')){
+                a.classList.remove('unread');
+                const id = a.dataset.id;
+                if(badge && !badge.classList.contains('hidden')){ let n=parseInt(badge.textContent||'0'); n=isNaN(n)?0:Math.max(0,n-1); setBadgeCount(n); }
+                if(id){ try { await fetch(`/student/notifications/mark-read/${id}`, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});} catch(err){} }
+              }
+            });
+          }
+
+          if(markAll){
+            markAll.addEventListener('click', async ()=>{
+              try{
+                const res = await fetch('/student/notifications/mark-all-read', {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
+                if(!res.ok) return showToast({title:'Error', message:'Request failed', type:'error', duration:4000});
+                const data = await res.json();
+                list.querySelectorAll('.office-ann-item.unread').forEach(a=>a.classList.remove('unread'));
+                setBadgeCount(0);
+                showToast({title:'All read', message:data.message || 'Marked as read', type:'success', duration:3000});
+              }catch(e){ showToast({title:'Error', message:'Could not update', type:'error'}); }
+            });
+          }
+
+          if(refreshBtn){
+            refreshBtn.addEventListener('click', async ()=>{
+              refreshBtn.disabled = true; const prev = refreshBtn.textContent; refreshBtn.textContent='...';
+              try{
+                const res = await fetch('/student/notifications/get-unread-count');
+                if(res.ok){
+                  // Soft refresh: only update badge
+                  const data = await res.json(); setBadgeCount(parseInt(data.unread_count||0));
+                  showToast({title:'Refreshed', message:'Badge updated.', type:'info', duration:2000});
+                }
+              } finally { refreshBtn.disabled=false; refreshBtn.textContent=prev; }
+            });
+          }
+
+          // Socket wiring for student notifications
+          try{
+            const socket = io();
+            socket.on('connect', ()=>{ try{ socket.emit('join', { room: `student_{{ current_user.id }}` }); }catch(_){} });
+            socket.on('new_notification', data => {
+              try{ document.getElementById('notification-sound')?.play().catch(()=>{});}catch(_){ }
+              incrementBadge();
+              prependItem(data);
+              const kind = (data.notification_type||data.type||'').toLowerCase();
+              let toastType = 'info';
+              if(/success|scheduled|ready/.test(kind)) toastType='success';
+              else if(/warning|reminder/.test(kind)) toastType='warning';
+              else if(/error|fail/.test(kind)) toastType='error';
+              const link = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcement/${data.announcement_id}` : (data.link || null));
+              let title = data.title || 'Notification';
+              let message = data.message || '';
+              if(message.length>180) message = message.slice(0,177)+'…';
+              showToast({title, message, type:toastType, duration: kind==='reminder'?8000:6500, link});
+            });
+
+            // Realtime updates when notifications are marked as read from chat views
+            socket.on('notification_update', data => {
+              try{
+                const c = parseInt((data&&data.count)||1);
+                const badge = document.getElementById('student-ann-badge');
+                if (badge) {
+                  let n = parseInt(badge.textContent||'0');
+                  n = isNaN(n)?0:Math.max(0, n - c);
+                  badge.textContent = String(n);
+                  if (n <= 0) badge.classList.add('hidden'); else badge.classList.remove('hidden');
+                }
+              }catch(_){ }
+            });
+          }catch(e){}
+        })();
+
+    // User avatar dropdown: avatar toggles the menu directly (caret removed)
+        (function(){
+          const menuToggle = document.getElementById('userMenuToggle');
+          const menu = document.getElementById('userMenu');
+          const dropdown = document.getElementById('userDropdown');
+          if(!menu || !menuToggle || !dropdown) return;
+
+          function openMenu(){
+            menu.style.display = 'block';
+            menu.style.animation = 'fadeInUp 160ms ease-out';
+            menuToggle.setAttribute('aria-expanded','true');
+          }
+          function closeMenu(){
+            menu.style.display = 'none';
+            menuToggle.setAttribute('aria-expanded','false');
+          }
+          function isOpen(){ return menu.style.display !== 'none' && menu.style.display !== ''; }
+
+          // Initialize hidden
+          closeMenu();
+
+          menuToggle.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            isOpen() ? closeMenu() : openMenu();
+          });
+
+          // Close on outside click or ESC
+          document.addEventListener('click', (e)=>{
+            if (!dropdown.contains(e.target)) closeMenu();
+          });
+          document.addEventListener('keydown', (e)=>{
+            if (e.key === 'Escape') closeMenu();
+          });
+
+          // Close menu when a menu item is clicked
+          menu.querySelectorAll('a, button').forEach(el => {
+            el.addEventListener('click', () => closeMenu());
+          });
+        })();
 
         // Handle notification clicks - redirect to inquiry
         const notificationItems = document.querySelectorAll(".notification-item");
@@ -879,7 +1238,7 @@
             const announcementId = this.dataset.announcementId;
             if (inquiryId) {
               // Mark as read before navigating
-              fetch(`/api/notifications/${this.dataset.notificationId}/dismiss`, {
+              fetch(`/student/api/notifications/${this.dataset.notificationId}/dismiss`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -894,7 +1253,7 @@
                   window.location.href = `/student/inquiry/${inquiryId}`;
                 });
             } else if (announcementId) {
-              fetch(`/api/notifications/${this.dataset.notificationId}/dismiss`, {
+              fetch(`/student/api/notifications/${this.dataset.notificationId}/dismiss`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -922,7 +1281,7 @@
             const notificationId = notificationItem.dataset.notificationId;
 
             // Mark as read in the database via fetch API
-            fetch(`/api/notifications/${notificationId}/dismiss`, {
+            fetch(`/student/api/notifications/${notificationId}/dismiss`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -987,7 +1346,7 @@
         if (markAllAsReadBtn) {
           markAllAsReadBtn.addEventListener("click", function (e) {
             e.preventDefault();
-            fetch("/api/notifications/mark-all-read", {
+            fetch("/student/api/notifications/mark-all-read", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -1033,101 +1392,10 @@
           });
         }
 
-        // WebSocket connection for real-time updates
-        const socket = io();
-        socket.on("connect", function () {
-          console.log("Connected to WebSocket");
-          socket.emit("join", { room: "student_room" });
-          socket.emit("join", { room: `student_{{ current_user.id }}` });
-        });
+  // (Socket connection handled above in the unified dropdown controller)
 
-        // Listen for notification events
-        socket.on("new_notification", function (data) {
-          // Update notification badge
-          const notificationBadges = document.querySelectorAll(".notification-badge");
-          notificationBadges.forEach(badge => {
-            let count = parseInt(badge.innerText || "0");
-            count += 1;
-            badge.innerText = count;
-            badge.classList.remove("hidden");
-          });
-
-          // Add notification to dropdown
-          const container = document.getElementById("notificationsContainer");
-          if (container) {
-            const emptyMessage = container.querySelector(".text-center.text-gray-500");
-            if (emptyMessage) {
-              container.innerHTML = "";
-            }
-
-            // Determine appropriate icon and title based on notification type
-            let iconClass = "fa-info-circle";
-            let title = data.title || "";
-
-            if (data.notification_type === "inquiry_reply") {
-              iconClass = "fa-reply";
-              if (data.source_office && data.source_office.name) {
-                title = `${data.source_office.name} replied`;
-              } else if (data.office_name) {
-                title = `${data.office_name} replied`;
-              } else {
-                title = data.title || "Office replied";
-              }
-            } else if (data.notification_type === "announcement") {
-              iconClass = "fa-bullhorn";
-              if (data.source_office && data.source_office.name) {
-                title = `New Announcement from ${data.source_office.name}`;
-              } else {
-                title = data.title || "New Announcement";
-              }
-            } else if (data.notification_type === "status_change") {
-              iconClass = "fa-sync";
-              if (data.source_office && data.source_office.name) {
-                title = `${data.source_office.name} updated status`;
-              } else {
-                title = data.title || "Status Updated";
-              }
-            }
-
-            const messagePreview = data.message && data.message.length > 100 
-              ? data.message.substring(0, 100) + "..." 
-              : data.message || "";
-
-            const notificationElement = document.createElement("div");
-            notificationElement.className = "notification-item p-3 border-b hover:bg-gray-50 unread cursor-pointer";
-            notificationElement.dataset.notificationId = data.id || "";
-
-            if (data.inquiry_id) {
-              notificationElement.dataset.inquiryId = data.inquiry_id;
-            } else if (data.announcement_id) {
-              notificationElement.dataset.announcementId = data.announcement_id;
-            }
-
-            notificationElement.innerHTML = `
-              <div class="flex items-start">
-                <div class="flex-shrink-0 pt-1">
-                  <i class="fas ${iconClass} text-blue-500"></i>
-                </div>
-                <div class="ml-3 flex-grow notification-content">
-                  <div class="text-sm font-medium text-gray-900">${title}</div>
-                  <div class="text-xs text-gray-600 mt-1 notification-preview">${messagePreview}</div>
-                  <div class="text-xs text-gray-400 mt-1">Just now</div>
-                </div>
-                <button class="notification-close text-gray-400 hover:text-gray-600 ml-2" aria-label="Dismiss notification">
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            `;
-
-            container.prepend(notificationElement);
-
-            // Play notification sound
-            const notificationSound = document.getElementById("notificationSound");
-            if (notificationSound) {
-              notificationSound.play().catch((e) => console.warn("Could not play notification sound:", e));
-            }
-          }
-        });
+  // Reminder pop-up remains for reminder-type notifications
+  // kept via showReminderModal(data) from earlier code if needed in future
       });
     </script>
 

@@ -1,7 +1,7 @@
 from app.models import (
     Inquiry, InquiryMessage, User, Office, db, OfficeAdmin, 
     Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, 
-    OfficeLoginLog, AuditLog, Announcement
+    OfficeLoginLog, AuditLog, Announcement, ConcernType, InquiryConcern
 )
 from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
 from flask_login import login_required, current_user
@@ -174,11 +174,52 @@ def get_chart_data(office_id):
     }
 
 
+def get_most_frequent_concerns(office_id, days=30):
+    """Get the most frequently selected concern types for an office in the last X days"""
+    now = datetime.utcnow()
+    start_date = now - timedelta(days=days)
+    
+    # Query to get concern types with their frequency
+    concern_frequency = db.session.query(
+        ConcernType.id,
+        ConcernType.name,
+        ConcernType.description,
+        func.count(InquiryConcern.id).label('frequency')
+    ).join(
+        InquiryConcern, ConcernType.id == InquiryConcern.concern_type_id
+    ).join(
+        Inquiry, InquiryConcern.inquiry_id == Inquiry.id
+    ).filter(
+        Inquiry.office_id == office_id,
+        Inquiry.created_at >= start_date
+    ).group_by(
+        ConcernType.id, ConcernType.name, ConcernType.description
+    ).order_by(
+        desc('frequency')
+    ).limit(5).all()
+    
+    # Convert to a list of dictionaries for easier template usage
+    concern_data = []
+    total_inquiries = sum(concern.frequency for concern in concern_frequency)
+    
+    for concern in concern_frequency:
+        percentage = (concern.frequency / total_inquiries * 100) if total_inquiries > 0 else 0
+        concern_data.append({
+            'id': concern.id,
+            'name': concern.name,
+            'description': concern.description,
+            'frequency': concern.frequency,
+            'percentage': round(percentage, 1)
+        })
+    
+    return concern_data
+
+
 # Function to get office context - assumed to be defined elsewhere
 def get_office_context():
     """Get common context data needed across office views"""
     # Add notifications data for the office_base.html template
-    from app.models import Notification, CounselingSession, Inquiry
+    from app.models import Notification, CounselingSession, Inquiry, OfficeConcernType, Office
     from datetime import datetime, timedelta
     from sqlalchemy import desc
     
@@ -212,19 +253,38 @@ def get_office_context():
             CounselingSession.status.in_(['pending', 'confirmed']),
             CounselingSession.scheduled_at > now
         ).count()
+
+        # Determine if this office offers counseling (has any counseling concern types
+        # or any counseling sessions historically)
+        has_counseling_types = db.session.query(OfficeConcernType.id).filter(
+            OfficeConcernType.office_id == office_id,
+            OfficeConcernType.for_counseling.is_(True)
+        ).first() is not None
+        has_any_sessions = db.session.query(CounselingSession.id).filter(
+            CounselingSession.office_id == office_id
+        ).first() is not None
+        office_offers_counseling = bool(has_counseling_types or has_any_sessions)
+
+        # Whether office supports video sessions explicitly
+        office_obj = Office.query.get(office_id)
+        office_supports_video = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
         
         return {
             'unread_notifications_count': unread_notifications_count,
             'notifications': notifications,
             'pending_inquiries_count': pending_inquiries_count,
-            'upcoming_sessions_count': upcoming_sessions_count
+            'upcoming_sessions_count': upcoming_sessions_count,
+            'office_offers_counseling': office_offers_counseling,
+            'office_supports_video': office_supports_video
         }
     
     return {
         'unread_notifications_count': 0,
         'notifications': [],
         'pending_inquiries_count': 0,
-        'upcoming_sessions_count': 0
+        'upcoming_sessions_count': 0,
+        'office_offers_counseling': False,
+        'office_supports_video': False
     }
 
 # Additional routes for the office dashboard

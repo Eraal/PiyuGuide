@@ -18,7 +18,9 @@ class OfficeChatSocketManager {
             onMessageSent: null,
             onMessageRead: null,
             onConnectionStatusChange: null,
-            onError: null
+            onError: null,
+            onTyping: null,
+            onStopTyping: null
         };
         
         // Reconnection settings
@@ -104,9 +106,10 @@ class OfficeChatSocketManager {
         });
         
         // Chat events
-        this.socket.on('receive_message', message => {
+    this.socket.on('receive_message', message => {
             // For messages from other users, set is_current_user to false
-            if (message.sender_id !== this._getCurrentUserId()) {
+            const myId = String(this._getCurrentUserId());
+            if (String(message.sender_id) !== myId) {
                 message.is_current_user = false;
             }
             
@@ -120,6 +123,18 @@ class OfficeChatSocketManager {
             }
         });
         
+        // Typing events
+        this.socket.on('typing', data => {
+            if (this.messageCallbacks.onTyping) {
+                this.messageCallbacks.onTyping(data);
+            }
+        });
+        this.socket.on('stop_typing', data => {
+            if (this.messageCallbacks.onStopTyping) {
+                this.messageCallbacks.onStopTyping(data);
+            }
+        });
+
         this.socket.on('message_sent', data => {
             if (this.messageCallbacks.onMessageSent) {
                 this.messageCallbacks.onMessageSent(data);
@@ -174,6 +189,21 @@ class OfficeChatSocketManager {
         
         this.currentInquiryId = inquiryId;
         this.socket.emit('join_inquiry_room', { inquiry_id: inquiryId });
+
+        // After join, best-effort mark visible incoming messages as read
+        setTimeout(() => {
+            try {
+                const bubbles = document.querySelectorAll('#messageHistory .message-bubble');
+                const myId = String(this._getCurrentUserId());
+                bubbles.forEach(b => {
+                    const senderId = b.getAttribute('data-sender-id');
+                    const msgId = b.getAttribute('data-message-id');
+                    if (msgId && senderId && String(senderId) !== myId) {
+                        this.markMessageAsRead(msgId);
+                    }
+                });
+            } catch (e) {}
+        }, 300);
     }
     
     /**
@@ -210,6 +240,8 @@ class OfficeChatSocketManager {
             inquiry_id: this.currentInquiryId,
             content: content
         });
+    // After sending, ensure stop typing is emitted
+    this.stopTyping();
         
         return true;
     }
@@ -262,6 +294,41 @@ class OfficeChatSocketManager {
      */
     onError(callback) {
         this.messageCallbacks.onError = callback;
+    }
+    
+    /**
+     * Register a callback for when the other party is typing
+     * @param {Function} callback
+     */
+    onTyping(callback) {
+        this.messageCallbacks.onTyping = callback;
+    }
+    
+    /**
+     * Register a callback for when the other party stops typing
+     * @param {Function} callback
+     */
+    onStopTyping(callback) {
+        this.messageCallbacks.onStopTyping = callback;
+    }
+    
+    /**
+     * Emit typing event with debounce
+     */
+    startTyping() {
+        if (!this.connected || !this.currentInquiryId) return;
+        const now = Date.now();
+        if (!this._lastTypingEmit || now - this._lastTypingEmit > 1500) {
+            this.socket.emit('typing', { inquiry_id: this.currentInquiryId });
+            this._lastTypingEmit = now;
+        }
+        clearTimeout(this._typingTimeout);
+        this._typingTimeout = setTimeout(() => this.stopTyping(), 2000);
+    }
+    
+    stopTyping() {
+        if (!this.connected || !this.currentInquiryId) return;
+        this.socket.emit('stop_typing', { inquiry_id: this.currentInquiryId });
     }
     
     /**

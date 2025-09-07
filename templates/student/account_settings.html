@@ -3,109 +3,26 @@
 
 {% block extra_head %}
 <style>
-  .settings-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-  }
-
-  .settings-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-
-  .setting-item {
-    background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-    border: 1px solid #e5e7eb;
-    transition: all 0.2s ease;
-  }
-
-  .setting-item:hover {
-    border-color: #3b82f6;
-    transform: translateY(-1px);
-  }
-
-  .toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-  }
-
-  .toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 34px;
-  }
-
-  .slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-  }
-
-  input:checked + .slider {
-    background-color: #3b82f6;
-  }
-
-  input:checked + .slider:before {
-    transform: translateX(26px);
-  }
-
-  .input-field {
-    border: 2px solid #e5e7eb;
-    transition: all 0.2s ease;
-  }
-
-  .input-field:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  .section-header {
-    border-left: 4px solid #3b82f6;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    transition: all 0.2s ease;
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-  }
-
-  .btn-secondary {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-    transition: all 0.2s ease;
-  }
-
-  .btn-secondary:hover {
-    transform: translateY(-1px);
-    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  }
+  .settings-card {background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,.08);transition:.3s}
+  .settings-card:hover{transform:translateY(-2px);box-shadow:0 10px 18px -5px rgba(0,0,0,.12)}
+  .section-header{border-left:4px solid #3b82f6;background:linear-gradient(135deg,#eff6ff,#dbeafe)}
+  .input-field{border:2px solid #e5e7eb;transition:.2s}
+  .input-field:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+  .avatar-ring{position:relative;width:120px;height:120px;margin:0 auto;border-radius:50%;overflow:hidden;box-shadow:0 4px 14px -2px rgba(0,0,0,.2);border:4px solid #fff}
+  .avatar-ring img{width:100%;height:100%;object-fit:cover}
+  .avatar-upload-btn{position:absolute;bottom:6px;right:6px;background:#2563eb;color:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem;box-shadow:0 4px 10px -2px rgba(37,99,235,.6)}
+  .toggle-switch{position:relative;display:inline-block;width:50px;height:26px}
+  .toggle-switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#d1d5db;transition:.3s;border-radius:34px}
+  .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+  input:checked + .slider{background:#2563eb}
+  input:checked + .slider:before{transform:translateX(24px)}
+  .save-bar{position:sticky;bottom:0;left:0;right:0;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.5rem}
+  .pill{background:#eef2ff;color:#4338ca;padding:.25rem .65rem;border-radius:9999px;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .info-badge{background:#f0fdf4;color:#15803d;padding:.25rem .55rem;border-radius:6px;font-size:.65rem;font-weight:500}
+  .gradient-border{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,#3b82f6,#9333ea) border-box;border:2px solid transparent;border-radius:14px}
+  .subtle{color:#6b7280;font-size:.8rem}
+  .divider{height:1px;background:linear-gradient(90deg,transparent,#d1d5db,transparent)}
 </style>
 {% endblock %}
 
@@ -128,191 +45,188 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- Settings Navigation -->
-    <div class="lg:col-span-1">
-      <div class="settings-card rounded-xl p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Settings Menu</h3>
-        <nav class="space-y-2">
-          <a href="#personal" class="flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">
-            <i class="fas fa-user mr-3"></i>
-            Personal Information
-          </a>
-          <a href="#video" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors">
-            <i class="fas fa-video mr-3"></i>
-            Video Settings
-          </a>
-          <a href="#notifications" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors">
-            <i class="fas fa-bell mr-3"></i>
-            Notifications
-          </a>
-          <a href="#privacy" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors">
-            <i class="fas fa-shield-alt mr-3"></i>
-            Privacy & Security
-          </a>
-        </nav>
+  <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+    <!-- Left rail -->
+    <div class="space-y-6 xl:col-span-1">
+      <!-- Profile overview + change photo -->
+      <div class="settings-card rounded-2xl p-6 gradient-border">
+        <div class="relative mb-5">
+          <div class="avatar-ring">
+            {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+            {% if avatar_url %}
+              <img src="{{ avatar_url }}" alt="Profile Picture" />
+            {% else %}
+              <img src="{{ url_for('static', filename='images/default.jpg') }}" alt="Default" />
+            {% endif %}
+            <form id="picUploadForm" action="{{ url_for('student.update_profile_picture') }}" method="post" enctype="multipart/form-data">
+              {{ pic_form.csrf_token }}
+              <label class="avatar-upload-btn" title="Change photo">
+                <i class="fas fa-camera"></i>
+                {{ pic_form.profile_pic(class='hidden', id='profilePicInput') }}
+              </label>
+            </form>
+          </div>
+        </div>
+        <div class="text-center">
+          <h2 class="text-xl font-semibold text-gray-900">{{ current_user.get_full_name() }}</h2>
+          <p class="subtle mt-1">Student Account</p>
+          {% if student.student_number %}<p class="mt-2 text-sm font-mono bg-gray-100 inline-block px-2 py-1 rounded">ID: {{ student.student_number }}</p>{% endif %}
+        </div>
+        <div class="divider my-6"></div>
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center gap-2"><i class="fas fa-envelope text-blue-600"></i> <span>{{ current_user.email }}</span></li>
+          {% if campus %}<li class="flex items-center gap-2"><i class="fas fa-school text-purple-600"></i> <span>{{ campus.name }}</span></li>{% endif %}
+          {% if student.department_name %}<li class="flex items-center gap-2"><i class="fas fa-layer-group text-emerald-600"></i> <span>{{ student.department_name }}</span></li>{% endif %}
+          {% if student.section %}<li class="flex items-center gap-2"><i class="fas fa-users text-pink-600"></i> <span>Section {{ student.section }}</span></li>{% endif %}
+          {% if student.year_level %}<li class="flex items-center gap-2"><i class="fas fa-graduation-cap text-indigo-600"></i> <span>{{ student.year_level }}</span></li>{% endif %}
+        </ul>
+        <p class="mt-6 text-xs text-gray-500">Changes are logged for security & audit purposes.</p>
+      </div>
+      <!-- Quick tips -->
+      <div class="settings-card rounded-2xl p-5">
+        <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-lightbulb text-amber-500"></i> Tips</h3>
+        <ul class="space-y-2 text-xs text-gray-600">
+          <li>Use a clear photo where your face is visible.</li>
+          <li>Keep your email updated for notifications.</li>
+          <li>Turn on reminders to avoid missing sessions.</li>
+        </ul>
       </div>
     </div>
 
-    <!-- Settings Content -->
-    <div class="lg:col-span-2 space-y-8">
-      <!-- Personal Information Section -->
-      <div id="personal" class="settings-card rounded-xl p-6">
-        <div class="section-header p-4 rounded-lg mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-            <i class="fas fa-user mr-2 text-blue-600"></i>
-            Personal Information
-          </h3>
-          <p class="text-sm text-gray-600 mt-1">Update your personal details and contact information</p>
+    <!-- Main content -->
+  <div class="xl:col-span-3 space-y-10">
+      <!-- Personal / Academic Info -->
+      <div id="personal" class="settings-card rounded-2xl p-8">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-user text-blue-600"></i> Personal & Academic Information</h3>
+            <p class="subtle mt-1">Update the fields below. Student Number remains locked after initial set.</p>
+          </div>
+          <span class="pill">Profile</span>
         </div>
-
-        <form class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form class="mt-6 space-y-6" method="post" action="{{ url_for('student.update_personal_info') }}">
+          {{ personal_form.csrf_token }}
+          <div class="grid md:grid-cols-3 gap-6">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-              <input
-                type="text"
-                value="{{ current_user.first_name }}"
-                class="input-field w-full px-3 py-2 rounded-lg focus:outline-none"
-                readonly
-              />
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">First Name</label>
+              {{ personal_form.first_name(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-              <input
-                type="text"
-                value="{{ current_user.last_name }}"
-                class="input-field w-full px-3 py-2 rounded-lg focus:outline-none"
-                readonly
-              />
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Middle Name</label>
+              {{ personal_form.middle_name(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Last Name</label>
+              {{ personal_form.last_name(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
             </div>
           </div>
-
-          {% if current_user.middle_name %}
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
-            <input
-              type="text"
-              value="{{ current_user.middle_name }}"
-              class="input-field w-full px-3 py-2 rounded-lg focus:outline-none"
-              readonly
-            />
+          <div class="grid md:grid-cols-3 gap-6">
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Email</label>
+              {{ personal_form.email(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Student Number</label>
+              {{ personal_form.student_number(class='input-field w-full px-3 py-2 rounded-lg text-sm ' + ('opacity-60 cursor-not-allowed' if student.student_number else ''), readonly=student.student_number is not none) }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Department</label>
+              {{ personal_form.department_id(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
           </div>
-          {% endif %}
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-            <input
-              type="email"
-              value="{{ current_user.email }}"
-              class="input-field w-full px-3 py-2 rounded-lg focus:outline-none"
-              readonly
-            />
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Section</label>
+              {{ personal_form.section(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Year Level</label>
+              {{ personal_form.year_level(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
           </div>
-
-          {% if student.student_number %}
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Student Number</label>
-            <input
-              type="text"
-              value="{{ student.student_number }}"
-              class="input-field w-full px-3 py-2 rounded-lg focus:outline-none"
-              readonly
-            />
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-xs text-amber-800">
+            <i class="fas fa-shield-alt mt-0.5"></i>
+            <p>All profile changes are subject to review. Some updates may require administrative verification.</p>
           </div>
-          {% endif %}
+          <div class="save-bar rounded-b-2xl">
+            <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow">Save Changes</button>
+          </div>
+        </form>
+      </div>
 
-          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div class="flex">
-              <i class="fas fa-info-circle text-yellow-600 mt-1 mr-3"></i>
-              <div>
-                <h4 class="text-sm font-medium text-yellow-800">Information Notice</h4>
-                <p class="text-sm text-yellow-700 mt-1">
-                  Personal information changes require admin approval. Please contact your system administrator to update these details.
-                </p>
+      
+
+      <!-- Password Security -->
+      <div id="password-security" class="settings-card rounded-2xl p-8">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-shield-alt text-rose-600"></i> Password Security</h3>
+            <p class="subtle mt-1">Keep your account protected with a strong password.</p>
+          </div>
+          <span class="pill">Security</span>
+        </div>
+        <form class="mt-6 space-y-7" method="post" action="{{ url_for('student.change_password') }}" autocomplete="off">
+          {{ password_form.csrf_token }}
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="md:col-span-1">
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Current Password</label>
+              {{ password_form.current_password(class='input-field w-full px-3 py-2 rounded-lg text-sm', autocomplete='current-password', placeholder='••••••••') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">New Password</label>
+              {{ password_form.new_password(class='input-field w-full px-3 py-2 rounded-lg text-sm password-new', autocomplete='new-password', placeholder='At least 8 characters') }}
+              <div class="mt-2">
+                <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="pwStrengthBar" class="h-full w-0 transition-all"></div>
+                </div>
+                <p id="pwStrengthText" class="text-[10px] mt-1 text-gray-500">Strength: Unknown</p>
               </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Confirm New Password</label>
+              {{ password_form.confirm_password(class='input-field w-full px-3 py-2 rounded-lg text-sm', autocomplete='new-password', placeholder='Repeat new password') }}
+            </div>
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center gap-5 justify-between text-[11px] text-gray-500">
+            <ul class="list-disc list-inside space-y-1">
+              <li>Minimum 8 characters</li>
+              <li>Include letters, a number & symbol</li>
+              <li>Avoid reusing old passwords</li>
+            </ul>
+            <div class="flex items-center gap-3">
+              <button type="submit" class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow">Update Password</button>
             </div>
           </div>
         </form>
       </div>
 
-      <!-- Video Settings Section -->
-      <div id="video" class="settings-card rounded-xl p-6">
-        <div class="section-header p-4 rounded-lg mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-            <i class="fas fa-video mr-2 text-blue-600"></i>
-            Video Call Settings
-          </h3>
-          <p class="text-sm text-gray-600 mt-1">Configure your video counseling preferences</p>
+      <!-- Account Deactivation -->
+      <div id="account-status" class="settings-card rounded-2xl p-8 border-amber-300" style="border-image:linear-gradient(90deg,#fbbf24,#f59e0b) 1;">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-user-slash text-amber-600"></i> Account Status</h3>
+            <p class="subtle mt-1">Deactivate your account if you no longer need access.</p>
+          </div>
+          <span class="pill" style="background:#fef3c7;color:#92400e">Caution</span>
         </div>
-
-        <form class="space-y-6">
-          <div class="setting-item p-4 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="text-sm font-medium text-gray-900">Video Call Notifications</h4>
-                <p class="text-sm text-gray-600">Receive real-time notifications for video calls</p>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" {% if current_user.video_call_notifications %}checked{% endif %} disabled>
-                <span class="slider"></span>
-              </label>
+        <form class="mt-6 space-y-6" method="post" action="{{ url_for('student.deactivate_account') }}" onsubmit="return confirm('Are you sure you want to deactivate your account?');">
+          {{ deactivate_form.csrf_token }}
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Reason (optional)</label>
+              {{ deactivate_form.reason(class='input-field w-full px-3 py-2 rounded-lg text-sm', rows='3', maxlength='255', placeholder='Briefly tell us why (helps improvement)') }}
+              <p class="text-[10px] mt-1 text-gray-500">This note is only visible to administrators.</p>
             </div>
           </div>
-
-          <div class="setting-item p-4 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="text-sm font-medium text-gray-900">Email Reminders</h4>
-                <p class="text-sm text-gray-600">Get email reminders for upcoming sessions</p>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" {% if current_user.video_call_email_reminders %}checked{% endif %} disabled>
-                <span class="slider"></span>
-              </label>
-            </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-xs text-amber-800">
+            <i class="fas fa-exclamation-triangle mt-0.5"></i>
+            <p>Your login will be disabled immediately. You can request reactivation later by contacting campus support.</p>
           </div>
-
-          <div class="setting-item p-4 rounded-lg">
-            <div>
-              <h4 class="text-sm font-medium text-gray-900 mb-2">Preferred Video Quality</h4>
-              <select class="input-field w-full px-3 py-2 rounded-lg focus:outline-none" disabled>
-                <option value="auto" {% if current_user.preferred_video_quality == 'auto' %}selected{% endif %}>Auto</option>
-                <option value="low" {% if current_user.preferred_video_quality == 'low' %}selected{% endif %}>Low</option>
-                <option value="medium" {% if current_user.preferred_video_quality == 'medium' %}selected{% endif %}>Medium</option>
-                <option value="high" {% if current_user.preferred_video_quality == 'high' %}selected{% endif %}>High</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div class="flex">
-              <i class="fas fa-info-circle text-blue-600 mt-1 mr-3"></i>
-              <div>
-                <h4 class="text-sm font-medium text-blue-800">Settings Notice</h4>
-                <p class="text-sm text-blue-700 mt-1">
-                  Video settings are currently view-only. Contact your counselor if you need to modify these preferences.
-                </p>
-              </div>
-            </div>
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <p class="text-[11px] text-gray-500">Need temporary break? Deactivation preserves your data.</p>
+            <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow">Deactivate Account</button>
           </div>
         </form>
-      </div>
-
-      <!-- Coming Soon Sections -->
-      <div class="settings-card rounded-xl p-6">
-        <div class="text-center py-8">
-          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-tools text-gray-400 text-xl"></i>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">More Settings Coming Soon</h3>
-          <p class="text-gray-600 mb-4">We're working on additional customization options for your account.</p>
-          <div class="flex flex-wrap justify-center gap-2">
-            <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Notification Preferences</span>
-            <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Privacy Controls</span>
-            <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Security Settings</span>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -321,45 +235,47 @@
 
 {% block scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Smooth scrolling for navigation links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-        }
+  document.addEventListener('DOMContentLoaded',() => {
+    // Auto submit profile picture when selected
+    const input = document.getElementById('profilePicInput');
+    if (input){
+      input.addEventListener('change', ()=>{ if(input.files.length){ document.getElementById('picUploadForm').submit(); } });
+    }
+
+    // Custom toggle styling sync
+    document.querySelectorAll('.toggle-switch .slider').forEach(slider=>{
+      slider.addEventListener('click',()=>{
+        const fieldName = slider.getAttribute('data-toggle-for');
+        const hiddenInput = document.getElementById(fieldName);
+        if(hiddenInput){ hiddenInput.checked = !hiddenInput.checked; }
       });
     });
 
-    // Update active navigation item on scroll
-    const sections = document.querySelectorAll('[id]');
-    const navLinks = document.querySelectorAll('nav a[href^="#"]');
-
-    function updateActiveNav() {
-      let current = '';
-      sections.forEach(section => {
-        const sectionTop = section.offsetTop - 100;
-        if (window.scrollY >= sectionTop) {
-          current = section.getAttribute('id');
-        }
-      });
-
-      navLinks.forEach(link => {
-        link.classList.remove('text-blue-600', 'bg-blue-50');
-        link.classList.add('text-gray-700');
-        if (link.getAttribute('href') === `#${current}`) {
-          link.classList.remove('text-gray-700');
-          link.classList.add('text-blue-600', 'bg-blue-50');
-        }
+    // Password strength meter
+    const pwInput = document.querySelector('.password-new');
+    if(pwInput){
+      const bar = document.getElementById('pwStrengthBar');
+      const text = document.getElementById('pwStrengthText');
+      pwInput.addEventListener('input', ()=>{
+        const val = pwInput.value || '';
+        let score = 0;
+        if(val.length >= 8) score++;
+        if(/[A-Z]/.test(val)) score++;
+        if(/[a-z]/.test(val)) score++;
+        if(/[0-9]/.test(val)) score++;
+        if(/[!@#$%^&*(),.?":{}|<>]/.test(val)) score++;
+        const percent = (score/5)*100;
+        bar.style.width = percent + '%';
+        let color = '#ef4444';
+        let label = 'Very Weak';
+        if(score===2){color='#f97316';label='Weak';}
+        if(score===3){color='#eab308';label='Fair';}
+        if(score===4){color='#10b981';label='Good';}
+        if(score===5){color='#059669';label='Strong';}
+        bar.style.backgroundColor = color;
+        text.textContent = 'Strength: ' + label;
       });
     }
-
-    window.addEventListener('scroll', updateActiveNav);
   });
 </script>
 {% endblock %}

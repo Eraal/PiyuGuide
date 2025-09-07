@@ -18,17 +18,22 @@ def admin_counseling():
     if current_user.role != 'super_admin':
         return redirect(url_for('main.index'))
     
-    # Get all offices for the filter dropdown
-    offices = Office.query.all()
-    
-    # Calculate statistics for dashboard cards
-    total_sessions = CounselingSession.query.count()
-    
-    # Status counts
-    pending_sessions = CounselingSession.query.filter_by(status='pending').count()
-    completed_sessions = CounselingSession.query.filter_by(status='completed').count()
-    cancelled_sessions = CounselingSession.query.filter_by(status='cancelled').count()
-    no_show_sessions = CounselingSession.query.filter_by(status='no-show').count()
+    # Campus-aware filtering: campus admins (role super_admin) only see their campus' offices & sessions
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        offices = Office.query.filter(Office.campus_id == current_user.campus_id).all()
+        base_query = CounselingSession.query.join(Office).filter(Office.campus_id == current_user.campus_id)
+    else:
+        offices = Office.query.all()
+        base_query = CounselingSession.query
+
+    # Calculate statistics for dashboard cards (scoped if campus admin)
+    total_sessions = base_query.count()
+
+    # Status counts (reuse scoped base_query)
+    pending_sessions = base_query.filter(CounselingSession.status == 'pending').count()
+    completed_sessions = base_query.filter(CounselingSession.status == 'completed').count()
+    cancelled_sessions = base_query.filter(CounselingSession.status == 'cancelled').count()
+    no_show_sessions = base_query.filter(CounselingSession.status == 'no-show').count()
     
     # Calculate percentages
     pending_sessions_percent = round((pending_sessions / total_sessions * 100) if total_sessions > 0 else 0)
@@ -41,11 +46,11 @@ def admin_counseling():
     first_day_current_month = datetime(today.year, today.month, 1)
     first_day_previous_month = first_day_current_month - timedelta(days=first_day_current_month.day)
     
-    current_month_sessions = CounselingSession.query.filter(
+    current_month_sessions = base_query.filter(
         CounselingSession.scheduled_at >= first_day_current_month
     ).count()
     
-    prev_month_sessions = CounselingSession.query.filter(
+    prev_month_sessions = base_query.filter(
         CounselingSession.scheduled_at >= first_day_previous_month,
         CounselingSession.scheduled_at < first_day_current_month
     ).count()
@@ -64,11 +69,16 @@ def admin_counseling():
     StudentUser = aliased(User)
     CounselorUser = aliased(User)
     
-    counseling_sessions = CounselingSession.query\
+    counseling_query = CounselingSession.query\
         .join(Student, CounselingSession.student_id == Student.id)\
         .join(StudentUser, Student.user_id == StudentUser.id)\
         .join(Office, CounselingSession.office_id == Office.id)\
-        .join(CounselorUser, CounselingSession.counselor_id == CounselorUser.id)\
+        .join(CounselorUser, CounselingSession.counselor_id == CounselorUser.id)
+
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        counseling_query = counseling_query.filter(Office.campus_id == current_user.campus_id)
+
+    counseling_sessions = counseling_query\
         .order_by(CounselingSession.scheduled_at.desc())\
         .paginate(page=page, per_page=per_page, error_out=False)
     
@@ -121,6 +131,10 @@ def filter_counseling_sessions():
         .join(StudentUser, Student.user_id == StudentUser.id)\
         .join(Office, CounselingSession.office_id == Office.id)\
         .join(CounselorUser, CounselingSession.counselor_id == CounselorUser.id)
+
+    # Campus scoping
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        query = query.filter(Office.campus_id == current_user.campus_id)
     
     # Apply filters
     if search_term:
@@ -233,6 +247,9 @@ def export_counseling_csv():
         .join(StudentUser, Student.user_id == StudentUser.id)\
         .join(Office, CounselingSession.office_id == Office.id)\
         .join(CounselorUser, CounselingSession.counselor_id == CounselorUser.id)
+
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        query = query.filter(Office.campus_id == current_user.campus_id)
     
     # Apply filters
     if search_term:

@@ -1,0 +1,861 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}{{ campus.name }} - Campus Details{% endblock %}
+
+{% block page_title %}Campus Details{% endblock %}
+{% block page_subtitle %}Comprehensive view of {{ campus.name }} ({{ campus.code }}){% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Enhanced Campus Header with Glassmorphism Design -->
+    <div class="relative bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+        <!-- Floating decorative elements -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 animate-pulse"></div>
+        <div class="absolute bottom-0 left-0 w-24 h-24 bg-blue-400/20 rounded-full -ml-12 -mb-12 animate-pulse delay-1000"></div>
+        <div class="absolute top-1/2 right-1/4 w-16 h-16 bg-purple-400/15 rounded-full animate-bounce delay-500"></div>
+        
+        <div class="relative z-10">
+            <!-- Header with Action Buttons -->
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+                <div class="flex items-center space-x-6">
+                    <!-- Campus Icon -->
+                    <div class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg border border-white/30">
+                        <span class="text-white font-bold text-2xl">{{ campus.code }}</span>
+                    </div>
+                    
+                    <!-- Campus Info -->
+                    <div>
+                        <div class="flex items-center space-x-4 mb-2">
+                            <h1 class="text-4xl font-bold">{{ campus.name }}</h1>
+                            {% if campus.is_active %}
+                                <span class="px-4 py-2 bg-green-500/20 text-green-100 text-sm font-semibold rounded-full border border-green-400/30">
+                                    <i class="fas fa-check-circle mr-2"></i>Active Campus
+                                </span>
+                            {% else %}
+                                <span class="px-4 py-2 bg-red-500/20 text-red-100 text-sm font-semibold rounded-full border border-red-400/30">
+                                    <i class="fas fa-times-circle mr-2"></i>Inactive Campus
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if campus.address %}
+                        <div class="flex items-center text-blue-100 text-lg mb-2">
+                            <i class="fas fa-map-marker-alt mr-3"></i>
+                            <span>{{ campus.address }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="flex items-center text-blue-200 text-sm">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span>Established: {{ campus.created_at.strftime('%B %d, %Y') if campus.created_at else 'N/A' }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                    <a href="{{ url_for('super_admin.edit_campus', campus_id=campus.id) }}" 
+                       class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 border border-white/30">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Campus</span>
+                    </a>
+                    
+                    <button data-campus-id="{{ campus.id }}" 
+                            data-campus-name="{{ campus.name }}" 
+                            data-is-active="{{ campus.is_active|lower }}"
+                            onclick="toggleCampusStatus(this)"
+                            class="{% if campus.is_active %}bg-red-500/20 hover:bg-red-500/30 border-red-400/30{% else %}bg-green-500/20 hover:bg-green-500/30 border-green-400/30{% endif %} backdrop-blur-sm text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 border">
+                        <i class="fas fa-{% if campus.is_active %}ban{% else %}check{% endif %}"></i>
+                        <span>{% if campus.is_active %}Deactivate{% else %}Activate{% endif %}</span>
+                    </button>
+                    
+                    <a href="{{ url_for('super_admin.campus_list') }}" 
+                       class="bg-gray-600/20 hover:bg-gray-600/30 backdrop-blur-sm text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 border border-gray-400/30">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to List</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Campus Description -->
+            {% if campus.description %}
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Campus Description
+                </h3>
+                <p class="text-blue-100 leading-relaxed">{{ campus.description }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Campus Statistics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Super Admins Count -->
+        <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-users-cog text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-3xl font-bold text-purple-600">{{ super_admins|length if super_admins else 0 }}</p>
+                    <p class="text-sm text-purple-500 font-medium">Super Admins</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-600">
+                <p class="flex items-center">
+                    <i class="fas fa-user-check mr-2 text-green-500"></i>
+                    {{ (super_admins|selectattr('is_active')|list|length) if super_admins else 0 }} Active
+                </p>
+            </div>
+        </div>
+
+        <!-- Offices Count -->
+        <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-building text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-3xl font-bold text-blue-600">{{ offices|length if offices else 0 }}</p>
+                    <p class="text-sm text-blue-500 font-medium">Offices</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-600">
+                <p class="flex items-center">
+                    <i class="fas fa-chart-line mr-2 text-blue-500"></i>
+                    {{ (offices|selectattr('is_active', 'equalto', true)|list|length) if offices else 0 }} Active
+                </p>
+            </div>
+        </div>
+
+        <!-- Office Admins Count -->
+        <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-user-tie text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    {% set total_office_admins = office_stats.values()|map(attribute='admin_count')|sum if office_stats else 0 %}
+                    <p class="text-3xl font-bold text-green-600">{{ total_office_admins }}</p>
+                    <p class="text-sm text-green-500 font-medium">Office Admins</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-600">
+                <p class="flex items-center">
+                    <i class="fas fa-users mr-2 text-green-500"></i>
+                    Across {{ offices|length if offices else 0 }} offices
+                </p>
+            </div>
+        </div>
+
+        <!-- Total Inquiries Count -->
+        <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-inbox text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    {% set total_inquiries = office_stats.values()|map(attribute='inquiry_count')|sum if office_stats else 0 %}
+                    <p class="text-3xl font-bold text-orange-600">{{ total_inquiries }}</p>
+                    <p class="text-sm text-orange-500 font-medium">Total Inquiries</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-600">
+                <p class="flex items-center">
+                    <i class="fas fa-chart-bar mr-2 text-orange-500"></i>
+                    All time records
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Super Admins Section -->
+        <div class="lg:col-span-2">
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-purple-50 to-purple-100 px-8 py-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-xl font-bold text-gray-900 flex items-center">
+                            <i class="fas fa-users-cog mr-3 text-purple-600"></i>
+                            Campus Administrators
+                        </h2>
+                        <span class="px-3 py-1 bg-purple-100 text-purple-600 text-sm font-semibold rounded-full">
+                            {{ super_admins|length if super_admins else 0 }} Total
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-8">
+                    {% if super_admins %}
+                    <div class="space-y-4">
+                        {% for admin in super_admins %}
+                        <div class="bg-white rounded-xl p-6 border border-gray-100 hover:border-purple-200 hover:shadow-lg transition-all duration-300 group">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <!-- Avatar -->
+                                    <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                        <span class="text-white font-bold">{{ admin.first_name[0] if admin.first_name else 'U' }}{{ admin.last_name[0] if admin.last_name else 'N' }}</span>
+                                    </div>
+                                    
+                                    <!-- Admin Info -->
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-200">
+                                            {{ admin.get_full_name() if admin.get_full_name() else admin.email }}
+                                        </h3>
+                                        <p class="text-sm text-gray-600">{{ admin.email }}</p>
+                                        {% if admin.last_activity %}
+                                        <p class="text-xs text-gray-500 flex items-center mt-1">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            Last active: {{ admin.last_activity.strftime('%B %d, %Y at %I:%M %p') }}
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Status and Actions -->
+                                <div class="flex items-center space-x-3">
+                                        <!-- Removed active/inactive status badge per request -->
+                                    
+                                    {% if admin.is_online %}
+                                        <div class="w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-lg" title="Online"></div>
+                                    {% else %}
+                                        <div class="w-3 h-3 bg-gray-400 rounded-full border-2 border-white shadow-lg" title="Offline"></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <!-- Empty State -->
+                    <div class="text-center py-12">
+                        <div class="w-24 h-24 bg-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-users-cog text-purple-500 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">No Campus Administrators</h3>
+                        <p class="text-gray-600 mb-6">This campus doesn't have any campus administrators assigned yet.</p>
+                        <a href="#" class="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105 inline-flex items-center space-x-2">
+                            <i class="fas fa-plus"></i>
+                            <span>Assign Administrator</span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Campus Information Sidebar -->
+        <div class="space-y-6">
+            <!-- Quick Campus Info -->
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i>
+                        Campus Information
+                    </h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-600">Campus Code</span>
+                        <span class="text-sm font-bold text-gray-900 bg-blue-50 px-3 py-1 rounded-lg">{{ campus.code }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-600">Status</span>
+                        {% if campus.is_active %}
+                            <span class="text-sm font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-lg flex items-center">
+                                <i class="fas fa-check-circle mr-1"></i>Active
+                            </span>
+                        {% else %}
+                            <span class="text-sm font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-lg flex items-center">
+                                <i class="fas fa-times-circle mr-1"></i>Inactive
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="py-2 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-600 block mb-1">Address</span>
+                        {% if campus.address %}
+                            <span class="text-sm text-gray-900">{{ campus.address }}</span>
+                        {% else %}
+                            <span class="text-sm text-gray-400 italic">No address specified</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm font-medium text-gray-600">Created</span>
+                        <span class="text-sm text-gray-900">{{ campus.created_at.strftime('%b %d, %Y') if campus.created_at else 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Note: intentionally removed quick actions to reduce noise and keep the page focused. -->
+        </div>
+    </div>
+
+    <!-- Campus Offices Section -->
+    <div id="offices-section" class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-8 py-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 flex items-center">
+                    <i class="fas fa-building mr-3 text-blue-600"></i>
+                    Campus Offices
+                </h2>
+                <div class="flex items-center space-x-3">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-600 text-sm font-semibold rounded-full">
+                        {{ offices|length if offices else 0 }} Total
+                    </span>
+                    {% if offices and offices|length > 0 %}
+                    <span class="px-3 py-1 bg-green-100 text-green-600 text-sm font-semibold rounded-full">
+                        {{ (offices|selectattr('is_active', 'equalto', true)|list|length) if offices else 0 }} Active
+                    </span>
+                    {% endif %}
+                    <!-- Creation of offices is restricted to Campus Admins -->
+                </div>
+            </div>
+        </div>
+
+        <div class="p-8">
+            <!-- Subtle info banner to clarify permissions -->
+            <div class="mb-6 rounded-xl border border-blue-100 bg-blue-50 text-blue-700 px-4 py-3 flex items-start">
+                <i class="fas fa-info-circle mt-0.5 mr-2"></i>
+                <p class="text-sm">Office creation and management are handled by Campus Administrators. This view is read-only for University-wide Super Admins.</p>
+            </div>
+
+            {% if offices %}
+            <!-- Lightweight Office Search -->
+            <div class="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+                <label for="officeSearch" class="text-sm font-medium text-gray-700">Search offices</label>
+                <div class="relative flex-1 max-w-md">
+                    <span class="absolute inset-y-0 left-3 flex items-center text-gray-400"><i class="fas fa-search"></i></span>
+                    <input id="officeSearch" type="text" placeholder="Type a name..." class="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-200 focus:border-blue-400 focus:ring-0 outline-none" />
+                </div>
+            </div>
+            {% endif %}
+            {% if offices %}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {% for office in offices %}
+                {% set stats = office_stats[office.id] if office_stats and office.id in office_stats else {'admin_count': 0, 'inquiry_count': 0} %}
+             <div class="bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-200 hover:shadow-lg transition-all duration-300 group" data-office-name="{{ office.name|lower }}"
+                 data-office-id="{{ office.id }}"
+                 data-office-description="{{ (office.description or '')|replace('"','&quot;') }}"
+                 data-office-admins='{{ (office_admins_map[office.id]|tojson) if office_admins_map and office.id in office_admins_map else "[]" }}'
+                 data-office-concerns='{{ (office_concerns_map[office.id]|tojson) if office_concerns_map and office.id in office_concerns_map else "[]" }}'
+                 data-office-inquiries="{{ (office_stats[office.id].inquiry_count if office_stats and office.id in office_stats else 0) }}"
+                 data-office-supports-video="{{ 'Yes' if office.supports_video else 'No' }}">
+                    <!-- Office Header -->
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-building text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                                    {{ office.name }}
+                                </h3>
+                                {% if office.is_active is defined %}
+                                    {% if office.is_active %}
+                                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                                            <i class="fas fa-check-circle mr-1"></i>Active
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full">
+                                            <i class="fas fa-times-circle mr-1"></i>Inactive
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                                        <i class="fas fa-info-circle mr-1"></i>Office
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Office Description -->
+                    {% if office.description %}
+                    <p class="text-sm text-gray-600 mb-4">{{ office.description[:100] }}{% if office.description|length > 100 %}...{% endif %}</p>
+                    {% endif %}
+
+                    <!-- Office Stats -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <p class="text-lg font-bold text-gray-900">{{ stats.admin_count or 0 }}</p>
+                            <p class="text-xs text-gray-600">Admins</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <p class="text-lg font-bold text-gray-900">{{ stats.inquiry_count or 0 }}</p>
+                            <p class="text-xs text-gray-600">Inquiries</p>
+                        </div>
+                    </div>
+
+                    <!-- Office Actions -->
+                    <div class="flex space-x-2">
+                        <button type="button" onclick="openOfficeModal(this)" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-center py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 border border-blue-200 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="text-center py-16">
+                <div class="w-32 h-32 bg-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-building text-blue-500 text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">No Offices Yet</h3>
+                <p class="text-gray-600 mb-8 max-w-md mx-auto">
+                    This campus doesn't have any offices configured yet.
+                </p>
+                <p class="text-sm text-gray-500">Office creation is handled by the Campus Administrator.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced JavaScript -->
+<script>
+// Enhanced Campus Status Toggle with Better UX
+function toggleCampusStatus(button) {
+    const campusId = button.dataset.campusId;
+    const campusName = button.dataset.campusName;
+    const isCurrentlyActive = button.dataset.isActive === 'true';
+    
+    const action = isCurrentlyActive ? 'deactivate' : 'activate';
+    const actionCapitalized = action.charAt(0).toUpperCase() + action.slice(1);
+    
+    // Enhanced confirmation dialog
+    const confirmMessage = `${actionCapitalized} Campus "${campusName}"`;
+    const warningMessage = isCurrentlyActive 
+        ? 'This will disable access for all users associated with this campus.' 
+        : 'This will restore access for all users associated with this campus.';
+    
+    // Custom confirmation with better styling
+    if (confirm(`${confirmMessage}\n\n${warningMessage}\n\nAre you sure you want to continue?`)) {
+        // Show loading state
+        const originalContent = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        button.disabled = true;
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfToken) {
+            showNotification('CSRF token not found. Please refresh the page.', 'error');
+            button.innerHTML = originalContent;
+            button.disabled = false;
+            return;
+        }
+        
+        fetch(`{{ url_for('super_admin.toggle_campus_status', campus_id=0) }}`.replace('0', campusId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken.getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message with animation
+                showNotification(`Campus ${action}d successfully!`, 'success');
+                
+                // Reload page after brief delay to show notification
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                // Restore button and show error
+                button.innerHTML = originalContent;
+                button.disabled = false;
+                showNotification('Error: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            button.innerHTML = originalContent;
+            button.disabled = false;
+            showNotification('An error occurred while updating the campus status.', 'error');
+        });
+    }
+}
+
+// Enhanced notification system
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-2xl shadow-2xl transform translate-x-full transition-all duration-300 max-w-sm`;
+    
+    // Set type-specific styling
+    const typeStyles = {
+        success: 'bg-green-500 text-white border border-green-600',
+        error: 'bg-red-500 text-white border border-red-600',
+        info: 'bg-blue-500 text-white border border-blue-600',
+        warning: 'bg-yellow-500 text-white border border-yellow-600'
+    };
+    
+    const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
+        warning: 'fas fa-exclamation-triangle'
+    };
+    
+    notification.className += ` ${typeStyles[type] || typeStyles.info}`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="${icons[type] || icons.info} mr-3"></i>
+            <span class="font-medium">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 300);
+    }, 5000);
+}
+
+// Smooth scroll to sections
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle anchor links for smooth scrolling
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Add hover effects to cards
+    const cards = document.querySelectorAll('.group');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // Office search filter
+    const officeSearch = document.getElementById('officeSearch');
+    if (officeSearch) {
+        const officeCards = Array.from(document.querySelectorAll('[data-office-name]'));
+        officeSearch.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            let visibleCount = 0;
+            officeCards.forEach(card => {
+                const name = card.getAttribute('data-office-name') || '';
+                const show = !q || name.includes(q);
+                card.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+        });
+    }
+});
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + E to edit campus
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        window.location.href = "{{ url_for('super_admin.edit_campus', campus_id=campus.id) }}";
+    }
+    
+    // Ctrl/Cmd + B to go back to list
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        window.location.href = "{{ url_for('super_admin.campus_list') }}";
+    }
+});
+</script>
+<!-- Office Detail Modal -->
+<div id="officeModal" class="fixed inset-0 z-50 hidden" aria-hidden="true" role="dialog" aria-labelledby="officeModalTitle">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="closeOfficeModal()"></div>
+    <div class="relative mx-auto my-10 w-full max-w-3xl px-4 animate-fade-in-up">
+        <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[85vh]">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 text-white flex items-start justify-between">
+                <div>
+                    <h3 id="officeModalTitle" class="text-2xl font-bold tracking-tight flex items-center">
+                        <span id="officeName">Office Name</span>
+                    </h3>
+                    <p class="text-blue-100 text-sm mt-1 flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-white/20 text-xs font-medium" id="officeStatusBadge">Active</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-white/10 text-xs font-medium" id="officeVideoSupport"><i class="fas fa-video mr-1"></i>Video: No</span>
+                    </p>
+                </div>
+                <button onclick="closeOfficeModal()" class="text-white/80 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40" aria-label="Close Modal">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="px-8 py-6 overflow-y-auto custom-scrollbar space-y-8">
+                <!-- Description -->
+                <section>
+                    <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-2">
+                        <i class="fas fa-align-left text-blue-500"></i> Description
+                    </h4>
+                    <p id="officeDescription" class="text-gray-700 leading-relaxed text-sm bg-gray-50/60 rounded-xl p-4 border border-gray-100"></p>
+                </section>
+                <!-- Statistics -->
+                <section>
+                    <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-2">
+                        <i class="fas fa-chart-bar text-indigo-500"></i> Statistics
+                    </h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-center">
+                            <p id="officeAdminsCount" class="text-2xl font-bold text-blue-600">0</p>
+                            <p class="text-xs font-medium text-blue-600/70">Admins</p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 text-center">
+                            <p id="officeInquiriesCount" class="text-2xl font-bold text-emerald-600">0</p>
+                            <p class="text-xs font-medium text-emerald-600/70">Inquiries</p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 text-center">
+                            <p id="officeConcernsCount" class="text-2xl font-bold text-violet-600">0</p>
+                            <p class="text-xs font-medium text-violet-600/70">Concern Types</p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 text-center">
+                            <p id="officeVideoFlag" class="text-2xl font-bold text-orange-600">No</p>
+                            <p class="text-xs font-medium text-orange-600/70">Video Support</p>
+                        </div>
+                    </div>
+                </section>
+                <!-- Admins -->
+                <section>
+                    <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-2"><i class="fas fa-user-tie text-green-500"></i> Office Admins</h4>
+                    <div id="officeAdminsList" class="flex flex-wrap gap-2"></div>
+                    <p id="officeAdminsEmpty" class="text-xs text-gray-500 italic hidden">No admins assigned.</p>
+                </section>
+                <!-- Concern Types -->
+                <section>
+                    <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-2"><i class="fas fa-tags text-purple-500"></i> Supported Concern Types</h4>
+                        <div id="officeConcernsList" class="flex flex-wrap gap-2"></div>
+                        <p id="officeConcernsEmpty" class="text-xs text-gray-500 italic hidden">No concern types configured.</p>
+                </section>
+            </div>
+            <!-- Modal Footer -->
+            <div class="px-8 py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <div class="text-xs text-gray-500">Read-only view • Campus: {{ campus.name }}</div>
+                <button onclick="closeOfficeModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium shadow hover:shadow-md transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openOfficeModal(btn){
+    const card = btn.closest('[data-office-id]');
+    if(!card) return;
+    const modal = document.getElementById('officeModal');
+    // Extract data
+    const name = card.querySelector('h3')?.textContent.trim() || 'Office';
+    const description = card.getAttribute('data-office-description') || 'No description provided.';
+    const admins = JSON.parse(card.getAttribute('data-office-admins') || '[]');
+    const concerns = JSON.parse(card.getAttribute('data-office-concerns') || '[]');
+    const inquiries = parseInt(card.getAttribute('data-office-inquiries') || '0');
+    const supportsVideo = card.getAttribute('data-office-supports-video') === 'Yes';
+    const isActiveBadge = card.querySelector('.bg-green-100, .bg-red-100');
+    const active = isActiveBadge && isActiveBadge.classList.contains('bg-green-100');
+
+    // Populate modal
+    document.getElementById('officeName').textContent = name;
+    document.getElementById('officeDescription').textContent = description || 'No description provided.';
+    document.getElementById('officeInquiriesCount').textContent = inquiries;
+    document.getElementById('officeVideoFlag').textContent = supportsVideo ? 'Yes' : 'No';
+    const videoBadge = document.getElementById('officeVideoSupport');
+    videoBadge.innerHTML = '<i class="fas fa-video mr-1"></i>Video: ' + (supportsVideo ? 'Yes' : 'No');
+    const statusBadge = document.getElementById('officeStatusBadge');
+    statusBadge.textContent = active ? 'Active' : 'Inactive';
+    statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ' + (active ? 'bg-white/20' : 'bg-black/30');
+
+    // Admins
+    const adminsWrap = document.getElementById('officeAdminsList');
+    adminsWrap.innerHTML = '';
+    if(admins.length){
+         document.getElementById('officeAdminsEmpty').classList.add('hidden');
+         admins.forEach(a=>{
+                const chip = document.createElement('span');
+                chip.className='px-3 py-1 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 text-xs font-medium border border-green-200 shadow-sm flex items-center gap-1';
+                const initials = a.split(' ').map(p=>p[0]).join('').substring(0,2).toUpperCase();
+                chip.innerHTML = '<span class="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-bold">'+initials+'</span>'+a;
+                adminsWrap.appendChild(chip);
+         });
+         document.getElementById('officeAdminsCount').textContent = admins.length;
+    } else {
+         document.getElementById('officeAdminsEmpty').classList.remove('hidden');
+         document.getElementById('officeAdminsCount').textContent = '0';
+    }
+
+    // Concerns
+    const concernsWrap = document.getElementById('officeConcernsList');
+    concernsWrap.innerHTML='';
+    if(concerns.length){
+         document.getElementById('officeConcernsEmpty').classList.add('hidden');
+         concerns.forEach(c=>{
+             const pill=document.createElement('span');
+             pill.className='px-3 py-1 rounded-full bg-gradient-to-r from-violet-100 to-purple-100 text-purple-700 text-xs font-medium border border-violet-200 shadow-sm';
+             pill.textContent=c;
+             concernsWrap.appendChild(pill);
+         });
+         document.getElementById('officeConcernsCount').textContent = concerns.length;
+    } else {
+         document.getElementById('officeConcernsEmpty').classList.remove('hidden');
+         document.getElementById('officeConcernsCount').textContent = '0';
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    // Accessibility focus trap (simple)
+    setTimeout(()=>{
+        modal.querySelector('button[aria-label="Close Modal"]').focus();
+    },50);
+}
+function closeOfficeModal(){
+    const modal = document.getElementById('officeModal');
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ closeOfficeModal(); }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Additional enhanced styles */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-hover-effect {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-effect:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Enhanced transitions */
+* {
+    transition-property: color, background-color, border-color, transform, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Improved focus states */
+input:focus, button:focus, a:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgb(59 130 246 / 0.3);
+}
+
+/* Loading states */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Hover effects for interactive elements */
+.group:hover .group-hover\:scale-110 {
+    transform: scale(1.1);
+}
+
+.group:hover .group-hover\:text-purple-600 {
+    color: rgb(147 51 234);
+}
+
+.group:hover .group-hover\:text-blue-600 {
+    color: rgb(37 99 235);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Responsive text sizes */
+@media (max-width: 640px) {
+    .text-4xl {
+        font-size: 2rem;
+    }
+    
+    .text-3xl {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

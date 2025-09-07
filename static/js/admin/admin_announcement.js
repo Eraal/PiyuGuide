@@ -314,32 +314,56 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Make all announcement images clickable for preview
-    document.querySelectorAll('.announcement-card img:not(.preview-image)').forEach(img => {
-        img.classList.add('cursor-pointer');
-        img.addEventListener('click', function () {
-            showImagePreview(this.src, this.alt !== 'Announcement image' ? this.alt : '');
-        });
-    });
-
-    // Initialize dropdowns
-    document.querySelectorAll('.dropdown').forEach(dropdown => {
-        const button = dropdown.querySelector('button');
-        const content = dropdown.querySelector('.dropdown-content');
-
-        if (button && content) {
-            button.addEventListener('click', function (e) {
-                e.stopPropagation();
-                content.classList.toggle('active');
+    // Make all announcement content images (not avatars) clickable for preview
+    document.querySelectorAll('.announcement-card img').forEach(img => {
+        // Skip avatars (identified by parent .ann-avatar)
+        if (img.closest('.ann-avatar')) return;
+        if (!img.classList.contains('preview-image')) {
+            img.classList.add('cursor-pointer');
+            img.addEventListener('click', function () {
+                showImagePreview(this.src, this.alt && this.alt !== 'Announcement image' ? this.alt : '');
             });
         }
     });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function () {
-        document.querySelectorAll('.dropdown-content.active').forEach(dropdown => {
-            dropdown.classList.remove('active');
+    // Initialize dropdowns (3-dot menus)
+    document.querySelectorAll('.announcement-card .dropdown, .announcement-card .ann-actions.dropdown').forEach(dropdown => {
+        const button = dropdown.querySelector('button');
+        const content = dropdown.querySelector('.dropdown-content');
+        if (!button || !content) return;
+
+        button.addEventListener('click', function (e) {
+            e.stopPropagation();
+            // Close all other open dropdowns first
+            document.querySelectorAll('.announcement-card .dropdown-content.show').forEach(openContent => {
+                if (openContent !== content) {
+                    openContent.classList.remove('show');
+                    const parentBtn = openContent.parentElement.querySelector('button[aria-expanded="true"]');
+                    if (parentBtn) parentBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            const isActive = content.classList.toggle('show');
+            button.setAttribute('aria-expanded', isActive ? 'true' : 'false');
         });
+    });
+
+    // Close dropdowns when clicking outside or pressing Escape
+    document.addEventListener('click', function () {
+        document.querySelectorAll('.announcement-card .dropdown-content.show').forEach(openContent => {
+            openContent.classList.remove('show');
+            const parentBtn = openContent.parentElement.querySelector('button[aria-expanded="true"]');
+            if (parentBtn) parentBtn.setAttribute('aria-expanded', 'false');
+        });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.announcement-card .dropdown-content.show').forEach(openContent => {
+                openContent.classList.remove('show');
+                const parentBtn = openContent.parentElement.querySelector('button[aria-expanded="true"]');
+                if (parentBtn) parentBtn.setAttribute('aria-expanded', 'false');
+            });
+        }
     });
 
     // Initialize visibility toggles

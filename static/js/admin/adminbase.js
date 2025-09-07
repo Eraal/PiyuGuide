@@ -46,10 +46,12 @@ class SocketManager {
         this.socket.on('disconnect', (reason) => {
             console.log('Disconnected from dashboard:', reason);
             this.isConnected = false;
-            this.showConnectionStatus('Disconnected from real-time dashboard', 'warning');
-            
-            if (reason === 'io server disconnect') {
-                // Server disconnected, try to reconnect
+            // Suppress noisy warning when user is navigating away (normal page change)
+            if (!window.__page_unloading) {
+                this.showConnectionStatus('Disconnected from real-time dashboard', 'warning');
+            }
+            if (reason === 'io server disconnect' && !window.__page_unloading) {
+                // Server disconnected unexpectedly, try to reconnect
                 this.handleReconnection();
             }
         });
@@ -219,6 +221,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', function() {
+    // Flag to indicate intentional navigation/unload so we don't show disconnect warning
+    window.__page_unloading = true;
     if (socketManager) {
         socketManager.disconnect();
     }

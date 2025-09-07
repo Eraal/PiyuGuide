@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask import render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import desc, or_
@@ -10,6 +10,7 @@ from app.models import (
 )
 from app.extensions import db
 from app.utils import role_required
+from datetime import time as dtime
 
 @student_bp.route('/counseling-sessions')
 @login_required
@@ -23,14 +24,18 @@ def counseling_sessions():
     sessions = CounselingSession.query.filter_by(
         student_id=student.id    ).order_by(desc(CounselingSession.scheduled_at)).all()
     
-    # Get only offices that offer counseling services
+    # Get only offices that offer counseling services within student's campus
     # An office offers counseling if it either supports video OR has had counseling sessions
-    offices = Office.query.filter(
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    office_query = Office.query.filter(
         or_(
             Office.supports_video == True,
             Office.counseling_sessions.any()
         )
-    ).all()
+    )
+    if campus_id:
+        office_query = office_query.filter(Office.campus_id == campus_id)
+    offices = office_query.all()
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(
@@ -128,6 +133,8 @@ def schedule_session():
     scheduled_time = request.form.get('scheduled_time')
     is_video = request.form.get('is_video') == 'true'  # Handle string value 'true' vs 'false'
     notes = request.form.get('notes', '')
+    nature_of_concern_id = request.form.get('nature_of_concern_id')
+    nature_of_concern_description = request.form.get('nature_of_concern_description')
     
     # Validate required fields
     if not office_id or not scheduled_date or not scheduled_time:
@@ -148,12 +155,43 @@ def schedule_session():
         
         # Verify the office exists
         office = Office.query.get_or_404(office_id)
+
+        # Enforce campus scope (fallback to session campus)
+        campus_id = student.campus_id or session.get('selected_campus_id')
+        if campus_id and office.campus_id != campus_id:
+            flash('You can only schedule counseling with offices in your campus.', 'error')
+            return redirect(url_for('student.request_counseling_session'))
         
         # If video session is requested, verify office supports it
         if is_video and not office.supports_video:
             flash('The selected office does not support video counseling', 'error')
             return redirect(url_for('student.request_counseling_session'))
+
+        # Validate selected nature_of_concern belongs to this office's counseling concern set
+        if nature_of_concern_id:
+            assoc = OfficeConcernType.query.filter_by(
+                office_id=office.id,
+                concern_type_id=int(nature_of_concern_id),
+                for_counseling=True
+            ).first()
+            if not assoc:
+                flash('Selected concern type is not available for counseling in the chosen office.', 'error')
+                return redirect(url_for('student.request_counseling_session'))
         
+        # Prevent double-booking within the same office window
+        duration_minutes = 60  # default; can later be dynamic per office/session
+        requested_end = scheduled_datetime + timedelta(minutes=duration_minutes)
+        conflicts = CounselingSession.query.filter(
+            CounselingSession.office_id == office.id,
+            CounselingSession.status.in_(['pending','confirmed','in_progress']),
+            CounselingSession.scheduled_at < requested_end
+        ).all()
+        for c in conflicts:
+            c_end = c.scheduled_at + timedelta(minutes=(c.duration_minutes or 60))
+            if c_end > scheduled_datetime:
+                flash('The selected time overlaps with another session for this office. Please choose a different slot.', 'error')
+                return redirect(url_for('student.request_counseling_session'))
+
         # Create new counseling session without assigning a counselor - this will be done by office admin
         new_session = CounselingSession(
             student_id=student.id,
@@ -162,10 +200,22 @@ def schedule_session():
             status='pending',
             is_video_session=is_video,
             notes=notes,
+            nature_of_concern_id=int(nature_of_concern_id) if nature_of_concern_id else None,
+            nature_of_concern_description=nature_of_concern_description or None,
             # counselor_id will be assigned when an office admin confirms the session
         )
         
         db.session.add(new_session)
+        db.session.flush()  # Get the session ID
+        
+        # Create smart notifications for office admins
+        from app.utils.smart_notifications import SmartNotificationManager
+        office_admin_user_ids = SmartNotificationManager.get_office_admin_for_notification(office_id)
+        
+        for admin_user_id in office_admin_user_ids:
+            SmartNotificationManager.create_counseling_notification(
+                new_session, admin_user_id, 'new_counseling_request'
+            )
         
         # Log this activity
         log_entry = StudentActivityLog(
@@ -196,14 +246,18 @@ def request_counseling_session():
     # Get the student record
     student = Student.query.filter_by(user_id=current_user.id).first_or_404()
     
-    # Get only offices that offer counseling services
-    # An office offers counseling if it either supports video OR has had counseling sessions  
-    offices = Office.query.filter(
+    # Get only offices that offer counseling services, scoped to student's campus
+    # An office offers counseling if it either supports video OR has had counseling sessions
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    office_query = Office.query.filter(
         or_(
             Office.supports_video == True,
             Office.counseling_sessions.any()
         )
-    ).all()
+    )
+    if campus_id:
+        office_query = office_query.filter(Office.campus_id == campus_id)
+    offices = office_query.all()
     
     # Filter offices that can offer counseling (either video or in-person)
     # All offices in the filtered list above already offer counseling services
@@ -236,6 +290,27 @@ def request_counseling_session():
     db.session.add(log_entry)
     db.session.commit()
     
+    # Load ONLY concern types that are enabled for counseling (for_counseling=True)
+    # within the scoped counseling offices. This excludes inquiry-only concern types.
+    concern_types = []
+    concern_type_office_map = {}
+    if counseling_offices:
+        office_ids = [o.id for o in counseling_offices]
+        ct_rows = (
+            db.session.query(ConcernType, OfficeConcernType.office_id)
+            .join(OfficeConcernType, ConcernType.id == OfficeConcernType.concern_type_id)
+            .filter(OfficeConcernType.office_id.in_(office_ids), OfficeConcernType.for_counseling.is_(True))
+            .order_by(ConcernType.name)
+            .all()
+        )
+        seen = {}
+        for ct, oid in ct_rows:
+            if ct.id not in seen:
+                concern_types.append(ct)
+                seen[ct.id] = ct
+            concern_type_office_map.setdefault(ct.id, set()).add(oid)
+    concern_type_office_map = {k: sorted(list(v)) for k, v in concern_type_office_map.items()}
+
     return render_template(
         'student/request_counseling.html',
         offices=offices,
@@ -243,8 +318,119 @@ def request_counseling_session():
         today=today,
         max_date=max_date,
         unread_notifications_count=unread_notifications_count,
-        notifications=notifications
+        notifications=notifications,
+    concern_types=concern_types,
+    concern_type_office_map=concern_type_office_map
     )
+
+@student_bp.route('/office/<int:office_id>/availability')
+@login_required
+@role_required(['student'])
+def office_availability(office_id):
+    """Return availability for an office on a given date.
+
+    Query params:
+      - date: YYYY-MM-DD (required)
+      - interval: slot minutes (default 30)
+      - start: office day start HH:MM (default 08:00)
+      - end: office day end HH:MM (default 17:00)
+
+    Returns only slot statuses (available/booked/past). No sensitive details.
+    """
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'date is required (YYYY-MM-DD)'}), 400
+
+    try:
+        day = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'invalid date format'}), 400
+
+    # Validate student and office campus scope
+    student = Student.query.filter_by(user_id=current_user.id).first_or_404()
+    office = Office.query.get_or_404(office_id)
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    if campus_id and office.campus_id != campus_id:
+        return jsonify({'error': 'office not accessible'}), 403
+
+    # Interpret working window
+    # Enforce 1-hour slots by default for scheduling UI
+    interval = request.args.get('interval', default='60')
+    try:
+        slot_minutes = 60 if int(interval) != 60 else 60
+    except (TypeError, ValueError):
+        slot_minutes = 60
+
+    def parse_hhmm(val, default):
+        try:
+            hh, mm = map(int, val.split(':'))
+            return dtime(hour=hh, minute=mm)
+        except Exception:
+            return default
+
+    start_param = request.args.get('start', '08:00')
+    end_param = request.args.get('end', '17:00')
+    start_t = parse_hhmm(start_param, dtime(8, 0))
+    end_t = parse_hhmm(end_param, dtime(17, 0))
+
+    # Build datetime range for the day
+    day_start = datetime.combine(day, start_t)
+    day_end = datetime.combine(day, end_t)
+
+    # Fetch overlapping sessions for that office and day
+    # Consider sessions that are pending/confirmed/in_progress as blocking
+    blocking_statuses = ['pending', 'confirmed', 'in_progress']
+    sessions = CounselingSession.query.filter(
+        CounselingSession.office_id == office.id,
+        CounselingSession.status.in_(blocking_statuses),
+        CounselingSession.scheduled_at < day_end
+    ).all()
+
+    # Prepare booked intervals (start, end) for that day only
+    booked_intervals = []
+    for s in sessions:
+        s_start = s.scheduled_at
+        s_end = s_start + timedelta(minutes=(s.duration_minutes or 60))
+        # Keep if overlaps the [day_start, day_end) interval
+        if s_end > day_start and s_start < day_end:
+            # Clamp to the day window to avoid leaking exact bounds outside the day
+            seg_start = max(s_start, day_start)
+            seg_end = min(s_end, day_end)
+            booked_intervals.append((seg_start, seg_end))
+
+    # Generate slots and mark statuses
+    slots = []
+    cursor = day_start
+    now = datetime.utcnow()
+    while cursor < day_end:
+        slot_end = cursor + timedelta(minutes=slot_minutes)
+        # Determine status
+        status = 'available'
+        # Past check (relative to UTC app time)
+        if slot_end <= now:
+            status = 'past'
+        else:
+            for b_start, b_end in booked_intervals:
+                if b_end > cursor and b_start < slot_end:
+                    status = 'booked'
+                    break
+
+        slots.append({
+            'time': cursor.strftime('%H:%M'),
+            'status': status
+        })
+        cursor = slot_end
+
+    return jsonify({
+        'office_id': office.id,
+        'date': day.strftime('%Y-%m-%d'),
+        'slot_interval_minutes': slot_minutes,
+        'office_hours': {
+            'start': start_t.strftime('%H:%M'),
+            'end': end_t.strftime('%H:%M')
+        },
+        'slots': slots
+    })
 
 @student_bp.route('/office/<int:office_id>/check-video-support')
 @login_required
@@ -530,13 +716,17 @@ def counseling_dashboard():
         'in_progress': len([s for s in all_sessions if s.status == 'in_progress']),
         'upcoming': len([s for s in all_sessions if s.status in ['pending', 'confirmed'] and s.scheduled_at > datetime.utcnow()])
     }
-      # Get only offices that offer counseling services for dropdown filter
-    offices = Office.query.filter(
-        db.or_(
+    # Get only offices that offer counseling services for dropdown and cards, scoped to student's campus
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    offices_query = Office.query.filter(
+        or_(
             Office.supports_video == True,
             Office.counseling_sessions.any()
         )
-    ).all()
+    )
+    if campus_id:
+        offices_query = offices_query.filter(Office.campus_id == campus_id)
+    offices = offices_query.all()
     
     # Get unread notifications count for navbar
     unread_notifications_count = Notification.query.filter_by(

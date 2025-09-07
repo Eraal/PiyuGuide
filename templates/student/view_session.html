@@ -1,6 +1,53 @@
-{% extends "student/student_base.html" %} {% block title %}Counseling Session
-Details - KapiyuGuide{% endblock %} {% block content %}
-<div class="max-w-4xl mx-auto">
+{% extends "student/student_base.html" %}
+{% block title %}Counseling Session Details - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* --- Session Details Enhanced Styles (scoped) --- */
+  .session-shell {animation: fadeIn .45s ease;}
+  @keyframes fadeIn {from {opacity:0; transform: translateY(4px);} to {opacity:1; transform: translateY(0);} }
+  .glass-card {background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); position:relative;}
+  .glass-card:before {content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:radial-gradient(circle at 85% 15%, rgba(79,70,229,0.08), transparent 60%);}    
+  .section-title {letter-spacing:.03em; text-transform:uppercase; font-size:.65rem; font-weight:600; color:#64748b; display:flex; align-items:center; gap:.4rem;}
+  .data-grid {display:grid; gap:1.25rem;}
+  @media (min-width:640px){.data-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}}
+  .info-pill {background:#f1f5f9; border:1px solid #e2e8f0; padding:.5rem .75rem; border-radius:.75rem; font-size:.8rem; font-weight:500; display:inline-flex; align-items:center; gap:.5rem; color:#334155;}
+  .status-chip {--bg:#e2e8f0; --fg:#334155; background:var(--bg); color:var(--fg); font-size:.7rem; padding:.4rem .65rem; border-radius:999px; font-weight:600; letter-spacing:.5px; display:inline-flex; align-items:center; gap:.4rem; box-shadow:0 0 0 1px rgba(0,0,0,0.04);}  
+  .status-chip.pending {--bg:#fef3c7; --fg:#92400e;}  
+  .status-chip.confirmed {--bg:#dbeafe; --fg:#1e3a8a;}  
+  .status-chip.in_progress {--bg:#dcfce7; --fg:#166534;}  
+  .status-chip.completed {--bg:#f1f5f9; --fg:#334155;}  
+  .status-chip.cancelled {--bg:#fee2e2; --fg:#991b1b;}  
+  /* Progress Timeline */
+  .session-progress {display:flex; gap:0.75rem; margin-top:.75rem;}
+  .session-progress .step {flex:1; position:relative; text-align:center;}
+  .session-progress .step:not(:last-child)::after {content:""; position:absolute; top:14px; right:-.4rem; width:calc(100% + .8rem); height:2px; background:linear-gradient(90deg,#e2e8f0,#e2e8f0);}  
+  .session-progress .icon {width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto .35rem; font-size:.7rem; font-weight:600; background:#f1f5f9; color:#64748b; box-shadow:0 0 0 2px #fff, 0 0 0 3px #e2e8f0;}  
+  .session-progress .active .icon {background:#6366f1; color:#fff; box-shadow:0 0 0 2px #fff, 0 0 0 3px #6366f1;}  
+  .session-progress .done .icon {background:#10b981; color:#fff; box-shadow:0 0 0 2px #fff, 0 0 0 3px #10b981;}  
+  .session-progress .label {font-size:.55rem; font-weight:600; letter-spacing:.5px; text-transform:uppercase; color:#64748b;}
+  .session-progress .active .label {color:#3730a3;}
+  .session-progress .done .label {color:#065f46;}
+  /* Pending highlight card */
+  .pending-banner {background:linear-gradient(135deg,#fef9c3,#fef3c7); border:1px solid #fde68a; position:relative; overflow:hidden;}
+  .pending-banner:after {content:""; position:absolute; inset:0; background:radial-gradient(circle at 100% 0, rgba(250,204,21,.25), transparent 60%); mix-blend-mode:overlay; pointer-events:none;}
+  .subtle-badge {background:#eef2ff; color:#4338ca; font-size:.65rem; font-weight:600; padding:.25rem .55rem; border-radius:.5rem; letter-spacing:.5px;}
+  /* Utility micro spacing */
+  .divider {height:1px; background:linear-gradient(90deg,rgba(226,232,240,0),#e2e8f0,rgba(226,232,240,0)); margin:1.5rem 0; border:none;}
+  /* Smooth show */
+  .fade-in {animation:fadeIn .5s ease;}
+  /* Concern section */
+  .concern-section {background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%); border:1px solid #e2e8f0; border-radius:1rem; padding:1.1rem 1.25rem; position:relative; overflow:hidden;}
+  .concern-section:before{content:""; position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle at 92% 15%,rgba(99,102,241,0.15),transparent 65%);} 
+  .concern-chip {display:inline-flex; align-items:center; gap:.4rem; background:#6366f1; color:#fff; font-size:.65rem; font-weight:600; letter-spacing:.5px; padding:.35rem .6rem; border-radius:999px; text-transform:uppercase; box-shadow:0 2px 4px -1px rgba(0,0,0,.15);} 
+  .user-detail-badge {background:#e0f2fe; color:#0369a1; font-size:.6rem; padding:.25rem .5rem; border-radius:.4rem; font-weight:600; letter-spacing:.5px; display:inline-flex; align-items:center; gap:.3rem;} 
+  .concern-description {font-size:.8rem; line-height:1.25rem; color:#475569; white-space:pre-line;}
+  .system-concern-desc {background:#ffffff; border:1px solid #e2e8f0; padding:.75rem .85rem; border-radius:.65rem; margin-top:.65rem;}
+  .user-concern-desc {background:#f0f9ff; border:1px solid #bae6fd; padding:.7rem .8rem; border-radius:.55rem; margin-top:.55rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div id="sessionPage" data-session-id="{{ session.id }}" data-is-video="{{ 'true' if session.is_video_session else 'false' }}" class="mx-auto w-full max-w-7xl px-4 lg:px-8 min-h-screen pb-10">
   <!-- Back navigation -->
   <div class="mb-4">
     <a
@@ -12,101 +59,160 @@ Details - KapiyuGuide{% endblock %} {% block content %}
   </div>
 
   <!-- Session details card -->
-  <div class="bg-white rounded-lg shadow-md overflow-hidden">
-    <div class="border-b border-gray-200">
-      <div class="px-6 py-4">
-        <div class="flex items-center justify-between">
-          <h1 class="text-xl font-semibold text-gray-800">
-            Counseling Session Details
-          </h1>
-
-          <span
-            class="px-3 py-1 rounded-full text-sm font-semibold {% if session.status == 'pending' %}bg-yellow-100 text-yellow-800 {% elif session.status == 'confirmed' %}bg-blue-100 text-blue-800 {% elif session.status == 'in_progress' %}bg-green-100 text-green-800 {% elif session.status == 'completed' %}bg-gray-100 text-gray-800 {% elif session.status == 'cancelled' %}bg-red-100 text-red-800 {% else %}bg-gray-100 text-gray-800{% endif %}"
-          >
-            {{ session.status|title }}
-          </span>
+  <div class="glass-card rounded-2xl shadow-sm ring-1 ring-gray-100 session-shell overflow-hidden flex flex-col h-full">
+    <div class="px-6 pt-6 pb-4">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-4 sm:justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-800">Counseling Session</h1>
+            <span id="statusChip" class="status-chip {{ session.status }}">
+              <i class="fas fa-circle text-[8px]"></i><span id="statusText">{{ session.status|replace('_',' ')|title }}</span>
+            </span>
+          </div>
+          <p class="text-sm text-slate-500">Comprehensive overview & current status</p>
+        </div>
+        <div class="w-full sm:w-auto">
+          <!-- Progress timeline -->
+  {% set order = ['pending','confirmed','in_progress','completed'] %}
+          <div class="session-progress">
+            {% for step in order %}
+              {% set idx = loop.index %}
+        {# Safely compute current index; if status not in order (e.g., cancelled), set to 0 #}
+        {% set current_index = (order.index(session.status) + 1) if session.status in order else 0 %}
+      <div class="step {% if idx < current_index %}done{% elif idx == current_index %}active{% endif %}" data-step="{{ step }}">
+                <div class="icon">{{ idx }}</div>
+                <div class="label">{{ step|replace('_',' ') }}</div>
+              </div>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>
-
-    <div class="p-6">
+  <div class="px-6 pb-6 flex-1">
       <!-- Session information -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="data-grid">
         <div>
-          <div class="mb-6">
-            <h2 class="text-sm font-medium text-gray-500">Office</h2>
-            <p class="text-base font-medium text-gray-900 mt-1">
-              {{ session.office.name }}
-            </p>
-          </div>
-
-          <div class="mb-6">
-            <h2 class="text-sm font-medium text-gray-500">Session Type</h2>
-            <p class="text-base font-medium text-gray-900 mt-1">
-              {% if session.is_video_session %}
-              <span class="inline-flex items-center">
-                <i class="fas fa-video text-blue-500 mr-2"></i> Video Session
-              </span>
-              {% else %}
-              <span class="inline-flex items-center">
-                <i class="fas fa-user text-blue-500 mr-2"></i> In-Person Session
-              </span>
-              {% endif %}
-            </p>
-          </div>
-
-          <div class="mb-6">
-            <h2 class="text-sm font-medium text-gray-500">Counselor</h2>
-            <p class="text-base font-medium text-gray-900 mt-1">
-              {% if session.counselor %} {{ session.counselor.get_full_name() }}
-              {% else %}
-              <span class="text-yellow-600">Not assigned yet</span>
-              {% endif %}
-            </p>
-          </div>
+          <div class="section-title"><i class="fas fa-building"></i> Office</div>
+          <p class="mt-1 font-medium text-slate-800">{{ session.office.name }}</p>
         </div>
-
         <div>
-          <div class="mb-6">
-            <h2 class="text-sm font-medium text-gray-500">Date and Time</h2>
-            <p class="text-base font-medium text-gray-900 mt-1">
-              {{ session.scheduled_at.strftime('%B %d, %Y') }}
-            </p>
-            <p class="text-base font-medium text-gray-900">
-              {{ session.scheduled_at.strftime('%I:%M %p') }}
-            </p>
-
-            {% if session.status == 'confirmed' %}
-            <p class="text-xs text-green-600 mt-1">
-              <i class="fas fa-check-circle mr-1"></i> This time has been
-              confirmed by the office
-            </p>
-            {% elif session.status == 'pending' %}
-            <p class="text-xs text-yellow-600 mt-1">
-              <i class="fas fa-info-circle mr-1"></i> The office may adjust this
-              time based on counselor availability
-            </p>
-            {% endif %} {% if "Rescheduled:" in session.notes %}
-            <div class="mt-2 p-2 bg-blue-50 border-l-4 border-blue-500 text-sm">
-              <p class="text-blue-700">
-                <i class="fas fa-calendar-alt mr-1"></i>
-                <strong>Rescheduled:</strong> This session was rescheduled by
-                the office.
-              </p>
-            </div>
+          <div class="section-title"><i class="fas fa-layer-group"></i> Type</div>
+          <p class="mt-1 font-medium text-slate-800">
+            {% if session.is_video_session %}
+              <span class="info-pill"><i class="fas fa-video text-indigo-500"></i> Video Session</span>
+            {% else %}
+              <span class="info-pill"><i class="fas fa-user text-indigo-500"></i> In-Person</span>
             {% endif %}
-          </div>
-
-          <div class="mb-6">
-            <h2 class="text-sm font-medium text-gray-500">Duration</h2>
-            <p class="text-base font-medium text-gray-900 mt-1">
-              {{ session.duration_minutes }} minutes
-            </p>
-          </div>
+          </p>
+        </div>
+        <div>
+          <div class="section-title"><i class="fas fa-user-tie"></i> Counselor</div>
+          <p class="mt-1 font-medium text-slate-800">
+            {% if session.counselor %} {{ session.counselor.get_full_name() }} {% else %}
+              <span class="info-pill bg-amber-50 border border-amber-200 text-amber-800"><i class="fas fa-hourglass-half"></i> Not Assigned</span>
+            {% endif %}
+          </p>
+        </div>
+        <div>
+          <div class="section-title"><i class="fas fa-calendar"></i> Date</div>
+          <p class="mt-1 font-medium text-slate-800">{{ session.scheduled_at.strftime('%B %d, %Y') }}</p>
+        </div>
+        <div>
+          <div class="section-title"><i class="fas fa-clock"></i> Time</div>
+          <p class="mt-1 font-medium text-slate-800">{{ session.scheduled_at.strftime('%I:%M %p') }}</p>
+          {% if session.status == 'confirmed' %}
+            <p class="text-xs text-emerald-600 mt-1 flex items-center gap-1"><i class="fas fa-check-circle"></i> Confirmed</p>
+          {% elif session.status == 'pending' %}
+            <p class="text-xs text-amber-600 mt-1 flex items-center gap-1"><i class="fas fa-info-circle"></i> Subject to adjustments</p>
+          {% endif %}
+          {% if "Rescheduled:" in session.notes %}
+            <div class="mt-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md p-2 flex gap-2 items-start">
+              <i class="fas fa-calendar-alt mt-0.5"></i>
+              <span><strong>Rescheduled:</strong> Updated by office.</span>
+            </div>
+          {% endif %}
+        </div>
+        <div>
+          <div class="section-title"><i class="fas fa-hourglass-start"></i> Duration</div>
+          <p class="mt-1 font-medium text-slate-800">{{ session.duration_minutes }} minutes</p>
         </div>
       </div>
 
-      <!-- Notes section -->
+      <!-- Pending / Status contextual guidance -->
+      {% if session.status == 'pending' %}
+        <hr class="divider" />
+        <div class="pending-banner rounded-xl p-5 fade-in">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="subtle-badge"><i class="fas fa-hourglass-half mr-1"></i> Pending Review</span>
+              </div>
+              <p class="text-sm text-amber-800 leading-relaxed font-medium">Your session request has been received and is awaiting counselor assignment & time confirmation.</p>
+              <ul class="mt-3 text-xs text-amber-700 space-y-1">
+                <li class="flex gap-2"><i class="fas fa-user-clock mt-0.5"></i><span>Counselor will be assigned soon.</span></li>
+                <li class="flex gap-2"><i class="fas fa-bell mt-0.5"></i><span>You will be notified if the time changes.</span></li>
+                <li class="flex gap-2"><i class="fas fa-shield-alt mt-0.5"></i><span>Your request remains confidential.</span></li>
+              </ul>
+            </div>
+            <div class="sm:text-right flex-1">
+              <p class="text-xs uppercase tracking-wider font-semibold text-amber-600 mb-2">Next Step</p>
+              <p class="text-sm text-amber-700">Office confirms time & assigns counselor</p>
+              <div class="mt-4 flex sm:justify-end gap-2">
+                <a href="{{ url_for('student.request_counseling_session') }}" class="px-3 py-2 bg-white/70 hover:bg-white text-amber-800 border border-amber-300 rounded-lg text-xs font-medium shadow-sm backdrop-blur transition">Request Another</a>
+                {% if session.status == 'pending' %}
+                <button id="cancelSessionBtnAlt" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow">Cancel Request</button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Concern details -->
+      {% if session.nature_of_concern or session.nature_of_concern_description %}
+      <hr class="divider" />
+      <div class="concern-section fade-in">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div class="flex-1 min-w-[240px]">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="concern-chip"><i class="fas fa-question-circle text-xs"></i> Concern</span>
+              {% if session.nature_of_concern %}
+              <span class="text-xs font-medium text-slate-600">ID #{{ session.nature_of_concern.id }}</span>
+              {% endif %}
+            </div>
+            <h3 class="text-base font-semibold text-slate-800 tracking-tight">
+              {% if session.nature_of_concern %}
+                {{ session.nature_of_concern.name }}
+              {% else %}
+                Not Specified
+              {% endif %}
+            </h3>
+            {% if session.nature_of_concern and session.nature_of_concern.description %}
+              <div class="system-concern-desc concern-description">
+                {{ session.nature_of_concern.description }}
+              </div>
+            {% endif %}
+            {% if session.nature_of_concern_description %}
+              <div class="user-concern-desc concern-description">
+                <div class="flex items-center gap-1 mb-1 text-sky-800 font-medium text-[11px] uppercase tracking-wide"><i class="fas fa-user-edit"></i> Student Details</div>
+                {{ session.nature_of_concern_description }}
+              </div>
+            {% endif %}
+          </div>
+          <div class="flex flex-col gap-2 text-xs text-slate-500 w-full sm:w-auto sm:max-w-xs">
+            <div class="flex items-start gap-2"><i class="fas fa-info-circle mt-0.5 text-indigo-500"></i><span>Selecting a concern helps counselors prepare for your session.</span></div>
+            {% if session.nature_of_concern and session.nature_of_concern.allows_other %}
+            <div class="flex items-start gap-2"><i class="fas fa-pen-alt mt-0.5 text-sky-500"></i><span>This concern type allows additional description for context.</span></div>
+            {% endif %}
+            {% if not session.nature_of_concern and not session.nature_of_concern_description %}
+            <div class="flex items-start gap-2 text-amber-600"><i class="fas fa-exclamation-triangle mt-0.5"></i><span>No concern information was provided.</span></div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+  <!-- Notes section -->
       {% if session.notes and "Rescheduled:" not in session.notes %}
       <div class="mt-6 border-t border-gray-200 pt-6">
         <h2 class="text-sm font-medium text-gray-500 mb-2">Notes</h2>
@@ -128,8 +234,8 @@ Details - KapiyuGuide{% endblock %} {% block content %}
       </div>
       {% endif %}
 
-      <!-- Video session information -->
-      {% if session.is_video_session and session.status == 'in_progress' %}
+  <!-- Video session information -->
+  {% if session.is_video_session and session.status == 'in_progress' %}
       <div class="mt-8 border-t border-gray-200 pt-6">
         <div class="bg-green-50 p-6 rounded-lg border border-green-200">
           <h3 class="text-lg font-semibold text-green-800 flex items-center">
@@ -162,7 +268,7 @@ Details - KapiyuGuide{% endblock %} {% block content %}
           {% endif %}
         </div>
       </div>
-      {% elif session.is_video_session and session.status == 'confirmed' %}
+  {% elif session.is_video_session and session.status == 'confirmed' %}
       <div class="mt-8 border-t border-gray-200 pt-6">
         <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
           <h3 class="text-lg font-semibold text-blue-800 flex items-center">
@@ -180,61 +286,26 @@ Details - KapiyuGuide{% endblock %} {% block content %}
           </p>
         </div>
       </div>
-      {% elif session.is_video_session and session.status == 'pending' %}
-      <div class="mt-8 border-t border-gray-200 pt-6">
-        <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-          <h3 class="text-lg font-semibold text-yellow-800 flex items-center">
-            <i class="fas fa-clock mr-2"></i> Awaiting Confirmation
-          </h3>
-          <p class="mt-2 text-yellow-700">
-            Your video session request is pending approval. The counseling
-            office may adjust your preferred time based on counselor
-            availability.
-          </p>
-          <p class="mt-2 text-yellow-700">
-            <i class="fas fa-bell mr-2"></i> You will receive a notification
-            when your session is confirmed or rescheduled.
-          </p>
-        </div>
-      </div>
-      {% elif session.status == 'pending' %}
-      <div class="mt-8 border-t border-gray-200 pt-6">
-        <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-          <h3 class="text-lg font-semibold text-yellow-800 flex items-center">
-            <i class="fas fa-clock mr-2"></i> Awaiting Confirmation
-          </h3>
-          <p class="mt-2 text-yellow-700">
-            Your counseling session request is pending approval. The counseling
-            office may adjust your preferred time based on counselor
-            availability.
-          </p>
-          <p class="mt-2 text-yellow-700">
-            <i class="fas fa-bell mr-2"></i> You will receive a notification
-            when your session is confirmed or rescheduled.
-          </p>
-        </div>
-      </div>
+  {% elif session.is_video_session and session.status == 'pending' %}
+      {# Duplicate pending guidance removed to avoid redundancy #}
+  {% elif session.status == 'pending' %}
+      {# Duplicate pending guidance removed to avoid redundancy #}
       {% endif %}
     </div>
 
     <!-- Action buttons -->
-    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-      {% if session.status == 'pending' or session.status == 'confirmed' %}
-      <button
-        id="cancelSessionBtn"
-        class="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-md inline-flex items-center"
-      >
-        <i class="fas fa-times-circle mr-2"></i> Cancel Session
-      </button>
-      {% endif %} {% if session.status == 'completed' and
-      session.is_video_session %}
-      <button
-        id="requestRecordingBtn"
-        class="px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md inline-flex items-center"
-      >
-        <i class="fas fa-download mr-2"></i> Request Recording
-      </button>
+    <div class="px-6 py-4 bg-slate-50/70 border-t border-gray-100 flex flex-wrap gap-3">
+      {% if session.status == 'confirmed' %}
+        <button id="cancelSessionBtn" class="px-4 py-2 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition">
+          <i class="fas fa-times-circle"></i> Cancel Session
+        </button>
       {% endif %}
+      {% if session.status == 'completed' and session.is_video_session %}
+        <button id="requestRecordingBtn" class="px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition">
+          <i class="fas fa-download"></i> Request Recording
+        </button>
+      {% endif %}
+      <a href="{{ url_for('student.counseling_sessions') }}" class="ml-auto px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition"><i class="fas fa-list"></i> All Sessions</a>
     </div>
   </div>
 </div>
@@ -299,34 +370,27 @@ Details - KapiyuGuide{% endblock %} {% block content %}
 {% endblock %} {% block scripts %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // Auto refresh the page every 60 seconds if session is confirmed or in_progress
-    // This ensures the student gets the video link as soon as it's available
-    {% if session.is_video_session and (session.status == 'confirmed' or session.status == 'in_progress') %}
+    // Auto refresh logic near start time for video sessions
+  const isVideo = "{{ 'yes' if session.is_video_session else 'no' }}" === 'yes';
     const sessionStatus = "{{ session.status }}";
-
-    // Only auto-refresh if we're close to the session start time
-    const sessionTime = new Date("{{ session.scheduled_at.isoformat() }}");
-    const now = new Date();
-    const minutesUntilSession = (sessionTime - now) / (1000 * 60);
-
-    if (minutesUntilSession <= 20) {
-      // Auto refresh every minute if getting close to session time
-      setTimeout(function() {
-        window.location.reload();
-      }, 60000);
+    if (isVideo && (sessionStatus === 'confirmed' || sessionStatus === 'in_progress')) {
+      const sessionTime = new Date("{{ session.scheduled_at.isoformat() }}");
+      const now = new Date();
+      const minutesUntilSession = (sessionTime - now) / (1000 * 60);
+      if (minutesUntilSession <= 20) {
+        setTimeout(function () { window.location.reload(); }, 60000);
+      }
     }
-    {% endif %}
 
     // Cancel session modal
-    const cancelBtn = document.getElementById("cancelSessionBtn");
+  const cancelBtn = document.getElementById("cancelSessionBtn"); // shown for confirmed only now
+  const cancelBtnAlt = document.getElementById("cancelSessionBtnAlt"); // shown inside pending banner
     const cancelModal = document.getElementById("cancelModal");
     const closeCancelModalBtn = document.getElementById("closeCancelModal");
 
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", function () {
-        cancelModal.classList.remove("hidden");
-      });
-    }
+  function openCancel(){cancelModal.classList.remove("hidden");}
+  if (cancelBtn) {cancelBtn.addEventListener("click", openCancel);}    
+  if (cancelBtnAlt) {cancelBtnAlt.addEventListener("click", openCancel);} 
 
     if (closeCancelModalBtn) {
       closeCancelModalBtn.addEventListener("click", function () {
@@ -378,6 +442,105 @@ Details - KapiyuGuide{% endblock %} {% block content %}
           });
       });
     }
+  });
+</script>
+<script>
+  // Live status updates via student socket notifications
+  document.addEventListener('DOMContentLoaded', function(){
+    try{
+      const socket = io(); // default namespace
+      const page = document.getElementById('sessionPage');
+      const sessionId = page ? page.dataset.sessionId : null;
+      const statusChip = document.getElementById('statusChip');
+      const statusText = document.getElementById('statusText');
+      const steps = Array.from(document.querySelectorAll('.session-progress .step'));
+
+      function setChipStatus(status){
+        if(!statusChip || !statusText) return;
+        // Reset classes
+        statusChip.classList.remove('pending','confirmed','in_progress','completed','cancelled');
+        statusChip.classList.add(status);
+        statusText.textContent = (status || '').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+      }
+
+      function updateTimeline(status){
+        if(!steps || steps.length===0) return;
+        const order = ['pending','confirmed','in_progress','completed'];
+        const idx = Math.max(0, order.indexOf(status));
+        steps.forEach((el)=>{
+          el.classList.remove('done','active');
+        });
+        steps.forEach((el,i)=>{
+          if(i < idx) el.classList.add('done');
+          else if(i === idx) el.classList.add('active');
+        });
+      }
+
+      function ensureVideoSection(status, isVideo){
+        if(!isVideo) return;
+        const container = document.querySelector('.px-6.pb-6');
+        if(!container) return;
+        const existingActive = document.getElementById('videoActiveBlock');
+        const existingInfo = document.getElementById('videoInfoBlock');
+        if(status === 'in_progress'){
+          if(existingInfo) existingInfo.remove();
+          if(!existingActive){
+            const div = document.createElement('div');
+            div.id = 'videoActiveBlock';
+            div.className = 'mt-8 border-t border-gray-200 pt-6';
+            div.innerHTML = `
+            <div class="bg-green-50 p-6 rounded-lg border border-green-200">
+              <h3 class="text-lg font-semibold text-green-800 flex items-center">
+                <i class="fas fa-video mr-2"></i> Your video session is now active!
+              </h3>
+              <p class="mt-2 text-green-700">You can now join the video counseling session. Click the button below to enter the video call.</p>
+              <div class="mt-4">
+                <a href="{{ url_for('student.join_video_session', session_id=session.id) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                  <i class="fas fa-video mr-2"></i> Join Video Session
+                </a>
+              </div>
+              {% if session.meeting_password %}
+              <div class="mt-3 text-sm text-green-700 p-2 bg-green-100 rounded-md">
+                <p class="flex items-center">
+                  <i class="fas fa-key mr-2"></i>
+                  <strong>Session Password:</strong>
+                  <span class="ml-2 font-mono bg-white px-2 py-1 rounded">{{ session.meeting_password }}</span>
+                </p>
+              </div>
+              {% endif %}
+            </div>`;
+            container.appendChild(div);
+          }
+        } else if(status === 'confirmed'){
+          if(existingActive) existingActive.remove();
+          if(!existingInfo){
+            const div = document.createElement('div');
+            div.id = 'videoInfoBlock';
+            div.className = 'mt-8 border-t border-gray-200 pt-6';
+            div.innerHTML = `
+            <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+              <h3 class="text-lg font-semibold text-blue-800 flex items-center">
+                <i class="fas fa-info-circle mr-2"></i> Video Session Information
+              </h3>
+              <p class="mt-2 text-blue-700">Your video session has been confirmed. The link to join will automatically appear here when the session is ready (about 5 minutes before the scheduled time).</p>
+              <p class="mt-3 text-blue-700"><i class="fas fa-bell mr-2"></i> You'll receive a notification when it's time to join. Please be ready 5 minutes before your scheduled time.</p>
+            </div>`;
+            container.appendChild(div);
+          }
+        } else {
+          if(existingActive) existingActive.remove();
+          if(existingInfo) existingInfo.remove();
+        }
+      }
+
+      socket.on('session_update', function(data){
+        if(!data || String(data.session_id) !== String(sessionId)) return;
+        const status = (data.status||'').toLowerCase();
+        setChipStatus(status);
+        updateTimeline(status);
+        ensureVideoSection(status, Boolean(data.is_video_session));
+      });
+    }catch(e){ /* no-op */ }
   });
 </script>
 {% endblock %}

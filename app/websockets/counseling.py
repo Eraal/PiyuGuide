@@ -6,6 +6,8 @@ from datetime import datetime
 import uuid
 import logging
 import json
+from datetime import timedelta
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -14,6 +16,35 @@ logger = logging.getLogger(__name__)
 active_sessions = {}
 session_rooms = {}
 user_sessions = {}  # Track which session each user is in
+
+# Reconnection handling
+DISCONNECT_GRACE_SECONDS = 45  # allow users to reconnect without being removed
+
+def _schedule_disconnect_cleanup(session_id, user_id, name, role):
+    """Schedule cleanup of a disconnected user after a grace period."""
+    def task():
+        try:
+            socketio.sleep(DISCONNECT_GRACE_SECONDS)
+            participant = active_sessions.get(session_id, {}).get(user_id)
+            if participant and not participant.get('connected', True):
+                # Remove and notify others only now
+                room_name = f"video_session_{session_id}"
+                try:
+                    del active_sessions[session_id][user_id]
+                    if not active_sessions[session_id]:
+                        del active_sessions[session_id]
+                except Exception:
+                    pass
+                emit('user_left', {
+                    'user_id': user_id,
+                    'name': name,
+                    'role': role,
+                    'timestamp': datetime.utcnow().isoformat()
+                }, room=room_name)
+        except Exception:
+            # Avoid crashing background task
+            logger.exception('Error in disconnect cleanup task')
+    socketio.start_background_task(task)
 
 @socketio.on('connect', namespace='/video-counseling')
 def handle_connect():
@@ -36,8 +67,14 @@ def handle_disconnect():
     """Handle client disconnection"""
     if current_user.is_authenticated:
         logger.info(f"User {current_user.id} disconnected from video counseling")
-        # Clean up any active sessions
-        cleanup_user_sessions(current_user.id)
+        # Mark as disconnected but keep for a grace period to allow reconnection
+        for session_id, participants in list(active_sessions.items()):
+            if current_user.id in participants:
+                p = participants[current_user.id]
+                p['connected'] = False
+                p['disconnected_at'] = datetime.utcnow()
+                # Schedule delayed cleanup
+                _schedule_disconnect_cleanup(session_id, current_user.id, p.get('name'), p.get('role'))
 
 @socketio.on('join_session', namespace='/video-counseling')
 def handle_join_session(data):
@@ -77,17 +114,32 @@ def handle_join_session(data):
     # Join the room
     join_room(room_name)
     
-    # Track user in session
+    # Track user in session (preserve prior state if present)
     if session_id not in active_sessions:
         active_sessions[session_id] = {}
-    
-    active_sessions[session_id][current_user.id] = {
-        'user_id': current_user.id,
-        'role': current_user.role,
-        'name': current_user.get_full_name(),
-        'joined_at': datetime.utcnow(),
-        'ready': False
-    }
+
+    existing = active_sessions[session_id].get(current_user.id)
+    if existing:
+        # Restore existing user state
+        existing['connected'] = True
+        existing['disconnected_at'] = None
+        # Ensure name/role up to date
+        existing['name'] = current_user.get_full_name()
+        existing['role'] = current_user.role
+        # Keep 'ready' and 'in_call' flags as-is
+    else:
+        active_sessions[session_id][current_user.id] = {
+            'user_id': current_user.id,
+            'role': current_user.role,
+            'name': current_user.get_full_name(),
+            'joined_at': datetime.utcnow(),
+            'ready': False,
+            'in_call': False,
+            'connected': True,
+            # Track initial media state for this participant (defaults true)
+            'audio_enabled': True,
+            'video_enabled': True
+        }
     
     # Create participation record
     participation = SessionParticipation.query.filter_by(
@@ -125,7 +177,11 @@ def handle_join_session(data):
                     'user_id': user_data['user_id'],
                     'role': user_data['role'],
                     'name': user_data['name'],
-                    'ready': user_data['ready']
+                    'ready': user_data['ready'],
+                    'in_call': user_data.get('in_call', False),
+                    'connected': user_data.get('connected', True),
+                    'audio_enabled': user_data.get('audio_enabled', True),
+                    'video_enabled': user_data.get('video_enabled', True)
                 })
     
     emit('session_joined', {
@@ -137,6 +193,17 @@ def handle_join_session(data):
     
     # Check if both counselor and student are present
     check_session_ready(session_id, room_name)
+
+    # If the user had an active call previously, notify peers to renegotiate
+    participant_state = active_sessions[session_id].get(current_user.id, {})
+    if participant_state.get('in_call'):
+        emit('reconnect_request', {
+            'user_id': current_user.id,
+            'name': current_user.get_full_name(),
+            'role': current_user.role,
+            'session_id': session_id,
+            'timestamp': datetime.utcnow().isoformat()
+        }, room=room_name, include_self=False)
 
 @socketio.on('ready', namespace='/video-counseling')
 def handle_ready(data):
@@ -285,6 +352,41 @@ def handle_join_call(data):
         'timestamp': datetime.utcnow().isoformat()
     }, room=room_name, include_self=False)
     
+    # Send initial media state of other participants to the newly joined user
+    try:
+        other_states = []
+        for participant in active_sessions[session_id].values():
+            if participant['user_id'] == current_user.id:
+                continue
+            other_states.append({
+                'user_id': participant['user_id'],
+                'name': participant['name'],
+                'audio_enabled': participant.get('audio_enabled', True),
+                'video_enabled': participant.get('video_enabled', True)
+            })
+        emit('initial_media_state', {
+            'session_id': session_id,
+            'participants': other_states
+        })
+    except Exception:
+        logger.exception('Failed to emit initial media state to joining user')
+
+    # Broadcast the joining user's current media state to peers
+    try:
+        me = active_sessions[session_id].get(current_user.id, {})
+        emit('user_audio_toggle', {
+            'user_id': current_user.id,
+            'audio_enabled': me.get('audio_enabled', True),
+            'name': current_user.get_full_name()
+        }, room=room_name, include_self=False)
+        emit('user_video_toggle', {
+            'user_id': current_user.id,
+            'video_enabled': me.get('video_enabled', True),
+            'name': current_user.get_full_name()
+        }, room=room_name, include_self=False)
+    except Exception:
+        logger.exception('Failed to broadcast joining user media state')
+
     # Send call state to the newly joined user
     call_participants = []
     for participant in active_sessions[session_id].values():
@@ -315,6 +417,17 @@ def handle_waiting_room_media_toggle(data):
     
     room_name = f"video_session_{session_id}"
     
+    # Persist waiting-room media state so newcomers can get initial state
+    try:
+        if session_id in active_sessions and current_user.id in active_sessions[session_id]:
+            participant = active_sessions[session_id][current_user.id]
+            if media_type == 'audio' and enabled is not None:
+                participant['audio_enabled'] = bool(enabled)
+            elif media_type == 'video' and enabled is not None:
+                participant['video_enabled'] = bool(enabled)
+    except Exception:
+        logger.exception('Failed to persist waiting room media toggle')
+
     # Notify others in waiting room
     emit('waiting_room_media_update', {
         'user_id': current_user.id,
@@ -454,6 +567,13 @@ def handle_toggle_audio(data):
     
     room_name = f"video_session_{session_id}"
     
+    # Persist current participant audio state
+    try:
+        if session_id in active_sessions and current_user.id in active_sessions[session_id]:
+            active_sessions[session_id][current_user.id]['audio_enabled'] = bool(audio_enabled)
+    except Exception:
+        logger.exception('Failed to persist audio toggle state')
+
     # Notify others of audio state change
     emit('user_audio_toggle', {
         'user_id': current_user.id,
@@ -472,6 +592,13 @@ def handle_toggle_video(data):
     
     room_name = f"video_session_{session_id}"
     
+    # Persist current participant video state
+    try:
+        if session_id in active_sessions and current_user.id in active_sessions[session_id]:
+            active_sessions[session_id][current_user.id]['video_enabled'] = bool(video_enabled)
+    except Exception:
+        logger.exception('Failed to persist video toggle state')
+
     # Notify others of video state change
     emit('user_video_toggle', {
         'user_id': current_user.id,
@@ -652,6 +779,21 @@ def handle_connection_quality(data):
         'timestamp': datetime.utcnow().isoformat()
     }, room=room_name, include_self=False)
 
+@socketio.on('reconnect_request', namespace='/video-counseling')
+def handle_reconnect_request(data):
+    """Forward a reconnect request to peers to trigger renegotiation."""
+    session_id = data.get('session_id')
+    if not session_id:
+        return
+    room_name = f"video_session_{session_id}"
+    emit('reconnect_request', {
+        'user_id': current_user.id,
+        'name': current_user.get_full_name(),
+        'role': current_user.role,
+        'session_id': session_id,
+        'timestamp': datetime.utcnow().isoformat()
+    }, room=room_name, include_self=False)
+
 @socketio.on('screen_share_start', namespace='/video-counseling')
 def handle_screen_share_start(data):
     """Handle screen sharing start (counselor only)"""
@@ -827,11 +969,11 @@ def cleanup_user_sessions(user_id):
     for session_id, participants in active_sessions.items():
         if user_id in participants:
             sessions_to_clean.append(session_id)
-    
+
     for session_id in sessions_to_clean:
         if user_id in active_sessions[session_id]:
             del active_sessions[session_id][user_id]
-        
+
         # If session is empty, clean it up
         if not active_sessions[session_id]:
             del active_sessions[session_id]

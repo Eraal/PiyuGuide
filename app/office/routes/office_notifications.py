@@ -10,7 +10,7 @@ from datetime import datetime
 @login_required
 @role_required(['office_admin'])
 def office_notifications():
-    """Display notifications page for office admins"""
+    """Display notifications page for office admins with smart stacking"""
     if not hasattr(current_user, 'office_admin') or not current_user.office_admin:
         flash('Access denied. You do not have permission to view this page.', 'error')
         return redirect(url_for('main.index'))
@@ -53,6 +53,15 @@ def office_notifications():
     
     type_stats = {type_name: count for type_name, count in type_counts}
     
+    # Get smart-stacked notifications for better display
+    from app.utils.smart_notifications import SmartNotificationManager
+    if read_filter == 'unread':
+        stacked_notifications = SmartNotificationManager.get_stacked_notifications_for_office(
+            current_user.id, limit=10
+        )
+    else:
+        stacked_notifications = []
+    
     return render_template('office/office_notifications.html',
                          notifications=notifications_paginated.items,
                          pagination=notifications_paginated,
@@ -60,6 +69,7 @@ def office_notifications():
                          unread_count=unread_count,
                          read_count=read_count,
                          type_stats=type_stats,
+                         stacked_notifications=stacked_notifications,
                          current_filter_read=read_filter,
                          current_filter_type=type_filter)
 
@@ -78,6 +88,24 @@ def mark_notification_read(notification_id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Notification marked as read'})
+
+
+@office_bp.route('/notifications/mark-inquiry-read/<int:inquiry_id>', methods=['POST'])
+@login_required
+@role_required(['office_admin'])
+def mark_inquiry_notifications_read(inquiry_id: int):
+    """Mark all notifications for a specific inquiry as read for the current office admin user."""
+    # Update all unread notifications that are tied to this inquiry for the current user
+    unread_q = Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False,
+        inquiry_id=inquiry_id
+    )
+    count = unread_q.count()
+    if count:
+        unread_q.update({Notification.is_read: True})
+        db.session.commit()
+    return jsonify({'success': True, 'message': f'{count} notification(s) for inquiry marked as read', 'count': count})
 
 
 @office_bp.route('/notifications/mark-all-read', methods=['POST'])
@@ -147,3 +175,56 @@ def get_unread_count():
     ).count()
     
     return jsonify({'unread_count': unread_count})
+
+
+@office_bp.route('/notifications/cleanup-old', methods=['POST'])
+@login_required
+@role_required(['office_admin'])
+def cleanup_old_notifications():
+    """Clean up old read notifications"""
+    from app.utils.smart_notifications import SmartNotificationManager
+    
+    days_old = request.json.get('days_old', 30)
+    cleaned_count = SmartNotificationManager.cleanup_old_notifications(days_old)
+    
+    return jsonify({
+        'success': True,
+        'message': f'Cleaned up {cleaned_count} old notifications',
+        'cleaned_count': cleaned_count
+    })
+
+
+@office_bp.route('/notifications/summary')
+@login_required
+@role_required(['office_admin'])
+def get_notification_summary():
+    """Get notification summary for the current office admin"""
+    from app.utils.smart_notifications import SmartNotificationManager
+    
+    office_id = current_user.office_admin.office_id if current_user.office_admin else None
+    summary = SmartNotificationManager.get_notification_summary(
+        current_user.id, office_id
+    )
+    
+    return jsonify(summary)
+
+
+@office_bp.route('/notifications/sidebar')
+@login_required
+@role_required(['office_admin'])
+def sidebar_notifications_json():
+    """Return a lightweight JSON list of recent notifications for sidebar refresh (mirrors dropdown)."""
+    notifications = Notification.query.filter_by(
+        user_id=current_user.id
+    ).order_by(Notification.created_at.desc()).limit(15).all()
+    payload = []
+    for n in notifications:
+        payload.append({
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'inquiry_id': n.inquiry_id,
+            'created_at': n.created_at.strftime('%b %d, %H:%M'),
+            'is_read': n.is_read
+        })
+    return jsonify(payload)

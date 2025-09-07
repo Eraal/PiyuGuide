@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Campus • {{ brand_title or 'PiyuGuide' }}</title>
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        colors: {
+                            brand: {
+                                // Modern academic palette
+                                royal: '#1d4ed8',    // royal blue
+                                emerald: '#10b981',  // emerald green
+                                slate: '#111827'     // dark slate for dark mode text
+                            }
+                        },
+                        boxShadow: {
+                            glow:'0 10px 25px rgba(29,78,216,.22)'
+                        },
+                        borderRadius: {
+                            '2xl':'1rem'
+                        },
+                        animation: {
+                            fadeUp: 'fadeUp .6s ease-out both',
+                            float: 'float 6s ease-in-out infinite'
+                        }
+                    }
+                }
+            };
+        </script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <script>
+            // Prevent FOUC for dark mode
+            (function(){
+                const ls = localStorage.getItem('theme');
+                const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (ls === 'dark' || (!ls && prefers)) document.documentElement.classList.add('dark');
+            })();
+        </script>
+        <style>
+                * { font-family: 'Inter', 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+                .hero-gradient {
+                    background:
+                        radial-gradient(1200px 600px at 10% 10%, rgba(29,78,216,0.18), transparent 60%),
+                        radial-gradient(1000px 500px at 90% 20%, rgba(16,185,129,0.16), transparent 60%),
+                        linear-gradient(135deg, #1d4ed8 0%, #10b981 100%);
+                }
+                .glass {
+                    background: rgba(255,255,255,0.8);
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                }
+                .dark .glass {
+                    background: rgba(17,24,39,0.6);
+                }
+                .card-hover { transition: transform .28s ease, box-shadow .28s ease; }
+                .card-hover:hover { transform: translateY(-8px); box-shadow: 0 18px 40px rgba(17,24,39,.08); }
+                .fade-in { opacity: 0; animation: fadeIn .7s ease-out forwards; }
+                @keyframes fadeIn { to { opacity: 1; } }
+                @keyframes fadeUp { from { opacity:0; transform: translateY(8px);} to { opacity:1; transform: translateY(0);} }
+                @keyframes float { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-6px);} }
+                /* Clamp description lines without plugin */
+            .desc { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+                /* Focus ring for keyboard users */
+                .focus-ring:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.35); }
+
+                /* Campus selection minimal intro overlay */
+                :root { --brand-royal: #1d4ed8; --brand-emerald: #10b981; --easing: cubic-bezier(.2,.6,.2,1); }
+                .campus-intro-overlay {
+                    position: fixed; inset: 0; z-index: 9999;
+                    display: flex; align-items: center; justify-content: center;
+                    background: rgba(17,24,39,0.32);
+                    backdrop-filter: blur(6px) saturate(108%);
+                    -webkit-backdrop-filter: blur(6px) saturate(108%);
+                    opacity: 0; transition: opacity .22s var(--easing);
+                }
+                .campus-intro-overlay.show { opacity: 1; }
+                .campus-intro-overlay.fade-out { opacity: 0; }
+                .campus-intro-wrap { text-align: center; padding: 0 1.25rem; }
+                .campus-intro-text {
+                    color: #fff; font-weight: 800; letter-spacing: -0.02em;
+                    text-shadow: 0 4px 24px rgba(0,0,0,.25);
+                    transform: translateY(2px) scale(1.2); opacity: 0;
+                    animation: namePop .48s var(--easing) forwards; /* scale 1.2 -> 1 for subtle elegant pop */
+                    will-change: transform, opacity;
+                }
+                .campus-intro-accent {
+                    height: 3px; width: 58%; max-width: 520px; margin: 10px auto 0;
+                    background: linear-gradient(90deg, var(--brand-royal), var(--brand-emerald));
+                    box-shadow: 0 0 0 rgba(0,0,0,0), 0 0 18px rgba(29,78,216,.25);
+                    transform-origin: center; transform: scaleX(.74); opacity: 0;
+                    animation: accentGrow .44s var(--easing) forwards .06s;
+                }
+                @keyframes namePop {
+                    0% { opacity: 0; transform: translateY(2px) scale(1.2); }
+                    70% { opacity: 1; transform: translateY(0) scale(1.02); }
+                    100% { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                @keyframes accentGrow {
+                    0% { opacity: 0; transform: scaleX(.74); box-shadow: 0 0 0 rgba(0,0,0,0), 0 0 10px rgba(29,78,216,.15); }
+                    100% { opacity: 1; transform: scaleX(1); box-shadow: 0 0 0 rgba(0,0,0,0), 0 0 22px rgba(29,78,216,.2); }
+                }
+        </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-100">
+        <!-- Header / Hero -->
+        <header class="relative hero-gradient text-white">
+            <div class="absolute inset-0 opacity-20 pointer-events-none">
+                <svg class="absolute -top-10 right-0 w-[500px] h-[500px] animate-float" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path fill="#ffffff" fill-opacity="0.15" d="M36.3,-61.9C47.8,-56.7,58,-48.2,66.5,-37.3C74.9,-26.4,81.6,-13.2,81.6,0.1C81.5,13.4,74.7,26.8,66,37.5C57.2,48.1,46.5,55.9,34.9,62.2C23.3,68.5,11.6,73.3,-0.6,74.5C-12.9,75.7,-25.9,73.3,-38.1,67.7C-50.3,62,-61.6,53.1,-67.9,41.4C-74.3,29.7,-75.7,14.8,-76.2,-0.3C-76.7,-15.4,-76.2,-30.8,-69.3,-42.5C-62.3,-54.2,-49,-62.2,-35.9,-67.5C-22.8,-72.8,-11.4,-75.4,0.4,-76.3C12.2,-77.1,24.3,-76.1,36.3,-61.9Z" transform="translate(100 100)"/></svg>
+            </div>
+            <div class="container mx-auto px-4 py-16 md:py-20 relative">
+                <!-- Top brand row -->
+                <div class="flex items-center justify-between mb-6">
+                    <a href="{{ url_for('main.index') }}" class="inline-flex items-center gap-3 group">
+                        <img src="{{ brand_logo_url or url_for('static', filename='images/schoollogo.png') }}" alt="{{ brand_title or 'PiyuGuide' }} logo" class="h-10 w-10 rounded-xl ring-1 ring-white/30 shadow-glow group-hover:shadow-lg transition" />
+                        <div class="leading-tight">
+                            <span class="block text-xl font-extrabold tracking-tight">{{ brand_title or 'PiyuGuide' }}</span>
+                            <span class="block text-white/70 text-xs">Smart Campus Services</span>
+                        </div>
+                    </a>
+                    <!-- Theme toggle -->
+                    <button id="themeToggle" aria-label="Toggle theme" class="glass text-white/90 hover:text-white rounded-full p-3 md:p-3.5 shadow-md border border-white/20 focus-ring fade-in">
+                        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M21.64 13a9 9 0 11-10.63-10.63A7 7 0 1021.64 13z"/></svg>
+                    </button>
+                </div>
+
+                <div class="max-w-3xl">
+                    <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-sm fade-in">Choose your campus</h1>
+                    <p class="mt-3 md:mt-5 text-base md:text-xl text-white/90 fade-in" style="animation-delay:.08s">Pick a campus to continue to sign in and services</p>
+                </div>
+
+                <!-- Continue last campus (if any) -->
+                <div id="continueLast" class="hidden mt-6">
+                    <a id="continueLink" href="#" class="inline-flex items-center gap-2 glass text-white/90 hover:text-white border border-white/20 rounded-full px-4 py-2 shadow-md">
+                        <span>Continue to</span>
+                        <span id="continueName" class="font-semibold"></span>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L13.586 11H4a1 1 0 110-2h9.586l-3.293-3.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main -->
+        <main class="container mx-auto px-4 py-10 md:py-14">
+            {% if campuses %}
+            <div class="max-w-7xl mx-auto">
+                <!-- Controls -->
+                <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold">Campuses</h2>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                        <div class="relative flex-1 sm:w-72 md:w-80">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">🔎</span>
+                            <label for="search" class="sr-only">Search campuses</label>
+                            <input id="search" type="text" placeholder="Search by name, code, or address" class="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm focus:border-brand-royal focus:ring-2 focus:ring-brand-royal/20 outline-none" />
+                        </div>
+                        <div class="relative">
+                            <label for="sort" class="sr-only">Sort campuses</label>
+                            <select id="sort" class="appearance-none pl-3 pr-9 py-2.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm focus:border-brand-royal focus:ring-2 focus:ring-brand-royal/20 outline-none">
+                                <option value="name">Sort: Name</option>
+                                <option value="offices">Sort: Offices</option>
+                                <option value="admins">Sort: Admins</option>
+                            </select>
+                            <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">▾</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p id="resultMeta" class="text-sm text-gray-500 dark:text-gray-400 mb-4">Showing <span id="resultsCount">{{ campuses|length }}</span> campus(es)</p>
+
+                <!-- Grid -->
+                <div id="campusGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+                    {% for campus in campuses %}
+                    <article tabindex="0" role="group" aria-label="Campus {{ campus.name }}" class="campus-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg overflow-hidden card-hover animate-[fadeUp]" data-name="{{ campus.name|lower }}" data-code="{{ campus.code|lower }}" data-address="{{ (campus.address or '')|lower }}" data-offices="{{ campus.get_active_offices_count() }}" data-admins="{{ campus.get_super_admins_count() }}">
+                        {% set _logo = campus.campus_logo_path %}
+                        {% if _logo %}
+                            {% if _logo.startswith('http') or _logo.startswith('/') %}
+                                {% set logo_url = _logo %}
+                            {% else %}
+                                {% set logo_url = url_for('static', filename=_logo) %}
+                            {% endif %}
+                        {% else %}
+                            {% set logo_url = brand_logo_url %}
+                        {% endif %}
+                        {% set _bg = campus.campus_landing_bg_path %}
+                        {% if _bg %}
+                            {% if _bg.startswith('http') or _bg.startswith('/') %}
+                                {% set bg_url = _bg %}
+                            {% else %}
+                                {% set bg_url = url_for('static', filename=_bg) %}
+                            {% endif %}
+                        {% else %}
+                            {% set bg_url = None %}
+                        {% endif %}
+                        <div class="relative h-36">
+                            <div class="absolute inset-0 bg-gradient-to-r from-brand-royal to-brand-emerald"></div>
+                            {% if bg_url %}
+                            <div class="absolute inset-0 opacity-25 mix-blend-overlay" style="background-image:url('{{ bg_url }}'); background-size:cover; background-position:center;"></div>
+                            {% endif %}
+                            <div class="absolute inset-0 bg-black/10"></div>
+                            <div class="absolute bottom-4 left-5 right-5 flex items-end justify-between">
+                                <div class="min-w-0">
+                                    <h3 class="text-2xl font-bold text-white drop-shadow-sm truncate" title="{{ campus.name }}">{{ campus.name }}</h3>
+                                    <p class="text-white/80 text-xs/relaxed">Code: {{ campus.code }}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <img src="{{ logo_url }}" alt="{{ campus.name }} logo" class="h-10 w-10 rounded-xl ring-1 ring-white/40 bg-white/70 object-contain p-1.5 hidden sm:block" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            {% if campus.description %}
+                            <p class="desc text-gray-600 dark:text-gray-300 mb-3">{{ campus.description }}</p>
+                            {% endif %}
+                            {% if campus.address %}
+                            <div class="flex items-center text-gray-500 dark:text-gray-400 mb-4">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                <span class="text-sm">{{ campus.address }}</span>
+                            </div>
+                            {% endif %}
+                          <div class="flex items-center gap-4 mb-5">
+                                <div class="flex-1">
+                                    <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                              <div class="h-full bg-gradient-to-r from-brand-royal to-brand-emerald progress-bar" data-offices="{{ campus.get_active_offices_count() }}" style="width: 0%"></div>
+                                    </div>
+                                    <div class="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                        <span><strong class="text-gray-800 dark:text-gray-200">{{ campus.get_active_offices_count() }}</strong> offices</span>
+                                        <span><strong class="text-gray-800 dark:text-gray-200">{{ campus.get_super_admins_count() }}</strong> admins</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <a class="enter-link block w-full text-center rounded-2xl font-semibold text-white bg-gradient-to-r from-brand-royal to-brand-emerald hover:brightness-110 active:scale-[.99] transition shadow-lg shadow-brand-royal/20 py-3 focus-ring" href="{{ url_for('main.campus_landing', campus_id=campus.id) }}" data-campus-id="{{ campus.id }}" data-campus-name="{{ campus.name }}">
+                                Enter campus
+                            </a>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+
+                <div id="noMatches" class="hidden text-center py-16">
+                    <div class="max-w-md mx-auto">
+                        <svg class="w-20 h-20 mx-auto text-gray-300 dark:text-gray-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/></svg>
+                        <h3 class="text-xl font-semibold">No campuses match your search</h3>
+                        <p class="text-gray-500 dark:text-gray-400 mt-1">Try a different name, code, or address.</p>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-16">
+                <div class="max-w-md mx-auto">
+                    <svg class="w-24 h-24 mx-auto text-gray-400 dark:text-gray-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-2m-2 0H7m5 0v-9a2 2 0 00-2-2H8a2 2 0 00-2 2v9m8 0V9a2 2 0 012-2h2a2 2 0 012 2v8M7 7h.01M7 10h.01M7 13h.01"/></svg>
+                    <h3 class="text-2xl font-bold">No campuses available</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-8">Please contact the system administrator.</p>
+                    <a href="{{ url_for('main.index') }}" class="inline-block bg-brand-600 hover:bg-brand-700 text-white py-3 px-6 rounded-full font-semibold transition-colors">Go to main page</a>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white/60 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-800 py-8">
+            <div class="container mx-auto px-4 text-center text-gray-500 dark:text-gray-400">
+                <p>&copy; {{ current_year or 2025 }} {{ brand_title or 'PiyuGuide' }}. All rights reserved.</p>
+            </div>
+        </footer>
+
+        <script>
+            // Theme toggle
+            const themeBtn = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            function setTheme(mode){
+                const root = document.documentElement;
+                if(mode==='dark'){ root.classList.add('dark'); localStorage.setItem('theme','dark'); }
+                else { root.classList.remove('dark'); localStorage.setItem('theme','light'); }
+                themeIcon.innerHTML = root.classList.contains('dark')
+                    ? '<path d="M21.64 13a9 9 0 11-10.63-10.63A7 7 0 1021.64 13z"/>'
+                    : '<path fill-rule="evenodd" d="M12 2a1 1 0 011 1v2a1 1 0 11-2 0V3a1 1 0 011-1zm0 15a5 5 0 100-10 5 5 0 000 10zm7-5a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zM3 12a1 1 0 01-1 1H0a1 1 0 110-2h2a1 1 0 011 1zm15.657 6.657a1 1 0 010 1.414l-1.414 1.414a1 1 0 11-1.414-1.414l1.414-1.414a1 1 0 011.414 0zM6.343 5.343a1 1 0 010-1.414L7.757 2.515a1 1 0 011.414 1.414L7.757 5.343a1 1 0 01-1.414 0zM17.657 5.343a1 1 0 010-1.414l1.414-1.414A1 1 0 1120.485 3.93l-1.414 1.414a1 1 0 01-1.414 0zM6.343 18.657a1 1 0 010 1.414L4.93 21.485a1 1 0 01-1.414-1.414l1.414-1.414a1 1 0 011.414 0z" clip-rule="evenodd"/>';
+            }
+            themeBtn && themeBtn.addEventListener('click', () => setTheme(document.documentElement.classList.contains('dark')?'light':'dark'));
+
+            // Stagger in cards
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('#campusGrid .campus-card').forEach((el,i)=>{
+                    el.style.animationDelay = (i*60)+'ms';
+                });
+                        // Animate progress widths (10% base + 6% per office, capped at 100%)
+                        document.querySelectorAll('.progress-bar').forEach((bar)=>{
+                            const n = parseInt(bar.dataset.offices||'0',10);
+                            const width = Math.min(100, 10 + (n*6));
+                            requestAnimationFrame(()=>{
+                                bar.style.transition = 'width .8s ease-out';
+                                bar.style.width = width + '%';
+                            });
+                        });
+
+                // (Filters removed by request)
+            });
+
+            // Search + Sort
+            const search = document.getElementById('search');
+            const sort = document.getElementById('sort');
+            const grid = document.getElementById('campusGrid');
+            const countEl = document.getElementById('resultsCount');
+            const noMatches = document.getElementById('noMatches');
+
+            function getCards(){ return Array.from(grid.querySelectorAll('.campus-card')); }
+            function matches(card, q){
+                if(!q) return true;
+                q = q.toLowerCase();
+                return (card.dataset.name||'').includes(q) || (card.dataset.code||'').includes(q) || (card.dataset.address||'').includes(q);
+            }
+            function applySearch(){
+                const q = search.value.trim().toLowerCase();
+                let visible = 0;
+                getCards().forEach(card=>{
+                    const show = matches(card, q);
+                    card.style.display = show ? '' : 'none';
+                    if(show) visible++;
+                });
+                countEl && (countEl.textContent = visible);
+                noMatches.classList.toggle('hidden', visible!==0);
+            }
+            function applySort(){
+                const by = sort.value;
+                const cards = getCards().filter(c=>c.style.display!=='none');
+                cards.sort((a,b)=>{
+                    if(by==='name') return (a.dataset.name > b.dataset.name) ? 1 : -1;
+                    if(by==='offices') return (+b.dataset.offices) - (+a.dataset.offices);
+                    if(by==='admins') return (+b.dataset.admins) - (+a.dataset.admins);
+                    return 0;
+                });
+                cards.forEach(c=>grid.appendChild(c));
+            }
+            search && search.addEventListener('input', () => { applySearch(); applySort(); });
+            sort && sort.addEventListener('change', applySort);
+
+            // Keyboard navigation within grid
+            function columns(){ const w = window.innerWidth; if(w<768) return 1; if(w<1024) return 2; return 3; }
+            grid && grid.addEventListener('keydown', (e)=>{
+                const items = getCards().filter(c=>c.style.display!=='none');
+                const idx = items.indexOf(document.activeElement);
+                if(idx<0) return;
+                const cols = columns();
+                let next = idx;
+                if(e.key==='ArrowRight') next = Math.min(idx+1, items.length-1);
+                else if(e.key==='ArrowLeft') next = Math.max(idx-1, 0);
+                else if(e.key==='ArrowDown') next = Math.min(idx+cols, items.length-1);
+                else if(e.key==='ArrowUp') next = Math.max(idx-cols, 0);
+                else if(e.key==='Enter') {
+                    const link = document.activeElement.querySelector('.enter-link');
+                    if(link) link.click();
+                    return;
+                } else return;
+                items[next].focus(); e.preventDefault();
+            });
+
+            // Persist last campus selection
+            document.querySelectorAll('.enter-link').forEach(a=>{
+                a.addEventListener('click', ()=>{
+                    localStorage.setItem('lastCampusId', a.dataset.campusId);
+                    localStorage.setItem('lastCampusName', a.dataset.campusName);
+                    localStorage.setItem('lastCampusHref', a.getAttribute('href'));
+                });
+            });
+
+            // Campus intro animation on selection (minimal, professional)
+            (function(){
+                let introShown = false;
+                function showCampusIntro(name) {
+                    try {
+                        // Build overlay
+                        const overlay = document.createElement('div');
+                        overlay.className = 'campus-intro-overlay';
+                        overlay.setAttribute('role','status');
+                        overlay.setAttribute('aria-live','polite');
+                        const wrap = document.createElement('div');
+                        wrap.className = 'campus-intro-wrap';
+                        const title = document.createElement('div');
+                        title.className = 'campus-intro-text text-4xl md:text-6xl lg:text-7xl';
+                        title.innerHTML = name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                        const accent = document.createElement('div');
+                        accent.className = 'campus-intro-accent';
+                        wrap.appendChild(title);
+                        wrap.appendChild(accent);
+                        overlay.appendChild(wrap);
+                        document.body.appendChild(overlay);
+                        // allow transition to apply
+                        requestAnimationFrame(()=> overlay.classList.add('show'));
+                        return overlay;
+                    } catch(e) { return null; }
+                }
+
+                function handleCampusEnter(e) {
+                    const a = e.currentTarget;
+                    // Respect new tab / modifier clicks
+                    if (e.defaultPrevented || e.button === 1 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    e.preventDefault();
+                    if (introShown) { window.location.href = a.href; return; }
+                    introShown = true;
+                    const name = a.dataset.campusName || a.textContent || 'Campus';
+                    const overlay = showCampusIntro(name);
+                    // Duration target: 0.5–0.8s total; we show 520ms, then fade 180ms, then navigate
+                    const fadeOut = () => {
+                        if (!overlay) { window.location.href = a.href; return; }
+                        overlay.classList.add('fade-out');
+                        setTimeout(()=>{ window.location.href = a.href; }, 180);
+                    };
+                    setTimeout(fadeOut, 520);
+                }
+
+                document.querySelectorAll('.enter-link').forEach(a=>{
+                    a.addEventListener('click', handleCampusEnter);
+                });
+            })();
+            // Show continue banner if exists
+            (function(){
+                const id = localStorage.getItem('lastCampusId');
+                const name = localStorage.getItem('lastCampusName');
+                const href = localStorage.getItem('lastCampusHref');
+                if(id && name && href){
+                    const box = document.getElementById('continueLast');
+                    const link = document.getElementById('continueLink');
+                    const label = document.getElementById('continueName');
+                    label.textContent = name; link.href = href; box.classList.remove('hidden');
+                }
+            })();
+        </script>
+</body>
+</html>

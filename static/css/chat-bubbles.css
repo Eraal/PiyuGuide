@@ -1,0 +1,56 @@
+/* Shared chat bubble styles for Student and Office modules (Messenger-like) */
+
+/* Container scrollbars */
+.message-container::-webkit-scrollbar { width: 8px; height: 8px; }
+.message-container::-webkit-scrollbar-track { background: transparent; }
+.message-container::-webkit-scrollbar-thumb { background-color: rgba(100, 116, 139, 0.35); border-radius: 9999px; }
+
+/* Message row */
+.msg-row { display: flex; margin-bottom: 0.75rem; align-items: flex-end; }
+.msg-row.outgoing { justify-content: flex-end; }
+.msg-row.incoming { justify-content: flex-start; }
+
+/* Avatar */
+.chat-avatar { width: 32px; height: 32px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); flex-shrink: 0; }
+.chat-avatar.incoming { background: #3b82f6; }
+.chat-avatar.outgoing { background: #10b981; }
+
+/* Bubble */
+.message-bubble { position: relative; max-width: 78%; padding: 10px 12px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 1px rgba(0,0,0,0.04); word-wrap: break-word; overflow-wrap: anywhere; }
+
+/* Outgoing (me) */
+.message-sent { color: #fff; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-top-left-radius: 18px; border-top-right-radius: 18px; border-bottom-left-radius: 18px; border-bottom-right-radius: 6px; }
+.message-sent::after { content: ""; position: absolute; right: -6px; bottom: 6px; width: 12px; height: 12px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); transform: rotate(45deg); border-bottom-right-radius: 2px; }
+
+/* Incoming (others) */
+.message-received { color: #111827; background: #f3f4f6; border-top-left-radius: 18px; border-top-right-radius: 18px; border-bottom-left-radius: 6px; border-bottom-right-radius: 18px; }
+.message-received::after { content: ""; position: absolute; left: -6px; bottom: 6px; width: 12px; height: 12px; background: #f3f4f6; transform: rotate(45deg); border-bottom-left-radius: 2px; }
+
+/* Message content */
+.message-text { font-size: 0.9375rem; line-height: 1.35; white-space: pre-wrap; }
+
+/* Meta (timestamp and status) */
+.message-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; opacity: 0.8; }
+.msg-row.incoming .message-meta { justify-content: flex-start; color: #6b7280; }
+.msg-row.outgoing .message-meta { justify-content: flex-end; color: rgba(255,255,255,0.85); }
+
+/* Attachments */
+.attachment-preview { max-width: 180px; max-height: 180px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(0,0,0,0.06); }
+.attachment-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,0.8); color: #374151; }
+.message-received .attachment-chip { background: #e5e7eb; }
+
+/* Subtle appear animation */
+.message-fade-in { animation: chatFadeIn .24s ease-out; }
+@keyframes chatFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Typing bubbles (generic) */
+.typing-bubble { display: inline-flex; gap: 4px; padding: 6px 10px; background: #f3f4f6; border-radius: 9999px; align-items: center; }
+.typing-bubble .dot { width: 6px; height: 6px; border-radius: 9999px; background: #9ca3af; opacity: .6; animation: typingDot 1.2s infinite; }
+.typing-bubble .dot:nth-child(2) { animation-delay: .2s; }
+.typing-bubble .dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingDot { 0%, 80%, 100% { transform: translateY(0); opacity:.6; } 40% { transform: translateY(-3px); opacity:1; } }
+
+/* Utility: spacing tweaks on narrow screens */
+@media (max-width: 768px) {
+  .message-bubble { max-width: 88%; }
+}

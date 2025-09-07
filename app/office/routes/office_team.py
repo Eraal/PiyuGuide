@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, case, desc, or_
 from app.office import office_bp
+from werkzeug.security import generate_password_hash
 
 # Import the office context function
 from app.office.routes.office_dashboard import get_office_context
@@ -403,6 +404,22 @@ def team_performance_metrics():
             CounselingSession.created_at >= date_from
         ).count()
         
+        # Inquiries handled in period (distinct inquiries with staff response)
+        handled_inquiry_ids_q = db.session.query(InquiryMessage.inquiry_id).filter(
+            InquiryMessage.sender_id == staff.id,
+            InquiryMessage.created_at >= date_from
+        ).distinct()
+        handled_inquiries_count = db.session.query(func.count()).select_from(handled_inquiry_ids_q.subquery()).scalar() or 0
+
+        # Of those, how many are resolved now
+        resolved_inquiries_count = Inquiry.query.filter(
+            Inquiry.office_id == office_id,
+            Inquiry.id.in_(handled_inquiry_ids_q),
+            Inquiry.status == 'resolved'
+        ).count()
+
+        inquiry_resolution_rate = (resolved_inquiries_count / handled_inquiries_count * 100) if handled_inquiries_count > 0 else 0
+
         # Get student satisfaction (if available)
         # You can implement a rating system later
         satisfaction_rating = 4.5  # Placeholder
@@ -416,6 +433,9 @@ def team_performance_metrics():
             'total_sessions': total_sessions,
             'completed_sessions': completed_sessions,
             'completion_rate': (completed_sessions / total_sessions * 100) if total_sessions > 0 else 0,
+            'inquiries_handled': handled_inquiries_count,
+            'inquiries_resolved': resolved_inquiries_count,
+            'inquiry_resolution_rate': inquiry_resolution_rate,
             'satisfaction_rating': satisfaction_rating,
             'is_online': staff.is_online and staff.last_activity > datetime.utcnow() - timedelta(minutes=15)
         })
@@ -435,6 +455,7 @@ def team_workload_analytics():
     
     office_id = current_user.office_admin.office_id
     now = datetime.utcnow()
+    today_start = datetime.combine(now.date(), datetime.min.time())
     
     # Get workload distribution
     staff_members = User.query.join(OfficeAdmin).filter(
@@ -464,6 +485,13 @@ def team_workload_analytics():
             CounselingSession.status.in_(['pending', 'confirmed']),
             CounselingSession.scheduled_at > now
         ).count()
+
+        todays_sessions = CounselingSession.query.filter(
+            CounselingSession.office_id == office_id,
+            CounselingSession.counselor_id == staff.id,
+            CounselingSession.scheduled_at >= today_start,
+            CounselingSession.scheduled_at < today_start + timedelta(days=1)
+        ).count()
         
         total_workload = pending_inquiries + upcoming_sessions
         total_pending += pending_inquiries
@@ -485,6 +513,7 @@ def team_workload_analytics():
             'name': staff.get_full_name(),
             'pending_inquiries': pending_inquiries,
             'upcoming_sessions': upcoming_sessions,
+            'todays_sessions': todays_sessions,
             'total_workload': total_workload,
             'workload_level': workload_level,
             'workload_color': workload_color,
@@ -563,7 +592,7 @@ def team_activity_timeline():
             'timestamp': log.timestamp.isoformat(),
             'actor': log.actor.get_full_name() if log.actor else 'System',
             'action': log.action,
-            'details': log.details or '',
+            'details': '',
             'icon': 'fas fa-clipboard-list',
             'color': 'blue'
         })
@@ -634,8 +663,7 @@ def assign_inquiry():
     assignment_message = InquiryMessage(
         inquiry_id=inquiry_id,
         sender_id=current_user.id,
-        content=f"This inquiry has been assigned to {staff.get_full_name()}.",
-        is_system_message=True
+    content=f"This inquiry has been assigned to {staff.get_full_name()}."
     )
     
     # Update inquiry status
@@ -649,8 +677,7 @@ def assign_inquiry():
         action=f"Assigned inquiry #{inquiry_id} to {staff.get_full_name()}",
         target_type='inquiry',
         inquiry_id=inquiry_id,
-        office_id=office_id,
-        details=f"Inquiry: {inquiry.subject}"
+    office_id=office_id
     )
     
     db.session.add(assignment_message)
@@ -690,8 +717,7 @@ def staff_status_update():
         actor_role=current_user.role,
         action=f"Updated status to {status}",
         target_type='user',
-        office_id=current_user.office_admin.office_id,
-        details=custom_message if custom_message else None
+    office_id=current_user.office_admin.office_id
     )
     
     db.session.add(log)
@@ -769,8 +795,7 @@ def post_team_announcement():
         actor_role=current_user.role,
         action=f"Posted {audience} announcement: {title}",
         target_type='announcement',
-        office_id=office_id,
-        details=f"Priority: {priority}"
+    office_id=office_id
     )
     
     db.session.add(log)
@@ -781,6 +806,74 @@ def post_team_announcement():
             'success': True,
             'message': f'Announcement posted successfully to {audience} audience'
         })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@office_bp.route('/api/add-office-admin', methods=['POST'])
+@login_required
+def add_office_admin():
+    """Create a new office admin under the current office."""
+    if current_user.role != 'office_admin':
+        return jsonify({'error': 'Not authorized'}), 403
+
+    data = request.get_json(silent=True) or {}
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+
+    # Basic validation
+    if not first_name or not last_name or not email or not password:
+        return jsonify({'error': 'All fields are required.'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters.'}), 400
+    # Prevent duplicate emails
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'Email already exists.'}), 409
+
+    office_id = current_user.office_admin.office_id
+    office = Office.query.get(office_id)
+    if not office:
+        return jsonify({'error': 'Office not found.'}), 404
+
+    try:
+        # Create user
+        new_user = User(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            role='office_admin',
+            password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
+            is_active=True
+        )
+        db.session.add(new_user)
+        db.session.flush()
+
+        # Link as office admin
+        oa = OfficeAdmin(user_id=new_user.id, office_id=office_id)
+        db.session.add(oa)
+
+        # Log action
+        log = AuditLog(
+            actor_id=current_user.id,
+            actor_role=current_user.role,
+            action=f"Created office admin {first_name} {last_name}",
+            target_type='user',
+            target_id=new_user.id,
+            office_id=office_id
+        )
+        db.session.add(log)
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': new_user.id,
+                'name': new_user.get_full_name(),
+                'email': new_user.email
+            }
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

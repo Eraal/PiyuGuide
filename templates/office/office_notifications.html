@@ -75,7 +75,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-600 font-medium">Quick Actions</p>
-                        <div class="space-y-2 mt-2">
+                        <div class="space-y-2 mt-2 notifications-actions">
                             {% if unread_count > 0 %}
                             <button id="markAllReadBtn" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors">
                                 Mark All Read
@@ -95,6 +95,52 @@
             </div>
         </div>
     </div>
+
+    <!-- Smart Stacked Notifications Section -->
+    {% if stacked_notifications and current_filter_read == 'unread' %}
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-layer-group text-blue-600 mr-2"></i>
+                Smart Grouped Notifications
+            </h2>
+            <span class="text-sm text-gray-500">Grouped by activity</span>
+        </div>
+        
+        <div class="space-y-4">
+            {% for group in stacked_notifications %}
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-blue-100 p-2 rounded-full">
+                            <i class="fas fa-comments text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">{{ group.base_notification.title }}</h3>
+                            <p class="text-sm text-gray-600">{{ group.base_notification.message }}</p>
+                            {% if group.count > 1 %}
+                            <p class="text-xs text-blue-600 mt-1">
+                                <i class="fas fa-stack mr-1"></i>
+                                {{ group.count }} related notifications
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-gray-500">{{ group.latest_activity.strftime('%b %d, %H:%M') }}</span>
+                        {% if group.base_notification.inquiry_id %}
+                        <a href="{{ url_for('office.view_inquiry', inquiry_id=group.base_notification.inquiry_id) }}" 
+                           class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-arrow-right mr-1"></i>View
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Enhanced Filters Section -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">

@@ -1,759 +1,784 @@
-{% extends "student/student_base.html" %} {% block title %}View Inquiry -
-KapiyuGuide{% endblock %} {% block extra_head %}
-<link
-  href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-  rel="stylesheet"
-/>
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-/>
+{% extends "student/student_base.html" %}
+{% block title %}View Inquiry - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-bubbles.css') }}" />
 <style>
-  /* Custom scrollbar styling */
-  .message-container::-webkit-scrollbar {
-    width: 6px;
-  }
+	/* Page/viewport control */
+	html, body { height: 100%; }
+	main.main-content { overflow-y: hidden !important; }
 
-  .message-container::-webkit-scrollbar-track {
-    background: transparent;
-  }
+	/* Prevent horizontal scrollbar in chat view and wrap long text */
+	[data-chat-container] { overflow-x: hidden; }
+	#messageHistory { overflow-x: hidden; }
+	#messageHistory .message-bubble { overflow-wrap: anywhere; word-break: break-word; }
 
-  .message-container::-webkit-scrollbar-thumb {
-    background-color: rgba(156, 163, 175, 0.5);
-    border-radius: 20px;
-  }
+	/* File attachment input styling */
+	.file-input-label { transition: all 0.2s ease; }
+	.file-input-label:hover { background-color: #f3f4f6; }
 
-  /* Message bubble styling */
-  .message-bubble {
-    position: relative;
-    max-width: 80%;
-    border-radius: 18px;
-    margin-bottom: 0.5rem;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    word-break: break-word;
-  }
+	/* Chat layout heights */
+	.chat-wrapper { height: calc(100vh - 160px); min-height: 500px; }
+	.chat-column { display: flex; flex-direction: column; }
+	.chat-column { min-height: 0; }
 
-  .message-sent {
-    margin-left: auto;
-    background-color: #3b82f6;
-    color: white;
-    border-bottom-right-radius: 4px;
-  }
+	/* Status badges */
+	.inquiry-status-pending { background-color: #fef3c7; color: #92400e; }
+	.inquiry-status-in_progress { background-color: #dbeafe; color: #1e40af; }
+	.inquiry-status-resolved { background-color: #d1fae5; color: #065f46; }
+	.inquiry-status-reopened { background-color: #ede9fe; color: #5b21b6; }
 
-  .message-received {
-    margin-right: auto;
-    background-color: #f3f4f6;
-    color: #1f2937;
-    border-bottom-left-radius: 4px;
-  }
+	/* Typing indicator dots animation */
+	.typing-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#9ca3af; margin-right:3px; animation: typing-dot 1.4s infinite ease-in-out; }
+	.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+	.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+	@keyframes typing-dot { 0%,60%,100% { transform: translateY(0);} 30% { transform: translateY(-4px);} }
 
-  /* Attachment styling */
-  .attachment-preview {
-    max-width: 180px;
-    max-height: 180px;
-    border-radius: 8px;
-    object-fit: cover;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
+	/* Load more messages button style */
+	.load-more-button { display:flex; align-items:center; justify-content:center; background:#f8fafc; color:#334155; padding:0.5rem 1rem; border-radius:9999px; font-size:0.875rem; margin:1rem auto; cursor:pointer; transition:all 0.2s ease; border:1px solid #e2e8f0; }
+	.load-more-button:hover { background:#eef2f7; color:#0f172a; }
 
-  /* Status badges */
-  .inquiry-status-pending {
-    background-color: #fef3c7;
-    color: #92400e;
-  }
+	.attachment-preview { max-width: 180px; max-height: 180px; border-radius: 10px; }
 
-  .inquiry-status-in_progress {
-    background-color: #dbeafe;
-    color: #1e40af;
-  }
+	/* The only scrollable area: messages */
+	#messageHistory { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
-  .inquiry-status-resolved {
-    background-color: #d1fae5;
-    color: #065f46;
-  }
+	/* Input bar pinned to bottom of chat column */
+	.chat-input-bar { position: sticky; bottom: 0; z-index: 10; background: #f9fafb; border-top: 1px solid #f3f4f6; }
+	.chat-input-bar-inner { display: flex; flex-direction: column; }
 
-  .inquiry-status-reopened {
-    background-color: #ede9fe;
-    color: #5b21b6;
-  }
+	/* Responsive adjustments */
+	@media (max-width: 768px) {
+		.mobile-hide { display: none !important; }
+		.chat-page-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+		html, body, main.main-content { overflow: hidden !important; }
+		.chat-wrapper { height: 100dvh; min-height: 100dvh; gap: 0 !important; }
+		.chat-column { height: 100%; min-height: 100%; }
 
-  /* Typing indicator dots animation */
-  .typing-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #9ca3af;
-    margin-right: 3px;
-    animation: typing-dot 1.4s infinite ease-in-out;
-  }
+		/* Edge-to-edge card */
+		.chat-card { border-radius: 0 !important; box-shadow: none !important; border: 0 !important; }
+		.chat-header { padding: 10px 12px !important; border-bottom: 0 !important; }
+		.chat-body { padding: 0 !important; }
+		#messageHistory { padding-left: 0 !important; padding-right: 0 !important; margin-bottom: 0 !important; }
 
-  .typing-dot:nth-child(1) {
-    animation-delay: 0s;
-  }
-  .typing-dot:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  .typing-dot:nth-child(3) {
-    animation-delay: 0.4s;
-  }
+		/* Input bar: compact, icon-first */
+		.chat-input-bar { position: sticky; bottom: 0; left: 0; right: 0; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; box-shadow: none !important; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+		.chat-input-toolbar { padding: 8px 8px !important; border-top: 1px solid #e5e7eb !important; background: #fff !important; border-radius: 0 !important; }
+		.icon-btn { width: 40px; height: 40px; padding: 0 !important; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
+		.file-input-trigger .label-text-attach { display: none !important; }
+		#sendButton .label-text-send { display: none !important; }
+		#sendButton { width: 40px; height: 40px; padding: 0 !important; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
+		textarea#messageInput { padding: 12px !important; min-height: 44px; }
+	}
 
-  @keyframes typing-dot {
-    0%,
-    60%,
-    100% {
-      transform: translateY(0);
-    }
-    30% {
-      transform: translateY(-4px);
-    }
-  }
-
-  /* File attachment input styling */
-  .file-input-label {
-    transition: all 0.2s ease;
-  }
-
-  .file-input-label:hover {
-    background-color: #f3f4f6;
-  }
-
-  /* Make chat interface take up full available height */
-  .chat-wrapper {
-    height: calc(100vh - 160px);
-    min-height: 500px;
-  }
-
-  /* Message fading effect */
-  .message-fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .message-bubble {
-      max-width: 90%;
-    }
-
-    .chat-wrapper {
-      height: calc(100vh - 120px);
-    }
-  }
+	/* Seen indicator enhancements */
+	.msg-row .message-meta i.fa-check-double.seen { color: #60a5fa !important; opacity: 1 !important; }
 </style>
-{% endblock %} {% block content %}
-<div class="container mx-auto px-4 py-6" data-inquiry-id="{{ inquiry.id }}">
-  <!-- Breadcrumb Navigation -->
-  <div class="flex items-center text-sm text-gray-600 mb-4">
-    <a href="{{ url_for('student.dashboard') }}" class="hover:text-blue-600"
-      >Dashboard</a
-    >
-    <i class="fas fa-chevron-right mx-2 text-xs"></i>
-    <a href="{{ url_for('student.inquiries') }}" class="hover:text-blue-600"
-      >Inquiries</a
-    >
-    <i class="fas fa-chevron-right mx-2 text-xs"></i>
-    <span class="text-gray-800 font-medium truncate max-w-xs"
-      >{{ inquiry.subject }}</span
-    >
-  </div>
+{% endblock %}
 
-  <!-- Main Content -->
-  <div class="chat-wrapper grid grid-cols-1 lg:grid-cols-4 gap-4">
-    <!-- Left Sidebar - Details & Related Inquiries -->
-    <div class="lg:col-span-1 space-y-4">
-      <!-- Inquiry Details Card -->
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-800">Inquiry Details</h2>
-        </div>
-        <div class="p-4 space-y-3">
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Subject</h3>
-            <p class="text-sm text-gray-900 mt-1">{{ inquiry.subject }}</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Office</h3>
-            <p class="text-sm text-gray-900 mt-1">{{ inquiry.office.name }}</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Status</h3>
-            <span
-              class="px-2 py-1 text-xs rounded-full inquiry-status-{{ inquiry.status }} inline-block mt-1"
-            >
-              {{ inquiry.status|replace('_', ' ')|title }}
-            </span>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Date Submitted</h3>
-            <p class="text-sm text-gray-900 mt-1">
-              {{ inquiry.created_at.strftime('%B %d, %Y') }}
-            </p>
-          </div>
+{% block content %}
+<div class="container mx-auto px-4 py-6 chat-page-container" data-inquiry-id="{{ inquiry.id }}" data-chat-container="true">
 
-          <!-- Concern Types -->
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">Concern Types</h3>
-            {% if inquiry.concerns %}
-            <ul class="text-sm text-gray-900 mt-1 space-y-1">
-              {% for concern in inquiry.concerns %}
-              <li>
-                {{ concern.concern_type.name }} {% if
-                concern.other_specification %}
-                <span class="text-gray-500 italic"
-                  >({{ concern.other_specification }})</span
-                >
-                {% endif %}
-              </li>
-              {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-sm text-gray-500 mt-1">
-              No specific concerns listed
-            </p>
-            {% endif %}
-          </div>
-        </div>
-      </div>
+	<div class="chat-wrapper grid grid-cols-1 lg:grid-cols-4 gap-4">
+		<!-- Left Sidebar - Details & Related Inquiries (hidden on mobile) -->
+		<div class="lg:col-span-1 space-y-4 mobile-hide">
+			<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+				<div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+					<h2 class="text-lg font-semibold text-gray-800">Inquiry Details</h2>
+				</div>
+				<div class="p-4 space-y-3">
+					<div>
+						<h3 class="text-sm font-medium text-gray-500">Subject</h3>
+						<p class="text-sm text-gray-900 mt-1">{{ inquiry.subject }}</p>
+					</div>
+					<div>
+						<h3 class="text-sm font-medium text-gray-500">Office</h3>
+						<p class="text-sm text-gray-900 mt-1">{{ inquiry.office.name }}</p>
+					</div>
+					<div>
+						<h3 class="text-sm font-medium text-gray-500">Status</h3>
+						<span class="px-2 py-1 text-xs rounded-full inquiry-status-{{ inquiry.status }} inline-block mt-1">
+							{{ inquiry.status|replace('_', ' ')|title }}
+						</span>
+					</div>
+					<div>
+						<h3 class="text-sm font-medium text-gray-500">Date Submitted</h3>
+						<p class="text-sm text-gray-900 mt-1">{{ inquiry.created_at.strftime('%B %d, %Y') }}</p>
+					</div>
+					<div>
+						<h3 class="text-sm font-medium text-gray-500">Concern Types</h3>
+						{% if inquiry.concerns %}
+						<ul class="text-sm text-gray-900 mt-1 space-y-1">
+							{% for concern in inquiry.concerns %}
+							<li>
+								{{ concern.concern_type.name }} {% if concern.other_specification %}
+								<span class="text-gray-500 italic">({{ concern.other_specification }})</span>
+								{% endif %}
+							</li>
+							{% endfor %}
+						</ul>
+						{% else %}
+						<p class="text-sm text-gray-500 mt-1">No specific concerns listed</p>
+						{% endif %}
+					</div>
+				</div>
+			</div>
 
-      <!-- Related Inquiries -->
-      {% if related_inquiries %}
-      <div
-        class="bg-white rounded-xl shadow-sm overflow-hidden hidden lg:block"
-      >
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-800">Related Inquiries</h2>
-        </div>
-        <div class="p-4">
-          <ul class="space-y-2">
-            {% for related in related_inquiries %}
-            <li>
-              <a
-                href="{{ url_for('student.view_inquiry', inquiry_id=related.id) }}"
-                class="block hover:bg-gray-50 p-3 rounded-md transition"
-              >
-                <p class="text-sm font-medium text-blue-600 truncate">
-                  {{ related.subject }}
-                </p>
-                <div class="flex justify-between items-center mt-1">
-                  <span class="text-xs text-gray-500"
-                    >{{ related.created_at.strftime('%b %d, %Y') }}</span
-                  >
-                  <span
-                    class="inline-block px-2 py-0.5 text-xs rounded-full inquiry-status-{{ related.status }}"
-                  >
-                    {{ related.status|replace('_', ' ')|title }}
-                  </span>
-                </div>
-              </a>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-      {% endif %}
+			{% if related_inquiries %}
+			<div class="bg-white rounded-xl shadow-sm overflow-hidden hidden lg:block">
+				<div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+					<h2 class="text-lg font-semibold text-gray-800">Related Inquiries</h2>
+				</div>
+				<div class="p-4">
+					<ul class="space-y-2">
+						{% for related in related_inquiries %}
+						<li>
+							<a href="{{ url_for('student.view_inquiry', inquiry_id=related.id) }}" class="block hover:bg-gray-50 p-3 rounded-md transition">
+								<p class="text-sm font-medium text-blue-600 truncate">{{ related.subject }}</p>
+								<div class="flex justify-between items-center mt-1">
+									<span class="text-xs text-gray-500">{{ related.created_at.strftime('%b %d, %Y') }}</span>
+									<span class="inline-block px-2 py-0.5 text-xs rounded-full inquiry-status-{{ related.status }}">
+										{{ related.status|replace('_', ' ')|title }}
+									</span>
+								</div>
+							</a>
+						</li>
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+			{% endif %}
 
-      <!-- Mobile Only - Toggle Related Inquiries -->
-      {% if related_inquiries %}
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden lg:hidden">
-        <button
-          id="toggleRelatedBtn"
-          class="w-full px-4 py-3 flex justify-between items-center bg-gray-50 border-b border-gray-100"
-        >
-          <h2 class="text-lg font-semibold text-gray-800">Related Inquiries</h2>
-          <i
-            class="fas fa-chevron-down transition-transform"
-            id="toggleRelatedIcon"
-          ></i>
-        </button>
-        <div class="p-4 hidden" id="relatedInquiriesContainer">
-          <ul class="space-y-2">
-            {% for related in related_inquiries %}
-            <li>
-              <a
-                href="{{ url_for('student.view_inquiry', inquiry_id=related.id) }}"
-                class="block hover:bg-gray-50 p-3 rounded-md transition"
-              >
-                <p class="text-sm font-medium text-blue-600 truncate">
-                  {{ related.subject }}
-                </p>
-                <div class="flex justify-between items-center mt-1">
-                  <span class="text-xs text-gray-500"
-                    >{{ related.created_at.strftime('%b %d, %Y') }}</span
-                  >
-                  <span
-                    class="inline-block px-2 py-0.5 text-xs rounded-full inquiry-status-{{ related.status }}"
-                  >
-                    {{ related.status|replace('_', ' ')|title }}
-                  </span>
-                </div>
-              </a>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-      {% endif %}
-    </div>
+			{% if related_inquiries %}
+			<div class="bg-white rounded-xl shadow-sm overflow-hidden lg:hidden mobile-hide">
+				<button id="toggleRelatedBtn" class="w-full px-4 py-3 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+					<h2 class="text-lg font-semibold text-gray-800">Related Inquiries</h2>
+					<i class="fas fa-chevron-down transition-transform" id="toggleRelatedIcon"></i>
+				</button>
+				<div class="p-4 hidden" id="relatedInquiriesContainer">
+					<ul class="space-y-2">
+						{% for related in related_inquiries %}
+						<li>
+							<a href="{{ url_for('student.view_inquiry', inquiry_id=related.id) }}" class="block hover:bg-gray-50 p-3 rounded-md transition">
+								<p class="text-sm font-medium text-blue-600 truncate">{{ related.subject }}</p>
+								<div class="flex justify-between items-center mt-1">
+									<span class="text-xs text-gray-500">{{ related.created_at.strftime('%b %d, %Y') }}</span>
+									<span class="inline-block px-2 py-0.5 text-xs rounded-full inquiry-status-{{ related.status }}">
+										{{ related.status|replace('_', ' ')|title }}
+									</span>
+								</div>
+							</a>
+						</li>
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+			{% endif %}
+		</div>
 
-    <!-- Right Column - Chat Messages -->
-    <div
-      class="lg:col-span-3 flex flex-col bg-white rounded-xl shadow-sm overflow-hidden"
-    >
-      <!-- Chat Header -->
-      <div
-        class="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between"
-      >
-        <div>
-          <h2 class="text-lg font-semibold text-gray-800">
-            {{ inquiry.subject }}
-          </h2>
-          <p class="text-xs text-gray-500">
-            Conversation with {{ inquiry.office.name }}
-          </p>
-        </div>
-        <a
-          href="{{ url_for('student.inquiries') }}"
-          class="text-blue-600 hover:text-blue-800 text-sm flex items-center"
-        >
-          <i class="fas fa-arrow-left mr-1"></i> Back
-        </a>
-      </div>
+		<!-- Chat Column (revamped to match Office UI/UX) -->
+		<div class="lg:col-span-3 h-full min-h-0 chat-column">
+			<div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-full flex flex-col min-h-0 chat-card">
+				<!-- Header -->
+				<div class="px-6 py-4 border-b flex items-center justify-between flex-shrink-0 bg-gradient-to-r from-white to-sky-50/40 chat-header">
+					<div class="flex items-center gap-3">
+						<h2 class="text-base lg:text-lg font-semibold text-slate-800">Conversation</h2>
+						<!-- connection-status will be injected here -->
+					</div>
+					<a href="{{ url_for('student.inquiries') }}" class="text-sky-700 hover:text-sky-900 text-sm flex items-center">
+						<i class="fas fa-arrow-left mr-1"></i> Back to Inquiries
+					</a>
+				</div>
+				<!-- Body -->
+				<div class="p-6 flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-50 chat-body">
+					<!-- Messages History -->
+					<div class="message-container mb-6 flex-1 min-h-0 overflow-y-auto pr-1" id="messageHistory">
+						{% if has_more_messages %}
+						<div id="load-more-container" class="flex justify-center mb-4">
+							<button id="load-more-button" class="load-more-button shadow-sm">
+								<i class="fas fa-arrow-up mr-2"></i>
+								Load Older Messages
+							</button>
+						</div>
+						{% endif %}
 
-      <!-- Messages Container -->
-      <div class="flex-grow overflow-hidden flex flex-col">
-        <!-- Message History -->
-        <div
-          class="message-container flex-grow overflow-y-auto p-4"
-          id="messageHistory"
-        >
-          {% if has_more_messages %}
-          <div id="load-more-container" class="flex justify-center mb-4">
-            <div
-              class="bg-blue-50 text-blue-600 px-3 py-2 rounded-full text-xs font-medium animate-pulse cursor-pointer"
-              id="scroll-indicator"
-            >
-              <i class="fas fa-arrow-up mr-1"></i>
-              Scroll up for older messages
-            </div>
-          </div>
-          {% endif %}
+						{% for message in messages %}
+						<div class="msg-row {% if message.sender_id == current_user.id %}outgoing{% else %}incoming{% endif %} message-fade-in">
+							{% if message.sender_id != current_user.id %}
+							<div class="chat-avatar incoming mr-2">
+								{{ message.sender.first_name[0] }}{{ message.sender.last_name[0] }}
+							</div>
+							{% endif %}
 
-          <!-- Date Separator (optional) -->
-          <div class="flex justify-center my-3">
-            <div
-              class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs"
-            >
-              Today
-            </div>
-          </div>
+							<div class="message-bubble {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}"
+								 data-message-id="{{ message.id }}" data-sender-id="{{ message.sender_id }}"{% if message.sender_id == current_user.id and message.status == 'read' and message.read_at %} data-read-at="{{ message.read_at.isoformat() }}"{% endif %}>
+								{% if message.sender_id != current_user.id %}
+								<div class="text-xs font-semibold mb-1 text-gray-700">
+									{{ message.sender.get_full_name() }}
+									{% if message.sender.role == 'office_admin' %}
+									<span class="text-blue-600">(Office Staff)</span>
+									{% endif %}
+								</div>
+								{% endif %}
 
-          <!-- Message Bubbles -->
-          {% for message in messages %}
-          <div
-            class="flex {% if message.sender_id == current_user.id %}justify-end{% endif %} mb-4 message-fade-in"
-          >
-            {% if message.sender_id != current_user.id %}
-            <!-- Avatar for received messages -->
-            <div class="self-end mr-2">
-              <div
-                class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-sm"
-              >
-                {{ message.sender.first_name[0] }}{{ message.sender.last_name[0]
-                }}
-              </div>
-            </div>
-            {% endif %}
+								<div class="message-text">{{ message.content|nl2br }}</div>
 
-            <div
-              class="message-bubble p-3 {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}"
-              data-message-id="{{ message.id }}"
-              data-sender-id="{{ message.sender_id }}"
-            >
-              <!-- Sender info -->
-              <div class="flex items-center mb-1">
-                {% if message.sender_id != current_user.id %}
-                <div>
-                  <span class="text-xs font-semibold">
-                    {{ message.sender.get_full_name() }} {% if
-                    message.sender.role == 'office_admin' %}
-                    <span class="text-blue-600">(Office Staff)</span>
-                    {% endif %}
-                  </span>
-                </div>
-                {% endif %}
-              </div>
+								{% if message.attachments %}
+								<div class="mt-2 flex flex-wrap gap-2">
+									{% for attachment in message.attachments %}
+									<a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank" class="block">
+										{% if attachment.file_path.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+										<img src="{{ url_for('static', filename=attachment.file_path) }}" alt="Attachment" class="attachment-preview" />
+										{% else %}
+										<div class="attachment-chip">
+											{% if attachment.file_path.endswith('.pdf') %}
+											<i class="far fa-file-pdf text-red-500"></i>
+											{% elif attachment.file_path.endswith(('.doc', '.docx')) %}
+											<i class="far fa-file-word text-blue-500"></i>
+											{% else %}
+											<i class="far fa-file text-slate-500"></i>
+											{% endif %}
+											<span class="text-xs">{{ attachment.filename|default('Attachment') }}</span>
+										</div>
+										{% endif %}
+									</a>
+									{% endfor %}
+								</div>
+								{% endif %}
+								<div class="message-meta">
+									<span>{{ message.created_at.strftime('%I:%M %p') }}</span>
+									{% if message.sender_id == current_user.id %}
+									<i class="fas {% if message.status == 'read' %}fa-check-double seen{% elif message.status == 'delivered' %}fa-check-double opacity-80{% else %}fa-check opacity-80{% endif %}"></i>
+									{% endif %}
+								</div>
+							</div>
 
-              <!-- Message content -->
-              <div class="text-sm">{{ message.content|nl2br }}</div>
+							{% if message.sender_id == current_user.id %}
+							<div class="chat-avatar outgoing ml-2">
+								{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+							</div>
+							{% endif %}
+						</div>
+						{% endfor %}
+					</div>
 
-              <!-- Message Attachments -->
-              {% if message.attachments %}
-              <div class="mt-2 flex flex-wrap gap-2">
-                {% for attachment in message.attachments %}
-                <a
-                  href="{{ url_for('static', filename=attachment.file_path) }}"
-                  target="_blank"
-                  class="block"
-                >
-                  {% if attachment.file_path.endswith(('.jpg', '.jpeg', '.png',
-                  '.gif')) %}
-                  <img
-                    src="{{ url_for('static', filename=attachment.file_path) }}"
-                    alt="Attachment"
-                    class="attachment-preview"
-                  />
-                  {% else %}
-                  <div
-                    class="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg px-3 py-2 rounded-md flex items-center"
-                  >
-                    {% if attachment.file_path.endswith('.pdf') %}
-                    <i class="far fa-file-pdf text-red-500 mr-2"></i>
-                    {% elif attachment.file_path.endswith(('.doc', '.docx')) %}
-                    <i class="far fa-file-word text-blue-500 mr-2"></i>
-                    {% else %}
-                    <i class="far fa-file text-gray-500 mr-2"></i>
-                    {% endif %}
-                    <span class="text-xs truncate max-w-xs"
-                      >{{ attachment.filename|default('Attachment') }}</span
-                    >
-                  </div>
-                  {% endif %}
-                </a>
-                {% endfor %}
-              </div>
-              {% endif %}
+					<!-- Typing indicator (positioned between history and input for consistency) -->
+					<div id="typingIndicator" class="hidden flex items-center gap-2">
+						<div class="chat-avatar incoming"><i class="fas fa-keyboard text-white text-xs"></i></div>
+						<div class="typing-bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+					</div>
 
-              <!-- Timestamp and status -->
-              <div class="flex justify-end items-center mt-1 space-x-1">
-                <span class="text-xs opacity-70"
-                  >{{ message.created_at.strftime('%I:%M %p') }}</span
-                >
-
-                {% if message.sender_id == current_user.id %}
-                <span class="status-icon ml-1">
-                  <i
-                    class="fas {% if message.status == 'read' %}fa-check-double text-blue-300{% elif message.status == 'delivered' %}fa-check-double text-white opacity-70{% else %}fa-check text-white opacity-70{% endif %} text-xs"
-                  ></i>
-                </span>
-                {% endif %}
-              </div>
-            </div>
-
-            {% if message.sender_id == current_user.id %}
-            <!-- Avatar for sent messages -->
-            <div class="self-end ml-2">
-              <div
-                class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white shadow-sm"
-              >
-                {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
-              </div>
-            </div>
-            {% endif %}
-          </div>
-          {% endfor %}
-
-          <!-- Typing indicator -->
-          <div id="typingIndicator" class="flex items-center mb-4 hidden">
-            <div
-              class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2 shadow-sm"
-            >
-              <i class="fas fa-keyboard"></i>
-            </div>
-            <div class="message-bubble message-received py-2 px-4">
-              <div class="typing-dot"></div>
-              <div class="typing-dot"></div>
-              <div class="typing-dot"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Message Input Form -->
-        <div class="border-t border-gray-100 p-3 bg-gray-50">
-          <form id="messageForm" class="flex flex-col">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-
-            <!-- Message textarea -->
-            <div class="relative mb-2">
-              <textarea
-                name="message"
-                rows="2"
-                placeholder="Type your message..."
-                id="messageInput"
-                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              ></textarea>
-            </div>
-
-            <!-- File attachments preview -->
-            <div
-              id="replyAttachmentPreview"
-              class="flex flex-wrap gap-2 mb-2"
-            ></div>
-
-            <!-- Action buttons -->
-            <div class="flex items-center justify-between">
-              <div class="relative">
-                <input
-                  type="file"
-                  id="replyAttachments"
-                  name="attachments"
-                  multiple
-                  class="hidden"
-                />
-                <label
-                  for="replyAttachments"
-                  class="file-input-label flex items-center cursor-pointer text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md"
-                >
-                  <i class="fas fa-paperclip mr-2"></i>
-                  <span class="text-sm">Files</span>
-                </label>
-              </div>
-
-              <button
-                type="submit"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
-                id="sendButton"
-              >
-                <span>Send</span>
-                <i class="fas fa-paper-plane ml-2"></i>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
+					<!-- Message Input Form -->
+					<form id="messageForm" class="mt-2 flex-shrink-0">
+						<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+						<div class="relative bg-white rounded-xl border border-slate-200 shadow-sm chat-input-bar">
+							<textarea name="message" rows="3" placeholder="Type your message..." id="messageInput"
+								class="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none leading-relaxed text-slate-800 placeholder:text-slate-400"></textarea>
+							<div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 bg-slate-50 rounded-b-xl chat-input-toolbar">
+								<div class="flex items-center gap-2">
+									<div class="relative">
+										<input type="file" id="replyAttachments" name="attachments" multiple class="hidden" />
+										<label for="replyAttachments" class="inline-flex items-center gap-2 cursor-pointer text-slate-600 hover:text-sky-700 icon-btn file-input-trigger" aria-label="Attach files">
+											<i class="fas fa-paperclip text-lg"></i>
+											<span class="text-sm label-text-attach">Attach</span>
+										</label>
+									</div>
+								</div>
+								<button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition disabled:opacity-50 icon-btn" id="sendButton" aria-label="Send message">
+									<span class="label-text-send">Send</span>
+									<i class="fas fa-paper-plane text-base"></i>
+								</button>
+							</div>
+						</div>
+						<div id="attachmentErrors" class="mt-2 text-sm text-red-600"></div>
+						<div id="replyAttachmentPreview" class="mt-2 flex flex-wrap gap-2"></div>
+					</form>
+					<!-- Scroll to bottom button -->
+					<button id="scrollToBottomBtn" class="hidden self-end sticky bottom-4 right-4 z-10 translate-y-2 rounded-full bg-white/90 shadow-lg ring-1 ring-slate-900/5 px-3 py-2 text-slate-700 hover:text-sky-700 backdrop-blur-md">
+						<i class="fas fa-arrow-down mr-2"></i> New messages
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <!-- Audio notifications -->
 <audio id="notificationSound" preload="auto">
-  <source
-    src="{{ url_for('static', filename='sounds/notification.mp3') }}"
-    type="audio/mpeg"
-  />
-</audio>
+	<source src="{{ url_for('static', filename='sounds/ChatSoundNotification.mp3') }}" type="audio/mpeg" />
+	Your browser does not support the audio element.
+	</audio>
 
 <!-- Chat WebSocket Script -->
 <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
 <script src="{{ url_for('static', filename='js/student/websockets/chat.js') }}"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the chat manager
-    const chatManager = new ChatSocketManager();
-    const inquiryId = document.querySelector('[data-inquiry-id]').getAttribute('data-inquiry-id');
-    const messageContainer = document.getElementById('messageHistory');
-    const messageInput = document.getElementById('messageInput');
-    const messageForm = document.getElementById('messageForm');
-    const sendButton = document.getElementById('sendButton');
-    const connectionStatus = document.getElementById('connection-status');
-    
-    // Set user ID on body for the chat manager
-    document.body.setAttribute('data-user-id', '{{ current_user.id }}');
-    
-    // Set up event handlers
-    chatManager.onConnectionStatusChange(function(status) {
-      if (connectionStatus) {
-        connectionStatus.textContent = status ? 'Connected' : 'Disconnected';
-        connectionStatus.className = status 
-          ? 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full' 
-          : 'text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full';
-      }
-    });
-    
-    chatManager.onMessageReceived(function(message) {
-      // Create and add message to the UI
-      if (messageContainer) {
-        const messageElement = createMessageElement(message);
-        messageContainer.appendChild(messageElement);
-        scrollToBottom();
-        
-        // Play notification sound for messages from others
-        if (!message.is_current_user) {
-          const notificationSound = document.getElementById('notificationSound');
-          if (notificationSound) {
-            notificationSound.play().catch(err => console.log('Could not play notification sound', err));
-          }
-        }
-      }
-    });
-    
-    chatManager.onMessageSent(function(data) {
-      if (data.success) {
-        console.log('Message sent successfully:', data.message_id);
-        // Clear the input field
-        if (messageInput) {
-          messageInput.value = '';
-          messageInput.focus();
-        }
-      }
-    });
-    
-    chatManager.onError(function(errorMessage) {
-      console.error('Chat error:', errorMessage);
-      // Show error to user
-      const errorElement = document.createElement('div');
-      errorElement.className = 'p-2 mb-2 text-sm text-red-700 bg-red-100 rounded-md';
-      errorElement.textContent = errorMessage;
-      
-      if (messageContainer) {
-        messageContainer.appendChild(errorElement);
-        scrollToBottom();
-        
-        // Remove error message after 5 seconds
-        setTimeout(function() {
-          errorElement.remove();
-        }, 5000);
-      }
-    });
-    
-    // Connect to WebSocket server and join inquiry room
-    chatManager.connect()
-      .then(function() {
-        console.log('Connected to chat server');
-        chatManager.joinInquiryRoom(inquiryId);
-      })
-      .catch(function(error) {
-        console.error('Failed to connect to chat server:', error);
-      });
-    
-    // Send message on form submit
-    if (messageForm) {
-      messageForm.addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent traditional form submission
-        sendMessage();
-      });
-    }
-    
-    // Send message on Enter key press (but allow Shift+Enter for new lines)
-    if (messageInput) {
-      messageInput.addEventListener('keypress', function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault();
-          sendMessage();
-        }
-      });
-    }
+	document.addEventListener('DOMContentLoaded', function() {
+		const chatManager = new ChatSocketManager();
+		const inquiryId = document.querySelector('[data-inquiry-id]')?.getAttribute('data-inquiry-id');
+		const messageContainer = document.getElementById('messageHistory');
+		const messageInput = document.getElementById('messageInput');
+		const messageForm = document.getElementById('messageForm');
+		const sendButton = document.getElementById('sendButton');
+		const connectionStatus = document.getElementById('connection-status');
+		const scrollBtn = document.getElementById('scrollToBottomBtn');
+		const attachmentInput = document.getElementById('replyAttachments');
+		const attachmentPreview = document.getElementById('replyAttachmentPreview');
 
-    // Function to send a message
-    function sendMessage() {
-      const content = messageInput.value.trim();
-      if (content) {
-        chatManager.sendMessage(content);
-      }
-    }
-    
-    // Create a message element for the UI
-    function createMessageElement(message) {
-      const messageDiv = document.createElement('div');
-      const isSentByMe = parseInt(message.sender_id) === parseInt('{{ current_user.id }}');
-      
-      messageDiv.className = `flex ${isSentByMe ? 'justify-end' : ''} mb-4 message-fade-in`;
-      
-      // Avatar for received messages (if not sent by me)
-      if (!isSentByMe) {
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'self-end mr-2';
-        const innerAvatarDiv = document.createElement('div');
-        innerAvatarDiv.className = 'h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-sm';
-        innerAvatarDiv.textContent = message.sender_name ? `${message.sender_name.split(' ')[0][0]}${message.sender_name.split(' ')[1][0]}` : '??';
-        avatarDiv.appendChild(innerAvatarDiv);
-        messageDiv.appendChild(avatarDiv);
-      }
-      
-      // Message bubble
-      const bubbleDiv = document.createElement('div');
-      bubbleDiv.className = `message-bubble p-3 ${isSentByMe ? 'message-sent' : 'message-received'}`;
-      bubbleDiv.setAttribute('data-message-id', message.id);
-      bubbleDiv.setAttribute('data-sender-id', message.sender_id);
-      
-      // Sender info
-      const senderInfoDiv = document.createElement('div');
-      senderInfoDiv.className = 'flex items-center mb-1';
-      if (!isSentByMe && message.sender_name) {
-        const senderDiv = document.createElement('div');
-        const senderSpan = document.createElement('span');
-        senderSpan.className = 'text-xs font-semibold';
-        senderSpan.textContent = message.sender_name;
-        
-        if (message.sender_role === 'office_admin') {
-          const roleSpan = document.createElement('span');
-          roleSpan.className = 'text-blue-600';
-          roleSpan.textContent = ' (Office Staff)';
-          senderSpan.appendChild(roleSpan);
-        }
-        
-        senderDiv.appendChild(senderSpan);
-        senderInfoDiv.appendChild(senderDiv);
-      }
-      bubbleDiv.appendChild(senderInfoDiv);
-      
-      // Message content
-      const contentDiv = document.createElement('div');
-      contentDiv.className = 'text-sm';
-      contentDiv.textContent = message.content;
-      bubbleDiv.appendChild(contentDiv);
-      
-      // Timestamp and status
-      const metaDiv = document.createElement('div');
-      metaDiv.className = 'flex justify-end items-center mt-1 space-x-1';
-      
-      const timeSpan = document.createElement('span');
-      timeSpan.className = 'text-xs opacity-70';
-      const messageTime = new Date(message.timestamp);
-      timeSpan.textContent = messageTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-      metaDiv.appendChild(timeSpan);
-      
-      if (isSentByMe) {
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'status-icon ml-1';
-        const statusIcon = document.createElement('i');
-        statusIcon.className = `fas ${message.status === 'read' ? 'fa-check-double text-blue-300' : message.status === 'delivered' ? 'fa-check-double text-white opacity-70' : 'fa-check text-white opacity-70'} text-xs`;
-        statusSpan.appendChild(statusIcon);
-        metaDiv.appendChild(statusSpan);
-      }
-      
-      bubbleDiv.appendChild(metaDiv);
-      messageDiv.appendChild(bubbleDiv);
-      
-      // Avatar for sent messages (if sent by me)
-      if (isSentByMe) {
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'self-end ml-2';
-        const innerAvatarDiv = document.createElement('div');
-        innerAvatarDiv.className = 'h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white shadow-sm';
-        innerAvatarDiv.textContent = '{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}';
-        avatarDiv.appendChild(innerAvatarDiv);
-        messageDiv.appendChild(avatarDiv);
-      }
-      
-      return messageDiv;
-    }
-    
-    // Scroll chat to bottom
-    function scrollToBottom() {
-      if (messageContainer) {
-        messageContainer.scrollTop = messageContainer.scrollHeight;
-      }
-    }
-    
-    // Initial scroll to bottom
-    setTimeout(scrollToBottom, 100);
-    
-    // Clean up when leaving the page
-    window.addEventListener('beforeunload', function() {
-      chatManager.disconnect();
-    });
-  });
+		document.body.setAttribute('data-user-id', '{{ current_user.id }}');
+
+		chatManager.onConnectionStatusChange(function(status) {
+			if (connectionStatus) {
+				connectionStatus.textContent = status ? 'Connected' : 'Disconnected';
+				connectionStatus.className = status 
+					? 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2' 
+					: 'text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full ml-2';
+			}
+		});
+
+		chatManager.onMessageReceived(function(message) {
+			if (messageContainer) {
+				const messageElement = createMessageElement(message);
+				const atBottom = isAtBottom();
+				messageContainer.appendChild(messageElement);
+				if (atBottom) { scrollToBottom(); } else if (scrollBtn) { scrollBtn.classList.remove('hidden'); }
+				renderSeenTimestampUnderLatest();
+
+				if (!message.is_current_user) {
+					const notificationSound = document.getElementById('notificationSound');
+					if (notificationSound) {
+						notificationSound.play().catch(err => console.log('Could not play notification sound', err));
+					}
+				}
+			}
+		});
+
+		chatManager.onMessageRead(function(data){
+			const id = data && data.message_id; if (!id) return;
+			const bubble = document.querySelector(`.message-bubble[data-message-id="${id}"]`);
+			if (!bubble) return;
+			const isMine = String(bubble.getAttribute('data-sender-id')) === String('{{ current_user.id }}');
+			if (!isMine) return;
+			const icon = bubble.querySelector('.message-meta i.fas');
+			if (icon) { icon.classList.remove('fa-check','opacity-80'); icon.classList.add('fa-check-double','seen'); }
+			if (data.read_at) bubble.setAttribute('data-read-at', data.read_at);
+			renderSeenTimestampUnderLatest();
+		});
+
+		const typingIndicator = document.getElementById('typingIndicator');
+		let typingHideTimeout;
+		chatManager.onTyping(function(data){
+			if (parseInt(data.user_id) === parseInt('{{ current_user.id }}')) return;
+			if (typingIndicator) {
+				typingIndicator.classList.remove('hidden');
+				clearTimeout(typingHideTimeout);
+				typingHideTimeout = setTimeout(() => typingIndicator.classList.add('hidden'), 3000);
+				if (!isAtBottom() && scrollBtn) scrollBtn.classList.remove('hidden');
+			}
+		});
+		chatManager.onStopTyping(function(data){
+			if (parseInt(data.user_id) === parseInt('{{ current_user.id }}')) return;
+			if (typingIndicator) typingIndicator.classList.add('hidden');
+		});
+
+		chatManager.onMessageSent(function(data) {
+			if (data.success) {
+				if (messageInput) { messageInput.value = ''; messageInput.focus(); }
+				renderSeenTimestampUnderLatest();
+			}
+		});
+
+		chatManager.onError(function(errorMessage) {
+			console.error('Chat error:', errorMessage);
+			const errorElement = document.createElement('div');
+			errorElement.className = 'p-2 mb-2 text-sm text-red-700 bg-red-100 rounded-md';
+			errorElement.textContent = errorMessage;
+			if (messageContainer) {
+				messageContainer.appendChild(errorElement);
+				scrollToBottom();
+				setTimeout(function() { errorElement.remove(); }, 5000);
+			}
+		});
+
+		chatManager.connect()
+			.then(function() { 
+				chatManager.joinInquiryRoom(inquiryId);
+				// Inject a small connection status pill next to the header title
+				const header = document.querySelector('.px-6.py-4.border-b.flex.items-center.justify-between');
+				if (header && !document.getElementById('connection-status')) {
+					const statusIndicator = document.createElement('span');
+					statusIndicator.id = 'connection-status';
+					statusIndicator.className = 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2';
+					statusIndicator.textContent = 'Connected';
+					const title = header.querySelector('h2');
+					if (title) { title.parentNode.insertBefore(statusIndicator, title.nextSibling); }
+				}
+			})
+			.catch(function(error) { console.error('Failed to connect to chat server:', error); });
+
+		setTimeout(() => renderSeenTimestampUnderLatest(), 150);
+
+		const alreadyMarked = new Set();
+		function setupReadObserver(){
+			if (!('IntersectionObserver' in window) || !messageContainer) return;
+			const myId = String('{{ current_user.id }}');
+			const observer = new IntersectionObserver((entries)=>{
+				entries.forEach(entry=>{
+					if (entry.isIntersecting) {
+						const el = entry.target;
+						const msgId = el.getAttribute('data-message-id');
+						const senderId = el.getAttribute('data-sender-id');
+						if (msgId && senderId && senderId !== myId && !alreadyMarked.has(msgId)) {
+							alreadyMarked.add(msgId);
+							chatManager.markMessageAsRead(msgId);
+						}
+					}
+				});
+			}, { root: messageContainer, threshold: 0.75 });
+
+			messageContainer.querySelectorAll('.message-bubble').forEach(el => observer.observe(el));
+			const mo = new MutationObserver((mutations)=>{
+				mutations.forEach(m => {
+					m.addedNodes.forEach(node => {
+						if (node.nodeType === 1) {
+							const bubble = node.querySelector?.('.message-bubble') || (node.classList?.contains('message-bubble') ? node : null);
+							if (bubble) observer.observe(bubble);
+						}
+					});
+				});
+			});
+			mo.observe(messageContainer, { childList: true, subtree: true });
+		}
+		setupReadObserver();
+
+		if (messageForm) {
+			messageForm.addEventListener('submit', function(event) {
+				event.preventDefault();
+				sendMessageWithAttachments();
+			});
+		}
+
+		if (messageInput) {
+			messageInput.addEventListener('keypress', function(event) {
+				if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessageWithAttachments(); }
+			});
+			messageInput.addEventListener('input', function(){ chatManager.startTyping(); });
+			// Auto-resize textarea similar to Office view
+			const autoResize = () => {
+				messageInput.style.height = 'auto';
+				messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+			};
+			messageInput.addEventListener('input', autoResize);
+			setTimeout(autoResize, 0);
+		}
+
+		async function sendMessageWithAttachments() {
+			const content = (messageInput?.value || '').trim();
+			const files = Array.from(attachmentInput?.files || []);
+			if (!content && files.length === 0) return;
+
+			const fd = new FormData();
+			fd.append('message', content);
+			files.forEach(f => fd.append('attachments', f));
+
+			// optimistic UI: disable controls
+			if (sendButton) sendButton.disabled = true;
+
+			// progress UI
+			let progressEl;
+			if (attachmentPreview) {
+				progressEl = document.createElement('div');
+				progressEl.className = 'w-full bg-gray-200 rounded h-1 mt-2';
+				const bar = document.createElement('div');
+				bar.style.width = '0%'; bar.style.height = '100%'; bar.style.background = '#0ea5e9'; bar.style.borderRadius = '9999px';
+				progressEl.appendChild(bar);
+				attachmentPreview.appendChild(progressEl);
+			}
+
+			const sendWithProgress = (url, formData, onProgress) => new Promise((resolve, reject) => {
+				const xhr = new XMLHttpRequest();
+				xhr.open('POST', url, true);
+				xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+				try {
+					const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+					if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
+				} catch {}
+				xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded/e.total)*100)); };
+				xhr.onload = () => { try { resolve(JSON.parse(xhr.responseText)); } catch(e){ reject(e); } };
+				xhr.onerror = () => reject(new Error('Network error'));
+				xhr.send(formData);
+			});
+
+			try {
+				const data = await sendWithProgress(`{{ url_for('student.api_send_message', inquiry_id=inquiry.id) }}`, fd, pct => {
+					const bar = progressEl?.firstChild; if (bar) bar.style.width = pct + '%';
+				});
+				if (!data.success) throw new Error(data.message || 'Failed to send');
+				// clear input and preview
+				if (messageInput) messageInput.value = '';
+				if (attachmentInput) attachmentInput.value = '';
+				if (attachmentPreview) attachmentPreview.innerHTML = '';
+			} catch (e) {
+				if (window.alert) alert(e.message || 'Failed to send');
+			} finally {
+				if (sendButton) sendButton.disabled = false;
+			}
+		}
+
+		function createMessageElement(message) {
+			const senderId = parseInt(message.sender_id);
+			const currentId = parseInt('{{ current_user.id }}');
+			const isSentByMe = senderId === currentId;
+
+			const wrapper = document.createElement('div');
+			wrapper.className = `msg-row ${isSentByMe ? 'outgoing' : 'incoming'} message-fade-in`;
+
+			if (!isSentByMe) {
+				const avatar = document.createElement('div');
+				avatar.className = 'chat-avatar incoming mr-2';
+				try {
+					const initials = (message.sender_name || '').trim().split(' ').map(n => n[0]).join('').substring(0,2) || '?';
+					avatar.textContent = initials;
+				} catch { avatar.textContent = '?'; }
+				wrapper.appendChild(avatar);
+			}
+
+			const bubble = document.createElement('div');
+			bubble.className = `message-bubble ${isSentByMe ? 'message-sent' : 'message-received'}`;
+			if (message.id) bubble.setAttribute('data-message-id', message.id);
+			bubble.setAttribute('data-sender-id', senderId);
+
+			if (!isSentByMe && message.sender_name) {
+				const header = document.createElement('div');
+				header.className = 'text-xs font-semibold mb-1 text-gray-700';
+				header.textContent = message.sender_name || 'Unknown';
+				if (message.sender_role === 'office_admin') {
+					const role = document.createElement('span');
+					role.className = 'text-blue-600';
+					role.textContent = ' (Office Staff)';
+					header.appendChild(role);
+				}
+				bubble.appendChild(header);
+			}
+
+			if (message.content) {
+				const content = document.createElement('div');
+				content.className = 'message-text';
+				content.textContent = message.content;
+				bubble.appendChild(content);
+			}
+
+			// attachments inline
+			if (Array.isArray(message.attachments) && message.attachments.length) {
+				const wrap = document.createElement('div');
+				wrap.className = 'mt-2 flex flex-wrap gap-2';
+				message.attachments.forEach(att => {
+					const href = att.file_path ? `{{ url_for('static', filename='') }}` + att.file_path : '#';
+					const a = document.createElement('a');
+					a.href = href; a.target = '_blank'; a.className = 'block';
+					const lower = (att.file_path || '').toLowerCase();
+					if (/(\.jpg|\.jpeg|\.png|\.gif|\.webp|\.bmp)$/.test(lower)) {
+						const img = document.createElement('img');
+						img.src = href; img.alt = att.filename || 'Attachment';
+						img.className = 'attachment-preview';
+						a.appendChild(img);
+					} else {
+						const chip = document.createElement('div');
+						chip.className = 'attachment-chip';
+						const icon = document.createElement('i');
+						if (lower.endsWith('.pdf')) icon.className = 'far fa-file-pdf text-red-500';
+						else if (/(\.docx?|\.rtf)$/.test(lower)) icon.className = 'far fa-file-word text-blue-500';
+						else if (/(\.xlsx?|\.csv)$/.test(lower)) icon.className = 'far fa-file-excel text-green-600';
+						else icon.className = 'far fa-file text-slate-500';
+						const name = document.createElement('span'); name.className = 'text-xs'; name.textContent = att.filename || 'Attachment';
+						chip.appendChild(icon); chip.appendChild(name); a.appendChild(chip);
+					}
+					wrap.appendChild(a);
+				});
+				bubble.appendChild(wrap);
+			}
+
+			const meta = document.createElement('div');
+			meta.className = 'message-meta';
+			const time = document.createElement('span');
+			const dt = message.timestamp ? new Date(message.timestamp) : new Date();
+			time.textContent = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+			meta.appendChild(time);
+			if (isSentByMe) {
+				const statusIcon = document.createElement('i');
+				statusIcon.className = 'fas ' + (message.status === 'read' ? 'fa-check-double seen' : (message.status === 'delivered' ? 'fa-check-double opacity-80' : 'fa-check opacity-80'));
+				meta.appendChild(statusIcon);
+			}
+			bubble.appendChild(meta);
+
+			wrapper.appendChild(bubble);
+			if (isSentByMe) {
+				const avatar = document.createElement('div');
+				avatar.className = 'chat-avatar outgoing ml-2';
+				avatar.textContent = '{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}';
+				wrapper.appendChild(avatar);
+			}
+			return wrapper;
+		}
+
+		function renderSeenTimestampUnderLatest() {
+			const container = document.getElementById('messageHistory');
+			if (!container) return;
+			const myId = String('{{ current_user.id }}');
+			const bubbles = Array.from(container.querySelectorAll('.message-bubble[data-message-id]'));
+			const latestOutgoing = [...bubbles].reverse().find(b => b.getAttribute('data-sender-id') === myId);
+			container.querySelectorAll('.seen-timestamp').forEach(el => el.remove());
+			if (!latestOutgoing) return;
+			const seenIcon = latestOutgoing.querySelector('.message-meta i.fa-check-double.seen');
+			if (!seenIcon) return;
+			const readIso = latestOutgoing.getAttribute('data-read-at');
+			let timeText = '';
+			if (readIso) { try { timeText = new Date(readIso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch {} }
+			if (!timeText) {
+				const timeEl = latestOutgoing.querySelector('.message-meta span');
+				timeText = timeEl ? timeEl.textContent.trim() : '';
+			}
+			const ts = document.createElement('div');
+			ts.className = 'seen-timestamp text-xs text-gray-500 mt-1';
+			ts.textContent = timeText ? `Seen • ${timeText}` : 'Seen';
+			latestOutgoing.appendChild(ts);
+		}
+
+		function scrollToBottom() {
+			if (messageContainer) { messageContainer.scrollTop = messageContainer.scrollHeight; }
+		}
+
+		function isAtBottom() {
+			if (!messageContainer) return true;
+			const threshold = 80; // px
+			return messageContainer.scrollHeight - messageContainer.scrollTop - messageContainer.clientHeight < threshold;
+		}
+
+		setTimeout(scrollToBottom, 100);
+
+		// Toggle "scroll to bottom" button visibility
+		if (messageContainer && scrollBtn) {
+			messageContainer.addEventListener('scroll', function() {
+				if (isAtBottom()) { scrollBtn.classList.add('hidden'); } else { scrollBtn.classList.remove('hidden'); }
+			});
+			scrollBtn.addEventListener('click', function() { scrollToBottom(); scrollBtn.classList.add('hidden'); });
+		}
+
+		// Load older messages via API
+		const loadMoreBtn = document.getElementById('load-more-button');
+		if (loadMoreBtn && messageContainer) {
+			loadMoreBtn.addEventListener('click', function() {
+				const oldest = messageContainer.querySelector('[data-message-id]');
+				const beforeId = oldest ? oldest.getAttribute('data-message-id') : null;
+				const url = `{{ url_for('student.get_older_messages', inquiry_id=inquiry.id) }}` + (beforeId ? `?before_id=${beforeId}` : '');
+				loadMoreBtn.disabled = true;
+				fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+					.then(res => res.json())
+					.then(data => {
+						if (data.success && Array.isArray(data.messages)) {
+							const frag = document.createDocumentFragment();
+			    data.messages.forEach(msg => {
+								const enriched = {
+									id: msg.id,
+									content: msg.content,
+									sender_id: msg.is_student ? '{{ current_user.id }}' : 0,
+									sender_name: msg.sender_name,
+									sender_role: msg.is_student ? 'student' : 'office_admin',
+				    timestamp: msg.timestamp,
+				    status: msg.status,
+				    attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+								};
+								frag.appendChild(createMessageElement(enriched));
+							});
+							const container = document.getElementById('messageHistory');
+							const afterLoadMore = document.getElementById('load-more-container');
+							if (afterLoadMore && afterLoadMore.nextSibling) { container.insertBefore(frag, afterLoadMore.nextSibling); } else { container.insertBefore(frag, container.firstChild); }
+							if (!data.has_more) { const parent = document.getElementById('load-more-container'); if (parent) parent.remove(); }
+						}
+					})
+					.finally(() => { loadMoreBtn.disabled = false; });
+			});
+		}
+
+	// Attachments preview + drag & drop
+		if (attachmentInput && attachmentPreview) {
+			attachmentInput.addEventListener('change', function() {
+				attachmentPreview.innerHTML = '';
+				const errorsEl = document.getElementById('attachmentErrors');
+				if (errorsEl) errorsEl.textContent = '';
+				const allowed = ['jpg','jpeg','png','gif','webp','bmp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv'];
+				const maxSize = 15 * 1024 * 1024; // 15MB
+				const incoming = Array.from(attachmentInput.files || []);
+				const dt = new DataTransfer();
+				const errs = [];
+				incoming.forEach(file => {
+					const ext = (file.name.split('.').pop() || '').toLowerCase();
+					if (!allowed.includes(ext)) { errs.push(`${file.name}: type not allowed`); return; }
+					if (file.size > maxSize) { errs.push(`${file.name}: exceeds 15MB`); return; }
+					dt.items.add(file);
+				});
+				attachmentInput.files = dt.files;
+				if (errorsEl && errs.length) errorsEl.innerHTML = errs.map(e=>`<div>• ${e}</div>`).join('');
+				const files = Array.from(attachmentInput.files || []);
+				files.forEach(file => {
+					const ext = (file.name.split('.').pop() || '').toLowerCase();
+					const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+					const chip = document.createElement('div');
+					chip.className = 'inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs ring-1 ring-slate-900/5';
+					if (isImage) {
+						const img = document.createElement('img');
+						img.className = 'w-8 h-8 object-cover rounded';
+						img.alt = file.name;
+						const reader = new FileReader();
+						reader.onload = e => img.src = e.target.result;
+						reader.readAsDataURL(file);
+						chip.appendChild(img);
+					} else {
+						const icon = document.createElement('i');
+						icon.className = 'far fa-file text-slate-500';
+						chip.appendChild(icon);
+					}
+					const name = document.createElement('span');
+					name.textContent = file.name;
+					chip.appendChild(name);
+					attachmentPreview.appendChild(chip);
+				});
+			});
+
+			// Drag & drop on input bar
+			const inputBar = document.querySelector('.chat-input-bar');
+			if (inputBar) {
+				const prevent = e => { e.preventDefault(); e.stopPropagation(); };
+				['dragenter','dragover','dragleave','drop'].forEach(evt => inputBar.addEventListener(evt, prevent));
+				inputBar.addEventListener('dragover', ()=> inputBar.classList.add('ring-2','ring-sky-300'));
+				inputBar.addEventListener('dragleave', ()=> inputBar.classList.remove('ring-2','ring-sky-300'));
+				inputBar.addEventListener('drop', e => {
+					inputBar.classList.remove('ring-2','ring-sky-300');
+					const dt = e.dataTransfer; const files = Array.from(dt.files || []);
+					if (!files.length) return;
+					// Filter invalids, assign to file input and trigger change to render preview
+					const allowed = ['jpg','jpeg','png','gif','webp','bmp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv'];
+					const maxSize = 15 * 1024 * 1024; // 15MB
+					const dataTransfer = new DataTransfer();
+					const errs = [];
+					files.forEach(f => {
+						const ext = (f.name.split('.').pop() || '').toLowerCase();
+						if (!allowed.includes(ext)) { errs.push(`${f.name}: type not allowed`); return; }
+						if (f.size > maxSize) { errs.push(`${f.name}: exceeds 15MB`); return; }
+						dataTransfer.items.add(f);
+					});
+					attachmentInput.files = dataTransfer.files;
+					attachmentInput.dispatchEvent(new Event('change'));
+					const errorsEl = document.getElementById('attachmentErrors');
+					if (errorsEl && errs.length) errorsEl.innerHTML = errs.map(e=>`<div>• ${e}</div>`).join('');
+				});
+			}
+		}
+
+		window.addEventListener('beforeunload', function() { chatManager.disconnect(); });
+	});
 </script>
 
 {% endblock %}

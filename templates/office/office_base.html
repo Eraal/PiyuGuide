@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}KapiyuGuide Office Admin{% endblock %}</title>
+    <title>{% block title %}{{ current_campus_name }} - Office Admin{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/schoollogo.png') }}">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="{{ url_for('static', filename='js/office/officebase.js') }}"></script>
@@ -16,10 +17,47 @@
     />
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
+  <style>
       body {
         font-family: 'Inter', sans-serif;
       }
+    /* Unified Office Notification (borrowed from campus styling with emerald palette) */
+    #office-ann-bell-wrapper { position: relative; z-index: 1000; }
+    #office-ann-dropdown { backdrop-filter: saturate(1.2) blur(8px); box-shadow: 0 8px 24px -4px rgba(17,24,39,0.15), 0 4px 12px -2px rgba(17,24,39,0.08); transform-origin: top right; opacity:0; transform: translateY(-8px) scale(.96); transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .32s cubic-bezier(.4,0,.2,1); }
+    #office-ann-dropdown.open { opacity:1; transform: translateY(0) scale(1); }
+    #office-ann-dropdown.closing { opacity:0; transform: translateY(-6px) scale(.95); pointer-events:none; }
+    .office-ann-item { position:relative; display:flex; gap:.75rem; }
+    .office-ann-item .icon-pill { flex-shrink:0; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:600; }
+    .office-ann-item.unread { background:linear-gradient(90deg, rgba(16,185,129,0.10), rgba(16,185,129,0)); }
+    .office-ann-item:hover { background:linear-gradient(90deg, rgba(16,185,129,0.16), rgba(16,185,129,0.04)); }
+    .office-ann-item .ann-body { flex:1; min-width:0; }
+    .office-ann-item .ann-title { font-weight:600; font-size:.78rem; line-height:1.1rem; color:#1f2937; letter-spacing:.3px; }
+    .office-ann-item .ann-msg { font-size:.67rem; color:#4b5563; line-height:1rem; margin-top:2px; }
+    .office-ann-item .ann-meta { font-size:.6rem; color:#9ca3af; margin-top:4px; display:flex; align-items:center; gap:4px; text-transform:uppercase; font-weight:500; letter-spacing:.5px; }
+    .office-ann-scroll { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
+    .office-ann-scroll::-webkit-scrollbar { width:6px; }
+    .office-ann-scroll::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
+    .office-ann-empty { padding:3.5rem 1.25rem; text-align:center; }
+    .toast-zone { position:fixed; top:5rem; right:1.25rem; display:flex; flex-direction:column; gap:.75rem; z-index:70; width:clamp(260px, 30vw, 380px); pointer-events:none; }
+    .toast { position:relative; background:#ffffff; border-radius:18px; padding:.9rem 1rem 1rem 1rem; box-shadow:0 10px 25px -5px rgba(17,24,39,0.18), 0 4px 10px -3px rgba(17,24,39,0.08); display:flex; gap:.85rem; transform:translateX(40px) scale(.96); opacity:0; animation:toastIn .55s cubic-bezier(.68,-0.55,.27,1.55) forwards; border:1px solid #e5e7eb; backdrop-filter:saturate(1.2) blur(6px); pointer-events:auto; }
+    .toast.closing { animation:toastOut .35s ease forwards; }
+    .toast .toast-icon-wrapper { position:relative; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.05rem; font-weight:600; box-shadow:0 4px 12px -2px rgba(0,0,0,.2); }
+    .toast.type-info { --bar-color:#10b981; --bar-color-alt:#059669; }
+    .toast.type-success { --bar-color:#10b981; --bar-color-alt:#059669; }
+    .toast.type-warning { --bar-color:#f59e0b; --bar-color-alt:#d97706; }
+    .toast.type-error { --bar-color:#ef4444; --bar-color-alt:#dc2626; }
+    .toast .progress-bar { position:absolute; left:8px; right:8px; bottom:6px; height:4px; border-radius:2px; overflow:hidden; background:#e5e7eb; }
+    .toast .progress-fill { height:100%; width:100%; transform-origin:left; animation:toastProgress linear forwards; background:linear-gradient(90deg,var(--bar-color,#10b981),var(--bar-color-alt,#059669)); }
+    @keyframes toastIn { 0% { opacity:0; transform:translateX(50px) scale(.9); } 60% { opacity:1; transform:translateX(-4px) scale(1.02); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+    @keyframes toastOut { 0% { opacity:1; transform:translateX(0) scale(1); } 100% { opacity:0; transform:translateX(40px) scale(.9); } }
+    @keyframes toastProgress { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+    @media (prefers-reduced-motion: reduce) { .toast, #office-ann-dropdown { transition:none; animation:none; transform:none !important; } }
+    .toast-spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg);} }
+    .office-ann-item.unread:before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:0 3px 3px 0; background:#10b981; opacity:.9; }
+    /* Ensure dropdown not cut off */
+    nav { overflow: visible; }
+
 
       /* Custom scrollbar */
       ::-webkit-scrollbar {
@@ -309,6 +347,7 @@
         }
       }
     </style>
+     {% block extra_head %}{% endblock %}
   </head>
   {% with messages = get_flashed_messages(with_categories=true) %} 
   {% if messages %}
@@ -354,7 +393,7 @@
   </div>
   {% endif %} 
   {% endwith %}
-  <body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
+  <body class="bg-gray-50 flex flex-col h-screen overflow-hidden" data-current-user-id="{{ current_user.id }}">
     <!-- Top Navigation Bar -->
     <nav class="navbar-gradient text-white p-4 flex justify-between items-center relative z-30">
       <div class="flex items-center space-x-4">
@@ -365,8 +404,8 @@
             class="h-10 w-10 rounded-full border-2 border-white/20 shadow-lg"
           />
           <div>
-            <h1 class="font-bold text-xl tracking-tight">KapiyuGuide</h1>
-            <p class="text-sm text-green-100 font-medium">{{ current_user.office_admin.office.name }}</p>
+            <h1 class="font-bold text-xl tracking-tight">{{ current_campus_name }} - KapiyuGuide</h1>
+            <p class="text-sm text-green-100 font-medium">{{ current_user.office_admin.office.name }} Office</p>
           </div>
         </div>
       </div>
@@ -389,70 +428,56 @@
             <i class="fas fa-wifi text-sm"></i>
           </div>
 
-          <!-- Notifications dropdown -->
-          <div class="dropdown relative">
-            <a href="#" class="text-white hover:text-green-200 relative transition-colors duration-200">
-              <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-200">
-                <i class="fas fa-bell text-lg"></i>
-                {% if unread_notifications_count and unread_notifications_count > 0 %}
-                <span class="notification-badge">{{ unread_notifications_count }}</span>
+          <!-- Unified Notifications (Campus-style) -->
+          <div class="relative" id="office-ann-bell-wrapper">
+            <button id="office-ann-bell" class="group relative w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30">
+              <i class="fas fa-bell text-lg text-white transition-transform group-hover:scale-110"></i>
+              <span id="office-ann-badge" class="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] leading-[18px] rounded-full text-center font-semibold shadow {% if sidebar_unread_notifications_count == 0 %}hidden{% endif %}">{{ sidebar_unread_notifications_count }}</span>
+            </button>
+            <div id="office-ann-dropdown" class="absolute right-0 mt-3 w-[430px] bg-white/95 rounded-2xl border border-gray-200 z-50 overflow-hidden hidden">
+              <div class="px-5 py-4 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-green-100/70 backdrop-blur-sm border-b border-gray-200/70">
+                <div class="font-semibold text-gray-800 flex items-center gap-2 text-sm tracking-wide"><span class="relative inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow"><i class="fas fa-bell"></i></span><span>Notifications</span></div>
+                <div class="flex items-center gap-3">
+                  <button id="office-ann-refresh" class="text-xs px-2.5 py-1.5 rounded-lg bg-white/70 hover:bg-white text-emerald-700 font-medium shadow-sm border border-emerald-100 transition">Refresh</button>
+                  <button id="office-ann-mark-all" class="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition">Mark all read</button>
+                </div>
+              </div>
+              <div id="office-ann-list" class="office-ann-scroll max-h-96 overflow-y-auto divide-y divide-transparent">
+                {% if sidebar_notifications %}
+                  {% for n in sidebar_notifications %}
+                  <a href="{% if n.inquiry_id %}{{ url_for('office.view_inquiry', inquiry_id=n.inquiry_id) }}{% else %}{{ url_for('office.office_notifications') }}{% endif %}"
+                     data-id="{{ n.id }}"
+                     data-inquiry-id="{{ n.inquiry_id or '' }}"
+                     data-student-id="{{ n.student_id or '' }}"
+                     data-count="1"
+                     class="office-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}"
+                     data-title="{{ n.title|e }}" data-message="{{ n.message|e }}">
+                    <div class="icon-pill bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+                    <div class="ann-body">
+                      <div class="ann-title">
+                        {% if n.inquiry_id %}
+                          New message from {{ (n.subject or n.student_name or n.title)|e }}<span class="ml-2 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded-full px-2 py-[2px] align-middle hidden ann-count-pill">x1</span>
+                        {% else %}
+                          {{ n.title }}
+                        {% endif %}
+                      </div>
+                      <div class="ann-msg line-clamp-2">{{ n.message }}</div>
+                      <div class="ann-meta"><i class="fas fa-clock"></i>{{ n.created_at.strftime('%b %d, %H:%M') }}</div>
+                    </div>
+                  </a>
+                  {% endfor %}
+                {% else %}
+                <div class="office-ann-empty text-gray-500 text-sm">
+                  <i class="fas fa-bell-slash text-3xl mb-3 block"></i>
+                  <p class="font-medium">No notifications yet</p>
+                  <p class="text-xs mt-1 text-gray-400">You're all caught up!</p>
+                </div>
                 {% endif %}
               </div>
-            </a>
-            <div class="dropdown-content text-gray-800 mt-2">
-              <div class="px-4 py-3 bg-gradient-to-r from-green-50 to-green-100 font-semibold border-b border-green-200">
-                <div class="flex items-center">
-                  <i class="fas fa-bell mr-2 text-green-600"></i>
-                  <span>Notifications</span>
-                </div>
+              <div class="border-t border-gray-100/80 bg-gray-50/60 backdrop-blur-sm flex items-center justify-between px-5 py-3">
+                <a href="{{ url_for('office.office_notifications') }}" class="text-[11px] tracking-wide font-semibold text-emerald-700 hover:text-emerald-900 uppercase flex items-center gap-1">View All <i class="fas fa-arrow-right text-[10px]"></i></a>
+                <span class="text-[10px] text-gray-400 font-medium select-none">Real-time updates</span>
               </div>
-              {% if sidebar_notifications %} 
-              {% for notification in sidebar_notifications %}
-              <a
-                href="{% if notification.inquiry_id %}{{ url_for('office.view_inquiry', inquiry_id=notification.inquiry_id) }}{% else %}{{ url_for('office.office_notifications') }}{% endif %}"
-                class="block px-4 py-3 hover:bg-green-50 transition-colors duration-200 {% if not notification.is_read %}font-semibold bg-blue-50 border-l-4 border-blue-500{% endif %}"
-                onclick="markNotificationAsRead({{ notification.id }})"
-              >
-                <div class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 pt-1">
-                    {% if notification.notification_type == 'inquiry_reply' %}
-                      <i class="fas fa-reply text-blue-500"></i>
-                    {% elif notification.notification_type == 'announcement' %}
-                      <i class="fas fa-bullhorn text-green-500"></i>
-                    {% elif notification.notification_type == 'status_change' %}
-                      <i class="fas fa-sync-alt text-yellow-500"></i>
-                    {% else %}
-                      <i class="fas fa-info-circle text-gray-500"></i>
-                    {% endif %}
-                  </div>
-                  <div class="flex-grow min-w-0">
-                    <div class="text-sm truncate">{{ notification.title }}</div>
-                    <div class="text-xs text-gray-500 mt-1 truncate">{{ notification.message }}</div>
-                    <div class="text-xs text-gray-400 mt-1">
-                      <i class="fas fa-clock mr-1"></i>
-                      {{ notification.created_at.strftime('%b %d, %H:%M') }}
-                    </div>
-                  </div>
-                  {% if not notification.is_read %}
-                    <div class="flex-shrink-0">
-                      <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">New</span>
-                    </div>
-                  {% endif %}
-                </div>
-              </a>
-              {% endfor %}
-              <a
-                href="{{ url_for('office.office_notifications') }}"
-                class="block px-4 py-3 text-center text-green-600 hover:bg-green-50 border-t border-green-200 font-medium transition-colors duration-200"
-              >
-                <i class="fas fa-bell mr-2"></i>View All Notifications
-              </a>
-              {% else %}
-              <div class="px-4 py-6 text-gray-500 text-center">
-                <i class="fas fa-bell-slash text-2xl mb-2 text-gray-300"></i>
-                <p>No new notifications</p>
-              </div>
-              {% endif %}
             </div>
           </div>
 
@@ -505,9 +530,9 @@
           <div class="flex items-center">
             <div class="relative mr-4">
               <div class="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-green-600 to-green-700 shadow-lg">
-                {% if current_user.profile_pic %}
+                {% if current_user.profile_pic_path %}
                 <img
-                  src="{{ url_for('static', filename=current_user.profile_pic) }}"
+                  src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"
                   alt="Profile Picture"
                   class="w-full h-full object-cover"
                 />
@@ -529,7 +554,7 @@
                 {{ current_user.first_name }} {{ current_user.last_name }}
               </h3>
               <p class="text-xs text-gray-500">
-                {{ current_user.office_admin.office.name }}
+                {{ current_user.office_admin.office.name }} - {{ current_campus_name }}
               </p>
             </div>
           </div>
@@ -558,6 +583,7 @@
           </a>
 
           <a
+            id="nav-inquiries"
             href="{{ url_for('office.office_inquiries') }}"
             class="sidebar-item flex items-center px-4 py-3 {% if request.endpoint == 'office.office_inquiries' %}active-nav{% else %}text-gray-700 hover:text-green-700{% endif %}"
           >
@@ -576,22 +602,24 @@
             {% endif %}
           </a>
 
+          {% if office_offers_counseling %}
           <a
+            id="nav-video-counseling"
             href="{{ url_for('office.video_counseling') }}"
             class="sidebar-item flex items-center px-4 py-3 {% if request.endpoint == 'office.video_counseling' %}active-nav{% else %}text-gray-700 hover:text-green-700{% endif %}"
           >
             <div class="w-8 flex justify-center">
-              {% if current_user.office_admin.office.supports_video %}
+              {% if office_supports_video %}
               <i class="fas fa-video"></i>
               {% else %}
               <i class="fas fa-calendar-alt"></i>
               {% endif %}
             </div>
             <span class="ml-3 font-medium">
-              {% if current_user.office_admin.office.supports_video %} 
-              Video Counseling 
-              {% else %} 
-              Counseling Sessions 
+              {% if office_supports_video %}
+              Video Counseling
+              {% else %}
+              Counseling Sessions
               {% endif %}
             </span>
             {% if upcoming_sessions_count and upcoming_sessions_count > 0 %}
@@ -604,6 +632,7 @@
             </span>
             {% endif %}
           </a>
+          {% endif %}
 
           <a
             href="{{ url_for('office.team_dashboard') }}"
@@ -619,6 +648,28 @@
             </span>
             {% endif %}
           </a>
+
+      <div class="px-2">
+            <div class="relative group">
+        <button type="button" aria-controls="concernDropdown" aria-expanded="false" class="w-full sidebar-item flex items-center px-2 py-3 rounded-lg transition {% if request.endpoint in ['office.manage_concern_types','office.manage_counseling_concern_types'] %}active-nav{% else %}text-gray-700 hover:text-green-700{% endif %}">
+                <div class="w-8 flex justify-center">
+                  <i class="fas fa-layer-group"></i>
+                </div>
+                <span class="ml-3 font-medium flex-1 text-left">Concern Types</span>
+                <i class="fas fa-chevron-down text-xs transition-transform duration-200" id="concernDropdownIcon"></i>
+              </button>
+              <div id="concernDropdown" class="hidden mt-1 ml-8 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                <a href="{{ url_for('office.manage_concern_types') }}" class="block px-4 py-2 text-sm {% if request.endpoint == 'office.manage_concern_types' %}bg-green-50 text-green-700 font-medium{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                  Inquiries Concern Types
+                </a>
+                {% if office_offers_counseling %}
+                <a href="{{ url_for('office.manage_counseling_concern_types') }}" class="block px-4 py-2 text-sm {% if request.endpoint == 'office.manage_counseling_concern_types' %}bg-green-50 text-green-700 font-medium{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                  Counseling Concern Types
+                </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
 
           <a
             href="{{ url_for('office.office_announcements') }}"
@@ -731,19 +782,15 @@
     </div>    <!-- Audio element for notification sounds -->
     <audio id="notification-sound" preload="auto" style="display: none">
       <source
-        src="{{ url_for('static', filename='sounds/notification.mp3') }}"
+        src="{{ url_for('static', filename='sounds/NotificationBell.mp3') }}"
         type="audio/mpeg"
-      />
-      <source
-        src="{{ url_for('static', filename='sounds/notification.ogg') }}"
-        type="audio/ogg"
       />
     </audio>
 
     <!-- Enhanced WebSocket functionality -->
     <script>
-      // Make user ID available to JS
-      window.currentUserId = {{ current_user.id }};
+  // Make user ID available to JS via data attribute
+  try { window.currentUserId = document.body.getAttribute('data-current-user-id'); } catch (e) {}
 
       // Enhanced notification system
       class NotificationManager {
@@ -751,12 +798,15 @@
           this.sound = document.getElementById('notification-sound');
           this.connectionStatus = document.getElementById('office-connection-status');
           this.statusIndicator = document.getElementById('staff-status-indicator');
+          this._soundUnlocked = false;
+          this._pendingSound = false;
           this.init();
         }
 
         init() {
           this.updateConnectionStatus(false);
           this.startStatusCheck();
+          this.attachSoundUnlocker();
         }
 
         updateConnectionStatus(isConnected) {
@@ -782,9 +832,51 @@
         }
 
         playNotificationSound() {
-          if (this.sound) {
-            this.sound.play().catch(e => console.log('Could not play notification sound:', e));
+          if (!this.sound) return;
+          const tryPlay = () => this.sound.play().catch(e => {
+            // If autoplay is blocked, flag to play once user interacts
+            this._pendingSound = true;
+            if (e && (e.name === 'NotAllowedError' || e.code === 0)) {
+              // Silently defer until unlocked
+              return;
+            }
+            console.log('Could not play notification sound:', e);
+          });
+          // If already unlocked, just play
+          if (this._soundUnlocked) {
+            tryPlay();
+          } else {
+            // Attempt anyway (may be blocked); will be queued if blocked
+            tryPlay();
           }
+        }
+
+        attachSoundUnlocker() {
+          if (!this.sound) return;
+          const unlock = () => {
+            // Try to unlock by playing then pausing immediately
+            this.sound.play().then(() => {
+              try { this.sound.pause(); this.sound.currentTime = 0; } catch(_) {}
+              this._soundUnlocked = true;
+              // If a sound was queued due to an earlier blocked attempt, play it now
+              if (this._pendingSound) {
+                this._pendingSound = false;
+                this.sound.play().catch(()=>{});
+              }
+              cleanup();
+            }).catch(() => {
+              // Keep listeners; user might need another interaction
+            });
+          };
+          const cleanup = () => {
+            ['click','touchstart','keydown'].forEach(ev => document.removeEventListener(ev, unlock));
+            const bell = document.getElementById('office-ann-bell');
+            if (bell) bell.removeEventListener('click', unlock);
+          };
+          ['click','touchstart','keydown'].forEach(ev => document.addEventListener(ev, unlock, { once: true }));
+          // Also tie to the bell button explicitly
+          const bell = document.getElementById('office-ann-bell');
+          if (bell) bell.addEventListener('click', unlock, { once: true });
         }
 
         showNotification(title, message, type = 'info') {
@@ -864,10 +956,18 @@
         }
 
         startStatusCheck() {
-          // Simulate connection checks every 30 seconds
+          // If a real presence heartbeat is active, don't simulate
+          if (window.__officePresenceHeartbeatActive) {
+            this.updateConnectionStatus(true);
+            return;
+          }
+          // Fallback: simulate connection checks every 30 seconds
           setInterval(() => {
-            // In a real implementation, this would check actual WebSocket connection
-            const isConnected = Math.random() > 0.3; // Simulate random connectivity
+            if (window.__officePresenceHeartbeatActive) {
+              this.updateConnectionStatus(true);
+              return;
+            }
+            const isConnected = Math.random() > 0.3;
             this.updateConnectionStatus(isConnected);
           }, 30000);
         }
@@ -958,9 +1058,10 @@
         window.notificationManager = new NotificationManager();
         window.uiManager = new UIManager();
 
-        // Initialize connection status silently
+        // Initialize connection status based on real heartbeat flag
         setTimeout(() => {
-          window.notificationManager.updateConnectionStatus(true);
+          const isRealHeartbeat = !!window.__officePresenceHeartbeatActive;
+          window.notificationManager.updateConnectionStatus(isRealHeartbeat);
         }, 1000);
 
         // Example of periodic updates (simulate real-time data)
@@ -978,6 +1079,453 @@
       });
     </script>
 
-    {% block extra_js %} {% endblock %}
+  <!-- Socket.IO client -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+
+  <!-- Smart Notifications System -->
+    <script src="{{ url_for('static', filename='js/office/smart_notifications.js') }}"></script>
+    
+  <!-- NOTE: Removed duplicate notification-sound <audio>. A single element exists earlier in the template. -->
+
+    <script>
+    /* ===================== */
+    /* Office Admin Notifications (Dropdown & Toast) - Unified with Campus */
+    /* ===================== */
+    (function(){
+      if (typeof io === 'undefined') return;
+      if (!window.location.pathname.startsWith('/office')) return;
+
+      // Elements
+      const bellBtn = document.getElementById('office-ann-bell');
+      const dropdown = document.getElementById('office-ann-dropdown');
+      const list = document.getElementById('office-ann-list');
+      const badge = document.getElementById('office-ann-badge');
+      const markAll = document.getElementById('office-ann-mark-all');
+      const refreshBtn = document.getElementById('office-ann-refresh');
+
+      // Toast zone (shared if campus zone already exists)
+      let toastZone = document.querySelector('.toast-zone');
+      if(!toastZone){
+        toastZone = document.createElement('div');
+        toastZone.className = 'toast-zone';
+        document.body.appendChild(toastZone);
+      }
+
+      function escapeHtml(str){
+        return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+      }
+      function incrementBadge(){
+        if (!badge) return; let n = parseInt(badge.textContent||'0'); n+=1; badge.textContent=String(n); badge.classList.remove('hidden');
+      }
+      function setBadgeCount(n){
+        if(!badge) return; if(n<=0){badge.textContent='0'; badge.classList.add('hidden');} else {badge.textContent=String(n); badge.classList.remove('hidden');}}
+      function buildItem(data){
+        const a = document.createElement('a');
+        let href = data.inquiry_id ? `/office/inquiry/${data.inquiry_id}` : (data.link || "{{ url_for('office.office_notifications') }}");
+        a.href = href;
+        a.className = 'office-ann-item unread px-4 py-3 transition-colors';
+        a.dataset.id = data.id || data.notification_id || '';
+        if (data.inquiry_id != null) a.dataset.inquiryId = String(data.inquiry_id);
+        if (data.student_id != null) a.dataset.studentId = String(data.student_id);
+        a.dataset.count = '1';
+        const ts = data.created_at ? data.created_at : new Date().toLocaleString();
+        const isInquiry = !!data.inquiry_id;
+        const baseTitle = isInquiry
+          ? `New message from ${escapeHtml(data.subject || data.student_name || data.title || 'Student')}`
+          : escapeHtml(data.title || 'Notification');
+        const countPill = '<span class="ml-2 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded-full px-2 py-[2px] align-middle hidden ann-count-pill">x1</span>';
+        a.innerHTML = `
+          <div class="icon-pill bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+          <div class="ann-body">
+            <div class="ann-title">${baseTitle}${countPill}</div>
+            <div class="ann-msg line-clamp-2">${escapeHtml(data.message||'')}</div>
+            <div class="ann-meta"><i class="fas fa-clock"></i>${ts}</div>
+          </div>`;
+        if (data.is_read) { a.classList.remove('unread'); }
+        return a;
+      }
+      // Update an existing consolidated item with a new message
+      function updateItemCount(el, newCount, latestMessage, latestTs, data){
+        if (!el) return;
+        el.dataset.count = String(newCount);
+        const msgEl = el.querySelector('.ann-msg');
+        if (msgEl && latestMessage) msgEl.textContent = latestMessage;
+        const metaEl = el.querySelector('.ann-meta');
+        if (metaEl && latestTs) metaEl.innerHTML = `<i class="fas fa-clock"></i>${latestTs}`;
+        const titleEl = el.querySelector('.ann-title');
+        if (titleEl) {
+          const pill = titleEl.querySelector('.ann-count-pill');
+          if (pill) { pill.classList.remove('hidden'); pill.textContent = `x${newCount}`; }
+        }
+        el.classList.add('unread');
+      }
+      // Find an existing item for a given inquiry (optionally student)
+      function findExistingItem(data){
+        if (!list) return null;
+        const keyInquiry = data.inquiry_id != null ? String(data.inquiry_id) : null;
+        const keyStudent = data.student_id != null ? String(data.student_id) : null;
+        if (!keyInquiry) return null;
+        let el = null;
+        if (keyStudent) {
+          el = list.querySelector(`.office-ann-item[data-inquiry-id="${CSS.escape(keyInquiry)}"][data-student-id="${CSS.escape(keyStudent)}"]`);
+          if (el) return el;
+        }
+        el = list.querySelector(`.office-ann-item[data-inquiry-id="${CSS.escape(keyInquiry)}"]`);
+        if (el) return el;
+        // Try parsing from href for pre-rendered items
+        const candidates = Array.from(list.querySelectorAll('.office-ann-item[href*="/office/inquiry/"]'));
+        return candidates.find(x => (x.getAttribute('href')||'').endsWith(`/office/inquiry/${keyInquiry}`)) || null;
+      }
+      // Merge duplicate items in the dropdown into single entries per inquiry
+      function consolidateExistingDropdown(){
+        if (!list) return;
+        const items = Array.from(list.querySelectorAll('.office-ann-item'));
+        const byInquiry = new Map();
+        for (const el of items){
+          let key = el.dataset.inquiryId;
+          if (!key) {
+            const m = (el.getAttribute('href')||'').match(/\/office\/inquiry\/(\d+)/);
+            key = m && m[1] ? m[1] : null;
+            if (key) el.dataset.inquiryId = key;
+          }
+          if (!key) continue;
+          if (!byInquiry.has(key)){
+            // Initialize count pill visibility
+            el.dataset.count = String(parseInt(el.dataset.count||'1'));
+            const pill = el.querySelector('.ann-count-pill');
+            if (pill) { pill.classList.remove('hidden'); pill.textContent = `x${el.dataset.count}`; }
+            byInquiry.set(key, el);
+          } else {
+            // Merge: bump count on the first and remove duplicate
+            const host = byInquiry.get(key);
+            const c = parseInt(host.dataset.count||'1') + 1;
+            updateItemCount(host, c, el.querySelector('.ann-msg')?.textContent || '', el.querySelector('.ann-meta')?.textContent || '', null);
+            el.remove();
+          }
+        }
+      }
+      function prependItem(data){ if(!list) return; const el = buildItem(data); list.prepend(el); }
+
+      // Toast with loading state
+      function showToast({title='Notification', message='', type='info', duration=6000, loading=false, link=null}){
+        const t = document.createElement('div');
+        t.className = `toast type-${type}`;
+        t.setAttribute('role','alert');
+        t.setAttribute('aria-live','polite');
+        const iconMap = { info:'fa-bell', success:'fa-check', warning:'fa-exclamation', error:'fa-times' };
+        const icon = iconMap[type] || iconMap.info;
+        const progress = `<div class="progress-bar"><div class="progress-fill" style="animation-duration:${duration}ms"></div></div>`;
+        t.innerHTML = `
+          <div class="toast-icon-wrapper" style="background:linear-gradient(135deg,var(--bar-color),var(--bar-color-alt));">
+            <div class="toast-spinner hidden w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
+            <i class="fa-solid ${icon} toast-icon"></i>
+          </div>
+          <div class="toast-content">
+            <div class="toast-title">${escapeHtml(title)}</div>
+            <div class="toast-message">${escapeHtml(message)}</div>
+          </div>
+          <button class="toast-close" aria-label="Close notification">&times;</button>
+          ${progress}`;
+        if(link){
+          t.classList.add('cursor-pointer');
+          t.addEventListener('click', (ev)=>{
+            if(ev.target.closest('.toast-close')) return; // ignore close button
+            window.location.href = link;
+          });
+        }
+        if(loading){
+          t.classList.add('toast-loading');
+          t.querySelector('.toast-icon').classList.add('hidden');
+          t.querySelector('.toast-spinner').classList.remove('hidden');
+          t.querySelector('.toast-message').innerHTML = '<span class="inline-block h-3 w-28 rounded bg-gray-200 animate-pulse"></span>';
+          setTimeout(()=>{
+            t.classList.remove('toast-loading');
+            t.querySelector('.toast-spinner').classList.add('hidden');
+            t.querySelector('.toast-icon').classList.remove('hidden');
+            t.querySelector('.toast-message').textContent = message;
+          }, 400); // smooth loading state
+        }
+        const close = ()=>{ if(t.classList.contains('closing')) return; t.classList.add('closing'); setTimeout(()=>t.remove(),340); };
+        t.querySelector('.toast-close').addEventListener('click', close);
+        setTimeout(close, duration+200);
+        toastZone.appendChild(t);
+        return t;
+      }
+      window.officeShowToast = showToast; // expose
+
+      // Dropdown open/close
+      function openDropdown(){ if(!dropdown || dropdown.classList.contains('open')) return; dropdown.classList.remove('hidden','closing'); requestAnimationFrame(()=>dropdown.classList.add('open')); }
+      function closeDropdown(){ if(!dropdown || dropdown.classList.contains('hidden')) return; dropdown.classList.add('closing'); dropdown.classList.remove('open'); setTimeout(()=>dropdown.classList.add('hidden'),220); }
+      if(bellBtn){
+        bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.contains('open')?closeDropdown():openDropdown(); });
+        document.addEventListener('click', (e)=>{ if(dropdown && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) closeDropdown(); });
+        document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDropdown(); });
+      }
+
+      // Delegate click to mark item(s) read immediately (optimistic) and prefer inquiry-wide marking
+      if(list){
+        list.addEventListener('click', async (e)=>{
+          const a = e.target.closest('.office-ann-item');
+          if(!a) return; // not an item
+          const href = a.getAttribute('href') || '';
+          const inquiryId = a.dataset.inquiryId || (href.match(/\/office\/inquiry\/(\d+)/)?.[1] || '');
+          const ids = [a.dataset.id].filter(Boolean);
+          const wasUnread = a.classList.contains('unread');
+          // Optimistic UI update
+          if (wasUnread) {
+            a.classList.remove('unread');
+            if(badge && !badge.classList.contains('hidden')){
+              let n = parseInt(badge.textContent||'0');
+              n = isNaN(n)?0:Math.max(0,n-1);
+              setBadgeCount(n);
+            }
+          }
+          // Fire-and-forget mark read (prefer inquiry bulk)
+          const headers = {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content};
+          try {
+            if (inquiryId) {
+              // Use keepalive to allow the request to complete during navigation
+              await fetch(`/office/notifications/mark-inquiry-read/${inquiryId}`, {method:'POST', headers, keepalive: true});
+            } else if (ids.length) {
+              await fetch(`/office/notifications/mark-read/${ids[0]}`, {method:'POST', headers, keepalive: true});
+            }
+          } catch(_) { /* no-op */ }
+        });
+      }
+
+      // Mark all read
+      if(markAll){
+        markAll.addEventListener('click', async ()=>{
+          try{
+            const res = await fetch('/office/notifications/mark-all-read', {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
+            if(!res.ok) return showToast({title:'Error', message:'Request failed', type:'error', duration:4000});
+            const data = await res.json();
+            list.querySelectorAll('.office-ann-item.unread').forEach(a=>a.classList.remove('unread'));
+            setBadgeCount(0);
+            showToast({title:'All read', message:data.message || 'Marked as read', type:'success', duration:3000});
+          }catch(e){ showToast({title:'Error', message:'Could not update', type:'error'}); }
+        });
+      }
+      // Refresh
+      if(refreshBtn){
+        refreshBtn.addEventListener('click', async ()=>{
+          refreshBtn.disabled = true; refreshBtn.textContent='...';
+          try {
+            const res = await fetch('/office/notifications/sidebar');
+            if(res.ok){
+              const data = await res.json();
+              list.innerHTML='';
+              if(data.length){
+                data.forEach(n=>list.appendChild(buildItem(n)));
+                // Consolidate duplicate inquiry messages and update badge to group count
+                consolidateExistingDropdown();
+                const unreadCount = list.querySelectorAll('.office-ann-item.unread').length;
+                setBadgeCount(unreadCount);
+              }
+              else { list.innerHTML = '<div class="office-ann-empty text-gray-500 text-sm"><i class="fas fa-bell-slash text-3xl mb-3 block"></i><p class="font-medium">No notifications</p><p class="text-xs mt-1 text-gray-400">Nothing new right now.</p></div>'; }
+              showToast({title:'Refreshed', message:'Latest notifications loaded.', type:'info', duration:2500});
+            }
+          } catch(e){ showToast({title:'Error', message:'Could not refresh', type:'error'}); }
+          finally { refreshBtn.disabled=false; refreshBtn.textContent='Refresh'; }
+        });
+      }
+
+      // Socket wiring
+      try {
+        const socket = io('/office', {transports:['websocket']});
+        socket.on('connect', ()=>{ if(window.notificationManager) window.notificationManager.updateConnectionStatus(true); });
+        socket.on('disconnect', ()=>{ if(window.notificationManager) window.notificationManager.updateConnectionStatus(false); });
+        // Track last socket notification timestamp to coordinate with polling (smart_notifications.js)
+        window.__lastOfficeSocketNotificationAt = window.__lastOfficeSocketNotificationAt || 0;
+        // Simple de-dup guard: ignore events for the same notification within 3s
+        const __officeNotifSeen = new Map();
+        socket.on('office_notification', data => {
+          try {
+            const key = String(data.notification_id || data.id || `${data.kind||''}:${data.inquiry_id||''}:${data.timestamp||''}`);
+            const now = Date.now();
+            const last = __officeNotifSeen.get(key) || 0;
+            if (now - last < 3000) { return; }
+            __officeNotifSeen.set(key, now);
+          } catch (_) {}
+          // Play sound via central manager (single source of audio)
+          if(window.notificationManager) window.notificationManager.playNotificationSound();
+          // Consolidate: if an item for this inquiry already exists, bump its count instead of adding a new one
+          const existing = findExistingItem(data);
+          if (existing) {
+            const current = parseInt(existing.dataset.count||'1') + 1;
+            const latestMsg = data.message || existing.querySelector('.ann-msg')?.textContent || '';
+            const latestTs = data.created_at || new Date().toLocaleString();
+            updateItemCount(existing, current, latestMsg, latestTs, data);
+          } else {
+            prependItem(data);
+            // Reveal count pill as x1 for consistency and increment badge for a new group
+            const first = list && list.firstElementChild;
+            if (first) {
+              const pill = first.querySelector('.ann-count-pill');
+              if (pill) pill.classList.remove('hidden');
+            }
+            incrementBadge();
+          }
+          // Derive toast type heuristically
+          const kind = (data.category || data.type || data.title || '').toLowerCase();
+          let toastType = 'info';
+            if(/success|submitted|created|scheduled/.test(kind)) toastType = 'success';
+            else if(/warning|delay|pending/.test(kind)) toastType = 'warning';
+            else if(/error|fail|problem/.test(kind)) toastType = 'error';
+          // Provide richer inquiry/counseling context
+          const isInquiry = /inquiry/.test(kind) || !!data.inquiry_id;
+          const isCounsel = /counsel/.test(kind) || /session/.test(kind);
+          let title = data.title || (isInquiry? 'New Inquiry' : isCounsel? 'Counseling Update' : 'Notification');
+          let message = data.message || '';
+          const link = data.inquiry_id ? `/office/inquiry/${data.inquiry_id}` : (data.link || null);
+          // Shorten long messages for toast
+          if(message.length > 180){ message = message.slice(0,177)+'…'; }
+          showToast({title, message, type:toastType, duration: isInquiry||isCounsel? 8000:6500, loading:false, link});
+          window.__lastOfficeSocketNotificationAt = Date.now();
+          try { document.dispatchEvent(new CustomEvent('office:socket-notification',{detail:data})); } catch(_) {}
+        });
+
+        // Adjust badge when notifications are marked read in chat views
+  socket.on('office_notification_update', data => {
+          try {
+            const badge = document.getElementById('office-ann-badge');
+            if (!badge) return;
+            const c = parseInt((data&&data.count)||1);
+            let n = parseInt(badge.textContent||'0');
+            n = isNaN(n)?0:Math.max(0, n - c);
+            badge.textContent = String(n);
+            if (n <= 0) badge.classList.add('hidden'); else badge.classList.remove('hidden');
+          } catch (_) {}
+        });
+  } catch(e){ /* ignore */ }
+  // Consolidate duplicates on initial load (for server-rendered items)
+  consolidateExistingDropdown();
+    })();
+    </script>
+
+    <!-- Persist sidebar counters across navigations -->
+    <script>
+      (function(){
+        if (!window.location.pathname.startsWith('/office')) return;
+
+        const LS_KEY = 'officeSidebarCounts';
+        function loadCounts(){
+          try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(_) { return {}; }
+        }
+        function saveCounts(data){
+          try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(_) {}
+        }
+        function setBadge(el, value, colorClass){
+          if (!el) return;
+          // Find existing badge span after the flex grow area
+          let badge = el.querySelector('.counter-badge');
+          if (!badge) {
+            // Only render if value > 0 to avoid clutter
+            badge = document.createElement('span');
+            badge.className = `ml-auto counter-badge ${colorClass}`;
+            el.appendChild(badge);
+          }
+          const v = Math.max(0, parseInt(value||0));
+          if (v > 0) {
+            badge.textContent = String(v);
+            badge.classList.remove('hidden');
+          } else {
+            badge.textContent = '0';
+            badge.classList.add('hidden');
+          }
+        }
+
+        function extractServerCount(linkEl){
+          if (!linkEl) return null;
+          const badge = linkEl.querySelector('.counter-badge');
+          if (!badge) return null;
+          const n = parseInt((badge.textContent||'').trim());
+          return isNaN(n) ? null : n;
+        }
+
+        function restore(){
+          const counts = loadCounts();
+          const inqEl = document.getElementById('nav-inquiries');
+          const vidEl = document.getElementById('nav-video-counseling');
+
+          const serverInq = extractServerCount(inqEl);
+          const serverVid = extractServerCount(vidEl);
+
+          // If server rendered value exists, prefer it and store
+          if (serverInq !== null) counts.inquiries = serverInq;
+          if (serverVid !== null) counts.video = serverVid;
+
+          // Otherwise use stored values to render badges for consistency
+          if (serverInq === null && typeof counts.inquiries === 'number') {
+            setBadge(inqEl, counts.inquiries, 'counter-red');
+          }
+          if (serverVid === null && typeof counts.video === 'number') {
+            setBadge(vidEl, counts.video, 'counter-blue');
+          }
+
+          saveCounts(counts);
+        }
+
+        function wireRealtimeSync(){
+          // Listen to dropdown mark-all and item-click optimistic changes that already adjust the bell badge
+          document.addEventListener('click', (e)=>{
+            // When navigating into an inquiry from dropdown, count usually decreases by 1 via socket update.
+            // We’ll also intercept clicks to Inquiries and Video tabs to keep values intact (no change).
+          }, true);
+
+          // Listen for custom events from chat or notification updates to adjust counters
+          document.addEventListener('office:socket-notification', (ev)=>{
+            try {
+              const data = ev.detail || {};
+              const counts = loadCounts();
+              // Heuristic: inquiry-related increments Inquiries
+              if (data.inquiry_id || /inquiry/i.test(data.category||data.title||'')) {
+                counts.inquiries = Math.max(0, parseInt(counts.inquiries||0) + 1);
+                saveCounts(counts);
+                setBadge(document.getElementById('nav-inquiries'), counts.inquiries, 'counter-red');
+              }
+              // Counseling/session related -> Video
+              if (/counsel|session/i.test(data.category||data.title||'')) {
+                counts.video = Math.max(0, parseInt(counts.video||0) + 1);
+                saveCounts(counts);
+                setBadge(document.getElementById('nav-video-counseling'), counts.video, 'counter-blue');
+              }
+            } catch(_) {}
+          });
+
+          // When notifications are marked read in chat views
+          try {
+            if (typeof io !== 'undefined'){
+              const tempSocket = io('/office');
+              tempSocket.on('office_notification_update', (data)=>{
+                const counts = loadCounts();
+                const c = parseInt((data&&data.count)||1);
+                if (!isNaN(c)){
+                  // Prefer to decrement Inquiries for now; if needed, extend with type info from data
+                  counts.inquiries = Math.max(0, parseInt(counts.inquiries||0) - c);
+                  saveCounts(counts);
+                  setBadge(document.getElementById('nav-inquiries'), counts.inquiries, 'counter-red');
+                }
+              });
+              // Close the temp socket shortly after to avoid duplicates with main socket
+              setTimeout(()=>{ try{ tempSocket.close(); }catch(_){} }, 2000);
+            }
+          } catch(_) {}
+        }
+
+        // Run after DOM ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', restore);
+        } else {
+          restore();
+        }
+        wireRealtimeSync();
+
+        // Persist server-rendered values again shortly after load in case the page updates them
+        setTimeout(restore, 800);
+      })();
+    </script>
+
+  {% block extra_js %}{% endblock %}
   </body>
 </html>

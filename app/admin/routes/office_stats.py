@@ -8,22 +8,33 @@ from sqlalchemy import func, case, or_
 import random
 import os
 from app.admin import admin_bp
+from app.utils.decorators import campus_access_required
 
 ################################# OFFICE STATS ###############################################
 
 
 @admin_bp.route('/office-stats')
 @login_required
+@campus_access_required
 def office_stats():
     if current_user.role != 'super_admin':
         flash('You do not have permission to access this page.', 'error')
         return redirect(url_for('main.index'))
     
-    # Get all offices
-    offices = Office.query.all()
+    # Campus-scoped queries
+    campus_id = current_user.campus_id
+
+    # Get all offices for current campus only
+    offices = Office.query.filter(Office.campus_id == campus_id).all()
     
-    # Get all office admins with their related data
-    office_admins = OfficeAdmin.query.join(User).join(Office).all()
+    # Get all office admins with their related data for current campus only
+    office_admins = (
+        OfficeAdmin.query
+        .join(User)
+        .join(Office)
+        .filter(Office.campus_id == campus_id)
+        .all()
+    )
     
     # Get active offices (those with at least one admin)
     active_offices = []
@@ -43,20 +54,72 @@ def office_stats():
         if not office.office_admins:
             unassigned_offices.append(office)
     
-    # Get unassigned admins (users with admin role but not assigned to any office)
-    # First, get all users with admin role who are not super admins
+    # Get unassigned admins (users with admin role but not assigned to ANY office globally)
+    # First, get all users with admin role
     admin_users = User.query.filter(User.role == 'office_admin').all()
     
-    # Then filter out those who are already assigned to an office
-    assigned_admin_ids = [admin.user_id for admin in office_admins]
-    unassigned_admins = [user for user in admin_users if user.id not in assigned_admin_ids]
+    # Then filter out those who are already assigned to any office (across all campuses)
+    assigned_admin_ids_global = [oa.user_id for oa in OfficeAdmin.query.all()]
+    unassigned_admins = [user for user in admin_users if user.id not in assigned_admin_ids_global]
     
     # Get available admins for assignment
     available_admins = unassigned_admins
     
-    # Calculate total inquiries and pending inquiries
-    total_inquiries = Inquiry.query.count()
-    pending_inquiries = Inquiry.query.filter_by(status='pending').count()
+    # Calculate inquiries breakdown (campus-scoped via Office)
+    total_inquiries = (
+        db.session.query(func.count(Inquiry.id))
+        .join(Office, Inquiry.office_id == Office.id)
+        .filter(Office.campus_id == campus_id)
+        .scalar() or 0
+    )
+    pending_inquiries = (
+        db.session.query(func.count(Inquiry.id))
+        .join(Office, Inquiry.office_id == Office.id)
+        .filter(Office.campus_id == campus_id, Inquiry.status == 'pending')
+        .scalar() or 0
+    )
+    in_progress_inquiries = (
+        db.session.query(func.count(Inquiry.id))
+        .join(Office, Inquiry.office_id == Office.id)
+        .filter(Office.campus_id == campus_id, Inquiry.status == 'in_progress')
+        .scalar() or 0
+    )
+    resolved_inquiries = (
+        db.session.query(func.count(Inquiry.id))
+        .join(Office, Inquiry.office_id == Office.id)
+        .filter(Office.campus_id == campus_id, Inquiry.status == 'resolved')
+        .scalar() or 0
+    )
+
+    # Prepare per-office insights (lightweight aggregation for charts)
+    office_insights = []
+    for office in offices:
+        total = len(office.inquiries) if office.inquiries else 0
+        if total == 0:
+            # Still include with zeros to keep consistent ordering if needed
+            office_insights.append({
+                'id': office.id,
+                'name': office.name,
+                'total': 0,
+                'pending': 0,
+                'in_progress': 0,
+                'resolved': 0,
+            })
+            continue
+        pending = sum(1 for i in office.inquiries if i.status == 'pending')
+        in_prog = sum(1 for i in office.inquiries if i.status == 'in_progress')
+        resolved = sum(1 for i in office.inquiries if i.status == 'resolved')
+        office_insights.append({
+            'id': office.id,
+            'name': office.name,
+            'total': total,
+            'pending': pending,
+            'in_progress': in_prog,
+            'resolved': resolved,
+        })
+
+    # Top offices by total inquiries (limit to 6 for visuals)
+    office_insights = sorted(office_insights, key=lambda x: x['total'], reverse=True)[:6]
     
     # Log this activity
     log = SuperAdminActivityLog(
@@ -77,16 +140,24 @@ def office_stats():
                            available_admins=available_admins,
                            total_inquiries=total_inquiries,
                            pending_inquiries=pending_inquiries,
+                           in_progress_inquiries=in_progress_inquiries,
+                           resolved_inquiries=resolved_inquiries,
+                           office_insights=office_insights,
                            admins=admin_users) 
                            
 @admin_bp.route('/office/<int:office_id>/')
 @login_required
+@campus_access_required
 def view_office_details(office_id):
     if current_user.role != 'super_admin':
         flash('You do not have permission to access this page.', 'error')
         return redirect(url_for('main.index'))
     
     office = Office.query.get_or_404(office_id)
+    # Ensure office belongs to current super admin campus
+    if current_user.role == 'super_admin' and office.campus_id != current_user.campus_id:
+        flash('Access denied. You can only access offices in your assigned campus.', 'error')
+        return redirect(url_for('admin.office_stats'))
     
     # Get recent inquiries for this office
     recent_inquiries = Inquiry.query.filter_by(office_id=office_id).order_by(Inquiry.created_at.desc()).limit(10).all()
@@ -99,17 +170,10 @@ def view_office_details(office_id):
         'resolved': Inquiry.query.filter_by(office_id=office_id, status='resolved').count(),
     }
     
-    # Get all office admins
-    office_admins = OfficeAdmin.query.all()
-    
-    # Get all users with admin role who are not super admins
+    # Get unassigned admins (available for assignment) - globally unassigned only
     admin_users = User.query.filter(User.role == 'office_admin').all()
-    
-    # Get assigned admin IDs
-    assigned_admin_ids = [admin.user_id for admin in office_admins]
-    
-    # Get unassigned admins (available for assignment)
-    available_admins = [user for user in admin_users if user.id not in assigned_admin_ids]
+    assigned_admin_ids_global = [oa.user_id for oa in OfficeAdmin.query.all()]
+    available_admins = [user for user in admin_users if user.id not in assigned_admin_ids_global]
     
     # Log activity
     log = SuperAdminActivityLog(
@@ -130,6 +194,7 @@ def view_office_details(office_id):
 # Edit Admin
 @admin_bp.route('/office_admin/<int:admin_id>/edit/', methods=['GET', 'POST'])
 @login_required
+@campus_access_required
 def edit_admin(admin_id):
     if current_user.role != 'super_admin':
         flash('You do not have permission to access this page.', 'error')
@@ -137,6 +202,10 @@ def edit_admin(admin_id):
     
     office_admin = OfficeAdmin.query.get_or_404(admin_id)
     user = office_admin.user
+    # Ensure the admin belongs to the current campus via their office
+    if current_user.role == 'super_admin' and office_admin.office and office_admin.office.campus_id != current_user.campus_id:
+        flash('Access denied. You can only manage admins in your assigned campus.', 'error')
+        return redirect(url_for('admin.office_stats'))
     
     if request.method == 'POST':
         user.first_name = request.form.get('first_name')
@@ -151,6 +220,11 @@ def edit_admin(admin_id):
         # If changing office assignment
         new_office_id = request.form.get('office_id')
         if new_office_id and int(new_office_id) != office_admin.office_id:
+            # Validate new office belongs to current campus
+            new_office = Office.query.get(int(new_office_id))
+            if not new_office or new_office.campus_id != current_user.campus_id:
+                flash('Invalid office selection for your campus.', 'error')
+                return redirect(url_for('admin.edit_admin', admin_id=admin_id))
             office_admin.office_id = int(new_office_id)
         
         # Log activity
@@ -169,12 +243,14 @@ def edit_admin(admin_id):
             db.session.rollback()
             flash(f'An error occurred while updating the admin: {str(e)}', 'error')
     
-    offices = Office.query.all()
+    # Only list offices from current campus for selection
+    offices = Office.query.filter(Office.campus_id == current_user.campus_id).all()
     return render_template('admin/edit_admin.html', admin=office_admin, user=user, offices=offices)
 
 # Toggle Admin Status
 @admin_bp.route('/office_admin/<int:admin_id>/toggle_status/', methods=['POST'])
 @login_required
+@campus_access_required
 def toggle_admin_status(admin_id):
     if current_user.role != 'super_admin':
         flash('You do not have permission to perform this action.', 'error')
@@ -182,6 +258,10 @@ def toggle_admin_status(admin_id):
     
     office_admin = OfficeAdmin.query.get_or_404(admin_id)
     user = office_admin.user
+    # Ensure the admin belongs to the current campus via their office
+    if current_user.role == 'super_admin' and office_admin.office and office_admin.office.campus_id != current_user.campus_id:
+        flash('Access denied. You can only manage admins in your assigned campus.', 'error')
+        return redirect(url_for('admin.office_stats'))
     
     # Toggle the is_active status
     user.is_active = not user.is_active
@@ -207,12 +287,17 @@ def toggle_admin_status(admin_id):
 # Unassign Admin from Office
 @admin_bp.route('/office_admin/<int:admin_id>/unassign/', methods=['POST'])
 @login_required
+@campus_access_required
 def unassign_admin(admin_id):
     if current_user.role != 'super_admin':
         flash('You do not have permission to perform this action.', 'error')
         return redirect(url_for('admin.office_stats'))
     
     office_admin = OfficeAdmin.query.get_or_404(admin_id)
+    # Ensure the admin belongs to the current campus via their office
+    if current_user.role == 'super_admin' and office_admin.office and office_admin.office.campus_id != current_user.campus_id:
+        flash('Access denied. You can only manage admins in your assigned campus.', 'error')
+        return redirect(url_for('admin.office_stats'))
     office_name = office_admin.office.name
     admin_name = office_admin.user.get_full_name()
     
@@ -236,6 +321,7 @@ def unassign_admin(admin_id):
 
 @admin_bp.route('/assign-admin', methods=['POST'])
 @login_required
+@campus_access_required
 def assign_admin_to_office():
     if current_user.role != 'super_admin':
         flash('You do not have permission to perform this action.', 'error')
@@ -251,6 +337,10 @@ def assign_admin_to_office():
     office = Office.query.get(office_id)
     if not office:
         flash('Office not found.', 'error')
+        return redirect(url_for('admin.office_stats'))
+    # Ensure office belongs to current campus
+    if current_user.role == 'super_admin' and office.campus_id != current_user.campus_id:
+        flash('Access denied. You can only assign admins to offices in your campus.', 'error')
         return redirect(url_for('admin.office_stats'))
     
     user = User.query.get(admin_id)
@@ -284,6 +374,7 @@ def assign_admin_to_office():
 
 @admin_bp.route('/assign-office', methods=['POST'])
 @login_required
+@campus_access_required
 def assign_office_to_admin():
     if current_user.role != 'super_admin':
         flash('You do not have permission to perform this action.', 'error')
@@ -304,6 +395,10 @@ def assign_office_to_admin():
     office = Office.query.get(office_id)
     if not office:
         flash('Office not found.', 'error')
+        return redirect(url_for('admin.office_stats'))
+    # Ensure office belongs to current campus
+    if current_user.role == 'super_admin' and office.campus_id != current_user.campus_id:
+        flash('Access denied. You can only assign offices from your campus.', 'error')
         return redirect(url_for('admin.office_stats'))
     
     existing_assignment = OfficeAdmin.query.filter_by(user_id=admin_id, office_id=office_id).first()
