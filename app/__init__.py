@@ -1,9 +1,8 @@
-# Configure logging after monkey patching to avoid ungreened locks
 import logging
-logging.basicConfig(level=logging.DEBUG)
+import json
 
-from flask import Flask 
-from .extensions import db, socketio  # Re-add socketio import
+from flask import Flask, current_app
+from .extensions import db, socketio
 from pathlib import Path
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
@@ -22,6 +21,11 @@ def create_app():
                 static_folder=str(root_path / "static"))
                 
     app.config.from_object('config.Config')
+    # Apply logging level from config
+    try:
+        logging.getLogger().setLevel(app.config.get('LOG_LEVEL', 'INFO'))
+    except Exception:
+        pass
 
     # Set file upload folder and allowed extensions
     app.config['UPLOAD_FOLDER'] = str(root_path / 'static' / 'uploads')
@@ -29,12 +33,21 @@ def create_app():
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # max file size 16MB
 
     db.init_app(app)
-    # Initialize socketio with app and ensure proper configuration for WebRTC
-    socketio.init_app(app, 
-                     async_mode='eventlet',
-                     cors_allowed_origins="*",
-                     ping_timeout=60,
-                     ping_interval=25)
+    # Configure Socket.IO using app config
+    sio_kwargs = {
+        'async_mode': app.config.get('SOCKETIO_ASYNC_MODE', 'eventlet'),
+        'ping_timeout': app.config.get('SOCKETIO_PING_TIMEOUT', 60),
+        'ping_interval': app.config.get('SOCKETIO_PING_INTERVAL', 25),
+        'logger': app.config.get('SOCKETIO_LOGGER', False),
+        'engineio_logger': app.config.get('SOCKETIO_ENGINEIO_LOGGER', False),
+    }
+    cors_allowed = app.config.get('SOCKETIO_CORS_ALLOWED_ORIGINS')
+    if cors_allowed is not None:
+        sio_kwargs['cors_allowed_origins'] = cors_allowed
+    message_queue = app.config.get('SOCKETIO_MESSAGE_QUEUE')
+    if message_queue:
+        sio_kwargs['message_queue'] = message_queue
+    socketio.init_app(app, **sio_kwargs)
     login_manager.init_app(app)
     csrf = CSRFProtect(app)
     login_manager.login_view = 'auth.login' 
@@ -245,6 +258,28 @@ def create_app():
             campus_logo_url=campus_logo_url,
             campus_theme=campus_theme
         )
+
+    @app.context_processor
+    def inject_webrtc_ice():
+        """Expose ICE servers to templates for WebRTC clients.
+        Priority: ICE_SERVERS_JSON env > TURN_* > default STUN only (handled client-side).
+        """
+        ice_servers = None
+        cfg = app.config
+        try:
+            if cfg.get('ICE_SERVERS_JSON'):
+                ice_servers = json.loads(cfg['ICE_SERVERS_JSON'])
+            elif cfg.get('TURN_URL') and cfg.get('TURN_USERNAME') and cfg.get('TURN_PASSWORD'):
+                ice_servers = [
+                    {
+                        'urls': cfg['TURN_URL'],
+                        'username': cfg['TURN_USERNAME'],
+                        'credential': cfg['TURN_PASSWORD'],
+                    }
+                ]
+        except Exception:
+            ice_servers = None
+        return dict(ICE_SERVERS=ice_servers)
 
     @app.context_processor
     def inject_notifications_for_super_admin():

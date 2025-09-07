@@ -21,7 +21,7 @@ python run.py
 
 git remote -v
 git add .
-giy commit -m "Description"
+git commit -m "Description"
 git push origin master
 git status
 
@@ -29,7 +29,6 @@ git status
 
 http://localhost:5000/super-admin/login
 
-superadmin@admin.com
-admin
+[Credentials removed from repo. Use environment variables or seeded users in a secure way. Rotate any previously exposed passwords.]
 
 ## LAST ACTIVITY VIDEO COUNSELIG SESSION

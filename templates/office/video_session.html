@@ -637,6 +637,17 @@
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 <!-- Include counseling socket files -->
+<script id="iceServers" type="application/json">{{ (ICE_SERVERS or []) | tojson }}</script>
+<script>
+  try {
+    window.PG_ICE_SERVERS = JSON.parse(document.getElementById('iceServers').textContent);
+    if (Array.isArray(window.PG_ICE_SERVERS) && window.PG_ICE_SERVERS.length > 0) {
+      console.log('Using injected ICE servers:', window.PG_ICE_SERVERS);
+    }
+  } catch (e) {
+    window.PG_ICE_SERVERS = [];
+  }
+  </script>
 <script src="{{ url_for('static', filename='js/office/websockets/counseling.js') }}"></script>
 
 <!-- Create a basic stylesheet for video call interface -->

@@ -28,8 +28,9 @@ class VideoCounselingClientOffice {
     this.wasInCallBeforeDisconnect = false;
     this.persistKey = `videoCounseling:${this.sessionId}:${this.userId}`;
         
-        // ICE servers configuration
-        this.iceServers = [
+        // ICE servers configuration (prefer server-injected TURN if present)
+        const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
+        this.iceServers = injectedIce && injectedIce.length > 0 ? injectedIce : [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
             { urls: 'stun:stun2.l.google.com:19302' }
