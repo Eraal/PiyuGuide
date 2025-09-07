@@ -1,5 +1,5 @@
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import UserMixin
 
 class JsonSerializableMixin:
@@ -558,7 +558,7 @@ class CounselingSession(db.Model):
         """Check if the session is currently active"""
         now = datetime.utcnow()
         start_time = self.scheduled_at
-        end_time = start_time + datetime.timedelta(minutes=self.duration_minutes)
+        end_time = start_time + timedelta(minutes=self.duration_minutes)
         return start_time <= now <= end_time and self.status == 'in_progress'
     
     def get_waiting_room_status(self):
