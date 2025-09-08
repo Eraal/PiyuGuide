@@ -850,6 +850,7 @@ async handleIceCandidate(candidate) {
             console.log('Is in call after:', this.isInCall);
 
             // Create and send offer
+            this.ensureReceiveTransceivers();
             const offer = await this.peerConnection.createOffer();
             await this.peerConnection.setLocalDescription(offer);
             console.log('Offer created and set as local description');
@@ -884,6 +885,8 @@ async handleIceCandidate(candidate) {
                 this.peerConnection.addTrack(track, this.localStream);
             });
         }
+    // Ensure we have recvonly transceivers so we can receive student media immediately
+    this.ensureReceiveTransceivers();
         // Try to boost outbound video quality
         try {
             await this.applyHighQualitySenderParams();
@@ -1030,6 +1033,7 @@ async handleIceCandidate(candidate) {
         try {
             this.reconnectInProgress = true;
             this.updateConnectionStatus('Re-establishing media path…', 'warning');
+            this.ensureReceiveTransceivers();
             const offer = await this.peerConnection.createOffer({ iceRestart: true });
             await this.peerConnection.setLocalDescription(offer);
             this.socket.emit('offer', {
@@ -1041,6 +1045,29 @@ async handleIceCandidate(candidate) {
             console.warn('ICE restart failed:', e);
         } finally {
             setTimeout(() => { this.reconnectInProgress = false; }, 1500);
+        }
+    }
+
+    ensureReceiveTransceivers() {
+        try {
+            if (!this.peerConnection || !this.peerConnection.getTransceivers) return;
+            const transceivers = this.peerConnection.getTransceivers();
+            const hasVideo = transceivers.some(t =>
+                (t?.receiver?.track && t.receiver.track.kind === 'video') ||
+                (t?.sender?.track && t.sender.track.kind === 'video')
+            );
+            const hasAudio = transceivers.some(t =>
+                (t?.receiver?.track && t.receiver.track.kind === 'audio') ||
+                (t?.sender?.track && t.sender.track.kind === 'audio')
+            );
+            if (!hasVideo) {
+                try { this.peerConnection.addTransceiver('video', { direction: 'recvonly' }); } catch (e) { console.debug('addTransceiver(video) failed:', e?.name || e); }
+            }
+            if (!hasAudio) {
+                try { this.peerConnection.addTransceiver('audio', { direction: 'recvonly' }); } catch (e) { console.debug('addTransceiver(audio) failed:', e?.name || e); }
+            }
+        } catch (e) {
+            console.debug('ensureReceiveTransceivers failed (non-fatal):', e?.name || e);
         }
     }
     
