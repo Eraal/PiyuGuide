@@ -19,7 +19,7 @@ def inject_office_notifications():
             user_id=current_user.id
         ).order_by(Notification.created_at.desc()).limit(5).all()
 
-        # Defaults for sidebar badges and counseling flags
+    # Defaults for sidebar badges and counseling flags
         pending_inquiries_count = 0
         upcoming_sessions_count = 0
         office_offers_counseling = False
@@ -46,6 +46,10 @@ def inject_office_notifications():
             ).count()
 
             # Counseling availability flags
+            # First, detect explicit video support on the office record
+            office_obj = Office.query.get(office_id)
+            office_supports_video = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
+
             has_counseling_types = OfficeConcernType.query.filter(
                 OfficeConcernType.office_id == office_id,
                 OfficeConcernType.for_counseling.is_(True)
@@ -55,10 +59,9 @@ def inject_office_notifications():
                 CounselingSession.office_id == office_id
             ).first() is not None
 
-            office_offers_counseling = bool(has_counseling_types or has_any_sessions)
-
-            office_obj = Office.query.get(office_id)
-            office_supports_video = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
+            # Consider the feature available if admin enabled video OR office already
+            # has counseling concern types OR any counseling sessions historically
+            office_offers_counseling = bool(office_supports_video or has_counseling_types or has_any_sessions)
         except Exception:
             # Fail-safe: keep defaults if any query fails
             pass

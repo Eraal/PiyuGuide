@@ -254,8 +254,8 @@ def get_office_context():
             CounselingSession.scheduled_at > now
         ).count()
 
-        # Determine if this office offers counseling (has any counseling concern types
-        # or any counseling sessions historically)
+        # Determine if this office offers counseling (explicit video support enabled,
+        # has any counseling concern types, or any counseling sessions historically)
         has_counseling_types = db.session.query(OfficeConcernType.id).filter(
             OfficeConcernType.office_id == office_id,
             OfficeConcernType.for_counseling.is_(True)
@@ -263,12 +263,11 @@ def get_office_context():
         has_any_sessions = db.session.query(CounselingSession.id).filter(
             CounselingSession.office_id == office_id
         ).first() is not None
-        office_offers_counseling = bool(has_counseling_types or has_any_sessions)
-
         # Whether office supports video sessions explicitly
         office_obj = Office.query.get(office_id)
         office_supports_video = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
-        
+        office_offers_counseling = bool(office_supports_video or has_counseling_types or has_any_sessions)
+
         return {
             'unread_notifications_count': unread_notifications_count,
             'notifications': notifications,

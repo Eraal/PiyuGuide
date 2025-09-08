@@ -27,7 +27,7 @@ git status
 
 ## SUPER ADMIN LOGIN PAGE
 
-http://localhost:5000/super-admin/login
+https://piyuguide.live/super-admin/login
 
 [Credentials removed from repo. Use environment variables or seeded users in a secure way. Rotate any previously exposed passwords.]
 
@@ -37,3 +37,8 @@ ON DEPLOYMENT COMMAND
 
 cd /opt/piyuguide
 source venv/bin/activate
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+sudo systemctl restart piyuguide

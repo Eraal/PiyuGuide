@@ -157,9 +157,14 @@ def video_counseling():
         return redirect(url_for('main.index'))
     
     office_id = current_user.office_admin.office_id
-    # If office doesn't offer counseling at all, redirect away
+    # If office doesn't offer counseling at all, redirect away. However, if the
+    # Office record has supports_video=True (enabled by Campus Admin), allow access
+    # so the team can start configuring concern types and sessions.
     try:
-        from app.models import OfficeConcernType
+        from app.models import OfficeConcernType, Office
+        office_obj = Office.query.get(office_id)
+        supports_video_flag = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
+
         has_counseling_types = db.session.query(OfficeConcernType.id).filter(
             OfficeConcernType.office_id == office_id,
             OfficeConcernType.for_counseling.is_(True)
@@ -167,7 +172,8 @@ def video_counseling():
         has_any_sessions = db.session.query(CounselingSession.id).filter(
             CounselingSession.office_id == office_id
         ).first() is not None
-        if not (has_counseling_types or has_any_sessions):
+
+        if not (supports_video_flag or has_counseling_types or has_any_sessions):
             flash('Counseling is not enabled for your office.', 'warning')
             return redirect(url_for('office.dashboard'))
     except Exception:
