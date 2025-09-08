@@ -27,6 +27,8 @@ class VideoCounselingClientOffice {
     this.reconnectInProgress = false;
     this.wasInCallBeforeDisconnect = false;
     this.persistKey = `videoCounseling:${this.sessionId}:${this.userId}`;
+    this.pendingIceCandidates = [];
+    this._recoveryTimer = null;
         
         // ICE servers configuration (prefer server-injected TURN if present)
         const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
@@ -236,15 +238,18 @@ class VideoCounselingClientOffice {
         this.socket.on('reconnect_request', async (data) => {
             console.log('Peer requested reconnection/renegotiation:', data);
             try {
-                if (this.peerConnection) {
-                    const offer = await this.peerConnection.createOffer({ iceRestart: true });
-                    await this.peerConnection.setLocalDescription(offer);
-                    this.socket.emit('offer', {
-                        session_id: this.sessionId,
-                        offer: offer,
-                        target_user_id: data.user_id || null
-                    });
-                }
+                    // Prefer rebuilding the peer connection to ensure fresh transceivers/tracks
+                    if (this.isInCall) {
+                        await this.rebuildPeerConnection('peer_reconnect_request');
+                    } else if (this.peerConnection) {
+                        const offer = await this.peerConnection.createOffer({ iceRestart: true });
+                        await this.peerConnection.setLocalDescription(offer);
+                        this.socket.emit('offer', {
+                            session_id: this.sessionId,
+                            offer: offer,
+                            target_user_id: data.user_id || null
+                        });
+                    }
             } catch (e) {
                 console.warn('Failed to renegotiate on reconnect_request:', e);
             }
@@ -402,6 +407,12 @@ async handleIceCandidate(candidate) {
         
         if (this.peerConnection && this.peerConnection.remoteDescription) {
             try {
+                if (!candidate) return; // Skip null end-of-candidates
+                if (!this.peerConnection || !this.peerConnection.remoteDescription) {
+                    // Queue until remote description is set
+                    this.pendingIceCandidates.push(candidate);
+                    return;
+                }
                 await this.peerConnection.addIceCandidate(candidate);
                 console.log('ICE candidate added successfully');
             } catch (error) {
@@ -941,13 +952,17 @@ async handleIceCandidate(candidate) {
                     if (this.isInCall) {
                         this.showCallUI();
                     }
+                    // Clear any scheduled recovery when connected
+                    if (this._recoveryTimer) { clearTimeout(this._recoveryTimer); this._recoveryTimer = null; }
                     break;
                 case 'disconnected':
                     this.updateConnectionStatus('Connection lost', 'warning');
+                    this.scheduleConnectionRecovery();
                     break;
                 case 'failed':
                     this.updateConnectionStatus('Connection failed', 'error');
                     this.handleConnectionIssue();
+                    this.scheduleConnectionRecovery(true);
                     break;
                 case 'closed':
                     this.updateConnectionStatus('Call ended', 'info');
@@ -970,6 +985,7 @@ async handleIceCandidate(candidate) {
                 if (this.isInCall && !this.reconnectInProgress) {
                     this.restartIceSafely();
                 }
+                this.scheduleConnectionRecovery(state === 'failed');
             }
         };
         
@@ -1051,6 +1067,9 @@ async handleIceCandidate(candidate) {
         
         // Don't show call UI immediately - wait for connection to establish
         this.updateConnectionStatus('Processing call connection...', 'info');
+
+    // Drain any ICE candidates that arrived before remote description
+    this.drainPendingIceCandidates();
     }
     
     async handleAnswer(answer) {
@@ -1075,6 +1094,9 @@ async handleIceCandidate(candidate) {
                     this.showCallUI();
                 }
             }, 500);
+
+            // Drain any queued ICE candidates now that we have a remote description
+            this.drainPendingIceCandidates();
         }
     }
     
@@ -2582,26 +2604,89 @@ async handleIceCandidate(candidate) {
         this.showNotification('Connection issues detected. Trying to reconnect...', 'warning');
         this.updateConnectionStatus('Connection unstable - attempting to reconnect', 'warning');
     }
+
+    scheduleConnectionRecovery(isFailed = false) {
+        // If already scheduled, don't schedule another
+        if (this._recoveryTimer) return;
+        const delay = isFailed ? 2000 : 4000;
+        this._recoveryTimer = setTimeout(async () => {
+            this._recoveryTimer = null;
+            try {
+                if (!this.isInCall) return;
+                if (!this.peerConnection) return;
+                const state = this.peerConnection.connectionState;
+                if (state !== 'connected') {
+                    await this.rebuildPeerConnection('auto_recovery');
+                }
+            } catch (e) {
+                console.warn('Recovery attempt failed:', e);
+            }
+        }, delay);
+    }
+
+    drainPendingIceCandidates() {
+        if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
+        if (!this.pendingIceCandidates || this.pendingIceCandidates.length === 0) return;
+        console.log(`Adding ${this.pendingIceCandidates.length} queued ICE candidates (office)`);
+        const queue = this.pendingIceCandidates;
+        this.pendingIceCandidates = [];
+        queue.forEach(async (cand) => {
+            try {
+                await this.peerConnection.addIceCandidate(cand);
+            } catch (err) {
+                console.warn('Error adding queued ICE candidate (office):', err);
+            }
+        });
+    }
+
+    async rebuildPeerConnection(reason = 'manual') {
+        console.log('Rebuilding RTCPeerConnection (office) due to:', reason);
+        try {
+            this.reconnectInProgress = true;
+            const oldPc = this.peerConnection;
+            if (oldPc) {
+                try { oldPc.ontrack = null; oldPc.onicecandidate = null; oldPc.onconnectionstatechange = null; oldPc.oniceconnectionstatechange = null; } catch (_) {}
+                try { oldPc.close(); } catch (_) {}
+            }
+            this.peerConnection = null;
+            // Create fresh PC and re-add local tracks
+            await this.createPeerConnection();
+            // Renegotiate with ICE restart for robustness
+            if (this.isInCall) {
+                const offer = await this.peerConnection.createOffer({ iceRestart: true });
+                await this.peerConnection.setLocalDescription(offer);
+                this.socket.emit('offer', {
+                    session_id: this.sessionId,
+                    offer: offer,
+                    target_user_id: null
+                });
+            }
+        } catch (e) {
+            console.warn('Failed to rebuild peer connection (office):', e);
+        } finally {
+            setTimeout(() => { this.reconnectInProgress = false; }, 1500);
+        }
+    }
     
     monitorConnectionQuality() {
         if (!this.peerConnection) return;
-        
-        setInterval(async () => {
+        if (this._qualityInterval) {
+            clearInterval(this._qualityInterval);
+            this._qualityInterval = null;
+        }
+        this._qualityInterval = setInterval(async () => {
             try {
                 const stats = await this.peerConnection.getStats();
                 let inboundRtp = null;
-                
                 stats.forEach(report => {
                     if (report.type === 'inbound-rtp' && report.kind === 'video') {
                         inboundRtp = report;
                     }
                 });
-                
                 if (inboundRtp) {
                     const quality = this.calculateConnectionQuality(inboundRtp);
                     this.updateConnectionQuality(quality);
                 }
-                
             } catch (error) {
                 console.error('Error monitoring connection quality:', error);
             }

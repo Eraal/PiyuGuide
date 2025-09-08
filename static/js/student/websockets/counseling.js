@@ -24,6 +24,8 @@ class VideoCounselingClient {
     this.reconnectInProgress = false;
     this.wasInCallBeforeDisconnect = false;
     this.persistKey = `videoCounseling:${this.sessionId}:${this.userId}`;
+    this._recoveryTimer = null;
+    this._qualityInterval = null;
         
         // ICE servers configuration (prefer server-injected TURN if present)
         const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
@@ -810,7 +812,7 @@ class VideoCounselingClient {
         
         // Monitor connection state
         this.peerConnection.onconnectionstatechange = () => {
-            const state = this.peerConnection.connectionState;
+        const state = this.peerConnection.connectionState;
             console.log('Connection state changed:', state);
             
             switch (state) {
@@ -823,13 +825,16 @@ class VideoCounselingClient {
                     if (this.isInCall) {
                         this.showCallUI();
                     }
+            if (this._recoveryTimer) { clearTimeout(this._recoveryTimer); this._recoveryTimer = null; }
                     break;
                 case 'disconnected':
                     this.updateConnectionStatus('Connection lost', 'warning');
+            this.scheduleConnectionRecovery();
                     break;
                 case 'failed':
                     this.updateConnectionStatus('Connection failed', 'error');
                     this.handleConnectionIssue();
+            this.scheduleConnectionRecovery(true);
                     break;
                 case 'closed':
                     this.updateConnectionStatus('Call ended', 'info');
@@ -853,6 +858,7 @@ class VideoCounselingClient {
                 if (this.isInCall && !this.reconnectInProgress) {
                     this.restartIceSafely();
                 }
+                this.scheduleConnectionRecovery(state === 'failed');
             }
         };
         
@@ -2279,17 +2285,15 @@ class VideoCounselingClient {
             this.updateConnectionStatus('Reconnected. Restoring session…', 'info');
             this.joinSession();
             if (this.wasInCallBeforeDisconnect || this.isInCall) {
-                // Ensure media and peer connection ready
+                // Ensure media ready
                 if (!this.localStream) {
                     await this.initializeMedia();
                 }
-                if (!this.peerConnection) {
-                    await this.createPeerConnection();
-                }
-                // Inform peers to renegotiate by requesting an offer via server
-                this.socket.emit('reconnect_request', { session_id: this.sessionId });
-                // Also join call again to re-mark state
+                // Always rebuild the PC on reconnect to avoid stale transceivers/senders
+                await this.rebuildPeerConnection('socket_reconnect');
+                // Also join call again to re-mark state and request renegotiation
                 this.socket.emit('join_call', { session_id: this.sessionId });
+                this.socket.emit('reconnect_request', { session_id: this.sessionId });
             }
         } catch (e) {
             console.warn('Failed to restore session on reconnect:', e);
@@ -2297,9 +2301,9 @@ class VideoCounselingClient {
     }
     
     monitorConnectionQuality() {
-        if (!this.peerConnection) return;
-        
-        setInterval(async () => {
+    if (!this.peerConnection) return;
+    if (this._qualityInterval) { clearInterval(this._qualityInterval); this._qualityInterval = null; }
+    this._qualityInterval = setInterval(async () => {
             try {
                 const stats = await this.peerConnection.getStats();
                 let inboundRtp = null;
@@ -2318,7 +2322,7 @@ class VideoCounselingClient {
             } catch (error) {
                 console.error('Error monitoring connection quality:', error);
             }
-        }, 5000);
+    }, 5000);
     }
     
     calculateConnectionQuality(stats) {
@@ -2337,23 +2341,52 @@ class VideoCounselingClient {
     
     updateConnectionQuality(quality) {
         this.connectionQuality = quality;
-        
-        // Emit quality data to other participants
-        if (this.socket && this.socket.connected) {
-            this.socket.emit('connection_quality', {
-                session_id: this.sessionId,
-                quality: {
-                    level: quality,
-                    timestamp: Date.now()
-                }
-            });
-        }
-        
         // Update UI indicators
         const qualityElement = document.getElementById('connectionQuality');
         if (qualityElement) {
             qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
             qualityElement.className = `connection-${quality}`;
+        }
+    }
+
+    scheduleConnectionRecovery(isFailed = false) {
+        if (this._recoveryTimer) return;
+        const delay = isFailed ? 2000 : 4000;
+        this._recoveryTimer = setTimeout(async () => {
+            this._recoveryTimer = null;
+            try {
+                if (!this.isInCall) return;
+                if (!this.peerConnection) return;
+                const state = this.peerConnection.connectionState;
+                if (state !== 'connected') {
+                    await this.rebuildPeerConnection('auto_recovery');
+                    // Ask peer to renegotiate
+                    this.socket.emit('reconnect_request', { session_id: this.sessionId });
+                }
+            } catch (e) {
+                console.warn('Student recovery attempt failed:', e);
+            }
+        }, delay);
+    }
+
+    async rebuildPeerConnection(reason = 'manual') {
+        console.log('Rebuilding RTCPeerConnection (student) due to:', reason);
+        try {
+            this.reconnectInProgress = true;
+            const oldPc = this.peerConnection;
+            if (oldPc) {
+                try { oldPc.ontrack = null; oldPc.onicecandidate = null; oldPc.onconnectionstatechange = null; oldPc.oniceconnectionstatechange = null; } catch (_) {}
+                try { oldPc.close(); } catch (_) {}
+            }
+            this.peerConnection = null;
+            // Create fresh PC and re-add local tracks
+            await this.createPeerConnection();
+            // Student normally waits for counselor offer; request renegotiation explicitly
+            this.socket.emit('reconnect_request', { session_id: this.sessionId });
+        } catch (e) {
+            console.warn('Failed to rebuild peer connection (student):', e);
+        } finally {
+            setTimeout(() => { this.reconnectInProgress = false; }, 1500);
         }
     }
     

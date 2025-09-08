@@ -42,3 +42,6 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 sudo systemctl restart piyuguide
+
+sudo systemctl restart piyuguide
+systemctl status piyuguide --no-pager
