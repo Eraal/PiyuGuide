@@ -61,13 +61,22 @@ def add_office():
         # We need to flush to get the office ID
         db.session.flush()
         
-        # Associate selected concern types with the new office
+        # Associate selected concern types with the new office (idempotent, inquiries-enabled)
         for concern_id in selected_concern_ids:
-            office_concern = OfficeConcernType(
+            concern_id_int = int(concern_id)
+            existing_assoc = OfficeConcernType.query.filter_by(
                 office_id=new_office.id,
-                concern_type_id=int(concern_id)
-            )
-            db.session.add(office_concern)
+                concern_type_id=concern_id_int
+            ).first()
+            if existing_assoc:
+                # Ensure inquiries flag is on for newly created office
+                existing_assoc.for_inquiries = True
+            else:
+                db.session.add(OfficeConcernType(
+                    office_id=new_office.id,
+                    concern_type_id=concern_id_int,
+                    for_inquiries=True
+                ))
         
         # Log the activity
         log = SuperAdminActivityLog(

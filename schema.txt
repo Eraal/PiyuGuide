@@ -197,7 +197,8 @@ CREATE TABLE IF NOT EXISTS office_concern_types (
     CONSTRAINT fk_office_concern_types_office_id
         FOREIGN KEY (office_id) REFERENCES offices (id) ON DELETE CASCADE,
     CONSTRAINT fk_office_concern_types_concern_type_id
-        FOREIGN KEY (concern_type_id) REFERENCES concern_types (id) ON DELETE CASCADE
+        FOREIGN KEY (concern_type_id) REFERENCES concern_types (id) ON DELETE CASCADE,
+    CONSTRAINT uq_office_concern UNIQUE (office_id, concern_type_id)
 );
 CREATE INDEX IF NOT EXISTS idx_office_concern_types_office_id ON office_concern_types (office_id);
 CREATE INDEX IF NOT EXISTS idx_office_concern_types_concern_type_id ON office_concern_types (concern_type_id);

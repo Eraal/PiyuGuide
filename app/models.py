@@ -292,6 +292,11 @@ class OfficeConcernType(db.Model):
     for_inquiries = db.Column(db.Boolean, nullable=False, default=True)
     for_counseling = db.Column(db.Boolean, nullable=False, default=False)
     
+    # Enforce a single association per (office, concern_type)
+    __table_args__ = (
+        db.UniqueConstraint('office_id', 'concern_type_id', name='uq_office_concern'),
+    )
+    
     office = db.relationship('Office', back_populates='supported_concerns')
     concern_type = db.relationship('ConcernType', back_populates='supporting_offices')
 
