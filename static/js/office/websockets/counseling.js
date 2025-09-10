@@ -2674,8 +2674,29 @@ async handleIceCandidate(candidate) {
         const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
         if (remoteVideo && remotePlaceholder) {
             if (data.video_enabled) {
+                // Re-attach stream and attempt playback to avoid black screen after toggle
+                if (this.remoteStream && remoteVideo.srcObject !== this.remoteStream) {
+                    try { remoteVideo.srcObject = this.remoteStream; } catch (_) {}
+                }
+                try { remoteVideo.autoplay = true; remoteVideo.playsInline = true; } catch (_) {}
+                // Ensure letterboxing on Office
+                try { remoteVideo.style.objectFit = 'contain'; remoteVideo.style.backgroundColor = '#000'; } catch (_) {}
+                // Swap visibility first
                 remoteVideo.classList.remove('hidden');
                 remotePlaceholder.classList.add('hidden');
+                // Nudge playback
+                const tryPlay = () => {
+                    remoteVideo.play().catch(e => {
+                        // Fallback: try muted autoplay, then unmute on first user gesture
+                        if (!remoteVideo.muted) {
+                            remoteVideo.muted = true;
+                            remoteVideo.play().catch(() => {});
+                            this._awaitFirstUserGestureToUnmute(remoteVideo);
+                        }
+                    });
+                };
+                if (remoteVideo.readyState >= 2) tryPlay();
+                remoteVideo.onloadedmetadata = () => tryPlay();
             } else {
                 remoteVideo.classList.add('hidden');
                 remotePlaceholder.classList.remove('hidden');

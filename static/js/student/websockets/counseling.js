@@ -2256,12 +2256,20 @@ class VideoCounselingClient {
         const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
         if (remoteVideo && remotePlaceholder) {
             if (data.video_enabled) {
+                // Re-attach current remote stream if needed and ensure playback
+                if (this.remoteStream && remoteVideo.srcObject !== this.remoteStream) {
+                    try { remoteVideo.srcObject = this.remoteStream; } catch (_) {}
+                }
+                try { remoteVideo.autoplay = true; remoteVideo.playsInline = true; } catch (_) {}
                 remoteVideo.classList.remove('hidden');
                 remotePlaceholder.classList.add('hidden');
-                // Try to play in case autoplay was blocked previously
-                if (remoteVideo.readyState >= 2) {
-                    remoteVideo.play().catch(() => {});
-                }
+                const tryPlay = () => {
+                    remoteVideo.play().catch(() => {
+                        // No audio from remote video element usually; just retry silently
+                    });
+                };
+                if (remoteVideo.readyState >= 2) tryPlay();
+                remoteVideo.onloadedmetadata = () => tryPlay();
             } else {
                 remoteVideo.classList.add('hidden');
                 remotePlaceholder.classList.remove('hidden');
