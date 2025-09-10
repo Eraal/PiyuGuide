@@ -879,14 +879,27 @@ async handleIceCandidate(candidate) {
             iceServers: this.iceServers
         });
         
-        // Add local stream
+        // Ensure we have recvonly transceivers BEFORE adding local tracks so we can receive student media immediately
+        try {
+            const existing = this.peerConnection.getTransceivers ? this.peerConnection.getTransceivers() : [];
+            if (!existing || existing.length === 0) {
+                try { this.peerConnection.addTransceiver('video', { direction: 'recvonly' }); } catch (_) {}
+                try { this.peerConnection.addTransceiver('audio', { direction: 'recvonly' }); } catch (_) {}
+            }
+        } catch (_) {}
+
+        // Add local stream tracks
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => {
-                this.peerConnection.addTrack(track, this.localStream);
+                try {
+                    this.peerConnection.addTrack(track, this.localStream);
+                } catch (e) {
+                    console.warn('addTrack failed (office):', e?.name || e);
+                }
             });
         }
-    // Ensure we have recvonly transceivers so we can receive student media immediately
-    this.ensureReceiveTransceivers();
+        // Ensure we maintain recv capability regardless of local tracks
+        this.ensureReceiveTransceivers();
         // Try to boost outbound video quality
         try {
             await this.applyHighQualitySenderParams();
@@ -902,10 +915,31 @@ async handleIceCandidate(candidate) {
             const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
             if (remoteVideo) {
                 remoteVideo.srcObject = this.remoteStream;
-                const tryPlay = () => {
-                    remoteVideo.play().catch(e => {
-                        console.warn('Remote video play blocked, will retry on unmute/metadata:', e?.name || e);
+                // Apply letterboxing containment by default and adjust for portrait
+                try {
+                    remoteVideo.style.objectFit = 'contain';
+                    remoteVideo.style.backgroundColor = '#000';
+                    const t = event.track;
+                    const s = t && t.getSettings ? t.getSettings() : null;
+                    if (s && s.width && s.height) {
+                        if (s.height > s.width) {
+                            remoteVideo.style.objectFit = 'contain';
+                        }
+                    }
+                } catch (_) {}
+
+                const tryPlay = (attempt = 'initial') => {
+                    const doPlay = () => remoteVideo.play().catch(e => {
+                        console.warn(`Remote video play blocked (${attempt}):`, e?.name || e);
+                        // Fallback: try muted autoplay, then unmute on first user interaction
+                        if (!remoteVideo.muted) {
+                            remoteVideo.muted = true;
+                            remoteVideo.play().catch(() => {});
+                            this._awaitFirstUserGestureToUnmute(remoteVideo);
+                        }
                     });
+                    // If metadata is ready, attempt immediately
+                    if (remoteVideo.readyState >= 2) doPlay(); else doPlay();
                 };
                 remoteVideo.onloadedmetadata = () => tryPlay();
                 if (remoteVideo.readyState >= 2) tryPlay();
@@ -1052,23 +1086,42 @@ async handleIceCandidate(candidate) {
         try {
             if (!this.peerConnection || !this.peerConnection.getTransceivers) return;
             const transceivers = this.peerConnection.getTransceivers();
-            const hasVideo = transceivers.some(t =>
-                (t?.receiver?.track && t.receiver.track.kind === 'video') ||
-                (t?.sender?.track && t.sender.track.kind === 'video')
-            );
-            const hasAudio = transceivers.some(t =>
-                (t?.receiver?.track && t.receiver.track.kind === 'audio') ||
-                (t?.sender?.track && t.sender.track.kind === 'audio')
-            );
-            if (!hasVideo) {
-                try { this.peerConnection.addTransceiver('video', { direction: 'recvonly' }); } catch (e) { console.debug('addTransceiver(video) failed:', e?.name || e); }
-            }
-            if (!hasAudio) {
-                try { this.peerConnection.addTransceiver('audio', { direction: 'recvonly' }); } catch (e) { console.debug('addTransceiver(audio) failed:', e?.name || e); }
-            }
+            const ensureKind = (kind) => {
+                let haveRecv = false;
+                transceivers.forEach(t => {
+                    const dir = t?.direction || t?.currentDirection;
+                    const rkind = t?.receiver?.track?.kind;
+                    const skind = t?.sender?.track?.kind;
+                    if ((rkind === kind || skind === kind)) {
+                        if (typeof t.setDirection === 'function') {
+                            try { t.setDirection('sendrecv'); } catch(_) {}
+                        }
+                        if (dir && (dir.includes('recv') || dir === 'sendrecv')) haveRecv = true;
+                    }
+                });
+                if (!haveRecv) {
+                    try { this.peerConnection.addTransceiver(kind, { direction: 'recvonly' }); } catch (e) { console.debug(`addTransceiver(${kind}) failed:`, e?.name || e); }
+                }
+            };
+            ensureKind('video');
+            ensureKind('audio');
         } catch (e) {
             console.debug('ensureReceiveTransceivers failed (non-fatal):', e?.name || e);
         }
+    }
+
+    _awaitFirstUserGestureToUnmute(videoEl) {
+        if (!videoEl) return;
+        if (this._unmuteHandlerInstalled) return;
+        this._unmuteHandlerInstalled = true;
+        const handler = () => {
+            try { videoEl.muted = false; videoEl.play().catch(() => {}); } catch(_) {}
+            window.removeEventListener('click', handler, true);
+            window.removeEventListener('keydown', handler, true);
+            this._unmuteHandlerInstalled = false;
+        };
+        window.addEventListener('click', handler, true);
+        window.addEventListener('keydown', handler, true);
     }
     
     async handleOffer(offer) {
@@ -1110,7 +1163,7 @@ async handleIceCandidate(candidate) {
             console.log('Connection state:', this.peerConnection.connectionState);
             console.log('ICE connection state:', this.peerConnection.iceConnectionState);
             
-            // Show call UI after a short delay to ensure DOM is ready
+        // Show call UI after a short delay to ensure DOM is ready
             setTimeout(() => {
                 console.log('Checking if we should show call UI...');
                 console.log('isInCall:', this.isInCall);
@@ -1119,6 +1172,9 @@ async handleIceCandidate(candidate) {
                 
                 if (this.isInCall) {
                     this.showCallUI();
+            // Nudge remote video playback after SDP set
+            const rv = document.getElementById('remoteVideo');
+            if (rv) { try { rv.play().catch(() => {}); } catch(_) {} }
                 }
             }, 500);
 
@@ -2754,6 +2810,37 @@ async handleIceCandidate(candidate) {
             qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
             qualityElement.className = `connection-${quality}`;
         }
+
+        // Adapt outbound bitrate for varying network conditions
+        this.applyAdaptiveBitrate(quality).catch(() => {});
+    }
+
+    async applyAdaptiveBitrate(quality) {
+        if (!this.peerConnection) return;
+        const sender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (!sender) return;
+        const params = sender.getParameters() || {};
+        params.degradationPreference = 'maintain-framerate';
+        let maxBitrate, maxFramerate, scaleResolutionDownBy;
+        switch (quality) {
+            case 'poor':
+                maxBitrate = 350_000; // ~350 kbps
+                maxFramerate = 20;
+                scaleResolutionDownBy = 2.0;
+                break;
+            case 'good':
+                maxBitrate = 1_200_000; // ~1.2 Mbps
+                maxFramerate = 30;
+                scaleResolutionDownBy = 1.2;
+                break;
+            case 'excellent':
+            default:
+                maxBitrate = 2_500_000; // ~2.5 Mbps
+                maxFramerate = 30;
+                scaleResolutionDownBy = 1.0;
+        }
+        params.encodings = [{ maxBitrate, maxFramerate, scaleResolutionDownBy }];
+        try { await sender.setParameters(params); } catch (_) {}
     }
     
     // Debug method to manually initialize tabs

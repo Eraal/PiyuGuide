@@ -2347,6 +2347,36 @@ class VideoCounselingClient {
             qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
             qualityElement.className = `connection-${quality}`;
         }
+        // Adapt outbound bitrate for varying network conditions on student side as well
+        this.applyAdaptiveBitrate(quality).catch(() => {});
+    }
+
+    async applyAdaptiveBitrate(quality) {
+        if (!this.peerConnection) return;
+        const sender = this.peerConnection.getSenders()?.find(s => s.track && s.track.kind === 'video');
+        if (!sender) return;
+        const params = sender.getParameters() || {};
+        params.degradationPreference = 'maintain-framerate';
+        let maxBitrate, maxFramerate, scaleResolutionDownBy;
+        switch (quality) {
+            case 'poor':
+                maxBitrate = 350_000; // ~350 kbps for constrained mobile data
+                maxFramerate = 20;
+                scaleResolutionDownBy = 2.0;
+                break;
+            case 'good':
+                maxBitrate = 1_200_000; // ~1.2 Mbps typical Wi‑Fi
+                maxFramerate = 30;
+                scaleResolutionDownBy = 1.2;
+                break;
+            case 'excellent':
+            default:
+                maxBitrate = 2_500_000; // ~2.5 Mbps high quality
+                maxFramerate = 30;
+                scaleResolutionDownBy = 1.0;
+        }
+        params.encodings = [{ maxBitrate, maxFramerate, scaleResolutionDownBy }];
+        try { await sender.setParameters(params); } catch (_) {}
     }
 
     scheduleConnectionRecovery(isFailed = false) {
