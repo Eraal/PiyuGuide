@@ -878,6 +878,8 @@ async handleIceCandidate(candidate) {
         this.peerConnection = new RTCPeerConnection({
             iceServers: this.iceServers
         });
+    // Proactively ensure we can receive remote media immediately
+    try { this.ensureReceiveTransceivers(); } catch (_) {}
         
         // Ensure we have recvonly transceivers BEFORE adding local tracks so we can receive student media immediately
         try {
@@ -915,6 +917,9 @@ async handleIceCandidate(candidate) {
             const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
             if (remoteVideo) {
                 remoteVideo.srcObject = this.remoteStream;
+                // Reinforce autoplay/inline and visibility
+                try { remoteVideo.autoplay = true; remoteVideo.playsInline = true; } catch (_) {}
+                try { remoteVideo.classList.remove('hidden'); if (remotePlaceholder) remotePlaceholder.classList.add('hidden'); } catch(_) {}
                 // Apply letterboxing containment by default and adjust for portrait
                 try {
                     remoteVideo.style.objectFit = 'contain';
