@@ -151,13 +151,27 @@
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 h-10 w-10 relative">
-                            <div class="rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 text-white flex items-center justify-center h-10 w-10 text-sm font-bold shadow-md">
-                                {{ student.user.first_name[0] if student.user.first_name else '' }}{{ student.user.last_name[0] if student.user.last_name else '' }}
-                            </div>
+                            {% if student.user.profile_pic_path %}
+                                <img
+                                    src="{{ url_for('static', filename=student.user.profile_pic_path) }}?v={{ student.user.profile_pic }}"
+                                    alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70"
+                                    loading="lazy"
+                                />
+                            {% else %}
+                                <div class="rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 text-white flex items-center justify-center h-10 w-10 text-sm font-bold shadow-md">
+                                    {{ student.user.first_name[0] if student.user.first_name else '' }}{{ student.user.last_name[0] if student.user.last_name else '' }}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="ml-4">
-                            <div class="text-sm font-bold text-gray-900">
+                            <div class="text-sm font-bold text-gray-900 flex items-center gap-2">
                                 {{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}
+                                {% if student.user.account_locked %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200" title="Account Locked">
+                                        <i class="fas fa-lock mr-1"></i>Locked
+                                    </span>
+                                {% endif %}
                             </div>
                             <div class="text-xs text-gray-600 flex items-center">
                                 <i class="fas fa-id-card mr-2 text-blue-500"></i>

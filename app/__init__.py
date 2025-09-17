@@ -298,6 +298,32 @@ def create_app():
         except Exception:
             pass
         return {}
+
+    @app.context_processor
+    def inject_profile_img_helper():
+        def profile_img_url(user, size: int | None = None):
+            """Return cache-busted static URL for a user's profile picture.
+
+            Uses stored user.profile_pic (original derivative) and optional size (128/256/512) pattern
+            produced by save_profile_image. Falls back to original if sized variant assumed missing.
+            Returns None if user has no picture.
+            """
+            try:
+                if not user or not getattr(user, 'profile_pic', None):
+                    return None
+                base_path = user.get_profile_pic_path() if hasattr(user, 'get_profile_pic_path') else user.profile_pic
+                if not base_path:
+                    return None
+                sized_path = base_path
+                if size and str(size).isdigit():
+                    import os
+                    root, ext = os.path.splitext(base_path)
+                    sized_path = f"{root}_{size}{ext}"  # optimistic
+                from flask import url_for
+                return url_for('static', filename=sized_path) + f"?v={user.profile_pic}"
+            except Exception:
+                return None
+        return dict(profile_img_url=profile_img_url)
     
     with app.app_context():
         # Initialize websocket handlers
