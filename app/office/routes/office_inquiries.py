@@ -49,6 +49,49 @@ def calculate_response_rate(office_id):
     return response_rate
 
 
+@office_bp.route('/api/inquiries/latest')
+@login_required
+@role_required(['office_admin'])
+def api_latest_inquiries():
+    """Return inquiries with id greater than after_id for fallback polling.
+
+    Query params:
+      after_id: only return inquiries with id > after_id (default 0)
+      limit: max number of inquiries (default 5, capped at 20)
+    """
+    after_id = request.args.get('after_id', 0, type=int)
+    limit = request.args.get('limit', 5, type=int)
+    limit = max(1, min(limit, 20))
+
+    # Identify office scope
+    office_admin = OfficeAdmin.query.filter_by(user_id=current_user.id).first()
+    if not office_admin:
+        return jsonify({'items': []})
+
+    q = (Inquiry.query
+         .filter(
+             Inquiry.office_id == office_admin.office_id,
+             Inquiry.id > after_id
+         )
+         .order_by(Inquiry.id.desc())
+         .limit(limit))
+
+    items = []
+    for inq in q.all():
+        student_user = getattr(inq.student, 'user', None)
+        items.append({
+            'id': inq.id,
+            'subject': inq.subject,
+            'status': inq.status,
+            'student_name': student_user.get_full_name() if student_user and hasattr(student_user, 'get_full_name') else 'Student',
+            'office_id': inq.office_id,
+            'created_at': inq.created_at.isoformat() if inq.created_at else None,
+        })
+
+    # Return newest first (already desc) but consumer expects arbitrary order
+    return jsonify({'items': items})
+
+
 @office_bp.route('/office-inquiry')
 @login_required
 @role_required(['office_admin'])
