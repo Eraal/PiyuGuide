@@ -124,7 +124,7 @@
                 <!-- Concern Types selector -->
                 <div class="space-y-3">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                        <label class="text-sm font-bold text-gray-700">Supported Concern Types *</label>
+                        <label class="text-sm font-bold text-gray-700">Supported Concern Types <span class="text-gray-400 font-normal">(optional)</span></label>
                         {% if concern_types %}
                         <div class="flex items-center gap-3">
                             <div class="relative">
@@ -153,7 +153,7 @@
                             <p class="text-sm text-gray-500 italic">No concern types found. Please create concern types first.</p>
                         {% endif %}
                     </div>
-                    <p id="concernCount" class="text-xs text-gray-500">0 selected</p>
+                    <p id="concernCount" class="text-xs text-gray-500">0 selected (you can add or modify later)</p>
                 </div>
 
                 <!-- Settings -->
@@ -197,7 +197,7 @@
                             </div>
                             <div class="bg-white rounded-xl p-4 border border-gray-100 md:col-span-2">
                                 <div class="flex items-center mb-2"><i class="fas fa-list text-blue-600 mr-2"></i><span class="font-semibold text-gray-700">Concern Types</span></div>
-                                <p id="reviewConcerns" class="text-gray-900">None selected</p>
+                                <p id="reviewConcerns" class="text-gray-900">None (can be added later)</p>
                             </div>
                         </div>
                     </div>
@@ -233,7 +233,7 @@
 <script>
     // Validation state
     let isStep1Valid = false;
-    let isStep2Valid = false;
+    let isStep2Valid = true; // Step2 no longer requires at least one concern
 
     function validateStep1() {
         const n = document.getElementById('name').value.trim().length >= 2;
@@ -244,10 +244,11 @@
 
     function validateStep2() {
         const checked = document.querySelectorAll('input[name="concern_types"]:checked').length;
-        isStep2Valid = checked > 0;
-        document.getElementById('submitBtn').disabled = !(isStep1Valid && isStep2Valid);
-        document.getElementById('concernCount').textContent = `${checked} selected`;
-        return isStep2Valid;
+        // Always valid regardless of count
+        isStep2Valid = true;
+        document.getElementById('submitBtn').disabled = !isStep1Valid; // Only depend on step1 validity now
+        document.getElementById('concernCount').textContent = `${checked} selected (optional)`;
+        return true;
     }
 
     function truncate(text, len=220) {
@@ -268,7 +269,7 @@
         document.getElementById('reviewDescription').textContent = truncate(document.getElementById('description').value.trim() || '-');
         document.getElementById('reviewVideo').textContent = document.getElementById('supports_video').checked ? 'Enabled' : 'Disabled';
         const names = selectedConcernNames();
-        document.getElementById('reviewConcerns').textContent = names.length ? names.join(', ') : 'None selected';
+    document.getElementById('reviewConcerns').textContent = names.length ? names.join(', ') : 'None (can be added later)';
     }
 
     const step1 = document.getElementById('step1');
@@ -353,9 +354,9 @@
     // Submit handling
     document.getElementById('createOfficeForm').addEventListener('submit', function(e) {
         const onStep2 = !document.getElementById('step2').classList.contains('hidden');
-        if (!(validateStep1() && validateStep2() && onStep2)) {
+        if (!(validateStep1() && onStep2)) {
             e.preventDefault();
-            alert('Please finish the review step and select at least one concern type.');
+            alert('Please finish the review step. (Selecting concern types is optional)');
             return;
         }
         const submitBtn = document.getElementById('submitBtn');

@@ -33,8 +33,23 @@ def edit_office(office_id):
         description = request.form.get('description')
         supports_video = request.form.get('supports_video', False)
         
-        # Get selected concern types from the form
-        selected_concern_ids = [int(id) for id in request.form.getlist('concern_types')]
+        # Concern type handling:
+        # Previously, if the edit form did NOT include any checked concern checkboxes, the
+        # submitted POST contained zero 'concern_types' entries. The prior logic interpreted
+        # an empty list as an instruction to delete ALL existing office concern associations,
+        # which caused "Nature of Concern" entries to *disappear* when a super admin edited
+        # only basic office fields (name/description/video) via a simplified form that lacked
+        # concern checkboxes.
+        #
+        # To prevent unintended data loss, we now only modify concern associations when at
+        # least one 'concern_types' field is present in the submitted form (i.e., the user
+        # explicitly interacted with concern checkboxes). This preserves existing concern
+        # links for edit forms that do not expose them.
+        concern_fields_present = any(key == 'concern_types' for key in request.form.keys())
+        if concern_fields_present:
+            selected_concern_ids = [int(id) for id in request.form.getlist('concern_types')]
+        else:
+            selected_concern_ids = None  # Sentinel indicating: do NOT change associations
         
         # Check if office with same name already exists (excluding this one)
         existing_office = Office.query.filter(Office.name == name, Office.id != office_id).first()
@@ -51,19 +66,21 @@ def edit_office(office_id):
         office.description = description
         office.supports_video = supports_video == 'true'
         
-        # Handle concern types: Remove ones that are no longer selected
-        for office_concern in office_concerns:
-            if office_concern.concern_type_id not in selected_concern_ids:
-                db.session.delete(office_concern)
-        
-        # Add newly selected concern types
-        for concern_id in selected_concern_ids:
-            if concern_id not in supported_concern_ids:
-                new_office_concern = OfficeConcernType(
-                    office_id=office_id,
-                    concern_type_id=concern_id
-                )
-                db.session.add(new_office_concern)
+        # Update concern associations only if explicitly submitted
+        if selected_concern_ids is not None:
+            # Remove ones that are no longer selected
+            for office_concern in office_concerns:
+                if office_concern.concern_type_id not in selected_concern_ids:
+                    db.session.delete(office_concern)
+
+            # Add newly selected concern types
+            for concern_id in selected_concern_ids:
+                if concern_id not in supported_concern_ids:
+                    new_office_concern = OfficeConcernType(
+                        office_id=office_id,
+                        concern_type_id=concern_id
+                    )
+                    db.session.add(new_office_concern)
         
         # Log activity
         log = SuperAdminActivityLog.log_action(

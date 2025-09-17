@@ -34,12 +34,17 @@ def add_office():
             flash('Your admin account is not assigned to any campus. Please contact a super super admin to assign a campus before creating offices.', 'error')
             return render_template('admin/add_office.html', concern_types=concern_types)
 
-        name = request.form.get('name')
-        description = request.form.get('description')
+        name = (request.form.get('name') or '').strip()
+        description = (request.form.get('description') or '').strip()
         supports_video = request.form.get('supports_video', False)
-        
-        # Get selected concern types from the form (multi-select)
-        selected_concern_ids = request.form.getlist('concern_types')
+
+        # Basic server-side validation (client already marks required)
+        if not name or not description:
+            flash('Name and description are required.', 'error')
+            return render_template('admin/add_office.html', concern_types=concern_types)
+
+        # Get selected concern types from the form (multi-select, now optional)
+        selected_concern_ids = request.form.getlist('concern_types') or []
 
         # Check if office with same name already exists (per campus)
         existing_office = Office.query.filter_by(name=name, campus_id=campus_id).first()
@@ -62,21 +67,26 @@ def add_office():
         db.session.flush()
         
         # Associate selected concern types with the new office (idempotent, inquiries-enabled)
-        for concern_id in selected_concern_ids:
-            concern_id_int = int(concern_id)
-            existing_assoc = OfficeConcernType.query.filter_by(
-                office_id=new_office.id,
-                concern_type_id=concern_id_int
-            ).first()
-            if existing_assoc:
-                # Ensure inquiries flag is on for newly created office
-                existing_assoc.for_inquiries = True
-            else:
-                db.session.add(OfficeConcernType(
+        # This step is optional; office can be created with zero concern types and updated later.
+        if selected_concern_ids:
+            for concern_id in selected_concern_ids:
+                try:
+                    concern_id_int = int(concern_id)
+                except (TypeError, ValueError):
+                    continue
+                existing_assoc = OfficeConcernType.query.filter_by(
                     office_id=new_office.id,
-                    concern_type_id=concern_id_int,
-                    for_inquiries=True
-                ))
+                    concern_type_id=concern_id_int
+                ).first()
+                if existing_assoc:
+                    # Ensure inquiries flag is on for newly created office
+                    existing_assoc.for_inquiries = True
+                else:
+                    db.session.add(OfficeConcernType(
+                        office_id=new_office.id,
+                        concern_type_id=concern_id_int,
+                        for_inquiries=True
+                    ))
         
         # Log the activity
         log = SuperAdminActivityLog(
@@ -84,7 +94,7 @@ def add_office():
             action="Created new office",
             target_type="office",
             target_office_id=new_office.id,
-            details=f"Created office '{name}' with {len(selected_concern_ids)} concern types",
+            details=f"Created office '{name}' with {len(selected_concern_ids)} concern types (concerns optional)",
             ip_address=request.remote_addr,
             user_agent=request.user_agent.string,
             timestamp=datetime.utcnow()
