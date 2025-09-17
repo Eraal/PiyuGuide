@@ -222,17 +222,21 @@
                         </a>
 
                         <!-- Button for locking/unlocking (for rule violations) -->
-            <button 
-                class="lock-button group p-3 rounded-xl transition-all duration-300 transform hover:scale-110 {% if student.user.account_locked %}bg-green-100 hover:bg-green-200 text-green-700{% else %}bg-yellow-100 hover:bg-yellow-200 text-yellow-700{% endif %}"
-                data-student-id="{{ student.id }}"
-                data-should-lock="{% if student.user.account_locked %}0{% else %}1{% endif %}"
-                title="{% if student.user.account_locked %}Unlock Account{% else %}Lock Account{% endif %}{% if student.user.account_locked and student.user.lock_reason %}: {{ student.user.lock_reason }} ({{ student.user.locked_at.strftime('%Y-%m-%d %H:%M:%S') }}){% endif %}">
-                            {% if student.user.account_locked %}
-                                <i class="fas fa-unlock group-hover:scale-110 transition-transform"></i>
-                            {% else %}
-                                <i class="fas fa-lock group-hover:scale-110 transition-transform"></i>
-                            {% endif %}
-                        </button>
+                            <button 
+                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal"
+                                data-student-id="{{ student.id }}"
+                                data-current-active="{{ 1 if student.user.is_active else 0 }}"
+                                data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
+                                data-reason="{{ student.user.lock_reason or '' }}"
+                                {% if student.user.is_active %}
+                                    class="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                {% else %}
+                                    class="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                {% endif %}
+                            >
+                                <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
+                            </button>
                     </div>
                 </td>
             </tr>
@@ -240,6 +244,46 @@
         </tbody>
     </table>
 </div>
+
+    <!-- Suspension Modal -->
+    <div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" data-modal-close></div>
+        <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-xl border border-gray-200 animate-fade-in">
+            <div class="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900" id="suspendModalTitle">Deactivate Student Account</h3>
+                    <p class="text-sm text-gray-500 mt-1" id="suspendModalSubtitle">Provide a reason for deactivation. This will be shown to the student on login.</p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600 transition" data-modal-close aria-label="Close">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="suspendForm" class="px-6 pt-5 pb-6 space-y-5">
+                <input type="hidden" id="suspendStudentId" name="student_id" />
+                <input type="hidden" id="suspendTargetState" name="target_state" />
+                <div id="suspendReasonGroup" class="space-y-2">
+                    <label for="suspendReason" class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation text-amber-500"></i>
+                        Suspension Reason
+                    </label>
+                    <textarea id="suspendReason" name="reason" rows="4" placeholder="e.g., Repeated policy violations regarding improper inquiries."
+                                        class="w-full rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 text-sm p-3 resize-none"></textarea>
+                    <p class="text-xs text-gray-400">Minimum 8 characters. Be concise and professional.</p>
+                </div>
+                <div id="reactivateNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-700 text-xs px-3 py-2 rounded-lg">
+                    Reactivating restores access and clears previous suspension reason.
+                </div>
+                <div id="suspendFeedback" class="hidden text-sm"></div>
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" class="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" data-modal-close>Cancel</button>
+                    <button id="suspendSubmitBtn" type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-sm">
+                        <i class="fa-solid fa-user-slash"></i>
+                        Confirm Deactivate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
         
         <!-- Pagination controls -->
         <div class="mt-6 flex flex-col sm:flex-row justify-between items-center">

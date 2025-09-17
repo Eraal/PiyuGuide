@@ -26,6 +26,28 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
+            # Block suspended/deactivated accounts before login_user
+            if (not user.is_active) or getattr(user, 'account_locked', False):
+                reason = user.lock_reason or 'Your account has been suspended.'
+                # Audit blocked attempt
+                log = AuditLog(
+                    actor_id=user.id,
+                    actor_role=user.role,
+                    action='Suspended account login attempt',
+                    target_type='authentication',
+                    status_snapshot='blocked',
+                    is_success=False,
+                    failure_reason=reason,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string if request.user_agent else None
+                )
+                db.session.add(log)
+                db.session.commit()
+                return render_template(
+                    'auth/login.html',
+                    suspended_reason=reason,
+                    suppress_flashes=True
+                )
             # Update online status and last activity time
             user.is_online = True
             user.last_activity = datetime.utcnow()

@@ -158,25 +158,29 @@
 <script id="login-error-data" type="application/json">
   {{ {
       'login_error_message': (login_error_message or ''),
-      'suppress_flashes': (suppress_flashes or false)
+      'suppress_flashes': (suppress_flashes or false),
+      'suspended_reason': (suspended_reason or '')
     } | tojson }}
 </script>
 <script>
   // Accessible Error Modal
   (function() {
-    let loginErrorMessage = '';
-    let suppressFlashes = false;
+  let loginErrorMessage = '';
+  let suppressFlashes = false;
+  let suspendedReason = '';
     const dataEl = document.getElementById('login-error-data');
     if (dataEl) {
       try {
         const parsed = JSON.parse(dataEl.textContent || '{}');
-        loginErrorMessage = parsed.login_error_message || '';
-        suppressFlashes = !!parsed.suppress_flashes;
+  loginErrorMessage = parsed.login_error_message || '';
+  suppressFlashes = !!parsed.suppress_flashes;
+  suspendedReason = parsed.suspended_reason || '';
       } catch (e) {
         // ignore parse errors; default values remain
       }
     }
-    const hasError = !!loginErrorMessage;
+  const hasError = !!loginErrorMessage;
+  const isSuspended = !!suspendedReason && !hasError;
 
     // If suppressing flashes, hide header flash container for this page render
     if (suppressFlashes) {
@@ -202,7 +206,32 @@
       p.textContent = str; return p.innerHTML;
     }
 
-    modal.innerHTML = `
+    const suspensionBlock = suspendedReason ? `
+      <div class="border-t-4 border-red-600 rounded-t-lg"></div>
+      <div class="p-5">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 text-red-600 mr-3" aria-hidden="true">
+            <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+          </div>
+          <div class="flex-1">
+            <h3 id="login-error-title" class="text-lg font-semibold text-red-700">Account Suspended</h3>
+            <p id="login-error-desc" class="mt-1 text-sm text-gray-700">Your account has been suspended due to the following reason:</p>
+            <div class="mt-3 bg-red-50 border border-red-200 text-red-800 text-sm px-3 py-2 rounded-lg leading-relaxed">${encodeHTML(suspendedReason)}</div>
+            <p class="mt-3 text-xs text-gray-500">If you believe this is a mistake, please contact your Campus Administrator.</p>
+          </div>
+          <button type="button" class="ml-3 text-gray-500 hover:text-gray-700" aria-label="Close dialog" data-close>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+        <div class="mt-5 space-y-3">
+          <a href="mailto:support@lspu.edu.ph" class="w-full inline-flex justify-center items-center gap-2 py-2 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            <i class="fa-solid fa-envelope"></i> Contact Support
+          </a>
+          <button type="button" class="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2" data-close>Close</button>
+        </div>
+      </div>` : '';
+
+    modal.innerHTML = isSuspended ? suspensionBlock : `
       <div class="border-t-4 border-red-600 rounded-t-lg"></div>
       <div class="p-5">
         <div class="flex items-start">
@@ -308,7 +337,7 @@
   // No "Forgot password" link shown; add real flow later if implemented
 
     // Auto-open when there is an error
-    if (hasError) {
+    if (hasError || isSuspended) {
       openModal();
     }
   })();

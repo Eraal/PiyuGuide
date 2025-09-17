@@ -9,6 +9,78 @@ import random
 import os
 from app.admin import admin_bp
 from app.utils.decorators import campus_access_required
+from flask_wtf.csrf import CSRFError
+
+# New: activation/deactivation with reason modal support
+@admin_bp.route('/toggle_student_status', methods=['POST'])
+@login_required
+def toggle_student_status():
+    """Activate or deactivate (suspend) a student account with optional reason.
+
+    Request JSON: { student_id: int, is_active: bool, reason: str (optional) }
+    When deactivating (is_active false), reason is stored in user.lock_reason and account_locked is set.
+    When activating, clears lock flags.
+    """
+    if current_user.role != 'super_admin':
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    try:
+        data = request.get_json(silent=True) or {}
+        student_id = data.get('student_id')
+        is_active = data.get('is_active')
+        reason = (data.get('reason') or '').strip()
+        if student_id is None or is_active is None:
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        user = student.user
+        # Ensure same campus scope
+        if getattr(current_user, 'campus_id', None) and student.campus_id != current_user.campus_id:
+            return jsonify({'success': False, 'message': 'Campus mismatch'}), 403
+        # Perform update
+        if is_active:
+            user.is_active = True
+            user.account_locked = False
+            user.lock_reason = None
+            user.locked_at = None
+            user.locked_by_id = None
+            action_label = 'activated'
+        else:
+            user.is_active = False
+            # Treat as suspension (reuse lock fields for auditability)
+            user.account_locked = True
+            user.lock_reason = reason or 'Suspended by administrator'
+            user.locked_at = datetime.utcnow()
+            user.locked_by_id = current_user.id
+            action_label = 'deactivated'
+        # Activity / audit logs
+        try:
+            SuperAdminActivityLog.log_action(
+                super_admin=current_user,
+                action=f'Student account {action_label}',
+                target_type='user',
+                target_user=user,
+                details=f'Student ID: {student.id}, Reason: {user.lock_reason or ''}',
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+            AuditLog.log_action(
+                actor=current_user,
+                action=f'Student account {action_label}',
+                target_type='user',
+                status=f'{action_label}',
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+        except Exception:
+            pass
+        db.session.commit()
+        return jsonify({'success': True, 'is_active': user.is_active, 'reason': user.lock_reason})
+    except CSRFError as e:
+        return jsonify({'success': False, 'message': 'CSRF failure'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 ################################################ STUDENT #####################################################################
