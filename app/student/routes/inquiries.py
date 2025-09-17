@@ -443,6 +443,21 @@ def create_inquiry():
                 # Log error but don't fail the inquiry creation
                 print(f"Failed to broadcast new inquiry: {e}")
 
+        # Emit to office namespace so office inquiries page & sidebar badge update in real-time
+        try:
+            payload = {
+                'id': new_inquiry.id,
+                'subject': new_inquiry.subject,
+                'status': new_inquiry.status,
+                'student_name': current_user.get_full_name() if hasattr(current_user, 'get_full_name') else 'Student',
+                'office_id': new_inquiry.office_id,
+                'created_at': new_inquiry.created_at.isoformat(),
+            }
+            # Room naming consistent with office websocket join logic: office_{office_id}
+            socketio.emit('new_office_inquiry', payload, room=f"office_{new_inquiry.office_id}", namespace='/office')
+        except Exception as e:
+            print(f"Socket emit new_office_inquiry failed: {e}")
+
         flash('Inquiry submitted successfully', 'success')
         return redirect(url_for('student.view_inquiry', inquiry_id=new_inquiry.id))
 

@@ -975,3 +975,10 @@
   });
 </script>
 {% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js" integrity="sha384-ZMKWd9Yx8RJWb1x1oGf4bm/FYnGV8eK3opgDdGztqKqRR3YKHy+XapnwMaijvOL2" crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/office/inquiries_realtime.js') }}"></script>
+<script>document.documentElement.setAttribute('data-current-page','{{ pagination.page if pagination else 1 }}');</script>
+{% endblock %}

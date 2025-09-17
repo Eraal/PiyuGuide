@@ -303,6 +303,7 @@ def update_inquiry_status():
         # After commit, push a real-time notification to the student's personal room
         try:
             from app.websockets.student import push_student_notification_to_user
+            from app.extensions import socketio
 
             # Map status to a toast visual type (optional; defaults to 'info')
             status_lower = (new_status or '').lower()
@@ -330,6 +331,22 @@ def update_inquiry_status():
             push_student_notification_to_user(inquiry.student.user_id, payload)
         except Exception:
             # Non-fatal if websockets are not available
+            pass
+
+        # Emit to office namespace so other admins see status change & badge updates
+        try:
+            socketio.emit(
+                'inquiry_status_changed',
+                {
+                    'id': inquiry.id,
+                    'old_status': old_status,
+                    'new_status': new_status,
+                    'office_id': office_admin.office_id
+                },
+                room=f"office_{office_admin.office_id}",
+                namespace='/office'
+            )
+        except Exception:
             pass
 
         return jsonify({

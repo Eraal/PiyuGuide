@@ -66,6 +66,9 @@ def inject_office_notifications():
             # Fail-safe: keep defaults if any query fails
             pass
 
+        # NOTE: pending_inquiries_count purposely reflects ONLY inquiries with status 'pending'.
+        # If in future we introduce a separate "new" flag distinct from status, adapt this query
+        # here so the sidebar badge always represents actionable (unhandled) inquiries.
         return {
             'unread_notifications_count': unread_notifications_count,
             'sidebar_unread_notifications_count': unread_notifications_count,
