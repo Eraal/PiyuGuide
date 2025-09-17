@@ -325,6 +325,33 @@
         }
       }
 
+      /* Mobile full-screen notification panel */
+      @media (max-width: 768px) {
+        #student-ann-dropdown {
+          position: fixed !important;
+          inset: auto 0 0 0 !important;
+          top: 70px; /* recalculated via JS when opening */
+          width: 100% !important;
+          height: calc(100dvh - 70px) !important;
+          max-width: none !important;
+          margin: 0 !important;
+          border-radius: 0 0 1.25rem 1.25rem !important;
+          border-left: 0 !important;
+          border-right: 0 !important;
+          display: none; /* toggled via JS */
+          background: rgba(255,255,255,0.97) !important;
+          backdrop-filter: blur(14px) saturate(1.4);
+        }
+        #student-ann-dropdown.open { display: block !important; }
+        #student-ann-dropdown.mobile-active { animation: slideDownPanel 220ms ease; }
+        #student-ann-list { max-height: none !important; height: calc(100% - 64px); overflow-y: auto; }
+        #student-ann-overlay { display: none; }
+        #student-ann-overlay.active { display: block; }
+        body.mobile-notif-open { overflow: hidden; }
+      }
+
+      @keyframes slideDownPanel { from { opacity:0; transform:translateY(-10px);} to { opacity:1; transform:translateY(0);} }
+
       /* Main content area */
       .main-content {
         background: #f8fafc;
@@ -446,6 +473,8 @@
                 </div>
               </div>
             </div>
+            <!-- Overlay for mobile notification panel -->
+            <div id="student-ann-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden md:hidden" aria-hidden="true"></div>
 
             <!-- User Dropdown -->
             <div class="dropdown" id="userDropdown">
@@ -1075,13 +1104,36 @@
             return t;
           }
 
-          function openDropdown(){ if(!dropdown || dropdown.classList.contains('open')) return; dropdown.classList.remove('hidden','closing'); requestAnimationFrame(()=>dropdown.classList.add('open')); }
-          function closeDropdown(){ if(!dropdown || dropdown.classList.contains('hidden')) return; dropdown.classList.add('closing'); dropdown.classList.remove('open'); setTimeout(()=>dropdown.classList.add('hidden'),220); }
+          function openDropdown(){
+            if(!dropdown || dropdown.classList.contains('open')) return;
+            // Mobile adjustments
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            if(isMobile){
+              const header = document.querySelector('header');
+              if(header){ const rect = header.getBoundingClientRect(); dropdown.style.top = rect.bottom + 'px'; dropdown.style.height = `calc(100dvh - ${rect.bottom}px)`; }
+              dropdown.classList.add('mobile-active');
+              document.body.classList.add('mobile-notif-open');
+              const overlay = document.getElementById('student-ann-overlay'); if(overlay){ overlay.classList.add('active'); }
+            }
+            dropdown.classList.remove('hidden','closing');
+            requestAnimationFrame(()=>dropdown.classList.add('open'));
+          }
+          function closeDropdown(){
+            if(!dropdown || dropdown.classList.contains('hidden')) return;
+            dropdown.classList.add('closing'); dropdown.classList.remove('open','mobile-active');
+            setTimeout(()=>dropdown.classList.add('hidden'),220);
+            if(window.matchMedia('(max-width: 768px)').matches){
+              document.body.classList.remove('mobile-notif-open');
+              const overlay = document.getElementById('student-ann-overlay'); if(overlay){ overlay.classList.remove('active'); }
+            }
+          }
           if(bellBtn){
             bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.contains('open')?closeDropdown():openDropdown(); });
             document.addEventListener('click', (e)=>{ if(dropdown && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) closeDropdown(); });
             document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDropdown(); });
           }
+          const notifOverlay = document.getElementById('student-ann-overlay');
+          if(notifOverlay){ notifOverlay.addEventListener('click', ()=> closeDropdown()); }
 
           // Announcement modal support
           const annModal = document.getElementById('announcementModal');
