@@ -331,6 +331,34 @@
         border-radius: 1rem 0 0 0;
         overflow: hidden;
       }
+      /* Sidebar profile email responsiveness */
+      .profile-email {
+        display: block;
+        font-size: 0.7rem;
+        line-height: 1rem;
+        color: #64748b;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      /* Allow wrapping below certain height / width constraints */
+      @media (max-height: 760px), (max-width: 1024px) {
+        .profile-email {
+          white-space: normal;
+          word-break: break-all;
+          overflow-wrap: anywhere;
+          display: -webkit-box;
+          line-clamp: 2;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+      }
+      /* Ensure parent flex doesn't squeeze email */
+      .profile-section .flex.items-center { align-items: flex-start; }
+      @media (min-width: 768px) {
+        .profile-section .flex.items-center { align-items: center; }
+      }
     </style>
   </head>  <body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
     <!-- Top Navigation Bar -->
@@ -523,7 +551,7 @@
                 <h3 class="font-bold text-gray-800 text-base">
                   {{ current_user.first_name }} {{ current_user.last_name }}
                 </h3>
-                <p class="text-xs text-gray-500 mb-2">{{ current_user.email }}</p>
+                <p class="profile-email mb-2" title="{{ current_user.email }}">{{ current_user.email }}</p>
                 <div class="flex items-center space-x-2">
                   <span class="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
                     <i class="fas fa-user-graduate mr-1"></i>
