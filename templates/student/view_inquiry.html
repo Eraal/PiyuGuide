@@ -225,11 +225,14 @@
 
 								<div class="message-text">{{ message.content|nl2br }}</div>
 
-								{% if message.attachments %}
+								{# Display attachments. If this is the very first message (initial inquiry) and it has no message-level attachments,
+								   fall back to inquiry-level attachments so original uploaded files appear. #}
+								{% set show_inquiry_level = (not message.attachments) and loop.first and inquiry.attachments %}
+								{% if message.attachments or show_inquiry_level %}
 								<div class="mt-2 flex flex-wrap gap-2">
-									{% for attachment in message.attachments %}
+									{% for attachment in (message.attachments if message.attachments else (inquiry.attachments if show_inquiry_level else [])) %}
 									<a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank" class="block">
-										{% if attachment.file_path.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+										{% if attachment.file_path.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
 										<img src="{{ url_for('static', filename=attachment.file_path) }}" alt="Attachment" class="attachment-preview" />
 										{% else %}
 										<div class="attachment-chip">
@@ -237,6 +240,8 @@
 											<i class="far fa-file-pdf text-red-500"></i>
 											{% elif attachment.file_path.endswith(('.doc', '.docx')) %}
 											<i class="far fa-file-word text-blue-500"></i>
+											{% elif attachment.file_path.endswith(('.xls', '.xlsx', '.csv')) %}
+											<i class="far fa-file-excel text-green-600"></i>
 											{% else %}
 											<i class="far fa-file text-slate-500"></i>
 											{% endif %}

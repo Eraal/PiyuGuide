@@ -348,10 +348,10 @@ def create_inquiry():
                         static_path, meta = save_upload(file, subfolder='inquiries')
                     except Exception as fe:
                         # Skip invalid file silently to avoid breaking entire inquiry creation
-                        # (Could flash a warning, but keeping quiet for minimal user disruption)
                         continue
 
-                    attachment = InquiryAttachment(
+                    # Persist inquiry-level attachment (historical / counts)
+                    inquiry_attachment = InquiryAttachment(
                         filename=meta.get('filename') or secure_filename(file.filename),
                         file_path=static_path,
                         file_size=meta.get('file_size'),
@@ -360,7 +360,23 @@ def create_inquiry():
                         uploaded_at=datetime.utcnow(),
                         inquiry_id=new_inquiry.id
                     )
-                    db.session.add(attachment)
+                    db.session.add(inquiry_attachment)
+
+                    # ALSO create a message-level attachment so it renders with the initial message bubble
+                    try:
+                        msg_attachment = MessageAttachment(
+                            filename=inquiry_attachment.filename,
+                            file_path=inquiry_attachment.file_path,
+                            file_size=inquiry_attachment.file_size,
+                            file_type=inquiry_attachment.file_type,
+                            uploaded_by_id=inquiry_attachment.uploaded_by_id,
+                            uploaded_at=inquiry_attachment.uploaded_at,
+                            message_id=initial_message.id
+                        )
+                        db.session.add(msg_attachment)
+                    except Exception:
+                        # If this fails we still keep the inquiry attachment; just continue
+                        pass
 
         # Log this activity
         log_entry = StudentActivityLog.log_action(

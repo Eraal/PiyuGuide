@@ -190,7 +190,7 @@
         </div>
         <div class="p-6 flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-50">
           <!-- Messages History -->
-          <div class="message-container mb-6 flex-1 min-h-0 overflow-y-auto pr-1" id="messageHistory">
+          <div class="message-container mb-6 flex-1 min-h-0 overflow-y-auto pr-1" id="messageHistory" data-inquiry-attachments='[{% for att in inquiry.attachments %}{"filename":"{{ att.filename|e }}","file_path":"{{ att.file_path|e }}","file_type":"{{ att.file_type|e }}","file_size":{{ att.file_size or 0 }} }{% if not loop.last %},{% endif %}{% endfor %}]'>
             {% if has_more_messages %}
             <div id="load-more-container" class="flex justify-center mb-4">
               <button id="load-more-button" class="load-more-button shadow-sm">
@@ -743,10 +743,23 @@
         bubble.appendChild(content);
       }
 
-      if (Array.isArray(message.attachments) && message.attachments.length) {
+      // Attachments: If no message-level attachments for the first message, fallback to inquiry-level attachments (server-rendered into JS context)
+      const isFirstMessage = !document.querySelector('#messageHistory .message-bubble');
+      let attachments = Array.isArray(message.attachments) ? message.attachments.slice() : [];
+      if ((!attachments || attachments.length === 0) && isFirstMessage) {
+        // Inject inquiry-level attachments from a data attribute rendered server-side
+        try {
+          const inquiryAttsRaw = document.getElementById('messageHistory')?.getAttribute('data-inquiry-attachments');
+          if (inquiryAttsRaw) {
+            const inquiryAtts = JSON.parse(inquiryAttsRaw);
+            if (Array.isArray(inquiryAtts) && inquiryAtts.length) attachments = inquiryAtts;
+          }
+        } catch(e) {}
+      }
+      if (attachments && attachments.length) {
         const wrap = document.createElement('div');
         wrap.className = 'mt-2 flex flex-wrap gap-2';
-        message.attachments.forEach(att => {
+        attachments.forEach(att => {
           const href = att.file_path ? `{{ url_for('static', filename='') }}` + att.file_path : '#';
           const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.className = 'block';
           const lower = (att.file_path || '').toLowerCase();
