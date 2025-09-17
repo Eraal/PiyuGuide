@@ -4,16 +4,37 @@
 (function(global){
   const state = {
     socket: null,
-    page: parseInt((document.querySelector('[data-current-page]')?.getAttribute('data-current-page')) || '1', 10) || 1,
-    initialized: false
+    page: 1,
+    initialized: false,
+    lastSeenInquiryId: null,
+    pollIntervalId: null,
+    connected: false
   };
+
+  // Determine page reliably
+  try {
+    const html = document.documentElement;
+    const attrPage = html.getAttribute('data-current-page');
+    if(attrPage) state.page = parseInt(attrPage,10) || 1; else state.page = 1;
+  } catch(e){ state.page = 1; }
 
   function ensureSocket(){
     if(state.socket) return state.socket;
     try {
       state.socket = io('/office', { transports:['websocket','polling'] });
+      state.socket.on('connect', () => {
+        state.connected = true;
+        // stop fallback polling if any
+        if(state.pollIntervalId){ clearInterval(state.pollIntervalId); state.pollIntervalId = null; }
+        console.debug('[InquiriesRealtime] Connected to /office');
+      });
+      state.socket.on('disconnect', () => {
+        state.connected = false;
+        console.warn('[InquiriesRealtime] Disconnected. Activating fallback polling.');
+        startFallbackPolling();
+      });
       bindSocketEvents(state.socket);
-    } catch(e){ console.warn('Socket init failed', e); }
+    } catch(e){ console.warn('Socket init failed', e); startFallbackPolling(); }
     return state.socket;
   }
 
@@ -27,11 +48,13 @@
 
   function handleNewInquiry(data){
     if(!data || !data.id) return;
+    // Duplicate guard
+    if(document.querySelector(`tr[data-inquiry-id="${data.id}"]`)) return;
     if(state.page !== 1){
       showNewInquiryBanner(data);
       incrementPendingBadge();
       incrementPendingStat();
-      return; // don't insert row if not on first page
+      return;
     }
     insertInquiryRow(data);
     incrementPendingBadge();
@@ -61,6 +84,8 @@
   function insertInquiryRow(data){
     const tbody = document.getElementById('inquiryTable');
     if(!tbody) return;
+    // Track max ID
+    try { state.lastSeenInquiryId = Math.max(state.lastSeenInquiryId || 0, data.id); } catch(_) {}
     const tr = document.createElement('tr');
     tr.className = "inquiry-row hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 border-l-yellow-400 bg-yellow-50/30";
     tr.dataset.inquiryId = data.id;
@@ -181,6 +206,25 @@
     if(global.showNotification){
       global.showNotification(title, msg, type || 'info', 6000);
     }
+  }
+
+  function startFallbackPolling(){
+    if(state.pollIntervalId) return;
+    // Set baseline lastSeenInquiryId
+    if(state.lastSeenInquiryId == null){
+      const firstRow = document.querySelector('#inquiryTable tr[data-inquiry-id]');
+      if(firstRow){ state.lastSeenInquiryId = parseInt(firstRow.getAttribute('data-inquiry-id'),10) || null; }
+    }
+    state.pollIntervalId = setInterval(() => {
+      if(state.connected) return;
+      fetch('/office/api/inquiries/latest?after_id=' + (state.lastSeenInquiryId || 0))
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if(!data || !Array.isArray(data.items)) return;
+            data.items.forEach(item => handleNewInquiry(item));
+        })
+        .catch(()=>{});
+    }, 8000);
   }
 
   function escapeHtml(str){
