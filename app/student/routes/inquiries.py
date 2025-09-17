@@ -477,9 +477,8 @@ def create_inquiry():
         except Exception as e:
             print(f"Socket emit new_office_inquiry failed: {e}")
 
-        flash('Inquiry submitted successfully', 'success')
+        # Removed success flash for cleaner UX; user is redirected directly to the inquiry conversation
         return redirect(url_for('student.view_inquiry', inquiry_id=new_inquiry.id))
-
     except Exception as e:
         db.session.rollback()
         flash(f'Error creating inquiry: {str(e)}', 'error')

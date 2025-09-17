@@ -52,25 +52,22 @@
 	/* Responsive adjustments */
 	@media (max-width: 768px) {
 		.mobile-hide { display: none !important; }
-		.chat-page-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-		html, body, main.main-content { overflow: hidden !important; }
-		.chat-wrapper { height: 100dvh; min-height: 100dvh; gap: 0 !important; }
+		html, body, main.main-content { overflow: hidden !important; height:100%; }
+		.chat-page-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; width:100%; }
+		.chat-wrapper { height: 100dvh; min-height: 100dvh; gap: 0 !important; width:100%; }
 		.chat-column { height: 100%; min-height: 100%; }
-
-		/* Edge-to-edge card */
 		.chat-card { border-radius: 0 !important; box-shadow: none !important; border: 0 !important; }
 		.chat-header { padding: 10px 12px !important; border-bottom: 0 !important; }
 		.chat-body { padding: 0 !important; }
-		#messageHistory { padding-left: 0 !important; padding-right: 0 !important; margin-bottom: 0 !important; }
-
-		/* Input bar: compact, icon-first */
-		.chat-input-bar { position: sticky; bottom: 0; left: 0; right: 0; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; box-shadow: none !important; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+		#messageHistory { padding: 0 0 4rem 0 !important; margin: 0 !important; }
+		.chat-input-bar { position: sticky; bottom: 0; left: 0; right: 0; border-radius: 0 !important; border:0 !important; box-shadow: none !important; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 		.chat-input-toolbar { padding: 8px 8px !important; border-top: 1px solid #e5e7eb !important; background: #fff !important; border-radius: 0 !important; }
-		.icon-btn { width: 40px; height: 40px; padding: 0 !important; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
+		.icon-btn { width: 42px; height: 42px; padding: 0 !important; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
 		.file-input-trigger .label-text-attach { display: none !important; }
 		#sendButton .label-text-send { display: none !important; }
-		#sendButton { width: 40px; height: 40px; padding: 0 !important; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
-		textarea#messageInput { padding: 12px !important; min-height: 44px; }
+		#sendButton { width: 42px; height: 42px; padding: 0 !important; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
+		textarea#messageInput { padding: 12px !important; min-height: 48px; }
+		body { background: #fff !important; }
 	}
 
 	/* Seen indicator enhancements */
@@ -327,21 +324,13 @@
 		const messageInput = document.getElementById('messageInput');
 		const messageForm = document.getElementById('messageForm');
 		const sendButton = document.getElementById('sendButton');
-		const connectionStatus = document.getElementById('connection-status');
 		const scrollBtn = document.getElementById('scrollToBottomBtn');
 		const attachmentInput = document.getElementById('replyAttachments');
 		const attachmentPreview = document.getElementById('replyAttachmentPreview');
 
 		document.body.setAttribute('data-user-id', '{{ current_user.id }}');
 
-		chatManager.onConnectionStatusChange(function(status) {
-			if (connectionStatus) {
-				connectionStatus.textContent = status ? 'Connected' : 'Disconnected';
-				connectionStatus.className = status 
-					? 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2' 
-					: 'text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full ml-2';
-			}
-		});
+		// Connection status pill removed for cleaner UX.
 
 		chatManager.onMessageReceived(function(message) {
 			if (messageContainer) {
@@ -410,16 +399,6 @@
 		chatManager.connect()
 			.then(function() { 
 				chatManager.joinInquiryRoom(inquiryId);
-				// Inject a small connection status pill next to the header title
-				const header = document.querySelector('.px-6.py-4.border-b.flex.items-center.justify-between');
-				if (header && !document.getElementById('connection-status')) {
-					const statusIndicator = document.createElement('span');
-					statusIndicator.id = 'connection-status';
-					statusIndicator.className = 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2';
-					statusIndicator.textContent = 'Connected';
-					const title = header.querySelector('h2');
-					if (title) { title.parentNode.insertBefore(statusIndicator, title.nextSibling); }
-				}
 			})
 			.catch(function(error) { console.error('Failed to connect to chat server:', error); });
 
