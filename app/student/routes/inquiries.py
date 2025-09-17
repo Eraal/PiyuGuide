@@ -343,21 +343,24 @@ def create_inquiry():
             files = request.files.getlist('attachments')
             for file in files:
                 if file and file.filename:
-                    file_path = save_attachment(file, 'inquiries')
-                    if file_path:
-                        # Create file attachment with proper fields
-                        attachment = InquiryAttachment(
-                            filename=secure_filename(file.filename),
-                            file_path=file_path,
-                            file_size=len(file.read()),
-                            file_type=file.content_type if hasattr(file, 'content_type') else None,
-                            uploaded_by_id=current_user.id,  # Pass the user ID to uploaded_by_id
-                            uploaded_at=datetime.utcnow(),
-                            inquiry_id=new_inquiry.id
-                        )
-                        # Reset file pointer after reading size
-                        file.seek(0)
-                        db.session.add(attachment)
+                    # Use centralized save_upload utility (fixes hardcoded path & size computation)
+                    try:
+                        static_path, meta = save_upload(file, subfolder='inquiries')
+                    except Exception as fe:
+                        # Skip invalid file silently to avoid breaking entire inquiry creation
+                        # (Could flash a warning, but keeping quiet for minimal user disruption)
+                        continue
+
+                    attachment = InquiryAttachment(
+                        filename=meta.get('filename') or secure_filename(file.filename),
+                        file_path=static_path,
+                        file_size=meta.get('file_size'),
+                        file_type=meta.get('file_type') or (file.content_type if hasattr(file, 'content_type') else None),
+                        uploaded_by_id=current_user.id,
+                        uploaded_at=datetime.utcnow(),
+                        inquiry_id=new_inquiry.id
+                    )
+                    db.session.add(attachment)
 
         # Log this activity
         log_entry = StudentActivityLog.log_action(
@@ -512,22 +515,21 @@ def reply_to_inquiry(inquiry_id):
             files = request.files.getlist('attachments')
             for file in files:
                 if file and file.filename:
-                    file_path = save_attachment(file, 'inquiries')
-                    if file_path:
-                        # Create file attachment with proper fields
-                        from app.models import MessageAttachment
-                        attachment = MessageAttachment(
-                            filename=secure_filename(file.filename),
-                            file_path=file_path,
-                            file_size=len(file.read()),
-                            file_type=file.content_type if hasattr(file, 'content_type') else None,
-                            uploaded_by_id=current_user.id,
-                            uploaded_at=datetime.utcnow(),
-                            message_id=new_message.id
-                        )
-                        # Reset file pointer after reading size
-                        file.seek(0)
-                        db.session.add(attachment)
+                    try:
+                        static_path, meta = save_upload(file, subfolder='messages')
+                    except Exception:
+                        continue
+                    from app.models import MessageAttachment
+                    attachment = MessageAttachment(
+                        filename=meta.get('filename') or secure_filename(file.filename),
+                        file_path=static_path,
+                        file_size=meta.get('file_size'),
+                        file_type=meta.get('file_type') or (file.content_type if hasattr(file, 'content_type') else None),
+                        uploaded_by_id=current_user.id,
+                        uploaded_at=datetime.utcnow(),
+                        message_id=new_message.id
+                    )
+                    db.session.add(attachment)
         
         # Create smart notifications for office admins
         from app.utils.smart_notifications import SmartNotificationManager
