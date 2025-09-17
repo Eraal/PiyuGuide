@@ -55,12 +55,13 @@ def toggle_student_status():
             action_label = 'deactivated'
         # Activity / audit logs
         try:
+            reason_text = user.lock_reason or ''
             SuperAdminActivityLog.log_action(
                 super_admin=current_user,
                 action=f'Student account {action_label}',
                 target_type='user',
                 target_user=user,
-                details=f'Student ID: {student.id}, Reason: {user.lock_reason or ''}',
+                details=f"Student ID: {student.id}, Reason: {reason_text}",
                 ip_address=request.remote_addr,
                 user_agent=request.user_agent.string
             )
