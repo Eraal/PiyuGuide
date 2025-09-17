@@ -17,7 +17,7 @@ from wtforms import StringField, BooleanField, SelectField, PasswordField, TextA
 from wtforms.validators import DataRequired, Email, Length, Optional, EqualTo
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
-import os, time, re
+import os, time, re, glob
 
 
 # -------------------- Forms --------------------
@@ -264,47 +264,44 @@ def update_profile_picture():
     form = StudentProfilePictureForm()
     if form.validate_on_submit() and form.profile_pic.data:
         try:
+            from app.utils.file_uploads import save_profile_image
             file = form.profile_pic.data
-            filename = secure_filename(file.filename)
-            if not filename:
-                flash('Invalid file selected.', 'error')
-                return redirect(url_for('student.account_settings'))
-            # Size validation (2MB limit)
-            file.stream.seek(0, os.SEEK_END)
-            size = file.stream.tell()
-            file.stream.seek(0)
-            max_bytes = 2 * 1024 * 1024
-            if size > max_bytes:
-                flash('Image exceeds 2MB size limit.', 'error')
-                return redirect(url_for('student.account_settings'))
-            ts = int(time.time())
-            base, ext = os.path.splitext(filename)
-            unique = f"student_{current_user.id}_{ts}{ext.lower()}"
-            upload_dir = os.path.join('static', 'uploads', 'profile_pics')
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, unique)
-            file.save(file_path)
+            # Use new high-res pipeline (5MB limit enforced inside helper)
+            result = save_profile_image(file, current_user.id)
 
-            # Remove old
+            # Remove old derivatives if legacy single file stored
             if current_user.profile_pic:
-                old_path = os.path.join(upload_dir, current_user.profile_pic)
-                if os.path.exists(old_path):
-                    try:
-                        os.remove(old_path)
-                    except OSError:
-                        pass
+                try:
+                    old_rel = current_user.get_profile_pic_path()  # uploads/profile_pics/xyz.jpg
+                    if old_rel:
+                        base_dir = os.path.join('static')
+                        abs_old = os.path.join(base_dir, old_rel.replace('/', os.sep))
+                        # Remove matching pattern (base id before size/webp suffix)
+                        base_name = os.path.splitext(os.path.basename(abs_old))[0]
+                        pattern = os.path.join(os.path.dirname(abs_old), f"{base_name}*")
+                        for p in glob.glob(pattern):
+                            try:
+                                os.remove(p)
+                            except OSError:
+                                pass
+                except Exception:
+                    pass
 
-            current_user.profile_pic = unique
+            # Store primary original path (relative like uploads/profile_pics/xxxx.jpg)
+            current_user.profile_pic = result.get('original')
             db.session.commit()
 
             StudentActivityLog.log_action(
-                student, 'Updated profile picture', ip_address=request.remote_addr, user_agent=request.user_agent.string
+                student, 'Updated profile picture (hi-res)', ip_address=request.remote_addr, user_agent=request.user_agent.string
             )
             db.session.commit()
             flash('Profile picture updated.', 'success')
+        except ValueError as ve:
+            db.session.rollback()
+            flash(str(ve), 'error')
         except Exception:
             db.session.rollback()
-            flash('Failed to upload profile picture.', 'error')
+            flash('Failed to process profile image.', 'error')
     else:
         if form.errors:
             for field, errors in form.errors.items():

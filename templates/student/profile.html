@@ -120,11 +120,18 @@
           <div class="profile-avatar w-24 h-24 rounded-full mx-auto flex items-center justify-center text-white text-2xl font-bold mb-4">
             {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
             {% if avatar_url %}
-              <img
-                src="{{ avatar_url }}"
-                alt="Profile Picture"
-                class="w-full h-full rounded-full object-cover"
-              />
+              {# Derive potential derivative filenames by convention: original base id + _SIZE.jpg and .webp #}
+              {% set base_name = current_user.profile_pic_path.split('/')[-1].rsplit('.',1)[0] %}
+              {% set dir_path = current_user.profile_pic_path.rsplit('/',1)[0] %}
+              {% set img128 = url_for('static', filename=dir_path ~ '/' ~ base_name ~ '_128.jpg') %}
+              {% set img256 = url_for('static', filename=dir_path ~ '/' ~ base_name ~ '_256.jpg') %}
+              {% set img512 = url_for('static', filename=dir_path ~ '/' ~ base_name ~ '_512.jpg') %}
+              {% set webp_main = url_for('static', filename=dir_path ~ '/' ~ base_name ~ '.webp') %}
+              <picture>
+                <source type="image/webp" srcset="{{ webp_main }} 512w">
+                <source type="image/jpeg" srcset="{{ img128 }} 128w, {{ img256 }} 256w, {{ img512 }} 512w, {{ avatar_url }} 800w" sizes="(max-width: 128px) 128px, (max-width: 256px) 256px, 128px">
+                <img src="{{ avatar_url }}" alt="Profile Picture" class="w-full h-full rounded-full object-cover" loading="lazy" decoding="async" width="96" height="96" />
+              </picture>
             {% else %}
               {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
             {% endif %}

@@ -105,3 +105,48 @@ If issues occur with WebRTC connectivity, verify:
 - TLS is valid on your domain (wss requires https).
 - TURN credentials and port 3478/udp reachability.
 - Nginx forwards Upgrade/Connection headers on /socket.io/.
+
+## 10) High-resolution profile images & caching
+
+Profile uploads now generate responsive derivatives (128/256/512) plus a WebP and an original (max 1600px long edge, 85% quality). Filenames are timestamp+uuid based, allowing long-lived caching.
+
+Nginx config adds for `/static/uploads/profile_pics/`:
+```
+add_header Cache-Control "public, max-age=2592000, immutable";
+```
+This lets browsers reuse images for 30 days; users who upload a new picture get a new filename (cache busting automatically).
+
+## 11) Orphan profile image cleanup cron
+
+A maintenance script `scripts/cleanup_profile_images.py` finds derivative sets no longer referenced by any user (older than 2 days by default) and deletes them.
+
+Dry run (recommended first):
+```bash
+cd /opt/piyuguide
+source venv/bin/activate
+python scripts/cleanup_profile_images.py
+```
+
+Apply deletions:
+```bash
+python scripts/cleanup_profile_images.py --apply
+```
+
+Example cron (run daily 02:30):
+```bash
+sudo bash -lc 'cat > /etc/cron.d/piyuguide_profile_cleanup <<EOF
+30 2 * * * root /opt/piyuguide/venv/bin/python /opt/piyuguide/scripts/cleanup_profile_images.py --apply >> /var/log/piyuguide/cleanup.log 2>&1
+EOF'
+sudo touch /var/log/piyuguide/cleanup.log
+sudo chown www-data:www-data /var/log/piyuguide/cleanup.log || true
+```
+
+Log review:
+```bash
+tail -f /var/log/piyuguide/cleanup.log
+```
+
+Adjust `--days N` if you want faster reclamation or more conservative retention.
+
+---
+Keeping derivative sets lean reduces disk usage and backup size while preserving fast profile image loads for users.

@@ -29,9 +29,12 @@
                                     </a>
                                 </li>
                                 <li class="flex items-center">
-                                    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                                            <div class="w-11 h-6 rounded-full relative overflow-hidden transition-colors duration-300 bg-gray-300 peer-checked:bg-emerald-600">
+                                                <div class="absolute inset-0 flex items-center justify-between px-1 text-[10px] font-semibold text-white pointer-events-none select-none">
+                                                    <span class="opacity-70 peer-checked:opacity-0 transition-opacity duration-300" aria-hidden="true">OFF</span>
+                                                    <span class="opacity-0 peer-checked:opacity-70 transition-opacity duration-300" aria-hidden="true">ON</span>
                                     <span class="text-gray-700 font-medium">Concern Types</span>
-                                </li>
+                                                <div id="autoReplyKnob" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 ease-out peer-checked:translate-x-5"></div>
                             </ol>
                         </nav>
                         
@@ -821,6 +824,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     });
 });
+// Animated feedback for auto-reply toggle
+document.addEventListener('DOMContentLoaded', function(){
+    const toggle = document.getElementById('auto_reply_enabled');
+    const knob = document.getElementById('autoReplyKnob');
+    if(toggle && knob){
+        toggle.addEventListener('change', function(){
+            knob.classList.remove('animate-pulse-fast');
+            void knob.offsetWidth; // reflow
+            knob.classList.add('animate-pulse-fast');
+            setTimeout(()=>knob.classList.remove('animate-pulse-fast'), 420);
+        });
+    }
+});
+(function(){
+    if(document.getElementById('auto-reply-toggle-anim-style')) return;
+    const style = document.createElement('style');
+    style.id = 'auto-reply-toggle-anim-style';
+    style.textContent = '@keyframes pulseFast{0%{transform:scale(1);}50%{transform:scale(1.09);}100%{transform:scale(1);} } .animate-pulse-fast{animation:pulseFast .4s ease-in-out;}';
+    document.head.appendChild(style);
+})();
 
 // Utility: close all modals to prevent stacking/overlap
 function closeAllModals(exceptId) {
