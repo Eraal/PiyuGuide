@@ -37,6 +37,13 @@ class VideoCounselingClientOffice {
             { urls: 'stun:stun1.l.google.com:19302' },
             { urls: 'stun:stun2.l.google.com:19302' }
         ];
+        try {
+            const flatUrls = (this.iceServers || []).flatMap(s => Array.isArray(s.urls) ? s.urls : [s.urls]);
+            const hasTurn = flatUrls.some(u => typeof u === 'string' && u.startsWith('turn'));
+            if (!hasTurn) {
+                console.warn('[VideoCounseling][Office] No TURN servers configured. Cross-ISP / mobile calls may show black video. Configure TURN_HOST or ICE_SERVERS_JSON.');
+            }
+        } catch (e) {}
         
         // Media constraints
         this.mediaConstraints = {

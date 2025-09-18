@@ -263,21 +263,44 @@ def create_app():
     @app.context_processor
     def inject_webrtc_ice():
         """Expose ICE servers to templates for WebRTC clients.
-        Priority: ICE_SERVERS_JSON env > TURN_* > default STUN only (handled client-side).
+        Priority:
+          1. ICE_SERVERS_JSON (full explicit list as JSON string)
+          2. TURN_HOST (+ TURN_USERNAME + TURN_PASSWORD) -> expand into STUN + TURN (udp,tcp,tls)
+          3. TURN_URL (+ TURN_USERNAME + TURN_PASSWORD) legacy single entry
+          4. None (client JS will fallback to public STUN list ONLY - NOT suitable for multi-ISP / carrier NAT)
         """
         ice_servers = None
         cfg = app.config
         try:
             if cfg.get('ICE_SERVERS_JSON'):
-                ice_servers = json.loads(cfg['ICE_SERVERS_JSON'])
-            elif cfg.get('TURN_URL') and cfg.get('TURN_USERNAME') and cfg.get('TURN_PASSWORD'):
+                try:
+                    ice_servers = json.loads(cfg['ICE_SERVERS_JSON'])
+                except Exception:
+                    ice_servers = None
+            elif cfg.get('TURN_HOST') and cfg.get('TURN_USERNAME') and cfg.get('TURN_PASSWORD'):
+                host = cfg['TURN_HOST'].replace('turn:', '').replace('stun:', '')
+                uname = cfg['TURN_USERNAME']
+                cred = cfg['TURN_PASSWORD']
+                # Build a comprehensive list covering UDP, TCP and TLS
                 ice_servers = [
+                    { 'urls': [f'stun:{host}:3478'] },
                     {
-                        'urls': cfg['TURN_URL'],
-                        'username': cfg['TURN_USERNAME'],
-                        'credential': cfg['TURN_PASSWORD'],
+                        'urls': [
+                            f'turn:{host}:3478?transport=udp',
+                            f'turn:{host}:3478?transport=tcp',
+                            f'turns:{host}:5349?transport=tcp'
+                        ],
+                        'username': uname,
+                        'credential': cred
                     }
                 ]
+            elif cfg.get('TURN_URL') and cfg.get('TURN_USERNAME') and cfg.get('TURN_PASSWORD'):
+                # Legacy single TURN_URL support
+                ice_servers = [{
+                    'urls': cfg['TURN_URL'],
+                    'username': cfg['TURN_USERNAME'],
+                    'credential': cfg['TURN_PASSWORD']
+                }]
         except Exception:
             ice_servers = None
         return dict(ICE_SERVERS=ice_servers)

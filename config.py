@@ -54,6 +54,8 @@ class Config:
     # WebRTC ICE/TURN configuration
     # Provide either ICE_SERVERS_JSON (full JSON list) or TURN_* to add a single TURN server.
     ICE_SERVERS_JSON = os.getenv('ICE_SERVERS_JSON')
+    # Preferred: provide TURN_HOST so app can auto-expand UDP/TCP/TLS variants
+    TURN_HOST = os.getenv('TURN_HOST')  # e.g., turn.example.com
     TURN_URL = os.getenv('TURN_URL')  # e.g., turn:turn.example.com:3478?transport=udp
     TURN_USERNAME = os.getenv('TURN_USERNAME')
     TURN_PASSWORD = os.getenv('TURN_PASSWORD')
