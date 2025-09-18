@@ -372,7 +372,7 @@
                                                     <i class="fas fa-calendar-alt mr-1"></i> Reschedule
                                                 </button>
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-md cancel-session" data-session-id="{{ session.id }}">
-                                                    <i class="fas fa-times mr-1"></i> Cancel
+                                                    <i class="fas fa-times mr-1"></i> Cancel Counseling
                                                 </button>
                                             {% elif session.status == 'pending' and session.counselor_id is none %}
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 shadow-md update-status" data-session-id="{{ session.id }}" data-status="confirmed">
@@ -382,12 +382,12 @@
                                                     <i class="fas fa-calendar-alt mr-1"></i> Reschedule
                                                 </button>
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-md cancel-session" data-session-id="{{ session.id }}">
-                                                    <i class="fas fa-times mr-1"></i> Cancel
+                                                    <i class="fas fa-times mr-1"></i> Cancel Counseling
                                                 </button>
                                             {% elif session.status in ['pending', 'confirmed'] and session.counselor_id != current_user.id %}
                                                 <span class="text-gray-400 text-xs bg-gray-100 px-3 py-1 rounded-lg">Assigned to other counselor</span>
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-md cancel-session" data-session-id="{{ session.id }}">
-                                                    <i class="fas fa-times mr-1"></i> Cancel
+                                                    <i class="fas fa-times mr-1"></i> Cancel Counseling
                                                 </button>
                                             {% elif session.status == 'in_progress' and session.counselor_id == current_user.id %}
                                                 {% if session.is_video_session %}
@@ -728,7 +728,7 @@
 </div>
 
 <!-- Calendar Modal -->
-<div id="calendarModal" class="fixed inset-0 z-50 hidden">
+<div id="calendarModal" class="fixed inset-0 z-[70] hidden">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-cal-backdrop></div>
     <div class="relative z-10 max-w-6xl w-[95vw] mx-auto my-8 animate-fade-in-up">
         <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -756,7 +756,7 @@
  </div>
 
 <!-- Cancel Modal -->
-<div id="cancelModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+<div id="cancelModal" class="fixed inset-0 z-[80] hidden overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 transition-opacity" aria-hidden="true">
             <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -786,10 +786,10 @@
             </div>
             <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button type="button" id="confirmCancel" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-                    Cancel Session
+                    Cancel Counseling
                 </button>
                 <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm close-modal">
-                    Keep Session
+                    Keep Counseling
                 </button>
             </div>
         </div>
@@ -797,7 +797,7 @@
 </div>
 
 <!-- Reschedule Modal (redesigned) -->
-<div id="rescheduleModal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+<div id="rescheduleModal" class="fixed inset-0 z-[90] hidden" aria-modal="true" role="dialog">
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-resch-backdrop></div>
     <!-- Panel -->
@@ -898,7 +898,7 @@
 </div>
 
 <!-- Reschedule Confirmation Modal -->
-<div id="rescheduleConfirmModal" class="fixed inset-0 z-50 hidden">
+<div id="rescheduleConfirmModal" class="fixed inset-0 z-[100] hidden">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
     <div class="relative z-10 max-w-md w-[95vw] mx-auto my-10">
         <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -927,7 +927,7 @@
   </div>
 
 <!-- Session Details Modal (enhanced, spacious) -->
-<div id="sessionDetailsModal" class="fixed inset-0 z-50 hidden">
+<div id="sessionDetailsModal" class="fixed inset-0 z-[85] hidden">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
     <div class="relative z-10 max-w-5xl w-[95vw] mx-auto my-10">
         <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -1019,7 +1019,7 @@
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <button id="sd-accept" class="px-4 py-3 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 text-sm font-medium shadow-sm"><i class="fas fa-user-check mr-1"></i><span id="sd-accept-label">Assign & Confirm</span></button>
                             <button id="sd-resched" class="px-4 py-3 rounded-xl text-white bg-yellow-500 hover:bg-yellow-600 text-sm font-medium shadow-sm"><i class="fas fa-calendar-alt mr-1"></i>Reschedule</button>
-                            <button id="sd-cancel" class="px-4 py-3 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-medium shadow-sm"><i class="fas fa-times mr-1"></i>Cancel</button>
+                            <button id="sd-cancel" class="px-4 py-3 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-medium shadow-sm"><i class="fas fa-times mr-1"></i>Cancel Counseling</button>
                         </div>
                         <div id="sd-join-wrap" class="pt-3 hidden">
                             <a id="sd-join" href="#" class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-sm font-medium shadow-sm"><i class="fas fa-video mr-2"></i>Join Session</a>
@@ -1218,12 +1218,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }, duration);
     }
     
+    // Utility: close all modals to avoid stacking
+    function closeAllOfficeModals(){
+        [
+            document.getElementById('calendarModal'),
+            document.getElementById('cancelModal'),
+            document.getElementById('rescheduleModal'),
+            document.getElementById('rescheduleConfirmModal'),
+            document.getElementById('sessionDetailsModal')
+        ].forEach(m => { if (m && !m.classList.contains('hidden')) m.classList.add('hidden'); });
+    }
+
     // Cancel Session Modal with enhanced UX
     const cancelModal = document.getElementById('cancelModal');
     let sessionToCancel = null;
     
     document.querySelectorAll('.cancel-session').forEach(button => {
         button.addEventListener('click', function() {
+            closeAllOfficeModals();
             sessionToCancel = this.dataset.sessionId;
             cancelModal.classList.remove('hidden');
             
@@ -1380,7 +1392,8 @@ document.addEventListener('DOMContentLoaded', function() {
         reschStudentName && (reschStudentName.textContent = studentName || 'Counseling Session');
 
     // Show modal
-        rescheduleModal.classList.remove('hidden');
+    closeAllOfficeModals();
+    rescheduleModal.classList.remove('hidden');
     // Initialize slot picker content
     updateSlotPicker();
     }
@@ -1930,7 +1943,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Show modal
-        detailsModal.classList.remove('hidden');
+    closeAllOfficeModals();
+    detailsModal.classList.remove('hidden');
     }
 
     document.querySelectorAll('.session-row').forEach(row => {
@@ -1978,7 +1992,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     sd.cancel.addEventListener('click', function(){
         if(!activeSessionId) return;
-        cancelModal.classList.remove('hidden');
+    closeAllOfficeModals();
+    cancelModal.classList.remove('hidden');
         sessionToCancel = activeSessionId;
     });
 

@@ -770,14 +770,33 @@ def send_session_reminder(session_id):
         from app.models import Notification
         from app.websockets.student import push_student_notification_to_user
 
-        # Build a richer notification including linkage and typing for client UI
+        # Build notification content based on session type
+        when_txt = session.scheduled_at.strftime('%Y-%m-%d %H:%M') if session.scheduled_at else 'your scheduled time'
+        if bool(session.is_video_session):
+            n_title = "Video Session Reminder"
+            n_message = (
+                f"Reminder: You have a video counseling session scheduled for {when_txt}. "
+                f"Please be ready to join on time."
+            )
+            n_link = f"/student/view-session/{session.id}"
+            n_type = "reminder"
+        else:
+            n_title = "In‑Person Counseling Reminder"
+            n_message = (
+                f"Reminder: You have an in‑person counseling session scheduled for {when_txt}. "
+                f"Please arrive at the office on time."
+            )
+            # Keep link to the general session details page (no video join)
+            n_link = f"/student/view-session/{session.id}"
+            n_type = "reminder"
+
         notification = Notification(
             user_id=student_user.id,
-            title="Counseling Reminder",
-            message=f"Reminder: You have a video counseling session scheduled for {session.scheduled_at.strftime('%Y-%m-%d %H:%M')}. Please be ready to join the session on time.",
+            title=n_title,
+            message=n_message,
             source_office_id=session.office_id,
-            link=f"/student/view-session/{session.id}",
-            notification_type="reminder",
+            link=n_link,
+            notification_type=n_type,
             is_read=False,
             created_at=datetime.utcnow(),
         )
