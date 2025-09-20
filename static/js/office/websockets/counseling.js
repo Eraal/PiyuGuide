@@ -29,6 +29,10 @@ class VideoCounselingClientOffice {
     this.persistKey = `videoCounseling:${this.sessionId}:${this.userId}`;
     this.pendingIceCandidates = [];
     this._recoveryTimer = null;
+    // Perfect negotiation/glare-handling + restart debounce
+    this.isMakingOffer = false;
+    this.polite = true; // Office acts as polite peer to reduce glare failures
+    this._lastIceRestartAt = 0;
         
         // ICE servers configuration (prefer server-injected TURN if present)
         const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
@@ -249,13 +253,7 @@ class VideoCounselingClientOffice {
                     if (this.isInCall) {
                         await this.rebuildPeerConnection('peer_reconnect_request');
                     } else if (this.peerConnection) {
-                        const offer = await this.peerConnection.createOffer({ iceRestart: true });
-                        await this.peerConnection.setLocalDescription(offer);
-                        this.socket.emit('offer', {
-                            session_id: this.sessionId,
-                            offer: offer,
-                            target_user_id: data.user_id || null
-                        });
+                        await this.createAndSendOffer({ iceRestart: true });
                     }
             } catch (e) {
                 console.warn('Failed to renegotiate on reconnect_request:', e);
@@ -725,7 +723,11 @@ async handleIceCandidate(candidate) {
         // Start call button
         const startCallBtn = document.getElementById('startCallBtn');
         if (startCallBtn) {
-            startCallBtn.addEventListener('click', () => this.startCall());
+            startCallBtn.addEventListener('click', () => {
+                // User gesture — best time to request fullscreen
+                this.startCall();
+                this.requestFullscreenOnCallStart();
+            });
         }
         
         // Fullscreen button
@@ -856,18 +858,9 @@ async handleIceCandidate(candidate) {
             this.isInCall = true;
             console.log('Is in call after:', this.isInCall);
 
-            // Create and send offer
-            this.ensureReceiveTransceivers();
-            const offer = await this.peerConnection.createOffer();
-            await this.peerConnection.setLocalDescription(offer);
-            console.log('Offer created and set as local description');
-
-            this.socket.emit('offer', {
-                session_id: this.sessionId,
-                offer: offer,
-                target_user_id: null // Broadcast to room
-            });
-            console.log('Offer sent to student');
+            // Create and send offer (with codec preference + glare safety)
+            await this.createAndSendOffer();
+            console.log('Offer created and sent');
 
             this.updateConnectionStatus('Call started - waiting for student response', 'info');
             
@@ -985,6 +978,16 @@ async handleIceCandidate(candidate) {
                 });
             }
         };
+
+        // Safe renegotiation on need
+        this.peerConnection.onnegotiationneeded = async () => {
+            try {
+                if (!this.isInCall) return;
+                await this.createAndSendOffer();
+            } catch (e) {
+                console.warn('Negotiationneeded offer failed:', e?.name || e);
+            }
+        };
         
         // Monitor connection state
         this.peerConnection.onconnectionstatechange = () => {
@@ -1077,20 +1080,92 @@ async handleIceCandidate(candidate) {
     async restartIceSafely() {
         if (!this.peerConnection) return;
         try {
+            // Debounce restarts to avoid glare storms
+            const now = Date.now();
+            if (now - this._lastIceRestartAt < 2000) {
+                console.debug('Skipping ICE restart (debounced)');
+                return;
+            }
+            this._lastIceRestartAt = now;
             this.reconnectInProgress = true;
             this.updateConnectionStatus('Re-establishing media path…', 'warning');
             this.ensureReceiveTransceivers();
-            const offer = await this.peerConnection.createOffer({ iceRestart: true });
-            await this.peerConnection.setLocalDescription(offer);
-            this.socket.emit('offer', {
-                session_id: this.sessionId,
-                offer: offer,
-                target_user_id: null
-            });
+            await this.createAndSendOffer({ iceRestart: true });
         } catch (e) {
             console.warn('ICE restart failed:', e);
         } finally {
             setTimeout(() => { this.reconnectInProgress = false; }, 1500);
+        }
+    }
+
+    async preferH264Codecs() {
+        try {
+            if (!this.peerConnection || !this.peerConnection.getTransceivers) return;
+            const tvs = this.peerConnection.getTransceivers();
+            const can = RTCRtpReceiver.getCapabilities ? RTCRtpReceiver.getCapabilities('video') : null;
+            if (!can || !Array.isArray(can.codecs) || !tvs || tvs.length === 0) { this._supportsSetCodecPreferences = false; return; }
+            const codecs = can.codecs;
+            const h264Primary = codecs.filter(c => /h264/i.test(c.mimeType || c.name || '') && !/rtx/i.test(c.mimeType || ''));
+            const h264Rtx = codecs.filter(c => /h264/i.test(c.mimeType || c.name || '') && /rtx/i.test(c.mimeType || ''));
+            const others = codecs.filter(c => !/h264/i.test(c.mimeType || c.name || ''));
+            const ordered = [...h264Primary, ...h264Rtx, ...others];
+            tvs.forEach(t => {
+                try {
+                    if (t && t.setCodecPreferences && t.receiver && t.receiver.track && t.receiver.track.kind === 'video') {
+                        t.setCodecPreferences(ordered);
+                        this._supportsSetCodecPreferences = true;
+                    }
+                } catch (_) {}
+            });
+        } catch (_) { this._supportsSetCodecPreferences = false; }
+    }
+
+    mungeSdpPreferH264(sdp) {
+        try {
+            if (!sdp || typeof sdp !== 'string') return sdp;
+            const lines = sdp.split('\r\n');
+            const rtpmap = {};
+            const h264Pts = new Set();
+            for (const line of lines) {
+                if (line.startsWith('a=rtpmap:')) {
+                    const match = line.match(/^a=rtpmap:(\d+)\s+([^/]+)/);
+                    if (match) {
+                        const pt = match[1];
+                        const codec = match[2];
+                        rtpmap[pt] = codec;
+                        if (/^H264$/i.test(codec)) h264Pts.add(pt);
+                    }
+                }
+            }
+            return sdp.replace(/(m=video \d+ [^ ]+ )([0-9 ]+)/, (m, prefix, pts) => {
+                const parts = pts.trim().split(' ').filter(Boolean);
+                const h264 = parts.filter(p => h264Pts.has(p));
+                const non = parts.filter(p => !h264Pts.has(p));
+                return prefix + [...h264, ...non].join(' ');
+            });
+        } catch (_) { return sdp; }
+    }
+
+    async createAndSendOffer(options = {}) {
+        if (!this.peerConnection) return;
+        try {
+            this.isMakingOffer = true;
+            this.ensureReceiveTransceivers();
+            await this.preferH264Codecs();
+            let offer = await this.peerConnection.createOffer(options);
+            if (!this._supportsSetCodecPreferences && offer && offer.sdp) {
+                offer = new RTCSessionDescription({ type: offer.type, sdp: this.mungeSdpPreferH264(offer.sdp) });
+            }
+            await this.peerConnection.setLocalDescription(offer);
+            this.socket.emit('offer', {
+                session_id: this.sessionId,
+                offer: this.peerConnection.localDescription,
+                target_user_id: null
+            });
+        } catch (e) {
+            console.warn('Failed to create/send offer:', e?.name || e);
+        } finally {
+            this.isMakingOffer = false;
         }
     }
 
@@ -1142,8 +1217,22 @@ async handleIceCandidate(candidate) {
         if (!this.peerConnection) {
             await this.createPeerConnection();
         }
-        
-        await this.peerConnection.setRemoteDescription(offer);
+        // Perfect negotiation: handle glare by rolling back if we're making an offer or not stable
+        const pc = this.peerConnection;
+        const offerCollision = this.isMakingOffer || (pc.signalingState !== 'stable');
+        try {
+            if (offerCollision) {
+                if (!this.polite) {
+                    console.warn('Offer collision (impolite) — ignoring incoming offer');
+                    return;
+                }
+                try { await pc.setLocalDescription({ type: 'rollback' }); } catch (_) {}
+            }
+            await pc.setRemoteDescription(offer);
+        } catch (e) {
+            console.warn('Failed to set remote description (offer):', e?.name || e);
+            return;
+        }
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
         
@@ -1272,8 +1361,39 @@ async handleIceCandidate(candidate) {
         // Update all media button states when showing call UI
         this.updateAllMediaButtons();
         this.updateVideoPlaceholder();
+        // Try entering fullscreen automatically when the call UI becomes visible
+        this.requestFullscreenOnCallStart();
         
         console.log('=== CALL UI SETUP COMPLETE ===');
+    }
+
+    requestFullscreenOnCallStart() {
+        try {
+            if (document.fullscreenElement) return; // Already in fullscreen
+            const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+            if (!videoContainer || typeof videoContainer.requestFullscreen !== 'function') return;
+            // Attempt request; if blocked, attach a one-time user gesture fallback
+            videoContainer.requestFullscreen().then(() => {
+                try { this.enterFullscreenMode(); } catch (_) {}
+            }).catch(() => {
+                if (this._fsAwaitingGesture) return;
+                this._fsAwaitingGesture = true;
+                const attempt = () => {
+                    if (document.fullscreenElement) { cleanup(); return; }
+                    videoContainer.requestFullscreen().then(() => {
+                        try { this.enterFullscreenMode(); } catch (_) {}
+                        cleanup();
+                    }).catch(() => { cleanup(); });
+                };
+                const cleanup = () => {
+                    window.removeEventListener('click', attempt, true);
+                    window.removeEventListener('keydown', attempt, true);
+                    this._fsAwaitingGesture = false;
+                };
+                window.addEventListener('click', attempt, true);
+                window.addEventListener('keydown', attempt, true);
+            });
+        } catch (_) {}
     }
     
     toggleAudio(isWaitingRoom = false) {
@@ -1415,18 +1535,7 @@ async handleIceCandidate(candidate) {
                 }
 
                 // Renegotiate to propagate new encoding/parameters to remote peer
-                try {
-                    const offer = await this.peerConnection.createOffer();
-                    await this.peerConnection.setLocalDescription(offer);
-                    this.socket.emit('offer', {
-                        session_id: this.sessionId,
-                        offer: offer,
-                        target_user_id: null
-                    });
-                    console.log('🔄 Sent renegotiation offer after starting screen share');
-                } catch (renoErr) {
-                    console.warn('Failed to renegotiate after starting screen share:', renoErr);
-                }
+                try { await this.createAndSendOffer(); console.log('🔄 Sent renegotiation offer after starting screen share'); } catch (renoErr) { console.warn('Failed to renegotiate after starting screen share:', renoErr); }
             } else {
                 console.warn('⚠️ No peer connection available for screen sharing');
             }
@@ -1508,18 +1617,7 @@ async handleIceCandidate(candidate) {
                 }
 
                 // Renegotiate to propagate change back to camera
-                try {
-                    const offer = await this.peerConnection.createOffer();
-                    await this.peerConnection.setLocalDescription(offer);
-                    this.socket.emit('offer', {
-                        session_id: this.sessionId,
-                        offer: offer,
-                        target_user_id: null
-                    });
-                    console.log('🔄 Sent renegotiation offer after stopping screen share');
-                } catch (renoErr) {
-                    console.warn('Failed to renegotiate after stopping screen share:', renoErr);
-                }
+                try { await this.createAndSendOffer(); console.log('🔄 Sent renegotiation offer after stopping screen share'); } catch (renoErr) { console.warn('Failed to renegotiate after stopping screen share:', renoErr); }
             }
             
             // Update local video to show camera (or hide if no camera)
@@ -2769,13 +2867,7 @@ async handleIceCandidate(candidate) {
             await this.createPeerConnection();
             // Renegotiate with ICE restart for robustness
             if (this.isInCall) {
-                const offer = await this.peerConnection.createOffer({ iceRestart: true });
-                await this.peerConnection.setLocalDescription(offer);
-                this.socket.emit('offer', {
-                    session_id: this.sessionId,
-                    offer: offer,
-                    target_user_id: null
-                });
+                await this.createAndSendOffer({ iceRestart: true });
             }
         } catch (e) {
             console.warn('Failed to rebuild peer connection (office):', e);

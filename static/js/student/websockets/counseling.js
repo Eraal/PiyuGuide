@@ -188,6 +188,8 @@ class VideoCounselingClient {
             console.log('Successfully joined call:', data);
             this.showCallUI();
             this.updateConnectionStatus('Connected to call', 'success');
+            // Try fullscreen on join (should be under user gesture if they clicked Join)
+            this.requestFullscreenOnCallStart();
         });
         
         // Apply initial media state for other participants so placeholders are correct on first render
@@ -615,7 +617,11 @@ class VideoCounselingClient {
         // Join call button
         const joinCallBtn = document.getElementById('joinCallBtn');
         if (joinCallBtn) {
-            joinCallBtn.addEventListener('click', () => this.startCall());
+            joinCallBtn.addEventListener('click', () => {
+                // User gesture — good moment to request fullscreen
+                this.startCall();
+                this.requestFullscreenOnCallStart();
+            });
         }
         
         // Fullscreen button
@@ -1314,8 +1320,38 @@ class VideoCounselingClient {
             localVideo.muted = true;
             console.log('Local video stream attached');
         }
+        // Attempt fullscreen when UI shown (will no-op if already in fullscreen)
+        this.requestFullscreenOnCallStart();
         
         console.log('=== STUDENT CALL UI SETUP COMPLETE ===');
+    }
+
+    requestFullscreenOnCallStart() {
+        try {
+            if (document.fullscreenElement) return; // Already fullscreen
+            const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
+            if (!videoContainer || typeof videoContainer.requestFullscreen !== 'function') return;
+            videoContainer.requestFullscreen().then(() => {
+                try { this.enterFullscreenMode(); } catch (_) {}
+            }).catch(() => {
+                if (this._fsAwaitingGesture) return;
+                this._fsAwaitingGesture = true;
+                const attempt = () => {
+                    if (document.fullscreenElement) { cleanup(); return; }
+                    videoContainer.requestFullscreen().then(() => {
+                        try { this.enterFullscreenMode(); } catch (_) {}
+                        cleanup();
+                    }).catch(() => { cleanup(); });
+                };
+                const cleanup = () => {
+                    window.removeEventListener('click', attempt, true);
+                    window.removeEventListener('keydown', attempt, true);
+                    this._fsAwaitingGesture = false;
+                };
+                window.addEventListener('click', attempt, true);
+                window.addEventListener('keydown', attempt, true);
+            });
+        } catch (_) {}
     }
     
     updateWaitingRoomMessage(message) {
