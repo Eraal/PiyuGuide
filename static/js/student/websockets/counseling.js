@@ -1327,30 +1327,9 @@ class VideoCounselingClient {
     }
 
     requestFullscreenOnCallStart() {
+        // Auto-use the in-app fullscreen styling only; do NOT invoke browser Fullscreen API here
         try {
-            if (document.fullscreenElement) return; // Already fullscreen
-            const videoContainer = document.querySelector('.flex-grow.flex.relative.bg-gradient-to-br');
-            if (!videoContainer || typeof videoContainer.requestFullscreen !== 'function') return;
-            videoContainer.requestFullscreen().then(() => {
-                try { this.enterFullscreenMode(); } catch (_) {}
-            }).catch(() => {
-                if (this._fsAwaitingGesture) return;
-                this._fsAwaitingGesture = true;
-                const attempt = () => {
-                    if (document.fullscreenElement) { cleanup(); return; }
-                    videoContainer.requestFullscreen().then(() => {
-                        try { this.enterFullscreenMode(); } catch (_) {}
-                        cleanup();
-                    }).catch(() => { cleanup(); });
-                };
-                const cleanup = () => {
-                    window.removeEventListener('click', attempt, true);
-                    window.removeEventListener('keydown', attempt, true);
-                    this._fsAwaitingGesture = false;
-                };
-                window.addEventListener('click', attempt, true);
-                window.addEventListener('keydown', attempt, true);
-            });
+            this.enterFullscreenMode();
         } catch (_) {}
     }
     
@@ -1905,6 +1884,16 @@ class VideoCounselingClient {
             localVideoContainer.classList.add('fullscreen-local-video');
         }
         
+        // Update button icon/title to reflect fullscreen UI state
+        const fullscreenBtn = document.getElementById('fullScreenToggle');
+        if (fullscreenBtn) {
+            const icon = fullscreenBtn.querySelector('i');
+            if (icon) {
+                icon.className = 'fas fa-compress text-white';
+                fullscreenBtn.title = 'Exit Fullscreen';
+            }
+        }
+
         // Show fullscreen info overlay
         this.showFullscreenInfo();
         
