@@ -1989,6 +1989,222 @@ async handleIceCandidate(candidate) {
         this.updateConnectionIndicators(type, type === 'success');
     }
     
+    // Harmonize connection indicators with student client
+    updateConnectionIndicators(type, isConnected) {
+        // Update class-based indicators
+        const indicators = document.querySelectorAll('.connection-indicator');
+        indicators.forEach(indicator => {
+            indicator.className = 'connection-indicator';
+            if (isConnected) {
+                indicator.classList.add('connection-excellent');
+            } else {
+                indicator.classList.add('connection-poor');
+            }
+        });
+        
+        // Update the main connection indicator by ID
+        const connectionIndicator = document.getElementById('connectionIndicator');
+        if (connectionIndicator) {
+            // Remove all status classes
+            connectionIndicator.classList.remove('bg-emerald-500', 'bg-yellow-500', 'bg-red-500', 'bg-blue-500');
+            
+            // Add appropriate status class based on type
+            switch (type) {
+                case 'success':
+                    connectionIndicator.classList.add('bg-emerald-500');
+                    break;
+                case 'warning':
+                    connectionIndicator.classList.add('bg-yellow-500');
+                    break;
+                case 'error':
+                    connectionIndicator.classList.add('bg-red-500');
+                    break;
+                default:
+                    connectionIndicator.classList.add('bg-blue-500');
+            }
+        }
+        
+        // Update connection quality text
+        const connectionQuality = document.getElementById('connectionQuality');
+        if (connectionQuality) {
+            switch (type) {
+                case 'success':
+                    connectionQuality.textContent = 'Excellent';
+                    connectionQuality.className = 'text-xs font-medium text-emerald-800';
+                    break;
+                case 'warning':
+                    connectionQuality.textContent = 'Fair';
+                    connectionQuality.className = 'text-xs font-medium text-yellow-800';
+                    break;
+                case 'error':
+                    connectionQuality.textContent = 'Poor';
+                    connectionQuality.className = 'text-xs font-medium text-red-800';
+                    break;
+                default:
+                    connectionQuality.textContent = 'Connecting';
+                    connectionQuality.className = 'text-xs font-medium text-blue-800';
+            }
+        }
+    }
+
+    // Update counselor/student presence dots in waiting room
+    updateParticipantIndicators(counselorPresent = true, studentPresent = false) {
+        // Counselor indicator
+        const counselorIndicator = document.getElementById('counselorIndicator');
+        const counselorStatus = counselorIndicator?.parentElement?.nextElementSibling;
+        if (counselorIndicator) {
+            counselorIndicator.className = counselorPresent ?
+                'w-4 h-4 rounded-full bg-emerald-500' :
+                'w-4 h-4 rounded-full bg-slate-300';
+            const pingDiv = counselorIndicator.nextElementSibling;
+            if (pingDiv) {
+                pingDiv.className = counselorPresent ?
+                    'absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75' :
+                    'absolute inset-0 rounded-full bg-slate-300 animate-ping opacity-75';
+            }
+        }
+        if (counselorStatus) {
+            counselorStatus.textContent = counselorPresent ? 'You (Ready)' : 'You';
+            counselorStatus.className = counselorPresent ?
+                'text-sm font-medium text-emerald-600' :
+                'text-sm font-medium text-slate-600';
+        }
+
+        // Student indicator
+        const studentIndicator = document.getElementById('studentIndicator');
+        const studentStatus = studentIndicator?.parentElement?.nextElementSibling;
+        if (studentIndicator) {
+            studentIndicator.className = studentPresent ?
+                'w-4 h-4 rounded-full bg-emerald-500' :
+                'w-4 h-4 rounded-full bg-slate-300';
+            const pingDiv = studentIndicator.nextElementSibling;
+            if (pingDiv) {
+                pingDiv.className = studentPresent ?
+                    'absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75' :
+                    'absolute inset-0 rounded-full bg-slate-300 animate-ping opacity-75';
+            }
+        }
+        if (studentStatus) {
+            studentStatus.textContent = studentPresent ? 'Student (Ready)' : 'Student';
+            studentStatus.className = studentPresent ?
+                'text-sm font-medium text-emerald-600' :
+                'text-sm font-medium text-slate-600';
+        }
+    }
+
+    updateConnectionQuality(quality) {
+        this.connectionQuality = quality;
+        // Update UI label
+        const qualityElement = document.getElementById('connectionQuality');
+        if (qualityElement) {
+            const label = quality.charAt(0).toUpperCase() + quality.slice(1);
+            qualityElement.textContent = label;
+            // lightweight class mapping
+            if (/excellent/i.test(quality)) qualityElement.className = 'text-xs font-medium text-emerald-800';
+            else if (/good/i.test(quality)) qualityElement.className = 'text-xs font-medium text-yellow-800';
+            else if (/poor/i.test(quality)) qualityElement.className = 'text-xs font-medium text-red-800';
+            else qualityElement.className = 'text-xs font-medium text-blue-800';
+        }
+        // Adapt outbound bitrate
+        this.applyAdaptiveBitrate?.(quality);
+    }
+
+    scheduleConnectionRecovery(isFailed = false) {
+        if (this._recoveryTimer) return;
+        const delay = isFailed ? 2000 : 4000;
+        this._recoveryTimer = setTimeout(async () => {
+            this._recoveryTimer = null;
+            try {
+                if (!this.isInCall) return;
+                if (!this.peerConnection) return;
+                const state = this.peerConnection.connectionState;
+                if (state !== 'connected') {
+                    // Prefer a clean rebuild to clear any stuck transceivers/states
+                    await this.rebuildPeerConnection('auto_recovery');
+                    // Ask peer to renegotiate
+                    this.socket?.emit('reconnect_request', { session_id: this.sessionId });
+                }
+            } catch (e) {
+                console.warn('Office recovery attempt failed:', e);
+            }
+        }, delay);
+    }
+
+    drainPendingIceCandidates() {
+        if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
+        const queue = this.pendingIceCandidates || [];
+        this.pendingIceCandidates = [];
+        queue.forEach(async (c) => {
+            try { await this.peerConnection.addIceCandidate(c); } catch (e) {
+                console.debug('Failed to add queued ICE candidate:', e?.name || e);
+            }
+        });
+    }
+
+    async rebuildPeerConnection(reason = 'manual') {
+        console.log('Rebuilding RTCPeerConnection (office) due to:', reason);
+        try {
+            this.reconnectInProgress = true;
+            const oldPc = this.peerConnection;
+            if (oldPc) {
+                try { oldPc.ontrack = null; oldPc.onicecandidate = null; oldPc.onconnectionstatechange = null; oldPc.oniceconnectionstatechange = null; } catch (_) {}
+                try { oldPc.close(); } catch (_) {}
+            }
+            this.peerConnection = null;
+            await this.createPeerConnection();
+            // Re-add local tracks if available
+            if (this.localStream) {
+                this.localStream.getTracks().forEach(t => {
+                    try { this.peerConnection.addTrack(t, this.localStream); } catch (_) {}
+                });
+            }
+            this.ensureReceiveTransceivers();
+            // As polite peer, create an offer to re-sync
+            try { await this.createAndSendOffer(); } catch (_) {}
+        } catch (e) {
+            console.warn('Failed to rebuild peer connection (office):', e);
+        } finally {
+            setTimeout(() => { this.reconnectInProgress = false; }, 1500);
+        }
+    }
+
+    // Lightweight quality monitor using getStats
+    monitorConnectionQuality() {
+        try { if (this._qualityTimer) { clearInterval(this._qualityTimer); this._qualityTimer = null; } } catch (_) {}
+        this._qualityTimer = setInterval(async () => {
+            try {
+                if (!this.peerConnection) return;
+                const stats = await this.peerConnection.getStats(null);
+                let inboundAudio, inboundVideo;
+                stats.forEach(report => {
+                    if (report.type === 'inbound-rtp' && !report.isRemote) {
+                        if (report.kind === 'audio') inboundAudio = report;
+                        if (report.kind === 'video') inboundVideo = report;
+                    }
+                });
+                const target = inboundVideo || inboundAudio;
+                if (!target) return;
+                const quality = this.calculateConnectionQuality({
+                    packetsLost: target.packetsLost || 0,
+                    packetsReceived: target.packetsReceived || 0,
+                    jitter: target.jitter || 0
+                });
+                this.updateConnectionQuality(quality);
+            } catch (_) { /* ignore */ }
+        }, 5000);
+    }
+
+    calculateConnectionQuality(stats) {
+        const packetsLost = stats.packetsLost || 0;
+        const packetsReceived = stats.packetsReceived || 0;
+        const total = packetsLost + packetsReceived;
+        const lossRate = total > 0 ? (packetsLost / total) : 0;
+        const jitter = stats.jitter || 0;
+        if (lossRate < 0.02 && jitter < 0.03) return 'excellent';
+        if (lossRate < 0.05 && jitter < 0.08) return 'good';
+        return 'poor';
+    }
+    
     startSessionTimer() {
         this.startTime = new Date();
         this.sessionTimer = setInterval(() => {
@@ -2102,6 +2318,11 @@ async handleIceCandidate(candidate) {
         
         this.stopSessionTimer();
         this.stopHeartbeat();
+        // Stop quality monitor
+        if (this._qualityTimer) {
+            try { clearInterval(this._qualityTimer); } catch (_) {}
+            this._qualityTimer = null;
+        }
         
         // Stop screen sharing if active
         if (this.isScreenSharing) {
