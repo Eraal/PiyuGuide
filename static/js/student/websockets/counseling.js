@@ -795,8 +795,12 @@ class VideoCounselingClient {
     async createPeerConnection() {
         console.log('Creating peer connection...');
         
+        const params = new URLSearchParams(window.location.search);
+        const forceRelay = params.get('relay') === '1';
         this.peerConnection = new RTCPeerConnection({
-            iceServers: this.iceServers
+            iceServers: this.iceServers,
+            iceTransportPolicy: forceRelay ? 'relay' : 'all',
+            bundlePolicy: 'balanced'
         });
         
         // Add local stream
@@ -865,6 +869,31 @@ class VideoCounselingClient {
                 });
             }
         };
+
+        this.peerConnection.onicegatheringstatechange = () => {
+            console.debug('[Student] ICE gathering state:', this.peerConnection.iceGatheringState);
+        };
+
+        try {
+            this.peerConnection.addEventListener('connectionstatechange', async () => {
+                if (this.peerConnection.connectionState === 'connected') {
+                    try {
+                        const stats = await this.peerConnection.getStats();
+                        stats.forEach(report => {
+                            if (report.type === 'candidate-pair' && report.nominated) {
+                                const local = stats.get(report.localCandidateId);
+                                const remote = stats.get(report.remoteCandidateId);
+                                console.log('[Student] Selected candidate pair:', {
+                                    transport: report.transportId && stats.get(report.transportId)?.dtlsState,
+                                    local: local ? { type: local.candidateType, protocol: local.protocol, address: local.address, port: local.port } : null,
+                                    remote: remote ? { type: remote.candidateType, protocol: remote.protocol, address: remote.address, port: remote.port } : null
+                                });
+                            }
+                        });
+                    } catch (_) {}
+                }
+            });
+        } catch (_) {}
         
         // Monitor connection state
         this.peerConnection.onconnectionstatechange = () => {

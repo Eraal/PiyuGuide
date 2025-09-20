@@ -288,7 +288,10 @@ def create_app():
                         'urls': [
                             f'turn:{host}:3478?transport=udp',
                             f'turn:{host}:3478?transport=tcp',
-                            f'turns:{host}:5349?transport=tcp'
+                            # TLS on standard TURN-TLS port
+                            f'turns:{host}:5349?transport=tcp',
+                            # Extra TLS fallback on 443 for restrictive firewalls
+                            f'turns:{host}:443?transport=tcp'
                         ],
                         'username': uname,
                         'credential': cred

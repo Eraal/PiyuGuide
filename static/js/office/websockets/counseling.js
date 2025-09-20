@@ -879,8 +879,13 @@ async handleIceCandidate(candidate) {
     async createPeerConnection() {
         console.log('Creating peer connection...');
         
+        // Allow forcing relay-only via URL param ?relay=1 for debugging restrictive networks
+        const params = new URLSearchParams(window.location.search);
+        const forceRelay = params.get('relay') === '1';
         this.peerConnection = new RTCPeerConnection({
-            iceServers: this.iceServers
+            iceServers: this.iceServers,
+            iceTransportPolicy: forceRelay ? 'relay' : 'all',
+            bundlePolicy: 'balanced'
         });
     // Proactively ensure we can receive remote media immediately
     try { this.ensureReceiveTransceivers(); } catch (_) {}
@@ -982,6 +987,32 @@ async handleIceCandidate(candidate) {
                 });
             }
         };
+
+        this.peerConnection.onicegatheringstatechange = () => {
+            console.debug('[Office] ICE gathering state:', this.peerConnection.iceGatheringState);
+        };
+
+        // Log selected candidate pair for debugging TURN usage
+        try {
+            this.peerConnection.addEventListener('connectionstatechange', async () => {
+                if (this.peerConnection.connectionState === 'connected') {
+                    try {
+                        const stats = await this.peerConnection.getStats();
+                        stats.forEach(report => {
+                            if (report.type === 'candidate-pair' && report.nominated) {
+                                const local = stats.get(report.localCandidateId);
+                                const remote = stats.get(report.remoteCandidateId);
+                                console.log('[Office] Selected candidate pair:', {
+                                    transport: report.transportId && stats.get(report.transportId)?.dtlsState,
+                                    local: local ? { type: local.candidateType, protocol: local.protocol, address: local.address, port: local.port } : null,
+                                    remote: remote ? { type: remote.candidateType, protocol: remote.protocol, address: remote.address, port: remote.port } : null
+                                });
+                            }
+                        });
+                    } catch (_) {}
+                }
+            });
+        } catch (_) {}
 
         // Safe renegotiation on need
         this.peerConnection.onnegotiationneeded = async () => {
@@ -2958,6 +2989,52 @@ async handleIceCandidate(candidate) {
         } catch (error) {
             console.error('Failed to change microphone:', error);
             this.showNotification('Failed to change microphone', 'error');
+        }
+    }
+
+    // Remote peer media toggle handlers (student -> office)
+    handleRemoteAudioToggle(data) {
+        try {
+            const name = data?.name || 'Student';
+            const on = !!data?.audio_enabled;
+            console.log(`${name} ${on ? 'enabled' : 'disabled'} their microphone`);
+            // Optional: surface a subtle notification. UI has no dedicated icon now.
+            // this.showNotification(`${name} ${on ? 'unmuted' : 'muted'} their mic`, on ? 'info' : 'warning');
+        } catch (_) {}
+    }
+
+    handleRemoteVideoToggle(data) {
+        try {
+            const on = !!data?.video_enabled;
+            const remoteVideo = document.getElementById('remoteVideo');
+            const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
+            if (!remoteVideo || !remotePlaceholder) return;
+            if (on) {
+                // Re-attach stream if needed and ensure playback
+                if (this.remoteStream && remoteVideo.srcObject !== this.remoteStream) {
+                    try { remoteVideo.srcObject = this.remoteStream; } catch (_) {}
+                }
+                try { remoteVideo.autoplay = true; remoteVideo.playsInline = true; } catch (_) {}
+                remoteVideo.classList.remove('hidden');
+                remotePlaceholder.classList.add('hidden');
+                const tryPlay = () => {
+                    remoteVideo.play().catch(e => {
+                        console.warn('Remote video play (toggle on) blocked:', e?.name || e);
+                        if (!remoteVideo.muted) {
+                            remoteVideo.muted = true;
+                            remoteVideo.play().catch(() => {});
+                            this._awaitFirstUserGestureToUnmute(remoteVideo);
+                        }
+                    });
+                };
+                if (remoteVideo.readyState >= 2) tryPlay();
+                remoteVideo.onloadedmetadata = () => tryPlay();
+            } else {
+                remoteVideo.classList.add('hidden');
+                remotePlaceholder.classList.remove('hidden');
+            }
+        } catch (e) {
+            console.warn('Failed to handle remote video toggle:', e?.name || e);
         }
     }
 
