@@ -347,6 +347,25 @@ def create_app():
             except Exception:
                 return None
         return dict(profile_img_url=profile_img_url)
+
+    @app.context_processor
+    def inject_asset_version():
+        """Inject a global ASSET_VERSION used for cache-busting static assets.
+
+        Priority:
+          1. Use ASSET_VERSION from environment/app config if provided (e.g., release/build number)
+          2. Fallback to app startup epoch seconds to ensure a fresh version per deploy
+        """
+        try:
+            ver = app.config.get('ASSET_VERSION')
+            if not ver:
+                import time
+                ver = str(int(time.time()))
+                # Store to keep it stable for the lifetime of the app
+                app.config['ASSET_VERSION'] = ver
+        except Exception:
+            ver = '1'
+        return dict(ASSET_VERSION=ver)
     
     with app.app_context():
         # Initialize websocket handlers

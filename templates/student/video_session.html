@@ -532,7 +532,7 @@
     window.PG_ICE_SERVERS = [];
   }
 </script>
-<script src="{{ url_for('static', filename='js/student/websockets/counseling.js') }}"></script>
+<script src="{{ url_for('static', filename='js/student/websockets/counseling.js') }}?v={{ ASSET_VERSION }}"></script>
 
 <style>
 /* Custom CSS Variables for consistent theming */
@@ -552,9 +552,14 @@
 
 /* Enhanced video container */
 .video-call-container {
+  /* Fallback */
   height: 100vh;
   width: 100%;
   overflow: hidden;
+}
+/* Prefer dynamic viewport height on modern mobile browsers to avoid top white gaps */
+@supports (height: 100dvh) {
+  .video-call-container { height: 100dvh; min-height: 100dvh; }
 }
 
 /* Smooth video transitions */
@@ -681,7 +686,8 @@ video {
 /* Responsive improvements */
 @media (max-width: 768px) {
   .video-call-container {
-    height: 100vh;
+    /* Ensure full-bleed on mobile */
+    height: 100dvh;
   }
   /* Hide heavy header when in-call on small screens for full video focus */
   #videoHeader.in-call-hide {
@@ -711,15 +717,43 @@ video {
     display: flex !important;
   }
   
+  /* Move self preview up so it does not overlap the bottom control buttons */
   #selfVideoContainer {
     width: 200px !important;
-    height: 150px !important;
-    bottom: 4px !important;
-    right: 4px !important;
+    height: 140px !important;
+    bottom: 96px !important; /* lift above the control bar */
+    right: 12px !important;
+    z-index: 9000 !important; /* keep below controls which are 10000 */
   }
   
   .w-96 {
     width: 100% !important;
+  }
+}
+
+/* Ultra-small phones adjustments */
+@media (max-width: 400px) {
+  #selfVideoContainer {
+    width: 160px !important;
+    height: 120px !important;
+    bottom: 112px !important;
+    right: 10px !important;
+  }
+}
+
+/* Waiting room responsive tweaks: make preview scale nicely on mobile */
+@media (max-width: 768px) {
+  /* The waiting room preview container uses utility classes w-80 h-60; override for small screens */
+  #waitingRoomUI .w-80.h-60 {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    aspect-ratio: 4 / 3;
+  }
+  #waitingRoomUI #waitingRoomVideo {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 4 / 3;
   }
 }
 
