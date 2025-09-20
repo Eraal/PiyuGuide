@@ -33,6 +33,8 @@ class VideoCounselingClientOffice {
     this.isMakingOffer = false;
     this.polite = true; // Office acts as polite peer to reduce glare failures
     this._lastIceRestartAt = 0;
+    this._lastOfferAt = 0; // track last local offer timestamp
+    this._preferH264 = this._getPref('webrtc.preferH264', true);
         
         // ICE servers configuration (prefer server-injected TURN if present)
         const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
@@ -351,7 +353,7 @@ class VideoCounselingClientOffice {
         this.socket.on('answer_received', async (data) => {
             console.log('Received WebRTC answer');
             try {
-                await this.handleAnswer(data.answer);
+                await this.handleAnswer(data.answer, data.offer_id);
             } catch (error) {
                 console.error('Error handling answer:', error);
             }
@@ -1098,6 +1100,16 @@ async handleIceCandidate(candidate) {
         }
     }
 
+    _getPref(key, defaultValue) {
+        try {
+            const v = localStorage.getItem(key);
+            if (v === null || v === undefined) return defaultValue;
+            if (v === '0' || v === 'false' || v === 'no') return false;
+            if (v === '1' || v === 'true' || v === 'yes') return true;
+            return defaultValue;
+        } catch (_) { return defaultValue; }
+    }
+
     async preferH264Codecs() {
         try {
             if (!this.peerConnection || !this.peerConnection.getTransceivers) return;
@@ -1151,12 +1163,15 @@ async handleIceCandidate(candidate) {
         try {
             this.isMakingOffer = true;
             this.ensureReceiveTransceivers();
-            await this.preferH264Codecs();
+            if (this._preferH264) {
+                await this.preferH264Codecs();
+            }
             let offer = await this.peerConnection.createOffer(options);
-            if (!this._supportsSetCodecPreferences && offer && offer.sdp) {
+            if (this._preferH264 && !this._supportsSetCodecPreferences && offer && offer.sdp) {
                 offer = new RTCSessionDescription({ type: offer.type, sdp: this.mungeSdpPreferH264(offer.sdp) });
             }
             await this.peerConnection.setLocalDescription(offer);
+            this._lastOfferAt = Date.now();
             this.socket.emit('offer', {
                 session_id: this.sessionId,
                 offer: this.peerConnection.localDescription,
@@ -1253,13 +1268,13 @@ async handleIceCandidate(candidate) {
     this.drainPendingIceCandidates();
     }
     
-    async handleAnswer(answer) {
-        console.log('Handling WebRTC answer');
+    async handleAnswer(answer, offerId = null) {
+        console.log('Handling WebRTC answer', offerId ? `(offerId=${offerId})` : '');
 
         if (!this.peerConnection) return;
 
         const pc = this.peerConnection;
-        const state = pc.signalingState;
+        let state = pc.signalingState;
         console.log('Current signalingState before applying answer:', state);
 
         // Only apply remote answer if we are in the correct state
@@ -1269,30 +1284,35 @@ async handleIceCandidate(candidate) {
         }
 
         try {
+            // Re-check immediately to avoid race with auto-renegotiation
+            state = pc.signalingState;
+            if (state !== 'have-local-offer') {
+                console.warn('State changed before applying answer, now:', state, '— ignoring answer');
+                return;
+            }
             await pc.setRemoteDescription(answer);
         } catch (e) {
+            const msg = (e && (e.message || e.name)) || '';
+            if (e?.name === 'InvalidStateError' || /Called in wrong state/i.test(msg)) {
+                console.warn('Ignoring late/duplicate answer due to state change:', msg);
+                return;
+            }
             console.warn('Failed to set remote description (answer):', e?.name || e);
             return;
         }
 
         this.updateConnectionStatus('Call connection established', 'success');
-
-        // Show call UI after a short delay to ensure DOM is ready
         setTimeout(() => {
             console.log('Checking if we should show call UI...');
             console.log('isInCall:', this.isInCall);
             console.log('Connection state:', this.peerConnection?.connectionState);
             console.log('ICE state:', this.peerConnection?.iceConnectionState);
-
             if (this.isInCall) {
                 this.showCallUI();
-                // Nudge remote video playback after SDP set
                 const rv = document.getElementById('remoteVideo');
                 if (rv) { try { rv.play().catch(() => {}); } catch(_) {} }
             }
         }, 500);
-
-        // Drain any queued ICE candidates now that we have a remote description
         this.drainPendingIceCandidates();
     }
     
@@ -2587,428 +2607,6 @@ async handleIceCandidate(candidate) {
             console.warn('Cannot change camera - invalid device ID or no local stream');
             return;
         }
-        
-        console.log('Changing camera to device:', deviceId);
-        
-        try {
-            // Store current video track state
-            const currentVideoTrack = this.localStream.getVideoTracks()[0];
-            const wasVideoEnabled = currentVideoTrack ? currentVideoTrack.enabled : true;
-            
-            // Get new video stream with enhanced constraints
-            const newStream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    deviceId: { exact: deviceId },
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 },
-                    frameRate: { ideal: 30, min: 15 }
-                },
-                audio: false
-            });
-            
-            const newVideoTrack = newStream.getVideoTracks()[0];
-            if (!newVideoTrack) {
-                throw new Error('No video track in new stream');
-            }
-            
-            // Set the enabled state to match current state
-            newVideoTrack.enabled = wasVideoEnabled;
-            
-            // Replace video track in local stream
-            if (currentVideoTrack) {
-                this.localStream.removeTrack(currentVideoTrack);
-                currentVideoTrack.stop();
-            }
-            this.localStream.addTrack(newVideoTrack);
-            
-            // Update peer connection if it exists
-            if (this.peerConnection) {
-                const sender = this.peerConnection.getSenders().find(s => 
-                    s.track && s.track.kind === 'video'
-                );
-                if (sender) {
-                    await sender.replaceTrack(newVideoTrack);
-                    console.log('Video track replaced in peer connection');
-                }
-            }
-            
-            // Update video elements
-            const waitingRoomVideo = document.getElementById('waitingRoomVideo');
-            if (waitingRoomVideo) {
-                waitingRoomVideo.srcObject = this.localStream;
-            }
-            
-            const localVideo = document.getElementById('localVideo');
-            if (localVideo) {
-                localVideo.srcObject = this.localStream;
-            }
-            
-            console.log('Camera changed successfully to:', deviceId);
-            this.showNotification('Camera changed successfully', 'success');
-            
-        } catch (error) {
-            console.error('Error changing camera:', error);
-            this.showError('Failed to change camera. The selected camera may not be available.');
-            
-            // Don't break existing functionality - keep the current stream working
-        }
-    }
-    
-    updateConnectionIndicators(type, isConnected) {
-        // Update class-based indicators
-        const indicators = document.querySelectorAll('.connection-indicator');
-        indicators.forEach(indicator => {
-            indicator.className = 'connection-indicator';
-            if (isConnected) {
-                indicator.classList.add('connection-excellent');
-            } else {
-                indicator.classList.add('connection-poor');
-            }
-        });
-        
-        // Update the main connection indicator by ID
-        const connectionIndicator = document.getElementById('connectionIndicator');
-        if (connectionIndicator) {
-            // Remove all status classes
-            connectionIndicator.classList.remove('bg-emerald-500', 'bg-yellow-500', 'bg-red-500', 'bg-blue-500');
-            
-            // Add appropriate status class based on type
-            switch (type) {
-                case 'success':
-                    connectionIndicator.classList.add('bg-emerald-500');
-                    break;
-                case 'warning':
-                    connectionIndicator.classList.add('bg-yellow-500');
-                    break;
-                case 'error':
-                    connectionIndicator.classList.add('bg-red-500');
-                    break;
-                default:
-                    connectionIndicator.classList.add('bg-blue-500');
-            }
-        }
-        
-        // Update connection quality text
-        const connectionQuality = document.getElementById('connectionQuality');
-        if (connectionQuality) {
-            switch (type) {
-                case 'success':
-                    connectionQuality.textContent = 'Excellent';
-                    connectionQuality.className = 'text-xs font-medium text-emerald-800';
-                    break;
-                case 'warning':
-                    connectionQuality.textContent = 'Fair';
-                    connectionQuality.className = 'text-xs font-medium text-yellow-800';
-                    break;
-                case 'error':
-                    connectionQuality.textContent = 'Poor';
-                    connectionQuality.className = 'text-xs font-medium text-red-800';
-                    break;
-                default:
-                    connectionQuality.textContent = 'Connecting';
-                    connectionQuality.className = 'text-xs font-medium text-blue-800';
-            }
-        }
-    }
-    
-    updateParticipantIndicators(counselorPresent = true, studentPresent = false) {
-        // Update counselor indicator (should always be green for current user)
-        const counselorIndicator = document.getElementById('counselorIndicator');
-        const counselorStatus = counselorIndicator?.parentElement?.nextElementSibling;
-        
-        if (counselorIndicator) {
-            counselorIndicator.className = 'w-4 h-4 rounded-full bg-emerald-500';
-            
-            // Update the ping animation div
-            const pingDiv = counselorIndicator.nextElementSibling;
-            if (pingDiv) {
-                pingDiv.className = 'absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75';
-            }
-        }
-        
-        if (counselorStatus) {
-            counselorStatus.textContent = 'You (Ready)';
-            counselorStatus.className = 'text-sm font-medium text-emerald-600';
-        }
-        
-        // Update student indicator
-        const studentIndicator = document.getElementById('studentIndicator');
-        const studentStatus = studentIndicator?.parentElement?.nextElementSibling;
-        
-        if (studentIndicator) {
-            studentIndicator.className = studentPresent ? 
-                'w-4 h-4 rounded-full bg-emerald-500' : 
-                'w-4 h-4 rounded-full bg-slate-300';
-                
-            // Update the ping animation div
-            const pingDiv = studentIndicator.nextElementSibling;
-            if (pingDiv) {
-                pingDiv.className = studentPresent ?
-                    'absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75' :
-                    'absolute inset-0 rounded-full bg-slate-300 animate-ping opacity-75';
-            }
-        }
-        
-        if (studentStatus) {
-            studentStatus.textContent = studentPresent ? 'Student (Ready)' : 'Student';
-            studentStatus.className = studentPresent ? 
-                'text-sm font-medium text-emerald-600' : 
-                'text-sm font-medium text-slate-600';
-        }
-    }
-    
-    showStartCallButton() {
-        const startCallBtn = document.getElementById('startCallBtn');
-        if (startCallBtn) {
-            startCallBtn.classList.remove('hidden');
-            startCallBtn.disabled = false;
-        }
-        
-        this.updateWaitingRoomMessage('Ready to start! Click "Start Call" to begin.');
-    }
-    
-    handleRemoteAudioToggle(data) {
-        console.log(`${data.name} ${data.audio_enabled ? 'enabled' : 'disabled'} their microphone`);
-        // Could update UI to show remote user's audio state
-    }
-    
-    handleRemoteVideoToggle(data) {
-        console.log(`${data.name} ${data.video_enabled ? 'enabled' : 'disabled'} their camera`);
-        // Update remote video placeholder if elements exist
-        const remoteVideo = document.getElementById('remoteVideo');
-        const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
-        if (remoteVideo && remotePlaceholder) {
-            if (data.video_enabled) {
-                // Re-attach stream and attempt playback to avoid black screen after toggle
-                if (this.remoteStream && remoteVideo.srcObject !== this.remoteStream) {
-                    try { remoteVideo.srcObject = this.remoteStream; } catch (_) {}
-                }
-                try { remoteVideo.autoplay = true; remoteVideo.playsInline = true; } catch (_) {}
-                // Ensure letterboxing on Office
-                try { remoteVideo.style.objectFit = 'contain'; remoteVideo.style.backgroundColor = '#000'; } catch (_) {}
-                // Swap visibility first
-                remoteVideo.classList.remove('hidden');
-                remotePlaceholder.classList.add('hidden');
-                // Nudge playback
-                const tryPlay = () => {
-                    remoteVideo.play().catch(e => {
-                        // Fallback: try muted autoplay, then unmute on first user gesture
-                        if (!remoteVideo.muted) {
-                            remoteVideo.muted = true;
-                            remoteVideo.play().catch(() => {});
-                            this._awaitFirstUserGestureToUnmute(remoteVideo);
-                        }
-                    });
-                };
-                if (remoteVideo.readyState >= 2) tryPlay();
-                remoteVideo.onloadedmetadata = () => tryPlay();
-            } else {
-                remoteVideo.classList.add('hidden');
-                remotePlaceholder.classList.remove('hidden');
-            }
-        }
-    }
-    
-    handleStudentDisconnect() {
-        this.showNotification('Student has left the session', 'warning');
-        this.updateConnectionStatus('Waiting for student to return...', 'warning');
-    }
-    
-    handleConnectionIssue() {
-        this.showNotification('Connection issues detected. Trying to reconnect...', 'warning');
-        this.updateConnectionStatus('Connection unstable - attempting to reconnect', 'warning');
-    }
-
-    scheduleConnectionRecovery(isFailed = false) {
-        // If already scheduled, don't schedule another
-        if (this._recoveryTimer) return;
-        const delay = isFailed ? 2000 : 4000;
-        this._recoveryTimer = setTimeout(async () => {
-            this._recoveryTimer = null;
-            try {
-                if (!this.isInCall) return;
-                if (!this.peerConnection) return;
-                const state = this.peerConnection.connectionState;
-                if (state !== 'connected') {
-                    await this.rebuildPeerConnection('auto_recovery');
-                }
-            } catch (e) {
-                console.warn('Recovery attempt failed:', e);
-            }
-        }, delay);
-    }
-
-    drainPendingIceCandidates() {
-        if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
-        if (!this.pendingIceCandidates || this.pendingIceCandidates.length === 0) return;
-        console.log(`Adding ${this.pendingIceCandidates.length} queued ICE candidates (office)`);
-        const queue = this.pendingIceCandidates;
-        this.pendingIceCandidates = [];
-        queue.forEach(async (cand) => {
-            try {
-                await this.peerConnection.addIceCandidate(cand);
-            } catch (err) {
-                console.warn('Error adding queued ICE candidate (office):', err);
-            }
-        });
-    }
-
-    async rebuildPeerConnection(reason = 'manual') {
-        console.log('Rebuilding RTCPeerConnection (office) due to:', reason);
-        try {
-            this.reconnectInProgress = true;
-            const oldPc = this.peerConnection;
-            if (oldPc) {
-                try { oldPc.ontrack = null; oldPc.onicecandidate = null; oldPc.onconnectionstatechange = null; oldPc.oniceconnectionstatechange = null; } catch (_) {}
-                try { oldPc.close(); } catch (_) {}
-            }
-            this.peerConnection = null;
-            // Create fresh PC and re-add local tracks
-            await this.createPeerConnection();
-            // Renegotiate with ICE restart for robustness
-            if (this.isInCall) {
-                await this.createAndSendOffer({ iceRestart: true });
-            }
-        } catch (e) {
-            console.warn('Failed to rebuild peer connection (office):', e);
-        } finally {
-            setTimeout(() => { this.reconnectInProgress = false; }, 1500);
-        }
-    }
-    
-    monitorConnectionQuality() {
-        if (!this.peerConnection) return;
-        if (this._qualityInterval) {
-            clearInterval(this._qualityInterval);
-            this._qualityInterval = null;
-        }
-        this._qualityInterval = setInterval(async () => {
-            try {
-                const stats = await this.peerConnection.getStats();
-                let inboundRtp = null;
-                stats.forEach(report => {
-                    if (report.type === 'inbound-rtp' && report.kind === 'video') {
-                        inboundRtp = report;
-                    }
-                });
-                if (inboundRtp) {
-                    const quality = this.calculateConnectionQuality(inboundRtp);
-                    this.updateConnectionQuality(quality);
-                }
-            } catch (error) {
-                console.error('Error monitoring connection quality:', error);
-            }
-        }, 5000);
-    }
-    
-    calculateConnectionQuality(stats) {
-        // Simple quality calculation based on packet loss and jitter
-        const packetLossRate = stats.packetsLost / (stats.packetsReceived + stats.packetsLost);
-        const jitter = stats.jitter || 0;
-        
-        if (packetLossRate < 0.02 && jitter < 0.03) {
-            return 'excellent';
-        } else if (packetLossRate < 0.05 && jitter < 0.08) {
-            return 'good';
-        } else {
-            return 'poor';
-        }
-    }
-    
-    updateConnectionQuality(quality) {
-        this.connectionQuality = quality;
-        
-        // Emit quality data to other participants
-        if (this.socket && this.socket.connected) {
-            this.socket.emit('connection_quality', {
-                session_id: this.sessionId,
-                quality: {
-                    level: quality,
-                    timestamp: Date.now()
-                }
-            });
-        }
-        
-        // Update UI indicators
-        const qualityElement = document.getElementById('connectionQuality');
-        if (qualityElement) {
-            qualityElement.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
-            qualityElement.className = `connection-${quality}`;
-        }
-
-        // Adapt outbound bitrate for varying network conditions
-        this.applyAdaptiveBitrate(quality).catch(() => {});
-    }
-
-    async applyAdaptiveBitrate(quality) {
-        if (!this.peerConnection) return;
-        const sender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (!sender) return;
-        const params = sender.getParameters() || {};
-        params.degradationPreference = 'maintain-framerate';
-        let maxBitrate, maxFramerate, scaleResolutionDownBy;
-        switch (quality) {
-            case 'poor':
-                maxBitrate = 350_000; // ~350 kbps
-                maxFramerate = 20;
-                scaleResolutionDownBy = 2.0;
-                break;
-            case 'good':
-                maxBitrate = 1_200_000; // ~1.2 Mbps
-                maxFramerate = 30;
-                scaleResolutionDownBy = 1.2;
-                break;
-            case 'excellent':
-            default:
-                maxBitrate = 2_500_000; // ~2.5 Mbps
-                maxFramerate = 30;
-                scaleResolutionDownBy = 1.0;
-        }
-        params.encodings = [{ maxBitrate, maxFramerate, scaleResolutionDownBy }];
-        try { await sender.setParameters(params); } catch (_) {}
-    }
-    
-    // Debug method to manually initialize tabs
-    initializeTabs() {
-        console.log('=== INITIALIZING TABS ===');
-        
-        // Check if tabs exist
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-        
-        console.log('Found tab buttons:', tabButtons.length);
-        console.log('Found tab contents:', tabContents.length);
-        
-        if (tabButtons.length === 0) {
-            console.error('No tab buttons found!');
-            return;
-        }
-        
-        if (tabContents.length === 0) {
-            console.error('No tab contents found!');
-            return;
-        }
-        
-        // Hide all contents first
-        tabContents.forEach(content => {
-            content.classList.add('hidden');
-            content.classList.remove('active');
-        });
-        
-        // Remove active from all buttons
-        tabButtons.forEach(button => {
-            button.classList.remove('active');
-        });
-        
-        // Activate the first tab (notes)
-        this.switchTab('notes');
-        
-        console.log('=== TABS INITIALIZED ===');
-    }
-    
-    
-    async changeCamera(deviceId) {
-        if (!deviceId || !this.localStream) return;
         
         try {
             console.log('Changing camera to device:', deviceId);

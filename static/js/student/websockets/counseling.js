@@ -26,6 +26,7 @@ class VideoCounselingClient {
     this.persistKey = `videoCounseling:${this.sessionId}:${this.userId}`;
     this._recoveryTimer = null;
     this._qualityInterval = null;
+    this._unmuteHandlerInstalled = false;
         
         // ICE servers configuration (prefer server-injected TURN if present)
         const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
@@ -749,6 +750,48 @@ class VideoCounselingClient {
         }
     }
     
+    _awaitFirstUserGestureToUnmute(videoEl) {
+        if (!videoEl) return;
+        if (this._unmuteHandlerInstalled) return;
+        this._unmuteHandlerInstalled = true;
+        const handler = () => {
+            try { videoEl.muted = false; videoEl.play().catch(() => {}); } catch(_) {}
+            window.removeEventListener('click', handler, true);
+            window.removeEventListener('keydown', handler, true);
+            this._unmuteHandlerInstalled = false;
+        };
+        window.addEventListener('click', handler, true);
+        window.addEventListener('keydown', handler, true);
+    }
+
+    ensureReceiveTransceivers() {
+        try {
+            if (!this.peerConnection || !this.peerConnection.getTransceivers) return;
+            const transceivers = this.peerConnection.getTransceivers();
+            const ensureKind = (kind) => {
+                let haveRecv = false;
+                transceivers.forEach(t => {
+                    const dir = t?.direction || t?.currentDirection;
+                    const rkind = t?.receiver?.track?.kind;
+                    const skind = t?.sender?.track?.kind;
+                    if ((rkind === kind || skind === kind)) {
+                        if (typeof t.setDirection === 'function') {
+                            try { t.setDirection('sendrecv'); } catch(_) {}
+                        }
+                        if (dir && (dir.includes('recv') || dir === 'sendrecv')) haveRecv = true;
+                    }
+                });
+                if (!haveRecv) {
+                    try { this.peerConnection.addTransceiver(kind, { direction: 'recvonly' }); } catch (e) { console.debug(`addTransceiver(${kind}) failed:`, e?.name || e); }
+                }
+            };
+            ensureKind('video');
+            ensureKind('audio');
+        } catch (e) {
+            console.debug('ensureReceiveTransceivers failed (non-fatal):', e?.name || e);
+        }
+    }
+
     async createPeerConnection() {
         console.log('Creating peer connection...');
         
@@ -762,6 +805,8 @@ class VideoCounselingClient {
                 this.peerConnection.addTrack(track, this.localStream);
             });
         }
+        // Ensure we can still receive even without local camera/mic
+        this.ensureReceiveTransceivers();
         // Bump outbound video quality if possible
         try {
             await this.applyHighQualitySenderParams();
@@ -777,24 +822,23 @@ class VideoCounselingClient {
             const remotePlaceholder = document.getElementById('remoteVideoPlaceholder');
             if (remoteVideo) {
                 remoteVideo.srcObject = this.remoteStream;
-                // Ensure playback starts even with autoplay policies
-                const tryPlay = () => {
+                try { remoteVideo.autoplay = true; remoteVideo.playsInline = true; } catch (_) {}
+                const tryPlay = (attempt = 'initial') => {
                     remoteVideo.play().catch(e => {
-                        console.warn('Remote video play blocked, will retry on unmute/metadata:', e?.name || e);
+                        console.warn(`Remote video play blocked (${attempt}):`, e?.name || e);
+                        if (!remoteVideo.muted) {
+                            // Fallback: try muted autoplay, then unmute on first user interaction
+                            remoteVideo.muted = true;
+                            remoteVideo.play().catch(() => {});
+                            this._awaitFirstUserGestureToUnmute(remoteVideo);
+                        }
                     });
                 };
-                // Play on metadata load
-                remoteVideo.onloadedmetadata = () => {
-                    tryPlay();
-                };
-                // If already have metadata, try immediately
-                if (remoteVideo.readyState >= 2) {
-                    tryPlay();
-                }
-                // Also try when the incoming track becomes unmuted
+                remoteVideo.onloadedmetadata = () => tryPlay('metadata');
+                if (remoteVideo.readyState >= 2) tryPlay('ready');
                 if (event.track) {
                     event.track.onunmute = () => {
-                        tryPlay();
+                        tryPlay('onunmute');
                         if (remotePlaceholder) remotePlaceholder.classList.add('hidden');
                         remoteVideo.classList.remove('hidden');
                     };
@@ -806,7 +850,6 @@ class VideoCounselingClient {
                 console.log('Remote video stream attached to video element');
             }
             
-            // Show call UI when we receive remote stream - this is a reliable indicator
             if (this.isInCall) {
                 console.log('Remote stream received - showing call UI');
                 this.showCallUI();
@@ -919,6 +962,7 @@ class VideoCounselingClient {
         try {
             this.reconnectInProgress = true;
             this.updateConnectionStatus('Re-establishing media path…', 'warning');
+            this.ensureReceiveTransceivers();
             const offer = await this.peerConnection.createOffer({ iceRestart: true });
             await this.peerConnection.setLocalDescription(offer);
             this.socket.emit('offer', {
