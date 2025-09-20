@@ -1255,33 +1255,45 @@ async handleIceCandidate(candidate) {
     
     async handleAnswer(answer) {
         console.log('Handling WebRTC answer');
-        
-        if (this.peerConnection) {
-            await this.peerConnection.setRemoteDescription(answer);
-            this.updateConnectionStatus('Call connection established', 'success');
-            
-            // Show call UI immediately after setting remote description
-            console.log('Connection state:', this.peerConnection.connectionState);
-            console.log('ICE connection state:', this.peerConnection.iceConnectionState);
-            
-        // Show call UI after a short delay to ensure DOM is ready
-            setTimeout(() => {
-                console.log('Checking if we should show call UI...');
-                console.log('isInCall:', this.isInCall);
-                console.log('Connection state:', this.peerConnection?.connectionState);
-                console.log('ICE state:', this.peerConnection?.iceConnectionState);
-                
-                if (this.isInCall) {
-                    this.showCallUI();
-            // Nudge remote video playback after SDP set
-            const rv = document.getElementById('remoteVideo');
-            if (rv) { try { rv.play().catch(() => {}); } catch(_) {} }
-                }
-            }, 500);
 
-            // Drain any queued ICE candidates now that we have a remote description
-            this.drainPendingIceCandidates();
+        if (!this.peerConnection) return;
+
+        const pc = this.peerConnection;
+        const state = pc.signalingState;
+        console.log('Current signalingState before applying answer:', state);
+
+        // Only apply remote answer if we are in the correct state
+        if (state !== 'have-local-offer') {
+            console.warn('Ignoring unexpected answer in state:', state);
+            return;
         }
+
+        try {
+            await pc.setRemoteDescription(answer);
+        } catch (e) {
+            console.warn('Failed to set remote description (answer):', e?.name || e);
+            return;
+        }
+
+        this.updateConnectionStatus('Call connection established', 'success');
+
+        // Show call UI after a short delay to ensure DOM is ready
+        setTimeout(() => {
+            console.log('Checking if we should show call UI...');
+            console.log('isInCall:', this.isInCall);
+            console.log('Connection state:', this.peerConnection?.connectionState);
+            console.log('ICE state:', this.peerConnection?.iceConnectionState);
+
+            if (this.isInCall) {
+                this.showCallUI();
+                // Nudge remote video playback after SDP set
+                const rv = document.getElementById('remoteVideo');
+                if (rv) { try { rv.play().catch(() => {}); } catch(_) {} }
+            }
+        }, 500);
+
+        // Drain any queued ICE candidates now that we have a remote description
+        this.drainPendingIceCandidates();
     }
     
     showCallUI() {

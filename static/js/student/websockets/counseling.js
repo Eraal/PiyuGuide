@@ -969,26 +969,35 @@ class VideoCounselingClient {
     
     async handleAnswer(data) {
         console.log('Handling WebRTC answer');
-        
-        if (this.peerConnection) {
-            try {
-                await this.peerConnection.setRemoteDescription(data.answer);
-                this.updateConnectionStatus('Call connection established', 'success');
-                // Flush any ICE candidates that arrived early
-                this.drainPendingIceCandidates();
-                
-                // Show call UI after connection is established
-                setTimeout(() => {
-                    console.log('Showing call UI after answer processed');
-                    if (this.isInCall) {
-                        this.showCallUI();
-                    }
-                }, 500);
-                
-            } catch (error) {
-                console.error('Error setting remote description:', error);
-                this.showError('Failed to establish call connection');
-            }
+
+        if (!this.peerConnection) return;
+
+        const pc = this.peerConnection;
+        const state = pc.signalingState;
+        console.log('Current signalingState before applying answer:', state);
+
+        // Only apply remote answer if we are in the correct state
+        if (state !== 'have-local-offer') {
+            console.warn('Ignoring unexpected answer in state:', state);
+            return;
+        }
+
+        try {
+            await pc.setRemoteDescription(data.answer);
+            this.updateConnectionStatus('Call connection established', 'success');
+            // Flush any ICE candidates that arrived early
+            this.drainPendingIceCandidates();
+
+            // Show call UI after connection is established
+            setTimeout(() => {
+                console.log('Showing call UI after answer processed');
+                if (this.isInCall) {
+                    this.showCallUI();
+                }
+            }, 500);
+        } catch (error) {
+            console.error('Error setting remote description:', error);
+            this.showError('Failed to establish call connection');
         }
     }
     
