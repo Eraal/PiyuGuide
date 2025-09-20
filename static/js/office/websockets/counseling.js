@@ -301,6 +301,8 @@ class VideoCounselingClientOffice {
             if (data.role === 'student') {
                 this.updateWaitingRoomMessage('Student is ready. Preparing call...');
                 this.updateConnectionStatus('Both users ready - call can start', 'success');
+                // Ensure the Start Call button is shown as soon as the student is ready
+                this.showStartCallButton();
             }
         });
         
@@ -1916,6 +1918,16 @@ async handleIceCandidate(candidate) {
         if (messageElement) {
             messageElement.textContent = message;
         }
+    }
+    
+    showStartCallButton() {
+        const startCallBtn = document.getElementById('startCallBtn');
+        if (startCallBtn) {
+            startCallBtn.classList.remove('hidden');
+            startCallBtn.disabled = false;
+        }
+        // Update waiting room prompt for clarity
+        this.updateWaitingRoomMessage('Both ready. Click "Start Video Call" to begin.');
     }
     
     updateConnectionStatus(status, type = 'info') {
