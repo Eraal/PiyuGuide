@@ -186,8 +186,18 @@ class OfficeChatSocketManager {
         if (this.currentInquiryId) {
             this.leaveCurrentRoom();
         }
-        
-        this.currentInquiryId = inquiryId;
+        // Resolve inquiryId from DOM if missing
+        if (!inquiryId) {
+            const el = document.querySelector('[data-inquiry-id]');
+            inquiryId = el && el.getAttribute('data-inquiry-id');
+        }
+        if (!inquiryId) {
+            if (this.messageCallbacks.onError) {
+                this.messageCallbacks.onError('Inquiry ID is required');
+            }
+            return;
+        }
+        this.currentInquiryId = parseInt(inquiryId);
         this.socket.emit('join_inquiry_room', { inquiry_id: inquiryId });
 
         // After join, best-effort mark visible incoming messages as read

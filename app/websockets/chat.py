@@ -5,6 +5,35 @@ from app.extensions import socketio, db
 from app.models import User, InquiryMessage, Inquiry, Student, Office, OfficeAdmin, Notification, InquiryConcern, OfficeConcernType
 from datetime import datetime
 
+def _extract_inquiry_id(data) -> int | None:
+    """Best-effort extraction of inquiry_id from incoming event payloads.
+
+    Accepts common variants and coerces to int when possible. Returns None if missing/invalid.
+    """
+    try:
+        payload = data if isinstance(data, dict) else {}
+        for key in ('inquiry_id', 'inquiryId', 'id', 'inquiry'):
+            if key in payload:
+                val = payload.get(key)
+                if val in (None, ""):
+                    continue
+                try:
+                    return int(val)
+                except (TypeError, ValueError):
+                    # Ignore unparsable values and keep looking
+                    pass
+        # Fallback: sometimes passed via query string (rare)
+        if request is not None:
+            q = request.args.get('inquiry_id')
+            if q:
+                try:
+                    return int(q)
+                except (TypeError, ValueError):
+                    pass
+    except Exception:
+        pass
+    return None
+
 @socketio.on('connect', namespace='/chat')
 def handle_connect():
     """Handle connection to chat namespace"""
@@ -30,7 +59,7 @@ def handle_join_room(data):
         emit('error', {'message': 'Authentication required'})
         return
     
-    inquiry_id = data.get('inquiry_id')
+    inquiry_id = _extract_inquiry_id(data)
     if not inquiry_id:
         emit('error', {'message': 'Inquiry ID is required'})
         return
@@ -136,7 +165,7 @@ def handle_join_room(data):
 @socketio.on('leave_inquiry_room', namespace='/chat')
 def handle_leave_room(data):
     """Handle a user leaving an inquiry chat room"""
-    inquiry_id = data.get('inquiry_id')
+    inquiry_id = _extract_inquiry_id(data)
     if not inquiry_id:
         return
     
@@ -152,7 +181,7 @@ def handle_send_message(data):
         emit('error', {'message': 'Authentication required'})
         return
     
-    inquiry_id = data.get('inquiry_id')
+    inquiry_id = _extract_inquiry_id(data)
     content = data.get('content')
     
     if not inquiry_id or not content or content.strip() == '':
@@ -432,7 +461,7 @@ def handle_typing(data):
         emit('error', {'message': 'Authentication required'})
         return
 
-    inquiry_id = data.get('inquiry_id')
+    inquiry_id = _extract_inquiry_id(data)
     if not inquiry_id:
         emit('error', {'message': 'Inquiry ID is required'})
         return
@@ -474,7 +503,7 @@ def handle_stop_typing(data):
     if not current_user.is_authenticated:
         return
 
-    inquiry_id = data.get('inquiry_id')
+    inquiry_id = _extract_inquiry_id(data)
     if not inquiry_id:
         return
 

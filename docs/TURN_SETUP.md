@@ -38,7 +38,33 @@ Certificates will be at:
 /etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
 ```
 
-## 6. Minimal `/etc/turnserver.conf`
+## 6. Minimal `/etc/turnserver.conf` (Static Credentials)
+Use this if your app provides a fixed TURN_USERNAME and TURN_PASSWORD (recommended to get started). This matches PiyuGuide’s default configuration.
+```
+listening-port=3478
+tls-listening-port=5349
+fingerprint
+realm=piyuguide.live
+
+# Long-term credentials (static username/password)
+lt-cred-mech
+user=turnuser:strongpass
+
+# Quotas / limits
+total-quota=300
+bps-capacity=0
+stale-nonce
+
+# Security
+no-loopback-peers
+no-multicast-peers
+
+# Certificates for TLS (5349)
+cert=/etc/letsencrypt/live/turn.yourdomain.com/fullchain.pem
+pkey=/etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
+```
+
+If you prefer ephemeral credentials (more secure), switch to `use-auth-secret` and remove `lt-cred-mech`/`user`:
 ```
 listening-port=3478
 tls-listening-port=5349
@@ -46,16 +72,6 @@ fingerprint
 use-auth-secret
 static-auth-secret=REPLACE_WITH_RANDOM_32_BYTE_HEX
 realm=piyuguide.live
-# Quotas / limits
-total-quota=300
-bps-capacity=0
-stale-nonce
-# Security
-no-loopback-peers
-no-multicast-peers
-# Certificates (comment out if not using TLS yet)
-cert=/etc/letsencrypt/live/turn.yourdomain.com/fullchain.pem
-pkey=/etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
 ```
 Generate a random static-auth-secret:
 ```bash
@@ -64,7 +80,7 @@ import secrets
 print(secrets.token_hex(16))
 PY
 ```
-Replace `REPLACE_WITH_RANDOM_32_BYTE_HEX` with that value.
+Note: Using `use-auth-secret` requires your app to mint time-limited TURN credentials (HMAC(username, static-auth-secret)). The default PiyuGuide app uses static credentials unless you implement the HMAC flow.
 
 ## 7. Start / Enable Service
 ```bash
@@ -132,6 +148,69 @@ Open a call → Go to `chrome://webrtc-internals`:
 | Works then freezes after network change | No ICE restart logic | Ensure JS calls createOffer({iceRestart:true}) |
 | 401 in coturn logs | Bad credentials | Match username/password with env values |
 | No relay candidates | Firewall or DNS issue | Confirm ports open; dig turn.yourdomain.com |
+
+## 12.1 DNS and TLS Quick Validation
+
+Run these on the TURN server (or any Linux host):
+
+```bash
+# DNS must resolve your TURN host
+dig +short turn.yourdomain.com
+
+# TLS listener should accept a handshake (SNI must match)
+openssl s_client -connect turn.yourdomain.com:5349 -servername turn.yourdomain.com -brief </dev/null
+
+# Verify listeners (expect 3478 UDP/TCP and 5349 TCP)
+ss -lntup | grep -E '(:3478|:5349)'
+
+# Live logs (look for allocations or 401 errors if creds mismatch)
+journalctl -u coturn -f
+```
+
+Common pitfalls:
+- DNS A record missing for `turn.yourdomain.com` (openssl will show “Name or service not known”).
+- TLS not bound on 5349 due to invalid/missing `cert`/`pkey` paths (no :5349 in `ss` output; coturn logs mention cert errors).
+- Auth mode mismatch: server uses `use-auth-secret` but app sends static username/password → 401 in logs and no allocations.
+
+### 12.2 Cert/Key Permissions for coturn
+On Ubuntu/Debian, coturn runs as user `turnserver`. Let’s Encrypt keys are readable by `root` only by default. If coturn can’t read the private key, it will silently skip the TLS listener on 5349. Fix one of these ways:
+
+Option A — Copy certs to a coturn-only directory
+```bash
+sudo mkdir -p /etc/turn
+sudo cp /etc/letsencrypt/live/turn.yourdomain.com/fullchain.pem /etc/turn/fullchain.pem
+sudo cp /etc/letsencrypt/live/turn.yourdomain.com/privkey.pem   /etc/turn/privkey.pem
+sudo chown root:turnserver /etc/turn/*.pem
+sudo chmod 644 /etc/turn/fullchain.pem
+sudo chmod 640 /etc/turn/privkey.pem
+
+# Update /etc/turnserver.conf
+cert=/etc/turn/fullchain.pem
+pkey=/etc/turn/privkey.pem
+```
+
+Option B — Grant group access to Let’s Encrypt key (advanced)
+```bash
+sudo usermod -a -G ssl-cert turnserver
+sudo chgrp ssl-cert /etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
+sudo chmod 640      /etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
+```
+Note: The files under `live/` are symlinks to `archive/`. Ensure permissions apply to the real file targets, or prefer Option A.
+
+Optional: Auto-copy on renew (deploy hook)
+```bash
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/10-coturn-copy.sh > /dev/null <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+SRC_DIR="/etc/letsencrypt/live/turn.yourdomain.com"
+DEST_DIR="/etc/turn"
+install -d -m 0750 -o root -g turnserver "$DEST_DIR"
+install -m 0644 -o root -g turnserver "$SRC_DIR/fullchain.pem" "$DEST_DIR/fullchain.pem"
+install -m 0640 -o root -g turnserver "$SRC_DIR/privkey.pem"   "$DEST_DIR/privkey.pem"
+systemctl reload-or-restart coturn || true
+SH
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/10-coturn-copy.sh
+```
 
 ## 13. Production Hardening
 - Set `no-tcp-relay` only if certain UDP always available (usually don't).
