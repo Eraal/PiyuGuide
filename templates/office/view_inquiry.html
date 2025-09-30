@@ -333,7 +333,7 @@
       </button>
     </div>
     
-    <form action="{{ url_for('office.update_inquiry_status', inquiry_id=inquiry.id) }}" method="post">
+  <form id="statusUpdateForm" action="{{ url_for('office.update_inquiry_status', inquiry_id=inquiry.id) }}" method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="inquiry_id" value="{{ inquiry.id }}" />
       
@@ -547,6 +547,33 @@
   if (updateBtn) updateBtn.addEventListener('click', openStatusModal);
   if (closeStatusModalBtn) closeStatusModalBtn.addEventListener('click', closeStatusModal);
   if (cancelStatusUpdateBtn) cancelStatusUpdateBtn.addEventListener('click', closeStatusModal);
+
+    // AJAX submit for status update to avoid JSON page navigation
+    const statusForm = document.getElementById('statusUpdateForm');
+    if (statusForm) {
+      statusForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const formData = new FormData(statusForm);
+        const url = statusForm.getAttribute('action');
+        try {
+          const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+          try { const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content'); if (csrf) headers['X-CSRFToken'] = csrf; } catch {}
+          const res = await fetch(url, { method: 'POST', body: formData, headers });
+          const json = await res.json();
+          if (json && json.success) {
+            // Update status badges/text in UI
+            const badge = document.querySelector('.inquiry-status-{{ inquiry.status }}');
+            if (badge) { badge.textContent = (json.new_status || '').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()); }
+            if (statusControlText) statusControlText.textContent = (json.new_status || '').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+            closeStatusModal();
+          } else {
+            alert(json?.message || 'Failed to update status');
+          }
+        } catch (err) {
+          alert('Network error while updating status');
+        }
+      });
+    }
     
   // Send message on form submit (with attachments)
     if (messageForm) {
