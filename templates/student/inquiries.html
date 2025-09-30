@@ -223,20 +223,7 @@
   .priority-low { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
   
   /* Animations */
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .slide-in-up {
-    animation: slideInUp 0.4s ease-out;
-  }
+    /* Removed page-load slide-in animations for better UX stability */
   
   @keyframes pulse-border {
     0%, 100% { border-color: #e2e8f0; }
@@ -287,7 +274,7 @@
 <div class="mb-6">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <!-- Total Inquiries -->
-        <div class="stats-card orange rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.1s">
+    <div class="stats-card orange rounded-xl sm:rounded-2xl p-4 sm:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Total</p>
@@ -301,7 +288,7 @@
         </div>
         
         <!-- Pending -->
-        <div class="stats-card yellow rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.2s">
+    <div class="stats-card yellow rounded-xl sm:rounded-2xl p-4 sm:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Pending</p>
@@ -315,7 +302,7 @@
         </div>
         
         <!-- In Progress -->
-        <div class="stats-card blue rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.3s">
+    <div class="stats-card blue rounded-xl sm:rounded-2xl p-4 sm:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">In Progress</p>
@@ -329,7 +316,7 @@
         </div>
         
         <!-- Resolved -->
-        <div class="stats-card green rounded-xl sm:rounded-2xl p-4 sm:p-6 slide-in-up" style="animation-delay: 0.4s">
+    <div class="stats-card green rounded-xl sm:rounded-2xl p-4 sm:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="stat-label text-[11px] sm:text-sm font-semibold text-gray-600 uppercase tracking-wider mb-1">Resolved</p>
@@ -345,7 +332,7 @@
 </div>
 
 <!-- Enhanced Filter Section -->
-<div class="filter-section rounded-2xl p-6 mb-8 slide-in-up" style="animation-delay: 0.5s">    <div class="flex items-center justify-between mb-4">
+<div class="filter-section rounded-2xl p-6 mb-8">    <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-bold text-gray-800 flex items-center">
             <i class="fas fa-filter mr-3 text-blue-600"></i>
             Filter & Search
@@ -412,8 +399,7 @@
     <!-- Inquiries Grid -->
     <div class="grid grid-cols-1 gap-3 sm:gap-4">
     {% for inquiry in inquiries %}
-        <div class="inquiry-card status-{{ inquiry.status }} rounded-xl sm:rounded-2xl p-4 sm:p-5 slide-in-up" 
-         data-anim-delay="{{ (loop.index * 0.1) }}s"
+    <div class="inquiry-card status-{{ inquiry.status }} rounded-xl sm:rounded-2xl p-4 sm:p-5" 
          data-href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}"
          role="link" tabindex="0">
             <!-- Compact messenger-style row -->
@@ -580,7 +566,7 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for office in offices %}
-    <div class="office-card rounded-2xl overflow-hidden slide-in-up" data-anim-delay="{{ (loop.index * 0.1) }}s">
+    <div class="office-card rounded-2xl overflow-hidden">
             <div class="p-6">
                 <!-- Office Header -->
                 <div class="flex items-start mb-4">
@@ -881,26 +867,7 @@
             });
         });
 
-        // Initialize animations for elements
-        const animatedElements = document.querySelectorAll('.slide-in-up');
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        });
-
-        animatedElements.forEach(el => {
-            // apply optional per-element delay
-            const delay = el.getAttribute('data-anim-delay');
-            if (delay) el.style.transitionDelay = delay;
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(30px)';
-            el.style.transition = 'all 0.6s ease';
-            observer.observe(el);
-        });
+        // Removed slide-in entry animations for a more stable UI/UX on navigation
 
         // card navigation via data-href
         document.querySelectorAll('[data-href]').forEach(el => {
