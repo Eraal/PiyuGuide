@@ -547,3 +547,77 @@ def handle_stop_typing(data):
         'inquiry_id': inquiry_id,
         'user_id': current_user.id
     }, room=room, include_self=False)
+
+
+@socketio.on('student_resolution_response', namespace='/chat')
+def handle_student_resolution_response(data):
+    """Handle student's confirmation or rejection after office marks inquiry as resolved.
+
+    Expects payload: { inquiry_id: int, confirmed: bool, message?: str }
+    Broadcasts result to the inquiry room so office can act (e.g., close inquiry on confirm).
+    """
+    try:
+        if not current_user.is_authenticated:
+            emit('error', {'message': 'Authentication required'})
+            return
+
+        inquiry_id = _extract_inquiry_id(data)
+        if not inquiry_id:
+            emit('error', {'message': 'Inquiry ID is required'})
+            return
+
+        inquiry = Inquiry.query.get(inquiry_id)
+        if not inquiry:
+            emit('error', {'message': 'Inquiry not found'})
+            return
+
+        # Only the owning student can respond
+        if current_user.role != 'student':
+            emit('error', {'message': 'Only students can confirm resolution'})
+            return
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if not student or inquiry.student_id != student.id:
+            emit('error', {'message': 'Access denied'})
+            return
+
+        confirmed = bool(data.get('confirmed'))
+        message = (data.get('message') or '').strip()
+        room = f"inquiry_{inquiry_id}"
+
+        user = User.query.get(current_user.id)
+        payload = {
+            'inquiry_id': inquiry_id,
+            'student_id': current_user.id,
+            'student_name': (user.get_full_name() if user else 'Student'),
+            'confirmed': confirmed,
+            'message': message,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+        # Notify all participants in the inquiry room
+        if confirmed:
+            emit('resolution_confirmed', payload, room=room)
+        else:
+            emit('resolution_needs_clarification', payload, room=room)
+
+        # Optional: create an office notification so staff who aren't on this page are informed
+        try:
+            office_admins = OfficeAdmin.query.filter_by(office_id=inquiry.office_id).all()
+            note_msg = 'Student confirmed resolution' if confirmed else 'Student needs more clarification'
+            for admin in office_admins:
+                db.session.add(Notification(
+                    user_id=admin.user_id,
+                    title='Inquiry Resolution Feedback',
+                    message=f"{note_msg} for inquiry '{inquiry.subject}'.",
+                    notification_type='resolution_feedback',
+                    inquiry_id=inquiry.id,
+                    source_office_id=inquiry.office_id,
+                    is_read=False
+                ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            # Non-fatal if notification creation fails
+            pass
+    except Exception as e:
+        emit('error', {'message': f'Failed to process response: {str(e)}'})

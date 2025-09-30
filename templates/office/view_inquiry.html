@@ -182,7 +182,11 @@
         <div class="px-6 py-4 border-b flex items-center justify-between flex-shrink-0 bg-gradient-to-r from-white to-sky-50/40">
           <div class="flex items-center gap-3">
             <h2 class="text-base lg:text-lg font-semibold text-slate-800">Conversation</h2>
-            <!-- connection-status will be injected here -->
+            <!-- Interactive status control -->
+            <button id="statusControlBtn" class="ml-2 inline-flex items-center text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200" title="Update status">
+              <i class="fas fa-flag mr-1 text-sky-600"></i>
+              <span id="statusControlText">{{ inquiry.status|replace('_',' ')|title }}</span>
+            </button>
           </div>
           <a href="{{ url_for('office.office_inquiries') }}" class="text-sky-700 hover:text-sky-900 text-sm flex items-center">
             <i class="fas fa-arrow-left mr-1"></i> Back to Inquiries
@@ -331,6 +335,7 @@
     
     <form action="{{ url_for('office.update_inquiry_status', inquiry_id=inquiry.id) }}" method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="inquiry_id" value="{{ inquiry.id }}" />
       
       <div class="mb-4">
         <label for="status" class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
@@ -369,7 +374,8 @@
     const messageInput = document.getElementById('messageInput');
     const messageForm = document.getElementById('messageForm');
     const sendButton = document.getElementById('sendButton');
-    const connectionStatus = document.getElementById('connection-status');
+  const statusControlBtn = document.getElementById('statusControlBtn');
+  const statusControlText = document.getElementById('statusControlText');
   const scrollBtn = document.getElementById('scrollToBottomBtn');
   const attachmentInput = document.getElementById('replyAttachments');
   const attachmentPreview = document.getElementById('replyAttachmentPreview');
@@ -378,14 +384,7 @@
     document.body.setAttribute('data-user-id', '{{ current_user.id }}');
     
     // Set up event handlers
-    chatManager.onConnectionStatusChange(function(status) {
-      if (connectionStatus) {
-        connectionStatus.textContent = status ? 'Connected' : 'Disconnected';
-        connectionStatus.className = status 
-          ? 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2' 
-          : 'text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full ml-2';
-      }
-    });
+    // connection status pill removed from UI for cleaner UX
     
     chatManager.onMessageReceived(function(message) {
       // Create and add message to the UI
@@ -493,19 +492,7 @@
         console.log('Connected to chat server');
         chatManager.joinInquiryRoom(inquiryId);
         
-        // Add a small connection status indicator to the header
-        const conversationHeader = document.querySelector('.px-6.py-4.border-b.flex.items-center.justify-between');
-        if (conversationHeader) {
-          const statusIndicator = document.createElement('span');
-          statusIndicator.id = 'connection-status';
-          statusIndicator.className = 'text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full ml-2';
-          statusIndicator.textContent = 'Connected';
-          
-          const headerTitle = conversationHeader.querySelector('h2');
-          if (headerTitle) {
-            headerTitle.parentNode.insertBefore(statusIndicator, headerTitle.nextSibling);
-          }
-        }
+        // no-op: removed inline connection status injection
       })
       .catch(function(error) {
         console.error('Failed to connect to chat server:', error);
@@ -548,6 +535,18 @@
       mo.observe(container, { childList: true, subtree: true });
     }
     setupReadObserver();
+
+  // Open status modal when clicking interactive control
+  const updateBtn = document.getElementById('updateStatusBtn');
+  const statusModal = document.getElementById('statusUpdateModal');
+  const closeStatusModalBtn = document.getElementById('closeStatusModal');
+  const cancelStatusUpdateBtn = document.getElementById('cancelStatusUpdate');
+  function openStatusModal(){ if (statusModal) statusModal.classList.remove('hidden'); }
+  function closeStatusModal(){ if (statusModal) statusModal.classList.add('hidden'); }
+  if (statusControlBtn) statusControlBtn.addEventListener('click', openStatusModal);
+  if (updateBtn) updateBtn.addEventListener('click', openStatusModal);
+  if (closeStatusModalBtn) closeStatusModalBtn.addEventListener('click', closeStatusModal);
+  if (cancelStatusUpdateBtn) cancelStatusUpdateBtn.addEventListener('click', closeStatusModal);
     
   // Send message on form submit (with attachments)
     if (messageForm) {
@@ -927,6 +926,58 @@
     window.addEventListener('beforeunload', function() {
       chatManager.disconnect();
     });
+
+    // Listen for student's confirmation/clarification on resolution
+    if (chatManager && chatManager.socket) {
+      chatManager.socket.on('resolution_confirmed', function(data){
+        try {
+          // Enable a quick close call for admin
+          const ctrl = statusControlBtn; if (!ctrl) return;
+          ctrl.disabled = false;
+          ctrl.title = 'Close inquiry (student confirmed)';
+          ctrl.classList.remove('bg-slate-100');
+          ctrl.classList.add('bg-green-100','text-green-800');
+          statusControlText && (statusControlText.textContent = 'Close');
+          ctrl.onclick = async function(){
+            ctrl.disabled = true;
+            try {
+              const headers = { 'X-Requested-With':'XMLHttpRequest' };
+              try { const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content'); if (csrf) headers['X-CSRFToken'] = csrf; } catch {}
+              const res = await fetch(`{{ url_for('office.api_close_inquiry', inquiry_id=inquiry.id) }}`, { method: 'POST', headers });
+              const json = await res.json();
+              if (json && json.success) {
+                statusControlText && (statusControlText.textContent = 'Closed');
+                ctrl.classList.remove('bg-green-100');
+                ctrl.classList.add('bg-red-100','text-red-800');
+              } else {
+                alert(json?.message || 'Failed to close inquiry');
+                ctrl.disabled = false;
+              }
+            } catch(e){ ctrl.disabled = false; alert('Network error closing inquiry'); }
+          };
+        } catch(e) { console.log(e); }
+      });
+      chatManager.socket.on('resolution_needs_clarification', function(data){
+        try {
+          // Revert control visuals to in_progress
+          const ctrl = statusControlBtn; if (!ctrl) return;
+          ctrl.disabled = false;
+          ctrl.title = 'Update status';
+          ctrl.classList.remove('bg-green-100','text-green-800');
+          ctrl.classList.add('bg-blue-100','text-blue-800');
+          statusControlText && (statusControlText.textContent = 'In Progress');
+        } catch(e) {}
+      });
+      chatManager.socket.on('inquiry_closed', function(data){
+        try {
+          const ctrl = statusControlBtn; if (!ctrl) return;
+          statusControlText && (statusControlText.textContent = 'Closed');
+          ctrl.classList.remove('bg-green-100','bg-blue-100');
+          ctrl.classList.add('bg-red-100','text-red-800');
+          ctrl.disabled = true;
+        } catch(e) {}
+      });
+    }
   });
 </script>
 

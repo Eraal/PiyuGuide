@@ -376,6 +376,19 @@ def update_inquiry_status():
             # Non-fatal if websockets are not available
             pass
 
+        # If status changed to resolved, prompt the student in real time with a modal
+        try:
+            if (new_status or '').lower() == 'resolved':
+                room = f'inquiry_{inquiry.id}'
+                socketio.emit('inquiry_marked_resolved', {
+                    'inquiry_id': inquiry.id,
+                    'office_name': office_admin.office.name,
+                    'subject': inquiry.subject,
+                    'message': note or ''
+                }, room=room, namespace='/chat')
+        except Exception:
+            pass
+
         # Emit to office namespace so other admins see status change & badge updates
         try:
             socketio.emit(
@@ -400,6 +413,36 @@ def update_inquiry_status():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Database error: {str(e)}'})
+
+
+@office_bp.route('/api/inquiry/<int:inquiry_id>/close', methods=['POST'])
+@login_required
+@role_required(['office_admin'])
+def api_close_inquiry(inquiry_id: int):
+    """Close an inquiry after student confirmed resolution."""
+    office_admin = OfficeAdmin.query.filter_by(user_id=current_user.id).first()
+    if not office_admin:
+        return jsonify({'success': False, 'message': 'Office admin not found'}), 403
+
+    inquiry = Inquiry.query.filter_by(id=inquiry_id, office_id=office_admin.office_id).first()
+    if not inquiry:
+        return jsonify({'success': False, 'message': 'Inquiry not found or access denied'}), 404
+
+    prev = inquiry.status
+    inquiry.status = 'closed'
+    try:
+        db.session.commit()
+        from app.extensions import socketio
+        # Let room know it is closed
+        socketio.emit('inquiry_closed', {
+            'inquiry_id': inquiry.id,
+            'old_status': prev,
+            'new_status': 'closed'
+        }, room=f'inquiry_{inquiry.id}', namespace='/chat')
+        return jsonify({'success': True, 'message': 'Inquiry closed'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
 
 @office_bp.route('/delete-inquiry/<int:inquiry_id>', methods=['POST'])
