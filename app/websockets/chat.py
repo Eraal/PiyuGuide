@@ -228,6 +228,14 @@ def handle_send_message(data):
     if not has_access:
         emit('error', {'message': 'Access denied to this inquiry'})
         return
+
+    # Block sending if inquiry is closed
+    try:
+        if getattr(inquiry, 'status', '').lower() == 'closed':
+            emit('error', {'message': 'This inquiry is closed. Further messages are disabled.'})
+            return
+    except Exception:
+        pass
     
     try:
         # Determine if this is the student's first message in this inquiry

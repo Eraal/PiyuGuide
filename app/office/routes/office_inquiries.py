@@ -627,6 +627,10 @@ def api_send_message(inquiry_id):
     if not inquiry:
         return jsonify({'success': False, 'message': 'Inquiry not found or access denied'}), 404
 
+    # Prevent sending if inquiry is closed
+    if (inquiry.status or '').lower() == 'closed':
+        return jsonify({'success': False, 'message': 'This inquiry is closed. Further messages are disabled.'}), 400
+
     content = (request.form.get('message') or '').strip()
     files = request.files.getlist('attachments') if 'attachments' in request.files else []
     if not content and not any(f.filename for f in files):

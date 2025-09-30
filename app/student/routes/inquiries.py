@@ -677,6 +677,10 @@ def api_send_message(inquiry_id):
         student = Student.query.filter_by(user_id=current_user.id).first_or_404()
         inquiry = Inquiry.query.filter_by(id=inquiry_id, student_id=student.id).first_or_404()
 
+        # Prevent sending if inquiry is closed
+        if (inquiry.status or '').lower() == 'closed':
+            return jsonify({'success': False, 'message': 'This inquiry is closed. Further messages are disabled.'}), 400
+
         content = (request.form.get('message') or '').strip()
         files = request.files.getlist('attachments') if 'attachments' in request.files else []
 

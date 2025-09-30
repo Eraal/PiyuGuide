@@ -836,6 +836,18 @@
 		};
 		resYes && resYes.addEventListener('click', function(){ sendStudentResponse(true); closeRes(); });
 		resNo && resNo.addEventListener('click', function(){ sendStudentResponse(false); closeRes(); });
+
+		// Disable input once inquiry is closed
+		if (chatManager && chatManager.socket) {
+			chatManager.socket.on('inquiry_closed', function(data){
+				try {
+					const input = document.getElementById('messageInput');
+					const btn = document.getElementById('sendButton');
+					if (input) { input.disabled = true; input.placeholder = 'This inquiry is closed. Messaging disabled.'; }
+					if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); }
+				} catch(e) {}
+			});
+		}
 	});
 </script>
 
