@@ -28,6 +28,7 @@
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
+        cursor: pointer; /* Make the whole card feel clickable */
     }
     
     .office-card::before {
@@ -340,7 +341,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="office-grid">
                 {% for office in offices %}
-                <div class="office-card fade-in-up rounded-2xl shadow-lg hover:shadow-xl group" data-office-id="{{ office.id }}">
+                <div class="office-card fade-in-up rounded-2xl shadow-lg hover:shadow-xl group" data-office-id="{{ office.id }}" data-detail-url="{{ url_for('student.view_office_detail', office_id=office.id) }}">
                     <div class="h-full flex flex-col">
                         <!-- Card Header -->
                         <div class="p-6 pb-4">
@@ -408,23 +409,17 @@
                         <!-- Action Buttons -->
                         <div class="p-6 pt-0 mt-auto">
                             <div class="flex gap-3">
-                                <a href="{{ url_for('student.view_office_detail', office_id=office.id) }}" 
-                                   class="flex-1 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 px-4 py-3 rounded-xl font-medium transition-all duration-200 text-center hover:shadow-lg group-hover:scale-105 flex items-center justify-center">
-                                    <i class="fas fa-info-circle mr-2"></i>
-                                    <span>View Details</span>
+                                <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}"
+                                   class="btn-inquiry flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-200 text-center hover:shadow-lg group-hover:scale-105 flex items-center justify-center">
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    <span>Inquiry</span>
                                 </a>
-                                
+
                                 {% if office.supports_video %}
-                                <a href="{{ url_for('student.request_counseling_session') }}?office_id={{ office.id }}" 
-                                   class="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 text-center hover:shadow-lg group-hover:scale-105 flex items-center justify-center">
+                                <a href="{{ url_for('student.request_counseling_session') }}?office_id={{ office.id }}"
+                                   class="btn-schedule flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 text-center hover:shadow-lg group-hover:scale-105 flex items-center justify-center">
                                     <i class="fas fa-calendar-plus mr-2"></i>
                                     <span>Schedule</span>
-                                </a>
-                                {% else %}
-                                <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}" 
-                                   class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 text-center hover:shadow-lg group-hover:scale-105 flex items-center justify-center">
-                                    <i class="fas fa-paper-plane mr-2"></i>
-                                    <span>Inquire</span>
                                 </a>
                                 {% endif %}
                             </div>
@@ -875,11 +870,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Add loading states to action buttons
-    document.querySelectorAll('a[href*="schedule"], a[href*="inquire"], a[href*="detail"]').forEach(link => {
-        link.addEventListener('click', function() {
-            const icon = this.querySelector('i');
-            if (icon && !this.href.includes('#')) {
+    // Make the whole card clickable to open details, except when clicking on specific buttons
+    document.querySelectorAll('.office-card').forEach(card => {
+        const detailUrl = card.getAttribute('data-detail-url');
+        if (!detailUrl) return;
+        card.addEventListener('click', (e) => {
+            // Ignore clicks coming from buttons/links inside the card
+            const target = e.target;
+            if (target.closest('a') || target.closest('button')) {
+                return; // let the inner control handle its own navigation
+            }
+            // Navigate to office detail
+            window.location.href = detailUrl;
+        });
+    });
+
+    // Prevent card click when pressing the Inquiry or Schedule buttons and add subtle loading state
+    document.querySelectorAll('.btn-inquiry, .btn-schedule').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const icon = btn.querySelector('i');
+            if (icon) {
                 icon.classList.add('fa-spinner', 'fa-spin');
             }
         });
