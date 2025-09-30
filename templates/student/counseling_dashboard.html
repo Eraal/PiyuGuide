@@ -289,8 +289,8 @@
         </div>
     </div>
 
-    <!-- Enhanced Stats Overview (mobile-optimized 2-col grid) -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 md:mb-8">
+    <!-- Enhanced Stats Overview (Simplified: Total, Upcoming, Pending) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 md:mb-8">
         <!-- Total Sessions Card -->
         <div class="stats-card blue bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
             <div class="flex items-center justify-between">
@@ -351,80 +351,9 @@
             </div>
         </div>
         
-        <!-- Completed Sessions Card -->
-        <div class="stats-card indigo bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="flex items-center space-x-3 mb-2">
-                        <div class="w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-lg md:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <i class="fas fa-check-circle text-indigo-600 text-lg md:text-xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs md:text-sm font-medium text-gray-500">Completed</p>
-                            <h3 class="text-xl md:text-2xl font-bold text-indigo-600">{{ stats.completed }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-indigo-600 opacity-20 group-hover:opacity-40 transition-opacity duration-300">
-                    <i class="fas fa-trophy text-2xl md:text-3xl"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Additional Stats Row -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <!-- Confirmed Sessions -->
-        <div class="stats-card blue bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="flex items-center space-x-3 mb-2">
-                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <i class="fas fa-calendar-check text-blue-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Confirmed</p>
-                            <h3 class="text-2xl font-bold text-blue-600">{{ stats.confirmed }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         
-        <!-- Cancelled Sessions -->
-        <div class="stats-card red bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="flex items-center space-x-3 mb-2">
-                        <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <i class="fas fa-times-circle text-red-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Cancelled</p>
-                            <h3 class="text-2xl font-bold text-red-600">{{ stats.cancelled }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-                        
-        <!-- No Show Sessions -->
-        <div class="stats-card purple bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="flex items-center space-x-3 mb-2">
-                        <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <i class="fas fa-user-times text-purple-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">No Show</p>
-                            <h3 class="text-2xl font-bold text-purple-600">{{ stats.no_show }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
+    <!-- Removed extra counters: Confirmed, Completed, Cancelled, No Show to reduce clutter -->
     
     <!-- Enhanced Filter Section (compact on mobile) -->
     <div class="filter-section rounded-2xl shadow-lg mb-6 md:mb-8 p-4 md:p-6">
@@ -550,7 +479,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
                     {% for session in sessions %}
-                    <tr class="table-row-hover transition-all duration-200" data-session-id="{{ session.id }}">
+                    <tr class="table-row-hover transition-all duration-200 cursor-pointer" data-session-id="{{ session.id }}" data-href="{{ url_for('student.view_session', session_id=session.id) }}" tabindex="0">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0 h-10 w-10">
@@ -910,10 +839,22 @@
                 this.style.transform = 'translateX(4px)';
                 this.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
             });
-            
             row.addEventListener('mouseleave', function() {
                 this.style.transform = 'translateX(0)';
                 this.style.boxShadow = 'none';
+            });
+            // Make desktop rows clickable to view details
+            row.addEventListener('click', function(e) {
+                if (e.target.closest('a')) return; // ignore clicks on action links
+                const href = row.getAttribute('data-href');
+                if (href) window.location.href = href;
+            });
+            row.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const href = row.getAttribute('data-href');
+                    if (href) window.location.href = href;
+                }
             });
         });
 
