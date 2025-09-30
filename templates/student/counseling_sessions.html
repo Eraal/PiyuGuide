@@ -317,70 +317,56 @@
     </div>
 </div>
 
-<!-- Enhanced Stats Section -->
+<!-- Enhanced Stats Section (Simplified) -->
 <div class="mb-8">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Upcoming Sessions -->
-        <div class="stats-card upcoming rounded-2xl p-6 slide-in-up" style="animation-delay: 0.1s">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-1">Upcoming Sessions</p>
-                    <h3 class="text-3xl font-bold text-green-600">
-                        {% set upcoming_count = sessions|selectattr('status', 'in', ['pending', 'confirmed', 'in_progress'])|selectattr('scheduled_at', '>', now)|list|length %}
-                        {{ upcoming_count }}
-                    </h3>
-                </div>
-                <div class="bg-green-100 p-4 rounded-2xl">
-                    <i class="fas fa-clock text-green-600 text-2xl"></i>
-                </div>
-            </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Total Sessions -->
+    <div class="stats-card rounded-2xl p-6 slide-in-up" style="animation-delay: 0.05s">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">Total Sessions</p>
+          <h3 class="text-3xl font-bold text-gray-800">
+            {{ sessions|length }}
+          </h3>
         </div>
-        
-        <!-- Pending Sessions -->
-        <div class="stats-card pending rounded-2xl p-6 slide-in-up" style="animation-delay: 0.2s">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-1">Pending Approval</p>
-                    <h3 class="text-3xl font-bold text-yellow-600">
-                        {{ sessions|selectattr('status', 'equalto', 'pending')|list|length }}
-                    </h3>
-                </div>
-                <div class="bg-yellow-100 p-4 rounded-2xl">
-                    <i class="fas fa-hourglass-half text-yellow-600 text-2xl"></i>
-                </div>
-            </div>
+        <div class="bg-gray-100 p-4 rounded-2xl">
+          <i class="fas fa-list text-gray-600 text-2xl"></i>
         </div>
-        
-        <!-- Confirmed Sessions -->
-        <div class="stats-card confirmed rounded-2xl p-6 slide-in-up" style="animation-delay: 0.3s">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-1">Confirmed</p>
-                    <h3 class="text-3xl font-bold text-blue-600">
-                        {{ sessions|selectattr('status', 'equalto', 'confirmed')|list|length }}
-                    </h3>
-                </div>
-                <div class="bg-blue-100 p-4 rounded-2xl">
-                    <i class="fas fa-calendar-check text-blue-600 text-2xl"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Completed Sessions -->
-        <div class="stats-card completed rounded-2xl p-6 slide-in-up" style="animation-delay: 0.4s">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-1">Completed</p>
-                    <h3 class="text-3xl font-bold text-purple-600">
-                        {{ sessions|selectattr('status', 'equalto', 'completed')|list|length }}
-                    </h3>
-                </div>
-                <div class="bg-purple-100 p-4 rounded-2xl">
-                    <i class="fas fa-check-circle text-purple-600 text-2xl"></i>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+
+    <!-- Upcoming Sessions -->
+    <div class="stats-card upcoming rounded-2xl p-6 slide-in-up" style="animation-delay: 0.15s">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">Upcoming</p>
+          <h3 class="text-3xl font-bold text-green-600">
+            {% set upcoming_count = sessions|selectattr('status', 'in', ['pending', 'confirmed', 'in_progress'])|selectattr('scheduled_at', '>', now)|list|length %}
+            {{ upcoming_count }}
+          </h3>
+        </div>
+        <div class="bg-green-100 p-4 rounded-2xl">
+          <i class="fas fa-clock text-green-600 text-2xl"></i>
+        </div>
+      </div>
+    </div>
+        
+    <!-- Pending Sessions -->
+    <div class="stats-card pending rounded-2xl p-6 slide-in-up" style="animation-delay: 0.25s">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">Pending</p>
+          <h3 class="text-3xl font-bold text-yellow-600">
+            {{ sessions|selectattr('status', 'equalto', 'pending')|list|length }}
+          </h3>
+        </div>
+        <div class="bg-yellow-100 p-4 rounded-2xl">
+          <i class="fas fa-hourglass-half text-yellow-600 text-2xl"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Note: Confirmed/Completed/Cancelled/No Show counters removed to reduce clutter -->
 </div>
 
 <!-- Enhanced Tabs -->
