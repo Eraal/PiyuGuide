@@ -190,8 +190,10 @@
       <tbody id="inquiryTable" class="bg-white divide-y divide-gray-100">
         {% for inquiry in inquiries %}
         <tr
-          class="inquiry-row hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 {% if inquiry.status == 'pending' %}border-l-yellow-400 bg-yellow-50/30{% elif inquiry.status == 'in_progress' %}border-l-blue-400 bg-blue-50/30{% elif inquiry.status == 'resolved' %}border-l-green-400 bg-green-50/30{% else %}border-l-gray-400{% endif %}"
+          class="inquiry-row cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 {% if inquiry.status == 'pending' %}border-l-yellow-400 bg-yellow-50/30{% elif inquiry.status == 'in_progress' %}border-l-blue-400 bg-blue-50/30{% elif inquiry.status == 'resolved' %}border-l-green-400 bg-green-50/30{% else %}border-l-gray-400{% endif %}"
           data-inquiry-id="{{ inquiry.id }}"
+          data-detail-url="{{ url_for('office.view_inquiry', inquiry_id=inquiry.id) }}"
+          tabindex="0" aria-label="Open inquiry {{ inquiry.id }} details"
         >
           <td class="py-5 px-6 whitespace-nowrap">
             <div class="flex items-center">
@@ -948,16 +950,45 @@
       }
     });
 
-    // Add row highlighting on hover for better UX
+    // Make rows clickable to open inquiry details, without hijacking inner action buttons/links
     const inquiryRows = document.querySelectorAll('.inquiry-row');
     inquiryRows.forEach(row => {
+      // Hover micro-animation
       row.addEventListener('mouseenter', function() {
         this.style.transform = 'scale(1.01)';
         this.style.transition = 'transform 0.2s ease-in-out';
       });
-      
       row.addEventListener('mouseleave', function() {
         this.style.transform = 'scale(1)';
+      });
+
+      // Prevent row navigation when clicking actionable elements
+      row.addEventListener('click', function(e) {
+        const target = e.target;
+        // If the click is on an interactive child, let it handle
+        if (target.closest('a, button, .updateStatusBtn, .deleteInquiryBtn, [role="button"]')) {
+          return;
+        }
+        const url = this.getAttribute('data-detail-url');
+        if (url) {
+          window.location.href = url;
+        }
+      });
+
+      // Keyboard accessibility: Enter/Space opens detail
+      row.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          // Don't trigger when focused on an inner control
+          const active = document.activeElement;
+          if (active && active.closest('a, button, .updateStatusBtn, .deleteInquiryBtn, [role="button"]')) {
+            return;
+          }
+          e.preventDefault();
+          const url = this.getAttribute('data-detail-url');
+          if (url) {
+            window.location.href = url;
+          }
+        }
       });
     });
 
