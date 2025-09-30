@@ -622,6 +622,15 @@ def get_older_messages(inquiry_id):
         for message in messages:
             sender = User.query.get(message.sender_id)
             is_student = sender.id == current_user.id if sender else False
+            # build avatar url if available
+            try:
+                avatar_url = None
+                if sender and getattr(sender, 'profile_pic_path', None):
+                    base = url_for('static', filename=sender.profile_pic_path)
+                    ver = getattr(sender, 'profile_pic', None)
+                    avatar_url = f"{base}?v={ver}" if ver else base
+            except Exception:
+                avatar_url = None
             # serialize attachments if present
             atts = []
             try:
@@ -641,6 +650,7 @@ def get_older_messages(inquiry_id):
                 'timestamp': message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'sender_name': sender.get_full_name() if sender else 'Unknown',
                 'is_student': is_student,
+                'sender_avatar_url': avatar_url,
                 'status': message.status,
                 'attachments': atts
             })
@@ -737,6 +747,7 @@ def api_send_message(inquiry_id):
             'sender_id': current_user.id,
             'sender_name': sender.get_full_name() if sender else 'Student',
             'sender_role': 'student',
+            'sender_avatar_url': (url_for('static', filename=sender.profile_pic_path) + (f"?v={sender.profile_pic}" if getattr(sender,'profile_pic',None) else '')) if (sender and getattr(sender,'profile_pic_path',None)) else None,
             'timestamp': new_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'is_current_user': True,
             'status': new_message.status

@@ -51,7 +51,7 @@
 
 {% block content %}
 {% set si = student_info if student_info is defined else {} %}
-<div class="container mx-auto h-full flex flex-col px-4 lg:px-6" data-inquiry-id="{{ inquiry.id }}" data-chat-container="true">
+<div class="container mx-auto h-full flex flex-col px-4 lg:px-6" data-inquiry-id="{{ inquiry.id }}" data-chat-container="true"{% if current_user.profile_pic_path %} data-current-avatar-url="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"{% endif %}>
   <!-- Main Content Grid -->
   <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0 py-4">
     <!-- Left Column - Inquiry Details -->
@@ -205,7 +205,11 @@
               <div class="msg-row {% if message.sender_id == current_user.id %}outgoing{% else %}incoming{% endif %}">
                 {% if message.sender_id != current_user.id %}
                 <div class="chat-avatar incoming mr-2">
+                  {% if message.sender and message.sender.profile_pic_path %}
+                  <img src="{{ url_for('static', filename=message.sender.profile_pic_path) }}?v={{ message.sender.profile_pic or '' }}" alt="Avatar" class="w-full h-full object-cover rounded-full" />
+                  {% else %}
                   {{ message.sender.first_name[0] }}{{ message.sender.last_name[0] }}
+                  {% endif %}
                 </div>
                 {% endif %}
        <div class="message-bubble {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}"
@@ -250,7 +254,11 @@
                 </div>
                 {% if message.sender_id == current_user.id %}
                 <div class="chat-avatar outgoing ml-2">
+                  {% if current_user.profile_pic_path %}
+                  <img src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}" alt="Avatar" class="w-full h-full object-cover rounded-full" />
+                  {% else %}
                   {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                  {% endif %}
                 </div>
                 {% endif %}
               </div>
@@ -711,10 +719,15 @@
       if (!isSentByMe) {
         const avatar = document.createElement('div');
         avatar.className = 'chat-avatar incoming mr-2';
-        try {
-          const initials = (message.sender_name || '').trim().split(' ').map(n => n[0]).join('').substring(0,2) || '?';
-          avatar.textContent = initials;
-        } catch { avatar.textContent = '?'; }
+        const url = message.sender_avatar_url;
+        if (url) {
+          const img = document.createElement('img'); img.src = url; img.alt = 'Avatar'; img.className = 'w-full h-full object-cover rounded-full'; avatar.appendChild(img);
+        } else {
+          try {
+            const initials = (message.sender_name || '').trim().split(' ').map(n => n[0]).join('').substring(0,2) || '?';
+            avatar.textContent = initials;
+          } catch { avatar.textContent = '?'; }
+        }
         wrapper.appendChild(avatar);
       }
 
@@ -797,7 +810,12 @@
       if (isSentByMe) {
         const avatar = document.createElement('div');
         avatar.className = 'chat-avatar outgoing ml-2';
-        avatar.textContent = '{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}';
+        const myUrl = document.querySelector('[data-current-avatar-url]')?.getAttribute('data-current-avatar-url');
+        if (myUrl) {
+          const img = document.createElement('img'); img.src = myUrl; img.alt = 'My Avatar'; img.className = 'w-full h-full object-cover rounded-full'; avatar.appendChild(img);
+        } else {
+          avatar.textContent = '{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}';
+        }
         wrapper.appendChild(avatar);
       }
       return wrapper;
@@ -882,6 +900,7 @@
                   sender_name: msg.sender_name,
                   sender_role: msg.is_student ? 'student' : 'office_admin',
           timestamp: msg.timestamp,
+          sender_avatar_url: msg.sender_avatar_url || null,
           attachments: Array.isArray(msg.attachments) ? msg.attachments : []
                 };
                 frag.appendChild(createMessageElement(enriched));

@@ -651,6 +651,7 @@ def api_send_message(inquiry_id):
             'sender_id': current_user.id,
             'sender_name': sender.get_full_name() if sender else 'Office',
             'sender_role': 'office_admin',
+            'sender_avatar_url': (url_for('static', filename=sender.profile_pic_path) + (f"?v={sender.profile_pic}" if getattr(sender,'profile_pic',None) else '')) if (sender and getattr(sender,'profile_pic_path',None)) else None,
             'timestamp': new_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'is_current_user': True,
             'status': new_message.status
@@ -726,6 +727,15 @@ def get_older_messages(inquiry_id):
             except Exception:
                 atts = []
             
+            # build avatar url
+            try:
+                avatar_url = None
+                if sender and getattr(sender, 'profile_pic_path', None):
+                    base = url_for('static', filename=sender.profile_pic_path)
+                    ver = getattr(sender, 'profile_pic', None)
+                    avatar_url = f"{base}?v={ver}" if ver else base
+            except Exception:
+                avatar_url = None
             messages_data.append({
                 'id': message.id,
                 'content': message.content,
@@ -733,6 +743,7 @@ def get_older_messages(inquiry_id):
                 'sender_id': message.sender_id,
                 'sender_name': sender.get_full_name() if sender else 'Unknown',
                 'sender_role': sender_role,
+                'sender_avatar_url': avatar_url,
                 'is_student': is_student,
                 'status': message.status,
                 'attachments': atts

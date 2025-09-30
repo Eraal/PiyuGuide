@@ -36,7 +36,10 @@ https://piyuguide.live/super-admin/login
 ON DEPLOYMENT COMMAND
 
 cd /opt/piyuguide
-source venv/bin/activate
+source venv/bin/
+
+git fetch --all
+git merge origin/master
 
 sudo nginx -t
 sudo systemctl reload nginx

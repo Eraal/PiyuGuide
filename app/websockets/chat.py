@@ -1,5 +1,5 @@
 from flask_socketio import emit, join_room, leave_room, disconnect
-from flask import request, session
+from flask import request, session, url_for
 from flask_login import current_user
 from app.extensions import socketio, db
 from app.models import User, InquiryMessage, Inquiry, Student, Office, OfficeAdmin, Notification, InquiryConcern, OfficeConcernType
@@ -33,6 +33,20 @@ def _extract_inquiry_id(data) -> int | None:
     except Exception:
         pass
     return None
+
+def _avatar_url_for_user(user) -> str | None:
+    """Build a cache-busted static URL for a user's profile picture, or None."""
+    try:
+        if not user:
+            return None
+        path = getattr(user, 'profile_pic_path', None) or (user.get_profile_pic_path() if hasattr(user, 'get_profile_pic_path') else None)
+        if not path:
+            return None
+        base = url_for('static', filename=path)
+        ver = getattr(user, 'profile_pic', None)
+        return f"{base}?v={ver}" if ver else base
+    except Exception:
+        return None
 
 @socketio.on('connect', namespace='/chat')
 def handle_connect():
@@ -294,6 +308,7 @@ def handle_send_message(data):
             'sender_id': current_user.id,
             'sender_name': sender.get_full_name(),
             'sender_role': current_user.role,
+            'sender_avatar_url': _avatar_url_for_user(sender),
             'timestamp': new_message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'is_current_user': True,  # This will be false for receivers
             'status': new_message.status
@@ -355,6 +370,7 @@ def handle_send_message(data):
                         'sender_id': office_sender.id if office_sender else None,
                         'sender_name': office_sender.get_full_name() if office_sender else (office.name if office else 'Office'),
                         'sender_role': 'office_admin',
+                        'sender_avatar_url': _avatar_url_for_user(office_sender) if office_sender else None,
                         'timestamp': auto_msg.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                         'is_current_user': False,
                         'status': auto_msg.status
