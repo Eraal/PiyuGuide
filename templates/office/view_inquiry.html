@@ -989,6 +989,9 @@
           const ccDismiss = document.getElementById('closeConfirmDismiss');
           const openCC = () => ccModal && ccModal.classList.remove('hidden');
           const closeCC = () => ccModal && ccModal.classList.add('hidden');
+          // open immediately on real-time event
+          openCC();
+          // keep control clickable to reopen if it’s dismissed
           ctrl.onclick = openCC;
           ccDismiss && ccDismiss.addEventListener('click', closeCC);
           ccNo && ccNo.addEventListener('click', closeCC);
