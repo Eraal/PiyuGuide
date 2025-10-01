@@ -36,7 +36,7 @@ https://piyuguide.live/super-admin/login
 ON DEPLOYMENT COMMAND
 
 cd /opt/piyuguide
-source venv/bin/
+source venv/bin/activate
 
 git fetch --all
 git merge origin/master

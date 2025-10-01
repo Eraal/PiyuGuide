@@ -687,6 +687,7 @@
           </a>
 
           <a
+            id="nav-notifications"
             href="{{ url_for('office.office_notifications') }}"
             class="sidebar-item flex items-center px-4 py-3 {% if request.endpoint == 'office.office_notifications' %}active-nav{% else %}text-gray-700 hover:text-green-700{% endif %}"
           >
@@ -1403,128 +1404,7 @@
     })();
     </script>
 
-    <!-- Persist sidebar counters across navigations -->
-    <script>
-      (function(){
-        if (!window.location.pathname.startsWith('/office')) return;
-
-        const LS_KEY = 'officeSidebarCounts';
-        function loadCounts(){
-          try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(_) { return {}; }
-        }
-        function saveCounts(data){
-          try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(_) {}
-        }
-        function setBadge(el, value, colorClass){
-          if (!el) return;
-          // Find existing badge span after the flex grow area
-          let badge = el.querySelector('.counter-badge');
-          if (!badge) {
-            // Only render if value > 0 to avoid clutter
-            badge = document.createElement('span');
-            badge.className = `ml-auto counter-badge ${colorClass}`;
-            el.appendChild(badge);
-          }
-          const v = Math.max(0, parseInt(value||0));
-          if (v > 0) {
-            badge.textContent = String(v);
-            badge.classList.remove('hidden');
-          } else {
-            badge.textContent = '0';
-            badge.classList.add('hidden');
-          }
-        }
-
-        function extractServerCount(linkEl){
-          if (!linkEl) return null;
-          const badge = linkEl.querySelector('.counter-badge');
-          if (!badge) return null;
-          const n = parseInt((badge.textContent||'').trim());
-          return isNaN(n) ? null : n;
-        }
-
-        function restore(){
-          const counts = loadCounts();
-          const inqEl = document.getElementById('nav-inquiries');
-          const vidEl = document.getElementById('nav-video-counseling');
-
-          const serverInq = extractServerCount(inqEl);
-          const serverVid = extractServerCount(vidEl);
-
-          // If server rendered value exists, prefer it and store
-          if (serverInq !== null) counts.inquiries = serverInq;
-          if (serverVid !== null) counts.video = serverVid;
-
-          // Otherwise use stored values to render badges for consistency
-          if (serverInq === null && typeof counts.inquiries === 'number') {
-            setBadge(inqEl, counts.inquiries, 'counter-red');
-          }
-          if (serverVid === null && typeof counts.video === 'number') {
-            setBadge(vidEl, counts.video, 'counter-blue');
-          }
-
-          saveCounts(counts);
-        }
-
-        function wireRealtimeSync(){
-          // Listen to dropdown mark-all and item-click optimistic changes that already adjust the bell badge
-          document.addEventListener('click', (e)=>{
-            // When navigating into an inquiry from dropdown, count usually decreases by 1 via socket update.
-            // We’ll also intercept clicks to Inquiries and Video tabs to keep values intact (no change).
-          }, true);
-
-          // Listen for custom events from chat or notification updates to adjust counters
-          document.addEventListener('office:socket-notification', (ev)=>{
-            try {
-              const data = ev.detail || {};
-              const counts = loadCounts();
-              // Heuristic: inquiry-related increments Inquiries
-              if (data.inquiry_id || /inquiry/i.test(data.category||data.title||'')) {
-                counts.inquiries = Math.max(0, parseInt(counts.inquiries||0) + 1);
-                saveCounts(counts);
-                setBadge(document.getElementById('nav-inquiries'), counts.inquiries, 'counter-red');
-              }
-              // Counseling/session related -> Video
-              if (/counsel|session/i.test(data.category||data.title||'')) {
-                counts.video = Math.max(0, parseInt(counts.video||0) + 1);
-                saveCounts(counts);
-                setBadge(document.getElementById('nav-video-counseling'), counts.video, 'counter-blue');
-              }
-            } catch(_) {}
-          });
-
-          // When notifications are marked read in chat views
-          try {
-            if (typeof io !== 'undefined'){
-              const tempSocket = io('/office');
-              tempSocket.on('office_notification_update', (data)=>{
-                const counts = loadCounts();
-                const c = parseInt((data&&data.count)||1);
-                if (!isNaN(c)){
-                  // Prefer to decrement Inquiries for now; if needed, extend with type info from data
-                  counts.inquiries = Math.max(0, parseInt(counts.inquiries||0) - c);
-                  saveCounts(counts);
-                  setBadge(document.getElementById('nav-inquiries'), counts.inquiries, 'counter-red');
-                }
-              });
-              // Close the temp socket shortly after to avoid duplicates with main socket
-              setTimeout(()=>{ try{ tempSocket.close(); }catch(_){} }, 2000);
-            }
-          } catch(_) {}
-        }
-
-        // Run after DOM ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', restore);
-        } else {
-          restore();
-        }
-        wireRealtimeSync();
-
-        // Persist server-rendered values again shortly after load in case the page updates them
-        setTimeout(restore, 800);
-      })();
-    </script>
+    <!-- Removed localStorage-based sidebar counter persistence to ensure stable, server-accurate badges -->
 
   {% block extra_js %}{% endblock %}
   </body>

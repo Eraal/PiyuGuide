@@ -85,8 +85,9 @@ function updateNotificationCount() {
     fetch('/office/notifications/get-unread-count')
         .then(response => response.json())
         .then(data => {
-            const badge = document.querySelector('.counter-badge.counter-red');
-            const notificationLink = document.querySelector('a[href*="office_notifications"]');
+            // Target only the Notifications nav item
+            const notificationLink = document.getElementById('nav-notifications') || document.querySelector('a[href*="office_notifications"]');
+            const badge = notificationLink ? notificationLink.querySelector('.counter-badge.counter-red') : null;
             
             if (data.unread_count > 0) {
                 if (badge) {
@@ -98,10 +99,10 @@ function updateNotificationCount() {
                     newBadge.textContent = data.unread_count;
                     notificationLink.appendChild(newBadge);
                 }
-            } else {
-                if (badge) {
-                    badge.remove();
-                }
+            } else if (badge) {
+                // Hide instead of remove to avoid layout shifts/flicker; server will control visibility on next render
+                badge.textContent = '0';
+                badge.classList.add('hidden');
             }
         })
         .catch(error => console.error('Error updating notification count:', error));
