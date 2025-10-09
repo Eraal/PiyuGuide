@@ -76,8 +76,26 @@ def api_latest_inquiries():
          .order_by(Inquiry.id.desc())
          .limit(limit))
 
+    # Collect items and compute unread counts in bulk
+    inq_list = q.all()
+    ids = [inq.id for inq in inq_list]
+
+    unread_counts = {}
+    if ids:
+        unread_counts = dict(
+            db.session.query(InquiryMessage.inquiry_id, func.count(InquiryMessage.id))
+            .join(User, InquiryMessage.sender_id == User.id)
+            .filter(
+                InquiryMessage.inquiry_id.in_(ids),
+                User.role == 'student',
+                InquiryMessage.read_at.is_(None)
+            )
+            .group_by(InquiryMessage.inquiry_id)
+            .all()
+        )
+
     items = []
-    for inq in q.all():
+    for inq in inq_list:
         student_user = getattr(inq.student, 'user', None)
         items.append({
             'id': inq.id,
@@ -86,6 +104,7 @@ def api_latest_inquiries():
             'student_name': student_user.get_full_name() if student_user and hasattr(student_user, 'get_full_name') else 'Student',
             'office_id': inq.office_id,
             'created_at': inq.created_at.isoformat() if inq.created_at else None,
+            'unread_count': int(unread_counts.get(inq.id, 0))
         })
 
     # Return newest first (already desc) but consumer expects arbitrary order
@@ -140,6 +159,30 @@ def office_inquiries():
         page=page, per_page=per_page, error_out=False
     )
     inquiries = pagination.items
+
+    # Annotate each inquiry with unread message count from student
+    try:
+        ids = [inq.id for inq in inquiries]
+        if ids:
+            unread_counts = dict(
+                db.session.query(InquiryMessage.inquiry_id, func.count(InquiryMessage.id))
+                .join(User, InquiryMessage.sender_id == User.id)
+                .filter(
+                    InquiryMessage.inquiry_id.in_(ids),
+                    User.role == 'student',
+                    InquiryMessage.read_at.is_(None)
+                )
+                .group_by(InquiryMessage.inquiry_id)
+                .all()
+            )
+        else:
+            unread_counts = {}
+        for inq in inquiries:
+            setattr(inq, 'unread_count', int(unread_counts.get(inq.id, 0)))
+    except Exception:
+        # Fail gracefully if any issue; default to 0
+        for inq in inquiries:
+            setattr(inq, 'unread_count', 0)
 
     unread_notifications_count = 0  # You might want to calculate this value appropriately
 

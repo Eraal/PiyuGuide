@@ -467,6 +467,20 @@ class SmartNotificationManager:
                     }, room=room, namespace='/chat')
             except Exception:
                 pass
+        # Also notify the office inquiries page to clear unread badge for this inquiry
+        try:
+            from app.extensions import socketio
+            inq = Inquiry.query.get(inquiry_id)
+            if inq:
+                socketio.emit('office_notification', {
+                    'kind': 'inquiry',
+                    'type': 'inquiry_read_cleared',
+                    'inquiry_id': inquiry_id,
+                    'office_id': inq.office_id,
+                    'timestamp': now.isoformat()
+                }, room=f"office_{inq.office_id}", namespace='/office')
+        except Exception:
+            pass
     
     @staticmethod
     def get_stacked_notifications_for_office(office_admin_user_id, limit=10):

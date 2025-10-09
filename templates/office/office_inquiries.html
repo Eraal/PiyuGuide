@@ -215,6 +215,11 @@
                 class="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors duration-200 max-w-xs truncate"
                 title="{{ inquiry.subject }}"
               >{{ inquiry.subject }}</a>
+              {% if inquiry.unread_count and inquiry.unread_count > 0 %}
+              <span class="unread-badge inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-bold bg-red-500 text-white shadow-md" title="Unread messages">
+                {{ inquiry.unread_count }}
+              </span>
+              {% endif %}
               {% if inquiry.has_attachments() %}
               <div class="flex items-center">
                 <div class="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">

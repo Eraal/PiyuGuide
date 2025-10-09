@@ -44,6 +44,41 @@
 
     socket.on('new_office_inquiry', handleNewInquiry);
     socket.on('inquiry_status_changed', handleStatusChange);
+    // Generic office notifications can include new messages; increment unread badges
+    socket.on('office_notification', function(payload){
+      try{
+        if(!payload) return;
+        if(payload.kind === 'inquiry' && payload.type === 'new_message' && payload.inquiry_id){
+          const row = document.querySelector(`tr[data-inquiry-id="${payload.inquiry_id}"]`);
+          if(!row) return;
+          const subjectCell = row.querySelector('td:nth-child(2)');
+          if(!subjectCell) return;
+          let badge = subjectCell.querySelector('.unread-badge');
+          if(!badge){
+            badge = document.createElement('span');
+            badge.className = 'unread-badge inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-bold bg-red-500 text-white shadow-md';
+            badge.title = 'Unread messages';
+            badge.textContent = '1';
+            const container = subjectCell.querySelector('.flex.items-center.space-x-3');
+            if(container){
+              container.insertBefore(badge, container.querySelector('.flex.items-center') || null);
+            } else {
+              subjectCell.appendChild(badge);
+            }
+          } else {
+            const val = parseInt((badge.textContent||'0').trim(),10) || 0;
+            badge.textContent = String(val + 1);
+          }
+        } else if(payload.kind === 'inquiry' && payload.type === 'inquiry_read_cleared' && payload.inquiry_id){
+          const row = document.querySelector(`tr[data-inquiry-id="${payload.inquiry_id}"]`);
+          if(!row) return;
+          const subjectCell = row.querySelector('td:nth-child(2)');
+          if(!subjectCell) return;
+          const badge = subjectCell.querySelector('.unread-badge');
+          if(badge){ badge.remove(); }
+        }
+      }catch(_){/*noop*/}
+    });
   }
 
   function handleNewInquiry(data){
@@ -86,14 +121,9 @@
     if(!tbody) return;
     // Track max ID
     try { state.lastSeenInquiryId = Math.max(state.lastSeenInquiryId || 0, data.id); } catch(_) {}
-  const tr = document.createElement('tr');
-  // Mirror template row classes and attributes; compute status color
-  const s0 = (data.status || 'pending').toLowerCase();
-  let statusRowCls = 'border-l-gray-400';
-  if(s0 === 'pending') statusRowCls = 'border-l-yellow-400 bg-yellow-50/30';
-  else if(s0 === 'in_progress') statusRowCls = 'border-l-blue-400 bg-blue-50/30';
-  else if(s0 === 'resolved') statusRowCls = 'border-l-green-400 bg-green-50/30';
-  tr.className = `inquiry-row cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 ${statusRowCls}`;
+    const tr = document.createElement('tr');
+    // Mirror template row classes and attributes
+    tr.className = "inquiry-row cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 border-l-yellow-400 bg-yellow-50/30";
     tr.dataset.inquiryId = data.id;
     tr.setAttribute('data-detail-url', `/office/inquiry/${data.id}`);
     tr.setAttribute('tabindex', '0');
@@ -128,24 +158,8 @@
       statusBadge = `<span class="inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-gray-400 to-gray-500 text-gray-900"><i class="fas fa-ban mr-1"></i>${escapeHtml(label)}</span>`;
     }
 
-    // Build concern chips if provided
-    let concernsHtml = '';
-    try {
-      const concerns = Array.isArray(data.concerns) ? data.concerns : [];
-      if(concerns.length){
-        concernsHtml = concerns.map(c => {
-          const nm = escapeHtml(c.name || 'Concern');
-          const other = c.other_specification ? `<span class="text-gray-600 ml-1">(${escapeHtml(c.other_specification)})</span>` : '';
-          const cid = c.id != null ? ` data-concern-id="${c.id}"` : '';
-          return `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300 shadow-sm"${cid}><i class="fas fa-tag mr-1 text-gray-500"></i>${nm}${other}</span>`;
-        }).join('');
-      } else {
-        concernsHtml = '<span class="text-xs text-gray-400">—</span>';
-      }
-    } catch(_) {
-      concernsHtml = '<span class="text-xs text-gray-400">—</span>';
-    }
-
+      const unread = parseInt(data.unread_count||0,10) || 0;
+      const unreadBadge = unread > 0 ? `<span class=\"unread-badge inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-bold bg-red-500 text-white shadow-md\" title=\"Unread messages\">${unread}</span>` : '';
     return `
       <td class="py-5 px-6 whitespace-nowrap">
         <div class="flex items-center">
@@ -155,6 +169,7 @@
       <td class="py-5 px-6">
         <div class="flex items-center space-x-3">
           <a href="/office/inquiry/${data.id}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors duration-200 max-w-xs truncate" title="${subj}">${subj}</a>
+          ${unreadBadge}
         </div>
       </td>
       <td class="py-5 px-6">
@@ -169,7 +184,9 @@
         </div>
       </td>
       <td class="py-5 px-6">
-        <div class="flex flex-wrap gap-2">${concernsHtml}</div>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs text-gray-400">—</span>
+        </div>
       </td>
       <td class="py-5 px-6 whitespace-nowrap">
         <div class="flex items-center space-x-2">

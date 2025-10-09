@@ -471,6 +471,8 @@ def create_inquiry():
                 'student_name': current_user.get_full_name() if hasattr(current_user, 'get_full_name') else 'Student',
                 'office_id': new_inquiry.office_id,
                 'created_at': new_inquiry.created_at.isoformat(),
+                # Initial unread count for office admins: the student's first message
+                'unread_count': 1,
             }
             # Room naming consistent with office websocket join logic: office_{office_id}
             socketio.emit('new_office_inquiry', payload, room=f"office_{new_inquiry.office_id}", namespace='/office')
@@ -568,6 +570,21 @@ def reply_to_inquiry(inquiry_id):
         )
         
         db.session.commit()
+
+        # Notify office inquiries page to increment unread badge for this inquiry
+        try:
+            office_payload = {
+                'kind': 'inquiry',
+                'type': 'new_message',
+                'title': 'New Message',
+                'message': f"New message in '{inquiry.subject}'",
+                'inquiry_id': inquiry.id,
+                'office_id': inquiry.office_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            socketio.emit('office_notification', office_payload, room=f"office_{inquiry.office_id}", namespace='/office')
+        except Exception:
+            pass
         
         # Emit WebSocket event for real-time updates if the websocket module is available
         # WebSocket functionality has been removed
@@ -741,6 +758,21 @@ def api_send_message(inquiry_id):
             ))
 
         db.session.commit()
+
+        # Notify office inquiries page to increment unread badge for this inquiry
+        try:
+            office_payload = {
+                'kind': 'inquiry',
+                'type': 'new_message',
+                'title': 'New Message',
+                'message': f"New message in '{inquiry.subject}'",
+                'inquiry_id': inquiry.id,
+                'office_id': inquiry.office_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            socketio.emit('office_notification', office_payload, room=f"office_{inquiry.office_id}", namespace='/office')
+        except Exception:
+            pass
 
         # Broadcast to room
         sender = User.query.get(current_user.id)
