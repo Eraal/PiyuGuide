@@ -87,17 +87,42 @@
     // Track max ID
     try { state.lastSeenInquiryId = Math.max(state.lastSeenInquiryId || 0, data.id); } catch(_) {}
     const tr = document.createElement('tr');
-    tr.className = "inquiry-row hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 border-l-yellow-400 bg-yellow-50/30";
+    // Mirror template row classes and attributes
+    tr.className = "inquiry-row cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200 border-l-4 border-l-yellow-400 bg-yellow-50/30";
     tr.dataset.inquiryId = data.id;
-    const createdAt = new Date(data.created_at);
+    tr.setAttribute('data-detail-url', `/office/inquiry/${data.id}`);
+    tr.setAttribute('tabindex', '0');
+    tr.setAttribute('aria-label', `Open inquiry ${data.id} details`);
+
+    const createdAt = data.created_at ? new Date(data.created_at) : new Date();
     const dateStr = createdAt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
     tr.innerHTML = rowHtml(data, dateStr);
     tbody.insertBefore(tr, tbody.firstChild);
+
+    // Attach interactions to match template behavior
+    bindRowInteractions(tr);
+    bindActionButtons(tr);
   }
 
   function rowHtml(data, dateStr){
     const subj = escapeHtml(data.subject || '');
     const studentName = escapeHtml(data.student_name || 'Student');
+    const initials = (studentName || '').trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase() || 'ST';
+
+    // Build status badge like the template
+    const status = (data.status || 'pending').toLowerCase();
+    let statusBadge = '';
+    if(status === 'pending'){
+      statusBadge = `<span class="inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 animate-pulse"><i class="fas fa-clock mr-1"></i>Pending</span>`;
+    } else if(status === 'in_progress'){
+      statusBadge = `<span class="inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-blue-400 to-blue-500 text-blue-900"><i class="fas fa-spinner mr-1"></i>In Progress</span>`;
+    } else if(status === 'resolved'){
+      statusBadge = `<span class="inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-green-400 to-green-500 text-green-900"><i class="fas fa-check-circle mr-1"></i>Resolved</span>`;
+    } else {
+      const label = titleCase(status.replace('_',' '));
+      statusBadge = `<span class="inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md bg-gradient-to-r from-gray-400 to-gray-500 text-gray-900"><i class="fas fa-ban mr-1"></i>${escapeHtml(label)}</span>`;
+    }
+
     return `
       <td class="py-5 px-6 whitespace-nowrap">
         <div class="flex items-center">
@@ -112,44 +137,84 @@
       <td class="py-5 px-6">
         <div class="flex items-center space-x-3">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center shadow-md">
-            <i class="fas fa-user text-gray-600"></i>
+            <span class="text-white font-semibold text-sm">${initials}</span>
           </div>
           <div>
-            <div class="font-medium text-gray-800 max-w-[140px] truncate" title="${studentName}">${studentName}</div>
-            <div class="text-xs text-gray-500">New</div>
+            <div class="text-sm font-medium text-gray-900">${studentName}</div>
+            <div class="text-xs text-gray-500">Student</div>
           </div>
         </div>
       </td>
-      <td class="py-5 px-6"><span class="text-xs text-gray-400">—</span></td>
-      <td class="py-5 px-6 text-sm text-gray-600">${dateStr}</td>
       <td class="py-5 px-6">
-        <span class="status-pill px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700" data-status="pending">Pending</span>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs text-gray-400">—</span>
+        </div>
       </td>
-      <td class="py-5 px-6">
-        <a href="/office/inquiry/${data.id}" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-sm transition-colors">
-          <i class="fas fa-eye mr-1"></i> View
-        </a>
+      <td class="py-5 px-6 whitespace-nowrap">
+        <div class="flex items-center space-x-2">
+          <i class="fas fa-calendar-alt text-gray-400"></i>
+          <span class="text-sm text-gray-900 font-medium">${dateStr}</span>
+        </div>
+      </td>
+      <td class="py-5 px-6 whitespace-nowrap">
+        ${statusBadge}
+      </td>
+      <td class="py-5 px-6 whitespace-nowrap">
+        <div class="flex items-center space-x-3">
+          <a href="/office/inquiry/${data.id}" class="w-9 h-9 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center justify-center text-blue-600 hover:text-blue-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg" title="View Details">
+            <i class="fas fa-eye"></i>
+          </a>
+          <a href="#" class="w-9 h-9 bg-green-100 hover:bg-green-200 rounded-lg flex items-center justify-center text-green-600 hover:text-green-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg updateStatusBtn" data-inquiry-id="${data.id}" title="Update Status">
+            <i class="fas fa-edit"></i>
+          </a>
+          <a href="#" class="w-9 h-9 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-600 hover:text-red-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg deleteInquiryBtn" data-inquiry-id="${data.id}" data-status="${escapeHtml(status)}" title="Delete">
+            <i class="fas fa-trash"></i>
+          </a>
+        </div>
       </td>`;
   }
 
   function updateRowStatus(row, newStatus){
-    const pill = row.querySelector('.status-pill');
-    if(pill){
-      pill.dataset.status = newStatus;
-      pill.textContent = titleCase(newStatus.replace('_',' '));
-      // Reset classes
-      pill.className = 'status-pill px-3 py-1 rounded-full text-xs font-semibold';
-      if(newStatus === 'pending') pill.classList.add('bg-yellow-100','text-yellow-700');
-      else if(newStatus === 'in_progress') pill.classList.add('bg-blue-100','text-blue-700');
-      else if(newStatus === 'resolved') pill.classList.add('bg-green-100','text-green-700');
-      else pill.classList.add('bg-gray-100','text-gray-700');
+    // Update status badge like template (6th td span)
+    const statusCellSpan = row.querySelector('td:nth-child(6) span');
+    if(statusCellSpan){
+      let iconHtml = '';
+      let cls = 'inline-flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-md ';
+      const s = (newStatus || '').toLowerCase();
+      let label = titleCase((s || 'pending').replace('_',' '));
+      if(s === 'pending'){
+        iconHtml = '<i class="fas fa-clock mr-1"></i>';
+        cls += 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 animate-pulse';
+      } else if(s === 'in_progress'){
+        iconHtml = '<i class="fas fa-spinner mr-1"></i>';
+        cls += 'bg-gradient-to-r from-blue-400 to-blue-500 text-blue-900';
+      } else if(s === 'resolved'){
+        iconHtml = '<i class="fas fa-check-circle mr-1"></i>';
+        cls += 'bg-gradient-to-r from-green-400 to-green-500 text-green-900';
+      } else {
+        iconHtml = '<i class="fas fa-ban mr-1"></i>';
+        cls += 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-900';
+      }
+      statusCellSpan.className = cls;
+      statusCellSpan.innerHTML = iconHtml + label;
     }
-    // Update border color class on row
-    row.className = row.className.replace(/border-l-(yellow|blue|green|gray)-400[^ ]*/g,'');
-    if(newStatus === 'pending') row.classList.add('border-l-yellow-400','bg-yellow-50/30');
-    else if(newStatus === 'in_progress') row.classList.add('border-l-blue-400','bg-blue-50/30');
-    else if(newStatus === 'resolved') row.classList.add('border-l-green-400','bg-green-50/30');
-    else row.classList.add('border-l-gray-400');
+    // Update border & bg color class on row (match template)
+    row.className = row.className
+      .replace(/border-l-(yellow|blue|green|gray)-400/g, '')
+      .replace(/bg-(yellow|blue|green|gray)-50\/30/g, '')
+      .trim();
+    if(newStatus === 'pending'){
+      row.classList.add('border-l-yellow-400','bg-yellow-50/30');
+    } else if(newStatus === 'in_progress'){
+      row.classList.add('border-l-blue-400','bg-blue-50/30');
+    } else if(newStatus === 'resolved'){
+      row.classList.add('border-l-green-400','bg-green-50/30');
+    } else {
+      row.classList.add('border-l-gray-400');
+    }
+    // Keep delete button data-status in sync
+    const delBtn = row.querySelector('.deleteInquiryBtn');
+    if(delBtn){ delBtn.setAttribute('data-status', (newStatus || '').toLowerCase()); }
   }
 
   function showNewInquiryBanner(data){
@@ -241,6 +306,75 @@
       .replace(/'/g,'&#39;');
   }
   function titleCase(s){ return s.split(' ').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' '); }
+
+  // Match template row behaviors for newly inserted rows
+  function bindRowInteractions(row){
+    // Hover micro-animation
+    row.addEventListener('mouseenter', function(){
+      this.style.transform = 'scale(1.01)';
+      this.style.transition = 'transform 0.2s ease-in-out';
+    });
+    row.addEventListener('mouseleave', function(){
+      this.style.transform = 'scale(1)';
+    });
+    // Click navigation, ignore inner interactive elements
+    row.addEventListener('click', function(e){
+      const target = e.target;
+      if(target.closest('a, button, .updateStatusBtn, .deleteInquiryBtn, [role="button"]')) return;
+      const url = row.getAttribute('data-detail-url');
+      if(url){ window.location.href = url; }
+    });
+    // Keyboard accessibility
+    row.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){
+        const active = document.activeElement;
+        if(active && active.closest('a, button, .updateStatusBtn, .deleteInquiryBtn, [role="button"]')) return;
+        e.preventDefault();
+        const url = row.getAttribute('data-detail-url');
+        if(url){ window.location.href = url; }
+      }
+    });
+  }
+
+  // Bind action buttons (status update & delete) to existing modals on the page
+  function bindActionButtons(scope){
+    const statusBtn = scope.querySelector('.updateStatusBtn');
+    if(statusBtn){
+      statusBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        const inquiryId = this.getAttribute('data-inquiry-id');
+        const statusUpdateModal = document.getElementById('statusUpdateModal');
+        const inquiryIdInput = document.getElementById('inquiryId');
+        if(inquiryIdInput) inquiryIdInput.value = inquiryId;
+        if(statusUpdateModal){ statusUpdateModal.classList.remove('hidden'); }
+      });
+    }
+    const deleteBtn = scope.querySelector('.deleteInquiryBtn');
+    if(deleteBtn){
+      deleteBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        const inquiryId = this.getAttribute('data-inquiry-id');
+        const status = (this.getAttribute('data-status') || '').toLowerCase();
+        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+        const deleteInquiryIdInput = document.getElementById('deleteInquiryId');
+        const statusWarning = document.getElementById('statusWarning');
+        if(deleteInquiryIdInput) deleteInquiryIdInput.value = inquiryId;
+        if(statusWarning){
+          let msg = '';
+          if (status === 'pending') {
+            msg = 'This inquiry is still Pending. Deleting it now will permanently remove an active case.';
+          } else if (status === 'in_progress') {
+            msg = 'This inquiry is In Progress. Deleting it will terminate an ongoing conversation.';
+          } else if (status === 'resolved') {
+            msg = 'This inquiry is Resolved. Consider closing instead if you want to keep records.';
+          } else { msg = ''; }
+          if(msg){ statusWarning.textContent = msg; statusWarning.classList.remove('hidden'); }
+          else { statusWarning.classList.add('hidden'); }
+        }
+        if(deleteConfirmModal){ deleteConfirmModal.classList.remove('hidden'); }
+      });
+    }
+  }
 
   // Public init
   function initOfficeInquiryRealtime(){ ensureSocket(); }
