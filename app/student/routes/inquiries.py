@@ -464,6 +464,21 @@ def create_inquiry():
 
         # Emit to office namespace so office inquiries page & sidebar badge update in real-time
         try:
+            # Build concerns payload (id, name, other_specification)
+            concerns = []
+            try:
+                from app.models import InquiryConcern  # already imported above; safe
+                for ic in InquiryConcern.query.filter_by(inquiry_id=new_inquiry.id).all():
+                    # Defensive access for concern_type
+                    ct = getattr(ic, 'concern_type', None)
+                    concerns.append({
+                        'id': getattr(ct, 'id', None),
+                        'name': getattr(ct, 'name', 'Concern'),
+                        'other_specification': getattr(ic, 'other_specification', None)
+                    })
+            except Exception:
+                concerns = []
+
             payload = {
                 'id': new_inquiry.id,
                 'subject': new_inquiry.subject,
@@ -471,6 +486,7 @@ def create_inquiry():
                 'student_name': current_user.get_full_name() if hasattr(current_user, 'get_full_name') else 'Student',
                 'office_id': new_inquiry.office_id,
                 'created_at': new_inquiry.created_at.isoformat(),
+                'concerns': concerns,
             }
             # Room naming consistent with office websocket join logic: office_{office_id}
             socketio.emit('new_office_inquiry', payload, room=f"office_{new_inquiry.office_id}", namespace='/office')
