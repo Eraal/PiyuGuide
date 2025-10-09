@@ -1,5 +1,11 @@
 {% extends "office/office_base.html" %} 
 {% block title %}Manage Student Inquiries - KapiyuGuide{% endblock %} 
+{% block extra_head %}
+<!-- Ensure page number is available before realtime script initializes -->
+<script>
+  document.documentElement.setAttribute('data-current-page','{{ pagination.page if pagination else 1 }}');
+</script>
+{% endblock %}
 {% block content %}
 
 <!-- Header Section with Enhanced Styling -->
@@ -53,7 +59,7 @@
 
 <!-- Enhanced Stats Dashboard -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-  <div class="bg-white border-2 border-blue-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+  <div class="bg-white border-2 border-blue-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group stats-card">
     <div class="flex items-center justify-between">
       <div>
         <div class="flex items-center space-x-3 mb-2">
@@ -72,7 +78,7 @@
     </div>
   </div>
 
-  <div class="bg-white border-2 border-yellow-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+  <div class="bg-white border-2 border-yellow-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group stats-card">
     <div class="flex items-center justify-between">
       <div>
         <div class="flex items-center space-x-3 mb-2">
@@ -91,7 +97,7 @@
     </div>
   </div>
 
-  <div class="bg-white border-2 border-green-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+  <div class="bg-white border-2 border-green-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group stats-card">
     <div class="flex items-center justify-between">
       <div>
         <div class="flex items-center space-x-3 mb-2">
@@ -110,7 +116,7 @@
     </div>
   </div>
 
-  <div class="bg-white border-2 border-purple-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+  <div class="bg-white border-2 border-purple-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group stats-card">
     <div class="flex items-center justify-between">
       <div>
         <div class="flex items-center space-x-3 mb-2">
@@ -1005,11 +1011,6 @@
     });
   });
 </script>
-{% endblock %}
-
-{% block scripts %}
-{{ super() }}
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js" integrity="sha384-ZMKWd9Yx8RJWb1x1oGf4bm/FYnGV8eK3opgDdGztqKqRR3YKHy+XapnwMaijvOL2" crossorigin="anonymous"></script>
-<script src="{{ url_for('static', filename='js/office/inquiries_realtime.js') }}"></script>
-<script>document.documentElement.setAttribute('data-current-page','{{ pagination.page if pagination else 1 }}');</script>
+<!-- Load realtime handler after page-specific JS; Socket.IO is loaded by office_base -->
+<script src="{{ url_for('static', filename='js/office/inquiries_realtime.js') }}?v={{ ASSET_VERSION }}"></script>
 {% endblock %}

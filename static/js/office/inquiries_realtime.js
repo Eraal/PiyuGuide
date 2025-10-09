@@ -187,18 +187,23 @@
   function incrementPendingStat(){ modifyPendingStat(1); }
   function decrementPendingStat(){ modifyPendingStat(-1); }
   function modifyPendingStat(delta){
-    // Find the pending stat value element (heuristic: element with text 'Pending' nearby)
+    // Find the pending stat card and bump its numeric value
     const statBlocks = document.querySelectorAll('.stats-card');
     statBlocks.forEach(card => {
-      const label = card.querySelector('p');
-      if(label && /pending/i.test(label.textContent)){
-        const valueEl = card.querySelector('h3');
-        if(valueEl){
-          let val = parseInt(valueEl.textContent.trim(),10) || 0;
-            val = Math.max(0, val + delta);
-            valueEl.textContent = val;
-        }
+      // Locate a label element whose text contains 'Pending'
+      const labelEl = Array.from(card.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,strong'))
+        .find(el => /pending/i.test((el.textContent||'').trim()));
+      if(!labelEl) return;
+      // Value element in this layout is the big number (p.text-2xl ...)
+      let valueEl = card.querySelector('p.text-2xl');
+      if(!valueEl){
+        // Fallback: find the first element with a numeric content
+        valueEl = Array.from(card.querySelectorAll('p,span,div')).find(el => /\d+/.test((el.textContent||'').trim()));
       }
+      if(!valueEl) return;
+      let val = parseInt((valueEl.textContent||'0').replace(/[^0-9]/g,''),10) || 0;
+      val = Math.max(0, val + delta);
+      valueEl.textContent = String(val);
     });
   }
 
@@ -228,7 +233,12 @@
   }
 
   function escapeHtml(str){
-    return (str||'').replace(/[&<>"];/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',';':'&#59;'}[c]||c));
+    return String(str==null? '': str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
   }
   function titleCase(s){ return s.split(' ').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' '); }
 
