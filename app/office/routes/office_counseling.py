@@ -624,7 +624,8 @@ def update_session_status(session_id):
                 message=f"Your counseling session scheduled for {session.scheduled_at.strftime('%Y-%m-%d %H:%M')} has been confirmed.",
                 source_office_id=session.office_id,
                 is_read=False,
-                link=f"/student/view-session/{session.id}" if session.is_video_session else None,
+                # Route both video and in-person confirmations to the session details page
+                link=f"/student/view-session/{session.id}",
                 # Use a type that maps to a green toast in the student UI
                 notification_type="scheduled"
             )
@@ -650,7 +651,8 @@ def update_session_status(session_id):
                         'status': 'confirmed',
                         'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
                         'is_video_session': bool(session.is_video_session),
-                        'link': f"/student/view-session/{session.id}" if session.is_video_session else None
+                        # Provide session details link for both types
+                        'link': f"/student/view-session/{session.id}"
                     })
                 except Exception:
                     pass
@@ -728,7 +730,8 @@ def update_session_status(session_id):
                 'status': new_status,
                 'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
                 'is_video_session': bool(session.is_video_session),
-                'link': f"/student/view-session/{session.id}" if session.is_video_session else None
+                # Provide session details link for both types when status updates
+                'link': f"/student/view-session/{session.id}"
             })
     except Exception:
         pass

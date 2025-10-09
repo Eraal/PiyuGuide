@@ -126,10 +126,11 @@
     <div class="divide-y divide-gray-200" id="notificationsContainer">
       {% if page_notifications %}
         {% for notification in page_notifications %}
-        <div class="notification-item p-6 hover:bg-gray-50 transition-colors {% if not notification.is_read %}bg-blue-50 border-l-4 border-blue-500{% endif %}"
-             data-notification-id="{{ notification.id }}"
-             data-inquiry-id="{{ notification.inquiry_id if notification.inquiry_id }}"
-             data-announcement-id="{{ notification.announcement_id if notification.announcement_id }}">
+     <div class="notification-item p-6 hover:bg-gray-50 transition-colors {% if not notification.is_read %}bg-blue-50 border-l-4 border-blue-500{% endif %}"
+       data-notification-id="{{ notification.id }}"
+       data-inquiry-id="{{ notification.inquiry_id if notification.inquiry_id }}"
+       data-announcement-id="{{ notification.announcement_id if notification.announcement_id }}"
+       data-link="{{ notification.link if notification.link }}">
           <div class="flex items-start space-x-4">
             <div class="flex-shrink-0 pt-1">
               {% if notification.notification_type == 'inquiry_reply' %}
@@ -171,6 +172,10 @@
                   {% elif notification.announcement_id %}
                     <a href="{{ url_for('student.view_announcement', announcement_id=notification.announcement_id) }}" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors">
                       <i class="fas fa-arrow-right mr-1"></i>View
+                    </a>
+                  {% elif notification.link %}
+                    <a href="{{ notification.link }}" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors">
+                      <i class="fas fa-arrow-right mr-1"></i>Open
                     </a>
                   {% endif %}
                   {% if not notification.is_read %}

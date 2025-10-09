@@ -446,7 +446,7 @@
         <div id="student-ann-list" class="max-h-96 overflow-y-auto divide-y divide-transparent">
                   {% if notifications %}
                     {% for n in notifications %}
-          <a href="{% if n.inquiry_id %}{{ url_for('student.view_inquiry', inquiry_id=n.inquiry_id) }}{% elif n.announcement_id %}{{ url_for('student.view_announcement', announcement_id=n.announcement_id) }}{% else %}{{ url_for('student.notifications') }}{% endif %}"
+          <a href="{% if n.inquiry_id %}{{ url_for('student.view_inquiry', inquiry_id=n.inquiry_id) }}{% elif n.announcement_id %}{{ url_for('student.view_announcement', announcement_id=n.announcement_id) }}{% elif n.link %}{{ n.link }}{% else %}{{ url_for('student.notifications') }}{% endif %}"
              data-id="{{ n.id }}"
              {% if n.announcement_id %} data-announcement-id="{{ n.announcement_id }}"{% endif %}
              class="office-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}"
@@ -1304,7 +1304,7 @@
           });
         })();
 
-        // Handle notification clicks - redirect to inquiry
+        // Handle notification clicks - redirect to target page
         const notificationItems = document.querySelectorAll(".notification-item");
         notificationItems.forEach((item) => {
           item.addEventListener("click", function (e) {
@@ -1316,6 +1316,7 @@
             // Get inquiry ID and navigate if available
             const inquiryId = this.dataset.inquiryId;
             const announcementId = this.dataset.announcementId;
+            const directLink = this.dataset.link; // e.g., /student/view-session/<id>
             if (inquiryId) {
               // Mark as read before navigating
               fetch(`/student/api/notifications/${this.dataset.notificationId}/dismiss`, {
@@ -1347,6 +1348,20 @@
                   console.error("Error marking notification as read:", error);
                   window.location.href = `/student/announcement/${announcementId}`;
                 });
+            } else if (directLink) {
+              // Generic navigation using provided link (e.g., counseling session details)
+              const nid = this.dataset.notificationId;
+              if (nid) {
+                fetch(`/student/api/notifications/${nid}/dismiss`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": document.querySelector('meta[name="csrf-token"]').getAttribute("content") || "",
+                  },
+                }).finally(() => { window.location.href = directLink; });
+              } else {
+                window.location.href = directLink;
+              }
             }
           });
         });
