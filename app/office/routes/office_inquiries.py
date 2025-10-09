@@ -79,18 +79,6 @@ def api_latest_inquiries():
     items = []
     for inq in q.all():
         student_user = getattr(inq.student, 'user', None)
-        # Build concerns payload
-        concerns = []
-        try:
-            for ic in (inq.concerns or []):
-                ct = getattr(ic, 'concern_type', None)
-                concerns.append({
-                    'id': getattr(ct, 'id', None),
-                    'name': getattr(ct, 'name', 'Concern'),
-                    'other_specification': getattr(ic, 'other_specification', None)
-                })
-        except Exception:
-            concerns = []
         items.append({
             'id': inq.id,
             'subject': inq.subject,
@@ -98,7 +86,6 @@ def api_latest_inquiries():
             'student_name': student_user.get_full_name() if student_user and hasattr(student_user, 'get_full_name') else 'Student',
             'office_id': inq.office_id,
             'created_at': inq.created_at.isoformat() if inq.created_at else None,
-            'concerns': concerns,
         })
 
     # Return newest first (already desc) but consumer expects arbitrary order
