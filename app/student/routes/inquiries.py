@@ -71,8 +71,7 @@ def inquiries():
     query = query.order_by(desc(Inquiry.created_at))
     
     # Paginate results
-    # Use db.paginate for Flask-SQLAlchemy 3.x compatibility
-    inquiries_paginated = db.paginate(query, page=page, per_page=per_page, error_out=False)
+    inquiries_paginated = query.paginate(page=page, per_page=per_page, error_out=False)
     
     # Get campus-scoped offices for filter dropdown (fallback to session campus)
     campus_id = student.campus_id or session.get('selected_campus_id')
