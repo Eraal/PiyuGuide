@@ -98,7 +98,8 @@ def all_inquiries():
     
     query = query.order_by(desc(Inquiry.created_at))
     
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    # Use Flask-SQLAlchemy 3.x pagination helper
+    pagination = db.paginate(query, page=page, per_page=per_page, error_out=False)
     inquiries = pagination.items
 
     stats = get_inquiry_stats()

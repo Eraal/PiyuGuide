@@ -74,7 +74,8 @@ def manage_admins():
     total_count = query.count()
     
     # Apply pagination
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    # Use Flask-SQLAlchemy 3.x helper for pagination
+    pagination = db.paginate(query, page=page, per_page=per_page, error_out=False)
     admin_results = pagination.items
     
     # Transform results for template
