@@ -1477,8 +1477,11 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
           const btn = document.createElement('button');
           btn.type='button';
           btn.className = `slot ${s.status}`;
-          // Show 1-hour range labels while keeping the submitted value as the start time
-          btn.textContent = formatOneHourRange(s.time);
+          const rangeLabel = formatOneHourRange(s.time);
+          // For booked/past, show status label; for available, show time range
+          const label = s.status === 'booked' ? 'Booked' : (s.status === 'past' ? 'Past' : rangeLabel);
+          btn.textContent = label;
+          btn.title = rangeLabel; // keep time range discoverable via tooltip
           if(s.status !== 'available') btn.disabled = true;
           btn.addEventListener('click', ()=>{
             if(btn.disabled) return;
@@ -1486,7 +1489,7 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
             btn.classList.add('selected');
             selectedSlot = s.time;
             timeInput.value = s.time;
-            summaryTime.textContent = formatOneHourRange(s.time);
+            summaryTime.textContent = rangeLabel;
             timeError?.classList.remove('visible');
           });
           slotsGrid.appendChild(btn);

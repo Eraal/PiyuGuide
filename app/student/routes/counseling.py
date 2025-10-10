@@ -178,18 +178,19 @@ def schedule_session():
                 flash('Selected concern type is not available for counseling in the chosen office.', 'error')
                 return redirect(url_for('student.request_counseling_session'))
         
-        # Prevent double-booking within the same office window
+        # Prevent double-booking ONLY against confirmed sessions per policy
+        # Note: pending or in-progress requests should not block new requests.
         duration_minutes = 60  # default; can later be dynamic per office/session
         requested_end = scheduled_datetime + timedelta(minutes=duration_minutes)
         conflicts = CounselingSession.query.filter(
             CounselingSession.office_id == office.id,
-            CounselingSession.status.in_(['pending','confirmed','in_progress']),
+            CounselingSession.status.in_(['confirmed']),
             CounselingSession.scheduled_at < requested_end
         ).all()
         for c in conflicts:
             c_end = c.scheduled_at + timedelta(minutes=(c.duration_minutes or 60))
             if c_end > scheduled_datetime:
-                flash('The selected time overlaps with another session for this office. Please choose a different slot.', 'error')
+                flash('The selected time overlaps with a confirmed session for this office. Please choose a different slot.', 'error')
                 return redirect(url_for('student.request_counseling_session'))
 
         # Create new counseling session without assigning a counselor - this will be done by office admin
@@ -368,6 +369,7 @@ def office_availability(office_id):
         except Exception:
             return default
 
+    # Default office hours: 08:00–17:00 unless overridden by query params
     start_param = request.args.get('start', '08:00')
     end_param = request.args.get('end', '17:00')
     start_t = parse_hhmm(start_param, dtime(8, 0))
@@ -378,8 +380,8 @@ def office_availability(office_id):
     day_end = datetime.combine(day, end_t)
 
     # Fetch overlapping sessions for that office and day
-    # Consider sessions that are pending/confirmed/in_progress as blocking
-    blocking_statuses = ['pending', 'confirmed', 'in_progress']
+    # Only CONFIRMED sessions should block time slots
+    blocking_statuses = ['confirmed']
     sessions = CounselingSession.query.filter(
         CounselingSession.office_id == office.id,
         CounselingSession.status.in_(blocking_statuses),
