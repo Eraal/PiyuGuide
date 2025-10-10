@@ -781,6 +781,25 @@
         {% block content %}{% endblock %}
       </main>
     </div>    <!-- Audio element for notification sounds -->
+    <!-- Global confirmation modal for Office (used by notifications quick actions) -->
+    <div id="office-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6">
+          <div class="flex items-center mb-4">
+            <div class="bg-blue-100 p-3 rounded-full mr-4">
+              <i class="fas fa-question-circle text-blue-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800">Confirm Action</h3>
+          </div>
+          <p class="office-confirm-message text-gray-600 mb-6"></p>
+          <div class="flex justify-end space-x-4">
+            <button id="office-cancel-btn" class="px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+            <button id="office-confirm-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <audio id="notification-sound" preload="auto" style="display: none">
       <source
         src="{{ url_for('static', filename='sounds/NotificationBell.mp3') }}"
@@ -1295,16 +1314,41 @@
       }
 
       // Mark all read
+      // Lightweight confirm modal helpers (local to notifications dropdown)
+      const ocModal = document.getElementById('office-confirm-modal');
+      const ocMsg = ocModal ? ocModal.querySelector('.office-confirm-message') : null;
+      const ocConfirmBtn = document.getElementById('office-confirm-btn');
+      const ocCancelBtn = document.getElementById('office-cancel-btn');
+      function officeConfirm(message, {confirmLabel='Confirm'}={}){
+        return new Promise((resolve)=>{
+          if(!ocModal){ resolve(window.confirm(message)); return; }
+          ocMsg.textContent = message;
+          ocConfirmBtn.textContent = confirmLabel;
+          ocConfirmBtn.disabled = false; ocCancelBtn.disabled = false;
+          ocModal.classList.remove('hidden'); ocModal.classList.add('flex');
+          const onConfirm = ()=>{ cleanup(); resolve(true); };
+          const onCancel = ()=>{ cleanup(); resolve(false); };
+          function cleanup(){ ocConfirmBtn.removeEventListener('click', onConfirm); ocCancelBtn.removeEventListener('click', onCancel); ocModal.classList.add('hidden'); ocModal.classList.remove('flex'); }
+          ocConfirmBtn.addEventListener('click', onConfirm);
+          ocCancelBtn.addEventListener('click', onCancel);
+        });
+      }
+      function officeConfirmProgress(text){ if(!ocModal) return; ocMsg.innerHTML = `<div class="flex items-center gap-3"><span class=\"inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin\"></span><span>${text}</span></div>`; ocConfirmBtn.disabled=true; ocCancelBtn.disabled=true; }
+      function officeConfirmSuccess(text){ if(!ocModal) return; ocMsg.innerHTML = `<div class=\"flex items-center gap-3 text-green-700\"><span class=\"w-6 h-6 rounded-full bg-green-100 flex items-center justify-center\"><i class=\"fas fa-check text-green-600\"></i></span><span>${text}</span></div>`; ocConfirmBtn.disabled=true; ocCancelBtn.disabled=true; setTimeout(()=>{ ocModal.classList.add('hidden'); ocModal.classList.remove('flex'); }, 800); }
+
       if(markAll){
         markAll.addEventListener('click', async ()=>{
+          const ok = await officeConfirm('Mark all notifications as read?', {confirmLabel:'Mark All Read'});
+          if(!ok) return;
           try{
+            officeConfirmProgress('Marking notifications as read...');
             const res = await fetch('/office/notifications/mark-all-read', {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
-            if(!res.ok) return showToast({title:'Error', message:'Request failed', type:'error', duration:4000});
+            if(!res.ok){ officeConfirmSuccess('Request failed'); return; }
             const data = await res.json();
             list.querySelectorAll('.office-ann-item.unread').forEach(a=>a.classList.remove('unread'));
             setBadgeCount(0);
-            showToast({title:'All read', message:data.message || 'Marked as read', type:'success', duration:3000});
-          }catch(e){ showToast({title:'Error', message:'Could not update', type:'error'}); }
+            officeConfirmSuccess(data.message || 'All notifications marked as read');
+          }catch(e){ officeConfirmSuccess('Could not update'); }
         });
       }
       // Refresh
