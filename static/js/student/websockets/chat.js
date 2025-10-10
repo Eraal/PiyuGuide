@@ -30,6 +30,48 @@ class ChatSocketManager {
     }
     
     /**
+     * Try to resolve the inquiry id from various sources
+     * @private
+     * @param {any} inquiryId
+     * @returns {number|null}
+     */
+    _resolveInquiryId(inquiryId) {
+        if (inquiryId !== undefined && inquiryId !== null && String(inquiryId).trim() !== '') {
+            const n = parseInt(inquiryId, 10);
+            if (!isNaN(n) && n > 0) return n;
+        }
+        try {
+            const el = document.querySelector('[data-inquiry-id]');
+            if (el) {
+                const v = el.getAttribute('data-inquiry-id');
+                const n = parseInt(v, 10);
+                if (!isNaN(n) && n > 0) return n;
+            }
+        } catch (_) {}
+        try {
+            const hid = document.getElementById('inquiryId') || document.querySelector('input[name="inquiry_id"]');
+            const v = hid && (hid.value || hid.getAttribute('value'));
+            const n = parseInt(v, 10);
+            if (!isNaN(n) && n > 0) return n;
+        } catch (_) {}
+        try {
+            const path = (window.location && window.location.pathname) || '';
+            const m = path.match(/\/(inquiry|view_inquiry)\/(\d+)/i) || path.match(/\/(\d+)(?:\/?$)/);
+            if (m) {
+                const n = parseInt(m[m.length - 1], 10);
+                if (!isNaN(n) && n > 0) return n;
+            }
+        } catch (_) {}
+        try {
+            const p = new URLSearchParams(window.location.search);
+            const v = p.get('inquiry_id');
+            const n = parseInt(v, 10);
+            if (!isNaN(n) && n > 0) return n;
+        } catch (_) {}
+        return null;
+    }
+
+    /**
      * Initialize and connect to the chat WebSocket
      * @returns {Promise} Resolves when connected
      */
@@ -182,19 +224,16 @@ class ChatSocketManager {
             }
             return;
         }
-        // Resolve inquiryId from DOM if not provided or falsy
-        if (!inquiryId) {
-            const el = document.querySelector('[data-inquiry-id]');
-            inquiryId = el && el.getAttribute('data-inquiry-id');
-        }
-        if (!inquiryId) {
+        // Resolve inquiryId robustly
+        const resolvedId = this._resolveInquiryId(inquiryId);
+        if (!resolvedId) {
             if (this.messageCallbacks.onError) {
                 this.messageCallbacks.onError('Inquiry ID is required');
             }
             return;
         }
-        this.currentInquiryId = parseInt(inquiryId);
-        this.socket.emit('join_inquiry_room', { inquiry_id: inquiryId });
+        this.currentInquiryId = resolvedId;
+        this.socket.emit('join_inquiry_room', { inquiry_id: resolvedId });
 
         // After a short delay, auto-mark any visible incoming messages as read
         setTimeout(() => {

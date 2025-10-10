@@ -386,7 +386,9 @@
   document.addEventListener('DOMContentLoaded', function() {
     // Initialize the office chat manager
     const chatManager = new OfficeChatSocketManager();
-    const inquiryId = document.querySelector('[data-inquiry-id]').getAttribute('data-inquiry-id');
+  // Read inquiry id from the dedicated chat container to avoid picking unrelated elements
+  const chatContainer = document.querySelector('[data-chat-container][data-inquiry-id]');
+  const inquiryId = (chatContainer && chatContainer.getAttribute('data-inquiry-id')) || (document.querySelector('input[name="inquiry_id"]')?.value);
     const messageContainer = document.getElementById('messageHistory');
     const messageInput = document.getElementById('messageInput');
     const messageForm = document.getElementById('messageForm');
