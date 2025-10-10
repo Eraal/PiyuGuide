@@ -524,6 +524,23 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
     margin-right: 0.35rem;
   }
 
+  /* Concern type cards — match office card interactions */
+  .concern-type-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  }
+  .concern-type-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+  .concern-type-card.selected { border-color: #3b82f6; background-color: rgba(59,130,246,0.05); }
+  .concern-type-card.selected::before { content:""; position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .concern-type-card .check-icon { position:absolute; top:0.75rem; right:0.75rem; width:1.5rem; height:1.5rem; border-radius:50%; background-color:#3b82f6; color:#fff; border:none; display:flex; align-items:center; justify-content:center; transform: scale(0); transition: transform 0.3s ease; }
+  .concern-type-card.selected .check-icon { transform: scale(1); }
+
   /* Form navigation buttons */
   .form-navigation {
     display: flex;
@@ -822,13 +839,13 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                 <div class="grid md:grid-cols-2 gap-4" id="concernTypeGrid">
                   {% for ct in concern_types %}
                   {% set office_ids = concern_type_office_map.get(ct.id, []) %}
-                  <div class="border rounded-lg p-3 cursor-pointer transition concern-type-card hover:shadow-sm" data-concern-id="{{ ct.id }}" data-supporting-offices="{{ office_ids|join(',') }}" data-allows-other="{{ 'true' if ct.allows_other else 'false' }}">
+                  <div class="concern-type-card" data-concern-id="{{ ct.id }}" data-supporting-offices="{{ office_ids|join(',') }}" data-allows-other="{{ 'true' if ct.allows_other else 'false' }}">
                     <div class="flex items-start justify-between">
                       <div>
                         <p class="font-medium text-gray-800 text-sm">{{ ct.name }}</p>
                         {% if ct.description %}<p class="text-[11px] text-gray-500 mt-1 leading-snug line-clamp-3">{{ ct.description }}</p>{% endif %}
                       </div>
-                      <div class="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-xs text-gray-400 check-icon" aria-hidden="true"><i class="fas fa-check"></i></div>
+                      <div class="check-icon" aria-hidden="true"><i class="fas fa-check"></i></div>
                     </div>
                   </div>
                   {% endfor %}
@@ -1557,8 +1574,8 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
     // Concern selection logic
     concernCards.forEach(card => {
       card.addEventListener('click', () => {
-        concernCards.forEach(c => c.classList.remove('selected','ring','ring-blue-500'));
-        card.classList.add('selected','ring','ring-blue-500');
+        concernCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
         natureConcernHidden.value = card.dataset.concernId;
         summaryConcern.textContent = card.querySelector('.font-medium').textContent.trim();
         concernError.classList.remove('visible');
