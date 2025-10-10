@@ -138,48 +138,110 @@ Office Details{% endblock %} {% block content %}
             </div>
           </div>
 
-          <!-- Services & Concerns -->
+          <!-- Services & Offers -->
           <div class="mb-8">
-            <h2
-              class="text-xl font-semibold text-gray-900 mb-4 flex items-center"
-            >
+            <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
               <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
-              Services & Concerns
+              Services
             </h2>
 
-            {% if office.supported_concerns %}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {% for concern in office.supported_concerns %}
-              <div
-                class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-              >
-                <div class="flex items-start">
-                  <div class="flex-shrink-0 mt-1 mr-3">
-                    <div
-                      class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center"
-                    >
-                      <i class="fas fa-check text-green-600"></i>
+            {% set inquiry_services = office.supported_concerns | selectattr('for_inquiries') | list %}
+            {% set counseling_offers = office.supported_concerns | selectattr('for_counseling') | list %}
+
+            <div class="space-y-6">
+              <!-- Inquiry Services -->
+              <div class="rounded-xl border border-blue-100 bg-blue-50/40">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-blue-100/70 bg-blue-50 rounded-t-xl">
+                  <div class="flex items-center">
+                    <span class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-blue-100 text-blue-700 mr-2">
+                      <i class="fas fa-paper-plane"></i>
+                    </span>
+                    <h3 class="text-base font-semibold text-blue-800">Inquiry Services</h3>
+                  </div>
+                  <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                    {{ inquiry_services|length }} item{{ '' if inquiry_services|length == 1 else 's' }}
+                  </span>
+                </div>
+
+                {% if inquiry_services %}
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {% for oc in inquiry_services %}
+                  <div class="group bg-white rounded-lg border border-blue-100 hover:border-blue-200 p-4 transition-shadow hover:shadow-sm">
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0 mt-1 mr-3">
+                        <div class="h-8 w-8 rounded-md bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition">
+                          <i class="fas fa-check text-blue-700"></i>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 class="font-medium text-gray-900">{{ oc.concern_type.name }}</h4>
+                        {% if oc.concern_type.description %}
+                        <p class="text-sm text-gray-600 mt-1">{{ oc.concern_type.description }}</p>
+                        {% endif %}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <h4 class="font-medium text-gray-900">
-                      {{ concern.concern_type.name }}
-                    </h4>
-                    <p class="text-sm text-gray-600 mt-1">
-                      {{ concern.concern_type.description }}
-                    </p>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4 text-sm text-blue-800/80 bg-blue-50/60 rounded-b-xl">
+                  No inquiry services listed for this office.
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Counseling Offers -->
+              <div class="rounded-xl border border-violet-100 bg-violet-50/40">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-violet-100/70 bg-violet-50 rounded-t-xl">
+                  <div class="flex items-center">
+                    <span class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-violet-100 text-violet-700 mr-2">
+                      <i class="fas fa-user-md"></i>
+                    </span>
+                    <h3 class="text-base font-semibold text-violet-800">Counseling Offers</h3>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    {% if office.supports_video %}
+                    <span class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-semibold">
+                      Video
+                    </span>
+                    {% endif %}
+                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">
+                      {{ counseling_offers|length }} item{{ '' if counseling_offers|length == 1 else 's' }}
+                    </span>
                   </div>
                 </div>
+
+                {% if counseling_offers %}
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {% for oc in counseling_offers %}
+                  <div class="group bg-white rounded-lg border border-violet-100 hover:border-violet-200 p-4 transition-shadow hover:shadow-sm">
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0 mt-1 mr-3">
+                        <div class="h-8 w-8 rounded-md bg-violet-100 flex items-center justify-center group-hover:bg-violet-200 transition">
+                          <i class="fas fa-heart text-violet-700"></i>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 class="font-medium text-gray-900">{{ oc.concern_type.name }}</h4>
+                        {% if oc.concern_type.description %}
+                        <p class="text-sm text-gray-600 mt-1">{{ oc.concern_type.description }}</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4 text-sm text-violet-800/80 bg-violet-50/60 rounded-b-xl">
+                  {% if office.supports_video %}
+                  No specific counseling offers listed yet.
+                  {% else %}
+                  This office does not offer counseling services.
+                  {% endif %}
+                </div>
+                {% endif %}
               </div>
-              {% endfor %}
             </div>
-            {% else %}
-            <div
-              class="text-gray-500 text-sm bg-gray-50 p-6 rounded-lg border border-gray-100 italic"
-            >
-              No specific services or concerns have been listed for this office.
-            </div>
-            {% endif %}
           </div>
 
           <!-- Video Counseling Section (if applicable) -->
@@ -313,47 +375,7 @@ Office Details{% endblock %} {% block content %}
             </div>
           </div>
 
-          <!-- Contact Information -->
-          <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-            <h3
-              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
-            >
-              <i class="fas fa-address-card text-blue-500 mr-2"></i>
-              Contact Information
-            </h3>
-            <ul class="space-y-3">
-              <li class="flex items-start">
-                <div class="text-blue-500 mr-3 mt-1">
-                  <i class="fas fa-envelope"></i>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-700">
-                    {{ office.email|default('No email available') }}
-                  </p>
-                </div>
-              </li>
-              <li class="flex items-start">
-                <div class="text-blue-500 mr-3 mt-1">
-                  <i class="fas fa-phone"></i>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-700">
-                    {{ office.phone|default('No phone available') }}
-                  </p>
-                </div>
-              </li>
-              <li class="flex items-start">
-                <div class="text-blue-500 mr-3 mt-1">
-                  <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-700">
-                    {{ office.location|default('No location available') }}
-                  </p>
-                </div>
-              </li>
-            </ul>
-          </div>
+          <!-- Contact Information removed as requested -->
         </div>
       </div>
     </div>
