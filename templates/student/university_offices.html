@@ -632,26 +632,99 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Heart/favorite functionality
-    document.querySelectorAll('.fa-heart').forEach(heart => {
+    // Client-side Favorites (no DB): persist in localStorage and reorder cards so favorites appear first
+    const FAVORITES_STORAGE_KEY = 'pg_student_favorite_offices';
+
+    function getFavoriteSet() {
+        try {
+            const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set(arr.map(String));
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    function saveFavoriteSet(favSet) {
+        try {
+            localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(favSet)));
+        } catch (e) {
+            // ignore quota errors
+        }
+    }
+
+    function updateHeartUIForCard(card, isFav) {
+        const heart = card.querySelector('.fa-heart');
+        if (!heart) return;
+        if (isFav) {
+            heart.classList.remove('far');
+            heart.classList.add('fas', 'text-red-500');
+            card.setAttribute('data-favorite', '1');
+            heart.setAttribute('aria-pressed', 'true');
+            heart.setAttribute('title', 'Remove from favorites');
+        } else {
+            heart.classList.remove('fas', 'text-red-500');
+            heart.classList.add('far');
+            card.setAttribute('data-favorite', '0');
+            heart.setAttribute('aria-pressed', 'false');
+            heart.setAttribute('title', 'Add to favorites');
+        }
+    }
+
+    function reorderOfficeGrid() {
+        const grid = document.getElementById('office-grid');
+        if (!grid) return;
+        const cards = Array.from(grid.querySelectorAll('.office-card'));
+        // Stable sort: favorites (data-favorite='1') first, then by name asc
+        cards.sort((a, b) => {
+            const af = a.getAttribute('data-favorite') === '1' ? 1 : 0;
+            const bf = b.getAttribute('data-favorite') === '1' ? 1 : 0;
+            if (af !== bf) return bf - af; // favorites first
+            const an = (a.querySelector('h3')?.textContent || '').trim().toLowerCase();
+            const bn = (b.querySelector('h3')?.textContent || '').trim().toLowerCase();
+            return an.localeCompare(bn);
+        });
+        // Append back in new order
+        cards.forEach(card => grid.appendChild(card));
+    }
+
+    // Initialize favorites UI state on load
+    const favSet = getFavoriteSet();
+    document.querySelectorAll('.office-card').forEach(card => {
+        const id = card.getAttribute('data-office-id');
+        const isFav = id && favSet.has(String(id));
+        updateHeartUIForCard(card, !!isFav);
+    });
+    reorderOfficeGrid();
+
+    // Toggle favorite on heart click and reorder
+    document.querySelectorAll('.office-card .fa-heart').forEach(heart => {
         heart.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
-            if (this.classList.contains('far')) {
-                this.classList.remove('far');
-                this.classList.add('fas', 'text-red-500');
-                showNotification('Added to favorites', 'success');
-            } else {
-                this.classList.remove('fas', 'text-red-500');
-                this.classList.add('far');
+            const card = this.closest('.office-card');
+            const id = card?.getAttribute('data-office-id');
+            if (!id) return;
+
+            const set = getFavoriteSet();
+            const wasFav = set.has(String(id));
+            if (wasFav) {
+                set.delete(String(id));
+                updateHeartUIForCard(card, false);
                 showNotification('Removed from favorites', 'info');
+            } else {
+                set.add(String(id));
+                updateHeartUIForCard(card, true);
+                showNotification('Added to favorites', 'success');
             }
-            
-            // Add animation
+            saveFavoriteSet(set);
+
+            // Add subtle animation
             this.style.transform = 'scale(1.3)';
-            setTimeout(() => {
-                this.style.transform = 'scale(1)';
-            }, 200);
+            setTimeout(() => { this.style.transform = 'scale(1)'; }, 180);
+
+            // Reorder grid so favorites float to top
+            reorderOfficeGrid();
         });
     });
 
