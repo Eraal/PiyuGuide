@@ -199,15 +199,7 @@
           </a>
         </div>
 
-        {# Locked overlay when inquiry is closed (server-rendered to persist on reload) #}
-        {% if inquiry.status == 'closed' %}
-        <div id="chatDisabledOverlay" class="chat-locked-overlay z-40">
-          <div class="flex flex-col items-center text-center px-6 py-8 rounded-xl bg-white/70 ring-1 ring-slate-900/5 shadow-sm">
-            <i class="fas fa-lock text-red-500 text-2xl mb-2"></i>
-            <div class="text-sm text-slate-700 font-medium">This inquiry is closed. Chat is disabled.</div>
-          </div>
-        </div>
-        {% endif %}
+        {# Removed full overlay to allow back-reading when closed. Inputs below are disabled when closed. #}
         <div class="p-6 flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-50">
           <!-- Messages History -->
           <div class="message-container mb-6 flex-1 min-h-0 overflow-y-auto pr-1" id="messageHistory" data-inquiry-attachments='[{% for att in inquiry.attachments %}{"filename":"{{ att.filename|e }}","file_path":"{{ att.file_path|e }}","file_type":"{{ att.file_type|e }}","file_size":{{ att.file_size or 0 }} }{% if not loop.last %},{% endif %}{% endfor %}]'>
@@ -1062,22 +1054,7 @@
               const container = document.querySelector('[data-chat-container][data-inquiry-id]');
               if (container) container.setAttribute('data-inquiry-status','closed');
             } catch {}
-            // Inject overlay if not present
-            const existing = document.getElementById('chatDisabledOverlay');
-            if (!existing) {
-              const chatCard = document.getElementById('messageForm')?.closest('.bg-white.rounded-2xl.shadow-sm');
-              if (chatCard) {
-                const overlay = document.createElement('div');
-                overlay.id = 'chatDisabledOverlay';
-                overlay.className = 'chat-locked-overlay z-40';
-                overlay.innerHTML = '<div class="flex flex-col items-center text-center px-6 py-8 rounded-xl bg-white/70 ring-1 ring-slate-900/5 shadow-sm">\
-                  <i class="fas fa-lock text-red-500 text-2xl mb-2"></i>\
-                  <div class="text-sm text-slate-700 font-medium">This inquiry is closed. Chat is disabled.</div>\
-                </div>';
-                chatCard.style.position = chatCard.style.position || 'relative';
-                chatCard.appendChild(overlay);
-              }
-            }
+            // Overlay removed; keep history scrollable while inputs are disabled.
           } catch {}
         } catch(e) {}
       });
