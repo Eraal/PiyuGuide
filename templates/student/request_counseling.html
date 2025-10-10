@@ -435,6 +435,13 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
     overflow: hidden;
   }
 
+  /* Truncated description with expand/collapse */
+  .office-desc { position: relative; }
+  .office-desc.clamped { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .office-desc.expanded { display: block; }
+  .office-desc-toggle { background: none; border: none; color: #2563eb; padding: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; align-self: flex-start; }
+  .office-desc-toggle:hover { text-decoration: underline; }
+
   .office-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -757,7 +764,8 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
                       <i class="fas fa-building"></i>
                     </div>
                     <h4>{{ office.name }}</h4>
-                    <p>{{ office.description }}</p>
+                    <p class="office-desc clamped">{{ office.description }}</p>
+                    <button type="button" class="office-desc-toggle" style="display:none" aria-expanded="false">Read more</button>
                     {% if office.supports_video %}
                     <div class="office-supports-video">
                       <i class="fas fa-video"></i> Video Available
@@ -1232,6 +1240,66 @@ Session - KapiyuGuide{% endblock %} {% block extra_head %}
   filterConcernCardsForOffice(officeId);
       });
     });
+
+    // Initialize read more/less toggles for office descriptions
+    function initOfficeDescToggles(){
+      document.querySelectorAll('.office-card').forEach(card => {
+        const desc = card.querySelector('.office-desc');
+        const toggle = card.querySelector('.office-desc-toggle');
+        if(!desc || !toggle) return;
+        // Ensure clamped initially
+        desc.classList.add('clamped');
+        // Use a frame to ensure layout is calculated
+        requestAnimationFrame(() => {
+          const isOverflowing = desc.scrollHeight > desc.clientHeight + 1;
+          if(isOverflowing){
+            toggle.style.display = 'inline-block';
+            toggle.textContent = 'Read more';
+            toggle.setAttribute('aria-expanded','false');
+          } else {
+            toggle.style.display = 'none';
+          }
+        });
+        toggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const expanded = desc.classList.toggle('expanded');
+          if(expanded){
+            desc.classList.remove('clamped');
+            toggle.textContent = 'Show less';
+            toggle.setAttribute('aria-expanded','true');
+          } else {
+            desc.classList.add('clamped');
+            toggle.textContent = 'Read more';
+            toggle.setAttribute('aria-expanded','false');
+          }
+        });
+      });
+    }
+    initOfficeDescToggles();
+
+    // Recompute toggle visibility on resize (debounced)
+    function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); }; }
+    const recomputeToggles = debounce(()=>{
+      document.querySelectorAll('.office-card').forEach(card => {
+        const desc = card.querySelector('.office-desc');
+        const toggle = card.querySelector('.office-desc-toggle');
+        if(!desc || !toggle) return;
+        // Temporarily ensure clamped to measure overflow when not expanded
+        const isExpanded = desc.classList.contains('expanded');
+        if(!isExpanded) desc.classList.add('clamped');
+        const hasText = (desc.textContent || '').trim().length > 0;
+        const isOverflowing = hasText && (desc.scrollHeight > desc.clientHeight + 1);
+        toggle.style.display = isOverflowing ? 'inline-block' : 'none';
+        if(!isOverflowing && isExpanded){
+          // Reset to clamped state if it no longer overflows
+          desc.classList.remove('expanded');
+          desc.classList.add('clamped');
+          toggle.textContent = 'Read more';
+          toggle.setAttribute('aria-expanded','false');
+        }
+      });
+    }, 150);
+    window.addEventListener('resize', recomputeToggles);
 
     // Change office button
     changeOfficeBtns.forEach(btn => btn.addEventListener('click', () => {
