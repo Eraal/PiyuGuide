@@ -73,16 +73,17 @@ def all_inquiries():
             query = query.filter(Inquiry.created_at < end_date)
     
     if search_query:
+        # Search by student/user name, student number, inquiry subject, or message content
         search = f"%{search_query}%"
-        query = query.filter(
+        query = query.outerjoin(InquiryMessage, Inquiry.id == InquiryMessage.inquiry_id).filter(
             or_(
                 User.first_name.ilike(search),
                 User.last_name.ilike(search),
                 Student.student_number.ilike(search),
                 Inquiry.subject.ilike(search),
-                Inquiry.content.ilike(search)
+                InquiryMessage.content.ilike(search)
             )
-        )
+        ).distinct()
     
 
     # Limit office choices shown in filter: campus admins (role super_admin) should only

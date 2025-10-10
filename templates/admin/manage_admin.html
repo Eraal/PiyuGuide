@@ -357,10 +357,13 @@
     <div class="bg-white border-t border-gray-200 px-4 py-3 sm:px-6 rounded-b-xl">
         <div class="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
             <div class="flex items-center text-sm text-gray-700">
+                {% set start_item = (pagination.page - 1) * pagination.per_page + 1 %}
+                {% set end_item = pagination.page * pagination.per_page %}
+                {% set end_item = total_count if end_item > total_count else end_item %}
                 <span>Showing</span>
-                <span class="font-medium mx-1">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+                <span class="font-medium mx-1">{{ start_item }}</span>
                 <span>to</span>
-                <span class="font-medium mx-1">{{ min(pagination.page * pagination.per_page, total_count) }}</span>
+                <span class="font-medium mx-1">{{ end_item }}</span>
                 <span>of</span>
                 <span class="font-medium mx-1">{{ total_count }}</span>
                 <span>results</span>

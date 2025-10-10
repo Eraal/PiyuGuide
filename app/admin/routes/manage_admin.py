@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import func, or_, desc
+from sqlalchemy.orm import joinedload
 from app.admin import admin_bp
 from app.utils.decorators import campus_access_required
 
@@ -29,13 +30,14 @@ def manage_admins():
     # Restrict to current campus
     campus_id = getattr(current_user, 'campus_id', None)
 
-    # Base query for office admins with joins to users and offices
-    query = db.session.query(
-        User, OfficeAdmin, Office
-    ).join(
+    # Base query for office admins with joins to users and offices.
+    # Query Users and eager-load OfficeAdmin and Office to ensure pagination returns User objects.
+    query = db.session.query(User).join(
         OfficeAdmin, User.id == OfficeAdmin.user_id
     ).join(
         Office, OfficeAdmin.office_id == Office.id
+    ).options(
+        joinedload(User.office_admin).joinedload(OfficeAdmin.office)
     ).filter(
         User.role == 'office_admin'
     )
@@ -79,15 +81,17 @@ def manage_admins():
     
     # Transform results for template
     admins = []
-    for user, office_admin, office in admin_results:
+    for user in admin_results:
+        office_admin = getattr(user, 'office_admin', None)
+        office = getattr(office_admin, 'office', None) if office_admin else None
         admins.append({
             'id': user.id,
-            'office_admin_id': office_admin.id,
+            'office_admin_id': office_admin.id if office_admin else None,
             'first_name': user.first_name,
             'last_name': user.last_name,
             'email': user.email,
-            'office_id': office.id,
-            'office_name': office.name,
+            'office_id': office.id if office else None,
+            'office_name': office.name if office else None,
             'is_online': user.is_online,
             'is_active': user.is_active,
             'account_locked': user.account_locked,
