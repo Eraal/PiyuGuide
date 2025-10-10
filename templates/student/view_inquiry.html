@@ -72,11 +72,17 @@
 
 	/* Seen indicator enhancements */
 	.msg-row .message-meta i.fa-check-double.seen { color: #60a5fa !important; opacity: 1 !important; }
+
+	/* Chat locked overlay helper */
+	.chat-locked-overlay {
+		position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+		background: rgba(255,255,255,0.75); backdrop-filter: saturate(180%) blur(2px);
+	}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6 chat-page-container" data-inquiry-id="{{ inquiry.id }}" data-chat-container="true"{% if current_user.profile_pic_path %} data-current-avatar-url="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"{% endif %}>
+<div class="container mx-auto px-4 py-6 chat-page-container" data-inquiry-id="{{ inquiry.id }}" data-inquiry-status="{{ inquiry.status }}" data-chat-container="true"{% if current_user.profile_pic_path %} data-current-avatar-url="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"{% endif %}>
 
 	<div class="chat-wrapper grid grid-cols-1 lg:grid-cols-4 gap-4">
 		<!-- Left Sidebar - Details & Related Inquiries (hidden on mobile) -->
@@ -177,7 +183,7 @@
 
 		<!-- Chat Column (revamped to match Office UI/UX) -->
 		<div class="lg:col-span-3 h-full min-h-0 chat-column">
-			<div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-full flex flex-col min-h-0 chat-card">
+			<div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-full flex flex-col min-h-0 chat-card relative">
 				<!-- Header -->
 				<div class="px-6 py-4 border-b flex items-center justify-between flex-shrink-0 bg-gradient-to-r from-white to-sky-50/40 chat-header">
 					<div class="flex items-center gap-3">
@@ -188,6 +194,17 @@
 						<i class="fas fa-arrow-left mr-1"></i> Back to Inquiries
 					</a>
 				</div>
+
+				{# Locked overlay when inquiry is closed (persist on reload) #}
+				{% if inquiry.status == 'closed' %}
+				<div id="chatDisabledOverlay" class="chat-locked-overlay z-40">
+					<div class="flex flex-col items-center text-center px-6 py-8 rounded-xl bg-white/70 ring-1 ring-slate-900/5 shadow-sm">
+						<i class="fas fa-lock text-red-500 text-2xl mb-2"></i>
+						<div class="text-sm text-slate-700 font-medium">This inquiry is closed. Chat is disabled.</div>
+					</div>
+				</div>
+				{% endif %}
+
 				<!-- Body -->
 				<div class="p-6 flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-50 chat-body">
 					<!-- Messages History -->
@@ -284,19 +301,19 @@
 					<form id="messageForm" class="mt-2 flex-shrink-0">
 						<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 						<div class="relative bg-white rounded-xl border border-slate-200 shadow-sm chat-input-bar">
-							<textarea name="message" rows="3" placeholder="Type your message..." id="messageInput"
-								class="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none leading-relaxed text-slate-800 placeholder:text-slate-400"></textarea>
+							<textarea name="message" rows="3" placeholder="{% if inquiry.status == 'closed' %}This inquiry is closed. Messaging disabled.{% else %}Type your message...{% endif %}" id="messageInput"
+								class="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none leading-relaxed text-slate-800 placeholder:text-slate-400" {% if inquiry.status == 'closed' %}disabled{% endif %}></textarea>
 							<div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 bg-slate-50 rounded-b-xl chat-input-toolbar">
 								<div class="flex items-center gap-2">
 									<div class="relative">
-										<input type="file" id="replyAttachments" name="attachments" multiple class="hidden" />
-										<label for="replyAttachments" class="inline-flex items-center gap-2 cursor-pointer text-slate-600 hover:text-sky-700 icon-btn file-input-trigger" aria-label="Attach files">
+										<input type="file" id="replyAttachments" name="attachments" multiple class="hidden" {% if inquiry.status == 'closed' %}disabled{% endif %} />
+										<label for="replyAttachments" class="inline-flex items-center gap-2 cursor-pointer text-slate-600 hover:text-sky-700 icon-btn file-input-trigger {% if inquiry.status == 'closed' %}pointer-events-none opacity-50{% endif %}" aria-label="Attach files">
 											<i class="fas fa-paperclip text-lg"></i>
 											<span class="text-sm label-text-attach">Attach</span>
 										</label>
 									</div>
 								</div>
-								<button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition disabled:opacity-50 icon-btn" id="sendButton" aria-label="Send message">
+								<button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition disabled:opacity-50 icon-btn" id="sendButton" aria-label="Send message" {% if inquiry.status == 'closed' %}disabled{% endif %}>
 									<span class="label-text-send">Send</span>
 									<i class="fas fa-paper-plane text-base"></i>
 								</button>
@@ -843,8 +860,33 @@
 				try {
 					const input = document.getElementById('messageInput');
 					const btn = document.getElementById('sendButton');
+					const fileInput = document.getElementById('replyAttachments');
+					const attachLabel = document.querySelector('label[for="replyAttachments"]');
 					if (input) { input.disabled = true; input.placeholder = 'This inquiry is closed. Messaging disabled.'; }
 					if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); }
+					if (fileInput) { fileInput.disabled = true; }
+					if (attachLabel) { attachLabel.classList.add('pointer-events-none','opacity-50'); }
+					// Update container data-status
+					try {
+						const container = document.querySelector('[data-chat-container][data-inquiry-id]');
+						if (container) container.setAttribute('data-inquiry-status','closed');
+					} catch {}
+					// Inject overlay if not present
+					const existing = document.getElementById('chatDisabledOverlay');
+					if (!existing) {
+						const chatCard = document.getElementById('messageForm')?.closest('.bg-white.rounded-2xl.shadow-sm');
+						if (chatCard) {
+							const overlay = document.createElement('div');
+							overlay.id = 'chatDisabledOverlay';
+							overlay.className = 'chat-locked-overlay z-40';
+							overlay.innerHTML = '<div class="flex flex-col items-center text-center px-6 py-8 rounded-xl bg-white/70 ring-1 ring-slate-900/5 shadow-sm">\
+								<i class="fas fa-lock text-red-500 text-2xl mb-2"></i>\
+								<div class="text-sm text-slate-700 font-medium">This inquiry is closed. Chat is disabled.</div>\
+							</div>';
+							chatCard.style.position = chatCard.style.position || 'relative';
+							chatCard.appendChild(overlay);
+						}
+					}
 				} catch(e) {}
 			});
 		}
