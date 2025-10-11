@@ -41,7 +41,7 @@
           </div>
           <div>
             <div class="text-gray-500">Program/Year</div>
-            <div class="text-gray-900">{{ student.program if student else 'N/A' }}{% if student and student.year_level %} • Y{{ student.year_level }}{% endif %}</div>
+            <div class="text-gray-900">{{ student.department_name if student else 'N/A' }}{% if student and student.year_level %} • Y{{ student.year_level }}{% endif %}</div>
           </div>
         </div>
       </section>
@@ -56,8 +56,8 @@
           <div>
             <dt class="text-gray-500">Preferred Schedule</dt>
             <dd class="text-gray-900">
-              {% if session.scheduled_date %}
-                {{ session.scheduled_date.strftime('%b %d, %Y') }} {% if session.scheduled_time %}• {{ session.scheduled_time.strftime('%I:%M %p') }}{% endif %}
+              {% if session.scheduled_at %}
+                {{ session.scheduled_at.strftime('%b %d, %Y') }} • {{ session.scheduled_at.strftime('%I:%M %p') }}
               {% else %}
                 Not yet scheduled
               {% endif %}
@@ -65,15 +65,23 @@
           </div>
           <div>
             <dt class="text-gray-500">Concern</dt>
-            <dd class="text-gray-900">{{ session.concern_type or 'N/A' }}</dd>
+            <dd class="text-gray-900">
+              {% if session.nature_of_concern and session.nature_of_concern.name %}
+                {{ session.nature_of_concern.name }}
+              {% elif session.nature_of_concern_description %}
+                Other
+              {% else %}
+                N/A
+              {% endif %}
+            </dd>
           </div>
           <div>
             <dt class="text-gray-500">Created</dt>
             <dd class="text-gray-900">{{ (session.created_at or session.date_created).strftime('%b %d, %Y %I:%M %p') if (session.created_at or session.date_created) else 'N/A' }}</dd>
           </div>
           <div class="sm:col-span-2">
-            <dt class="text-gray-500">Details</dt>
-            <dd class="text-gray-900 whitespace-pre-wrap">{{ session.details or session.description or '—' }}</dd>
+            <dt class="text-gray-500">Student Notes / Details</dt>
+            <dd class="text-gray-900 whitespace-pre-wrap">{{ session.nature_of_concern_description or session.notes or '—' }}</dd>
           </div>
         </dl>
       </section>
@@ -83,7 +91,7 @@
           <h2 class="text-lg font-medium text-gray-900">Counselor Notes</h2>
           <button id="saveNotesBtn" class="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700">Save</button>
         </div>
-        <textarea id="notesInput" class="w-full h-40 border rounded p-3 focus:outline-none focus:ring" placeholder="Add internal notes visible to office staff only...">{{ session.counselor_notes or '' }}</textarea>
+  <textarea id="notesInput" class="w-full h-40 border rounded p-3 focus:outline-none focus:ring" placeholder="Add internal notes visible to office staff only...">{{ session.notes or '' }}</textarea>
         <p class="text-xs text-gray-500 mt-2">Notes are not visible to students.</p>
       </section>
     </div>
@@ -93,11 +101,23 @@
       <section class="bg-white shadow rounded-lg p-5">
         <h2 class="text-lg font-medium text-gray-900 mb-3">Actions</h2>
         <div class="flex flex-col gap-2">
-          {% if session.status in ['pending', 'confirmed', 'in_progress'] %}
+          {% if session.status == 'pending' %}
             <button data-action="assign_confirm" class="action-btn px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Assign & Confirm</button>
             <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Reschedule</button>
             <button data-action="decline" class="action-btn px-3 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">Decline</button>
             <button data-action="remind" class="action-btn px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">Remind</button>
+          {% elif session.status == 'confirmed' %}
+            {% if is_video %}
+              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 text-center">Join</a>
+            {% endif %}
+            <button data-action="remind" class="action-btn px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">Remind</button>
+            <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Reschedule</button>
+            <button data-action="cancel" class="action-btn px-3 py-2 rounded bg-red-500 text-white text-sm hover:bg-red-600">Cancel Counseling</button>
+          {% elif session.status == 'in_progress' %}
+            {% if is_video %}
+              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 text-center">Rejoin</a>
+            {% endif %}
+            <button data-action="complete" class="action-btn px-3 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-700">Mark as Completed</button>
           {% endif %}
         </div>
       </section>
@@ -148,8 +168,8 @@
             <div class="flex-1 min-w-0">
               <div class="text-sm font-semibold text-gray-900 truncate">{{ student_user.full_name if student_user else 'Student' }}</div>
               <div class="text-xs text-gray-600 mt-1 flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center gap-1"><i class="far fa-calendar text-blue-500"></i><span id="details-resch-current-date">{% if session.scheduled_date %}{{ session.scheduled_date.strftime('%Y-%m-%d') }}{% else %}—{% endif %}</span></span>
-                <span class="inline-flex items-center gap-1"><i class="far fa-clock text-green-600"></i><span id="details-resch-current-time">{% if session.scheduled_time %}{{ session.scheduled_time.strftime('%H:%M') }}{% else %}—{% endif %}</span></span>
+                <span class="inline-flex items-center gap-1"><i class="far fa-calendar text-blue-500"></i><span id="details-resch-current-date">{% if session.scheduled_at %}{{ session.scheduled_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}</span></span>
+                <span class="inline-flex items-center gap-1"><i class="far fa-clock text-green-600"></i><span id="details-resch-current-time">{% if session.scheduled_at %}{{ session.scheduled_at.strftime('%H:%M') }}{% else %}—{% endif %}</span></span>
               </div>
             </div>
           </div>
@@ -318,9 +338,17 @@
           m && m.classList.remove('hidden');
           return;
         } else if (action === 'decline') {
-          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'declined' });
+          let reason = window.prompt('Optional: Provide a reason for declining (will be noted for the student).', '');
+          if (reason === null) return; // cancelled
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled', reason: reason || 'Declined by office' });
         } else if (action === 'remind') {
           await postForm(`{{ url_for('office.send_session_reminder', session_id=0) }}`.replace('0', sessionId), { type: 'in_app' });
+        } else if (action === 'cancel') {
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled' });
+        } else if (action === 'complete') {
+          // Redirect to complete endpoint (GET will mark as completed and redirect to summary)
+          window.location.href = `{{ url_for('office.complete_session', session_id=0) }}`.replace('0', sessionId);
+          return;
         }
         window.location.reload();
       } catch (e) {
