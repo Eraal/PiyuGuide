@@ -93,18 +93,11 @@
       <section class="bg-white shadow rounded-lg p-5">
         <h2 class="text-lg font-medium text-gray-900 mb-3">Actions</h2>
         <div class="flex flex-col gap-2">
-          {% if session.status in ['pending'] %}
-            <button data-action="confirm" class="action-btn px-3 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700">Confirm</button>
-            <button data-action="assign" class="action-btn px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Assign & Confirm</button>
-            <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Propose Reschedule</button>
+          {% if session.status in ['pending', 'confirmed', 'in_progress'] %}
+            <button data-action="assign_confirm" class="action-btn px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Assign & Confirm</button>
+            <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Reschedule</button>
             <button data-action="decline" class="action-btn px-3 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">Decline</button>
-          {% endif %}
-          {% if is_video and can_join %}
-            <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 text-center">Join Video Session</a>
-          {% endif %}
-          {% if session.status in ['confirmed','in_progress'] %}
-            <button data-action="complete" class="action-btn px-3 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-700">Mark as Completed</button>
-            <button data-action="cancel" class="action-btn px-3 py-2 rounded bg-red-500 text-white text-sm hover:bg-red-600">Cancel Session</button>
+            <button data-action="remind" class="action-btn px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">Remind</button>
           {% endif %}
         </div>
       </section>
@@ -114,8 +107,13 @@
         <dl class="text-sm space-y-2">
           <div class="flex justify-between"><dt class="text-gray-500">Mode</dt><dd class="text-gray-900">{{ 'Video' if is_video else 'In-person' }}</dd></div>
           <div class="flex justify-between"><dt class="text-gray-500">Status</dt><dd class="text-gray-900">{{ session.status|replace('_', ' ')|title }}</dd></div>
-          {% if session.meeting_link %}
-          <div class="flex justify-between"><dt class="text-gray-500">Meeting</dt><dd class="text-indigo-700 truncate"><a class="underline" href="{{ session.meeting_link }}" target="_blank" rel="noopener">Open</a></dd></div>
+          {% if is_video %}
+          <div class="flex justify-between items-center gap-4">
+            <dt class="text-gray-500">Meeting</dt>
+            <dd class="text-indigo-700 truncate">
+              <a class="underline" href="{{ url_for('office.join_video_session', session_id=session.id) }}" target="_blank" rel="noopener">Open Link</a>
+            </dd>
+          </div>
           {% endif %}
         </dl>
       </section>
@@ -123,13 +121,51 @@
   </div>
 </div>
 
+<!-- Reschedule Modal -->
+<div id="detailsRescheduleModal" class="fixed inset-0 z-[90] hidden" aria-modal="true" role="dialog">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-details-resch-backdrop></div>
+  <div class="relative z-10 max-w-xl w-[95vw] mx-auto my-10">
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt"></i></div>
+          <div>
+            <h3 class="text-lg font-semibold">Reschedule Session</h3>
+            <p class="text-xs text-white/80">Select a new date and time</p>
+          </div>
+        </div>
+        <button type="button" id="detailsReschClose" class="p-2 rounded-lg hover:bg-white/10 transition" aria-label="Close"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div id="details-resch-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="details_new_date" class="block text-sm font-medium text-gray-700">New Date</label>
+            <input type="date" id="details_new_date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+          </div>
+          <div>
+            <label for="details_new_time" class="block text-sm font-medium text-gray-700">New Time</label>
+            <input type="time" id="details_new_time" step="3600" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+        <button type="button" id="detailsReschCancel" class="inline-flex justify-center rounded-lg border border-gray-300 px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="button" id="detailsReschConfirm" class="inline-flex justify-center rounded-lg px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 shadow-sm">Confirm Reschedule</button>
+      </div>
+    </div>
+  </div>
+  <!-- /Panel -->
+ </div>
+
 <script>
   const sessionId = Number(document.getElementById('sessionCtx')?.dataset.sessionId || '0');
+  function getCsrfToken(){ try { return document.querySelector('meta[name="csrf-token"]').getAttribute('content'); } catch(_) { return ''; } }
 
   async function postJSON(url, payload) {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
       body: JSON.stringify(payload || {})
     });
     if (!res.ok) throw new Error('Request failed');
@@ -141,7 +177,7 @@
     Object.entries(dataObj || {}).forEach(([k,v]) => body.append(k, v));
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken() },
       body: body.toString()
     });
     if (!res.ok) throw new Error('Request failed');
@@ -158,32 +194,78 @@
     }
   });
 
+  // Details page actions
   document.querySelectorAll('.action-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const action = btn.getAttribute('data-action');
       try {
-        if (action === 'confirm') {
+        if (action === 'assign_confirm') {
+          // Assign to current admin then confirm
+          const assignResp = await postForm(`{{ url_for('office.assign_counseling_session', session_id=0) }}`.replace('0', sessionId), {});
+          // Proceed to confirm only if assign didn't error with conflict
           await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'confirmed' });
-        } else if (action === 'assign') {
-          await postForm(`{{ url_for('office.assign_counseling_session', session_id=0) }}`.replace('0', sessionId), {});
+          window.location.reload();
+          return;
         } else if (action === 'reschedule') {
-          // For simplicity, redirect to list page reschedule flow or open a modal if exists
-          window.location.href = `{{ url_for('office.video_counseling') }}?reschedule=${'${sessionId}'}`;
+          // Open local reschedule modal
+          const m = document.getElementById('detailsRescheduleModal');
+          // Prefill with today rounded +1h
+          const now = new Date();
+          const rounded = new Date(Math.ceil((now.getTime()+3600000) / 3600000) * 3600000);
+          const yyyy = rounded.getFullYear();
+          const mm = String(rounded.getMonth()+1).padStart(2,'0');
+          const dd = String(rounded.getDate()).padStart(2,'0');
+          const HH = String(rounded.getHours()).padStart(2,'0');
+          const MM = '00';
+          const dEl = document.getElementById('details_new_date');
+          const tEl = document.getElementById('details_new_time');
+          if (dEl && !dEl.value) dEl.value = `${yyyy}-${mm}-${dd}`;
+          if (tEl && !tEl.value) tEl.value = `${HH}:${MM}`;
+          m && m.classList.remove('hidden');
           return;
         } else if (action === 'decline') {
           await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'declined' });
-        } else if (action === 'complete') {
-          // Redirect to complete endpoint which marks as completed
-          window.location.href = `{{ url_for('office.complete_session', session_id=0) }}`.replace('0', sessionId);
-          return;
-        } else if (action === 'cancel') {
-          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled' });
+        } else if (action === 'remind') {
+          await postForm(`{{ url_for('office.send_session_reminder', session_id=0) }}`.replace('0', sessionId), { type: 'in_app' });
         }
         window.location.reload();
       } catch (e) {
         window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Action failed' }}));
       }
     });
+  });
+
+  // Details reschedule modal handlers
+  const drModal = document.getElementById('detailsRescheduleModal');
+  const drClose = document.getElementById('detailsReschClose');
+  const drCancel = document.getElementById('detailsReschCancel');
+  const drConfirm = document.getElementById('detailsReschConfirm');
+  const drError = document.getElementById('details-resch-error');
+  function hideDetailsResch(){ drModal && drModal.classList.add('hidden'); drError && (drError.classList.add('hidden'), drError.textContent=''); }
+  drClose && drClose.addEventListener('click', hideDetailsResch);
+  drCancel && drCancel.addEventListener('click', hideDetailsResch);
+  drModal && drModal.addEventListener('click', (e)=>{ if (e.target && e.target.hasAttribute('data-details-resch-backdrop')) hideDetailsResch(); });
+  drConfirm && drConfirm.addEventListener('click', async ()=>{
+    const d = document.getElementById('details_new_date')?.value;
+    const t = document.getElementById('details_new_time')?.value;
+    if (!d || !t){ drError && (drError.textContent = 'Please select both date and time.', drError.classList.remove('hidden')); return; }
+    try {
+      const resp = await fetch(`{{ url_for('office.reschedule_session', session_id=0) }}`.replace('0', sessionId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken() },
+        body: `reschedule_date=${encodeURIComponent(d)}&reschedule_time=${encodeURIComponent(t)}`
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.status !== 'success'){
+        drError && (drError.textContent = data.message || 'Failed to reschedule. Please try another time.', drError.classList.remove('hidden'));
+        return;
+      }
+      // Success
+      hideDetailsResch();
+      window.location.reload();
+    } catch (err){
+      drError && (drError.textContent = 'An unexpected error occurred.', drError.classList.remove('hidden'));
+    }
   });
 </script>
 {% endblock %}

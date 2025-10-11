@@ -1007,6 +1007,59 @@ document.addEventListener('DOMContentLoaded', function() {
         return slots;
     }
 
+    // Helper: round a Date up to the next step in minutes (e.g., 60)
+    function roundToStep(dateObj, stepMins){
+        const ms = (stepMins || 60) * 60000;
+        const t = dateObj instanceof Date ? dateObj.getTime() : new Date(dateObj).getTime();
+        return new Date(Math.ceil(t / ms) * ms);
+    }
+
+    // Cache common elements/vars for rescheduling modal
+    const rescheduleModal = document.getElementById('rescheduleModal');
+    const cancelModal = document.getElementById('cancelModal');
+    const reschStudentName = document.getElementById('resch-student-name');
+    const reschStudentSub = document.getElementById('resch-student-sub');
+    const reschCurrentDate = document.getElementById('resch-current-date');
+    const reschCurrentTime = document.getElementById('resch-current-time');
+    const reschError = document.getElementById('resch-error');
+    const newDateEl = document.getElementById('new_date');
+    const newTimeEl = document.getElementById('new_time');
+    let sessionToReschedule = null;
+
+    // Wire up reschedule buttons to open the modal with populated info
+    document.querySelectorAll('.reschedule-session').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sid = parseInt(btn.getAttribute('data-session-id'));
+            sessionToReschedule = sid;
+            // Try to get richer info from the row's data-session JSON
+            let studentName = '';
+            let curDate = btn.getAttribute('data-date') || '';
+            let curTime = btn.getAttribute('data-time') || '';
+            const row = btn.closest('tr.session-row');
+            if (row) {
+                try {
+                    const data = JSON.parse(row.getAttribute('data-session') || '{}');
+                    if (data && data.student_name) studentName = data.student_name;
+                    if (!curDate && data.scheduled_date) curDate = data.scheduled_date;
+                    if (!curTime && data.scheduled_time) curTime = data.scheduled_time;
+                } catch(_) {}
+            }
+            // Populate modal header
+            if (reschStudentName) reschStudentName.textContent = studentName || 'Student';
+            if (reschCurrentDate) reschCurrentDate.textContent = curDate || '—';
+            if (reschCurrentTime) reschCurrentTime.textContent = formatTime12(curTime || '');
+            // Prefill form fields
+            if (newDateEl) newDateEl.value = curDate || '';
+            if (newTimeEl) newTimeEl.value = curTime || '';
+            // Reset errors and update slots
+            reschError && reschError.classList.add('hidden');
+            updateSlotPicker();
+            // Show modal
+            rescheduleModal && rescheduleModal.classList.remove('hidden');
+        });
+    });
+
     // Date Range Filter
     const dateRangeSelect = document.getElementById('dateRange');
     if (dateRangeSelect) {
