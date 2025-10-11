@@ -438,6 +438,44 @@ def join_video_session(session_id):
     return render_template('office/video_session.html', **context)
 
 
+@office_bp.route('/counseling/<int:session_id>')
+@login_required
+def counseling_details(session_id: int):
+    """Dedicated page showing full counseling request/session details for Office Admins.
+
+    Replaces the table row -> modal flow with a full view. Supports both video and in‑person sessions.
+    Provides actions: Assign & Confirm, Confirm, Reschedule, Cancel, Join (for video), Notes, etc.
+    """
+    if current_user.role != 'office_admin':
+        flash('Access denied. You do not have permission to access this page.', 'error')
+        return redirect(url_for('main.index'))
+
+    office_id = current_user.office_admin.office_id
+    session = CounselingSession.query.filter_by(id=session_id, office_id=office_id).first_or_404()
+
+    # Gather student info
+    student = Student.query.get(session.student_id)
+    student_user = User.query.get(student.user_id) if student else None
+
+    # Context for sidebar/header
+    pending_inquiries_count = Inquiry.query.filter_by(
+        office_id=office_id,
+        status='pending'
+    ).count()
+
+    context = get_office_context()
+    context.update({
+        'session': session,
+        'student': student,
+        'student_user': student_user,
+        'is_video': bool(session.is_video_session),
+        'can_join': bool(session.is_video_session and session.status in ['confirmed', 'in_progress']),
+        'pending_inquiries_count': pending_inquiries_count,
+    })
+
+    return render_template('office/counseling_details.html', **context)
+
+
 @office_bp.route('/video-session/<int:session_id>/end', methods=['POST'])
 @login_required
 def end_video_session(session_id):

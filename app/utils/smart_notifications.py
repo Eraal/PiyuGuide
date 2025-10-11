@@ -263,7 +263,7 @@ class SmartNotificationManager:
             # Update existing notification timestamp and mark as unread
             existing_notification.created_at = datetime.utcnow()
             existing_notification.is_read = False
-            existing_notification.link = f"/office/counseling-sessions"
+            existing_notification.link = f"/office/counseling/{session.id}"
             # Ensure title/message are defined for payload
             title = existing_notification.title
             message = existing_notification.message
@@ -287,7 +287,7 @@ class SmartNotificationManager:
                 source_office_id=session.office_id,
                 is_read=False,
                 created_at=datetime.utcnow(),
-                link=f"/office/counseling-sessions"
+                link=f"/office/counseling/{session.id}"
             )
             
             db.session.add(notification)
@@ -309,7 +309,8 @@ class SmartNotificationManager:
                 'student_name': session.student.user.get_full_name(),
                 'scheduled_at': session.scheduled_at.isoformat() if session.scheduled_at else None,
                 'timestamp': datetime.utcnow().isoformat(),
-                'student_profile_pic': getattr(session.student.user, 'profile_pic', None)
+                'student_profile_pic': getattr(session.student.user, 'profile_pic', None),
+                'link': f"/office/counseling/{getattr(session, 'id', '')}"
             }
             if push_office_notification_to_user:
                 push_office_notification_to_user(office_admin_user_id, payload)

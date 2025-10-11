@@ -1,0 +1,189 @@
+{% extends 'office/office_base.html' %}
+{% block title %}Counseling Details | {{ session.reference_code or ('Session #' ~ session.id) }}{% endblock %}
+
+{% block content %}
+<div id="sessionCtx" data-session-id="{{ session.id }}" class="hidden"></div>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-800">Counseling Request Details</h1>
+      <p class="text-sm text-gray-500">{{ session.reference_code or ('Session #' ~ session.id) }}</p>
+    </div>
+    <div>
+      <span class="inline-flex items-center rounded-md px-2 py-1 text-sm font-medium
+        {% if session.status == 'pending' %} bg-yellow-100 text-yellow-800
+        {% elif session.status in ['confirmed','in_progress'] %} bg-green-100 text-green-800
+        {% elif session.status in ['cancelled','declined'] %} bg-red-100 text-red-800
+        {% elif session.status in ['completed'] %} bg-blue-100 text-blue-800
+        {% else %} bg-gray-100 text-gray-800 {% endif %}">
+        {{ session.status|replace('_', ' ')|title }}
+      </span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left: Details -->
+    <div class="lg:col-span-2 space-y-6">
+      <section class="bg-white shadow rounded-lg p-5">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Student</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-gray-500">Name</div>
+            <div class="text-gray-900">{{ student_user.full_name if student_user else 'N/A' }}</div>
+          </div>
+          <div>
+            <div class="text-gray-500">Email</div>
+            <div class="text-gray-900">{{ student_user.email if student_user else 'N/A' }}</div>
+          </div>
+          <div>
+            <div class="text-gray-500">Student No.</div>
+            <div class="text-gray-900">{{ student.student_number if student else 'N/A' }}</div>
+          </div>
+          <div>
+            <div class="text-gray-500">Program/Year</div>
+            <div class="text-gray-900">{{ student.program if student else 'N/A' }}{% if student and student.year_level %} • Y{{ student.year_level }}{% endif %}</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white shadow rounded-lg p-5">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Session Info</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div>
+            <dt class="text-gray-500">Type</dt>
+            <dd class="text-gray-900">{{ 'Video' if is_video else 'In-person' }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Preferred Schedule</dt>
+            <dd class="text-gray-900">
+              {% if session.scheduled_date %}
+                {{ session.scheduled_date.strftime('%b %d, %Y') }} {% if session.scheduled_time %}• {{ session.scheduled_time.strftime('%I:%M %p') }}{% endif %}
+              {% else %}
+                Not yet scheduled
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Concern</dt>
+            <dd class="text-gray-900">{{ session.concern_type or 'N/A' }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Created</dt>
+            <dd class="text-gray-900">{{ (session.created_at or session.date_created).strftime('%b %d, %Y %I:%M %p') if (session.created_at or session.date_created) else 'N/A' }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-gray-500">Details</dt>
+            <dd class="text-gray-900 whitespace-pre-wrap">{{ session.details or session.description or '—' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="bg-white shadow rounded-lg p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-medium text-gray-900">Counselor Notes</h2>
+          <button id="saveNotesBtn" class="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700">Save</button>
+        </div>
+        <textarea id="notesInput" class="w-full h-40 border rounded p-3 focus:outline-none focus:ring" placeholder="Add internal notes visible to office staff only...">{{ session.counselor_notes or '' }}</textarea>
+        <p class="text-xs text-gray-500 mt-2">Notes are not visible to students.</p>
+      </section>
+    </div>
+
+    <!-- Right: Actions -->
+    <aside class="space-y-6">
+      <section class="bg-white shadow rounded-lg p-5">
+        <h2 class="text-lg font-medium text-gray-900 mb-3">Actions</h2>
+        <div class="flex flex-col gap-2">
+          {% if session.status in ['pending'] %}
+            <button data-action="confirm" class="action-btn px-3 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700">Confirm</button>
+            <button data-action="assign" class="action-btn px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Assign & Confirm</button>
+            <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Propose Reschedule</button>
+            <button data-action="decline" class="action-btn px-3 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">Decline</button>
+          {% endif %}
+          {% if is_video and can_join %}
+            <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 text-center">Join Video Session</a>
+          {% endif %}
+          {% if session.status in ['confirmed','in_progress'] %}
+            <button data-action="complete" class="action-btn px-3 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-700">Mark as Completed</button>
+            <button data-action="cancel" class="action-btn px-3 py-2 rounded bg-red-500 text-white text-sm hover:bg-red-600">Cancel Session</button>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="bg-white shadow rounded-lg p-5">
+        <h2 class="text-lg font-medium text-gray-900 mb-3">Quick Info</h2>
+        <dl class="text-sm space-y-2">
+          <div class="flex justify-between"><dt class="text-gray-500">Mode</dt><dd class="text-gray-900">{{ 'Video' if is_video else 'In-person' }}</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-500">Status</dt><dd class="text-gray-900">{{ session.status|replace('_', ' ')|title }}</dd></div>
+          {% if session.meeting_link %}
+          <div class="flex justify-between"><dt class="text-gray-500">Meeting</dt><dd class="text-indigo-700 truncate"><a class="underline" href="{{ session.meeting_link }}" target="_blank" rel="noopener">Open</a></dd></div>
+          {% endif %}
+        </dl>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+  const sessionId = Number(document.getElementById('sessionCtx')?.dataset.sessionId || '0');
+
+  async function postJSON(url, payload) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+    if (!res.ok) throw new Error('Request failed');
+    return res.json().catch(() => ({}));
+  }
+
+  async function postForm(url, dataObj) {
+    const body = new URLSearchParams();
+    Object.entries(dataObj || {}).forEach(([k,v]) => body.append(k, v));
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    if (!res.ok) throw new Error('Request failed');
+    return res.json().catch(() => ({}));
+  }
+
+  document.getElementById('saveNotesBtn')?.addEventListener('click', async () => {
+    const notes = document.getElementById('notesInput').value;
+    try {
+      await postJSON(`{{ url_for('office.update_session_notes', session_id=0) }}`.replace('0', sessionId), { notes });
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'success', message: 'Notes saved' }}));
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Failed to save notes' }}));
+    }
+  });
+
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const action = btn.getAttribute('data-action');
+      try {
+        if (action === 'confirm') {
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'confirmed' });
+        } else if (action === 'assign') {
+          await postForm(`{{ url_for('office.assign_counseling_session', session_id=0) }}`.replace('0', sessionId), {});
+        } else if (action === 'reschedule') {
+          // For simplicity, redirect to list page reschedule flow or open a modal if exists
+          window.location.href = `{{ url_for('office.video_counseling') }}?reschedule=${'${sessionId}'}`;
+          return;
+        } else if (action === 'decline') {
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'declined' });
+        } else if (action === 'complete') {
+          // Redirect to complete endpoint which marks as completed
+          window.location.href = `{{ url_for('office.complete_session', session_id=0) }}`.replace('0', sessionId);
+          return;
+        } else if (action === 'cancel') {
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled' });
+        }
+        window.location.reload();
+      } catch (e) {
+        window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Action failed' }}));
+      }
+    });
+  });
+</script>
+{% endblock %}

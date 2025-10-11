@@ -224,6 +224,7 @@ def sidebar_notifications_json():
             'title': n.title,
             'message': n.message,
             'inquiry_id': n.inquiry_id,
+            'link': n.link,
             'created_at': n.created_at.strftime('%b %d, %H:%M'),
             'is_read': n.is_read
         })

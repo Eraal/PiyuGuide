@@ -445,7 +445,7 @@
               <div id="office-ann-list" class="office-ann-scroll max-h-96 overflow-y-auto divide-y divide-transparent">
                 {% if sidebar_notifications %}
                   {% for n in sidebar_notifications %}
-                  <a href="{% if n.inquiry_id %}{{ url_for('office.view_inquiry', inquiry_id=n.inquiry_id) }}{% else %}{{ url_for('office.office_notifications') }}{% endif %}"
+            <a href="{% if n.link %}{{ n.link }}{% elif n.inquiry_id %}{{ url_for('office.view_inquiry', inquiry_id=n.inquiry_id) }}{% else %}{{ url_for('office.office_notifications') }}{% endif %}"
                      data-id="{{ n.id }}"
                      data-inquiry-id="{{ n.inquiry_id or '' }}"
                      data-student-id="{{ n.student_id or '' }}"
