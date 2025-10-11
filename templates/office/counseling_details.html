@@ -24,30 +24,47 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left: Details -->
     <div class="lg:col-span-2 space-y-6">
-      <section class="bg-white shadow rounded-lg p-5">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Student</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div>
-            <div class="text-gray-500">Name</div>
-            <div class="text-gray-900">{{ student_user.full_name if student_user else 'N/A' }}</div>
+      <section class="bg-white shadow rounded-2xl p-5">
+        <div class="flex items-start gap-4">
+          <div class="relative shrink-0">
+            {% set avatar = student_user.profile_pic_path if student_user else None %}
+            {% if avatar %}
+              <img src="{{ url_for('static', filename=avatar) }}" alt="{{ student_user.full_name if student_user else 'Student' }}" class="w-16 h-16 rounded-full object-cover ring-2 ring-white shadow"/>
+            {% else %}
+              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center text-xl font-semibold ring-2 ring-white shadow">
+                {% if student_user %}
+                  {{ (student_user.first_name[:1] ~ student_user.last_name[:1]).upper() }}
+                {% else %}
+                  ST
+                {% endif %}
+              </div>
+            {% endif %}
           </div>
-          <div>
-            <div class="text-gray-500">Email</div>
-            <div class="text-gray-900">{{ student_user.email if student_user else 'N/A' }}</div>
-          </div>
-          <div>
-            <div class="text-gray-500">Student No.</div>
-            <div class="text-gray-900">{{ student.student_number if student else 'N/A' }}</div>
-          </div>
-          <div>
-            <div class="text-gray-500">Program/Year</div>
-            <div class="text-gray-900">{{ student.department_name if student else 'N/A' }}{% if student and student.year_level %} • Y{{ student.year_level }}{% endif %}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="min-w-0">
+                <h2 class="text-lg font-semibold text-gray-900 leading-tight truncate">{{ student_user.full_name if student_user else 'Student' }}</h2>
+                <a href="mailto:{{ student_user.email if student_user else '' }}" class="text-sm text-indigo-600 hover:text-indigo-700 truncate">{{ student_user.email if student_user else 'N/A' }}</a>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">ID: {{ student.student_number if student else 'N/A' }}</span>
+                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
+                  {{ student.department_name if student else 'N/A' }}{% if student and student.year_level %}<span class="mx-1">•</span>Y{{ student.year_level }}{% endif %}
+                </span>
+              </div>
+            </div>
+            {% if student and student.section %}
+              <div class="mt-2 text-xs text-gray-500">Section: {{ student.section }}</div>
+            {% endif %}
           </div>
         </div>
       </section>
 
-      <section class="bg-white shadow rounded-lg p-5">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Session Info</h2>
+      <section class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="inline-flex w-1.5 h-5 rounded-full bg-indigo-500"></span>
+          Session Info
+        </h2>
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <dt class="text-gray-500">Type</dt>
@@ -86,9 +103,12 @@
         </dl>
       </section>
 
-      <section class="bg-white shadow rounded-lg p-5">
+      <section class="bg-white shadow rounded-2xl p-5">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-medium text-gray-900">Counselor Notes</h2>
+          <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <span class="inline-flex w-1.5 h-5 rounded-full bg-emerald-500"></span>
+            Counselor Notes
+          </h2>
           <button id="saveNotesBtn" class="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700">Save</button>
         </div>
   <textarea id="notesInput" class="w-full h-40 border rounded p-3 focus:outline-none focus:ring" placeholder="Add internal notes visible to office staff only...">{{ session.notes or '' }}</textarea>
@@ -98,8 +118,11 @@
 
     <!-- Right: Actions -->
     <aside class="space-y-6">
-      <section class="bg-white shadow rounded-lg p-5">
-        <h2 class="text-lg font-medium text-gray-900 mb-3">Actions</h2>
+      <section class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex w-1.5 h-5 rounded-full bg-sky-500"></span>
+          Actions
+        </h2>
         <div class="flex flex-col gap-2">
           {% if session.status == 'pending' %}
             <button data-action="assign_confirm" class="action-btn px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Assign & Confirm</button>
@@ -122,8 +145,11 @@
         </div>
       </section>
 
-      <section class="bg-white shadow rounded-lg p-5">
-        <h2 class="text-lg font-medium text-gray-900 mb-3">Quick Info</h2>
+      <section class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex w-1.5 h-5 rounded-full bg-violet-500"></span>
+          Quick Info
+        </h2>
         <dl class="text-sm space-y-2">
           <div class="flex justify-between"><dt class="text-gray-500">Mode</dt><dd class="text-gray-900">{{ 'Video' if is_video else 'In-person' }}</dd></div>
           <div class="flex justify-between"><dt class="text-gray-500">Status</dt><dd class="text-gray-900">{{ session.status|replace('_', ' ')|title }}</dd></div>
