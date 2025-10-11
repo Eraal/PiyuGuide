@@ -2,36 +2,134 @@
 {% block title %}Counseling Details | {{ session.reference_code or ('Session #' ~ session.id) }}{% endblock %}
 
 {% block content %}
+<style>
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  .stagger-1 { animation-delay: 0.1s; opacity: 0; }
+  .stagger-2 { animation-delay: 0.2s; opacity: 0; }
+  .stagger-3 { animation-delay: 0.3s; opacity: 0; }
+  .stagger-4 { animation-delay: 0.4s; opacity: 0; }
+  
+  .action-btn.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  
+  .action-btn.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+</style>
+
 <div id="sessionCtx" data-session-id="{{ session.id }}" class="hidden"></div>
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-  <div class="flex items-center justify-between mb-4">
-    <div>
-      <h1 class="text-2xl font-semibold text-gray-800">Counseling Request Details</h1>
-      <p class="text-sm text-gray-500">{{ session.reference_code or ('Session #' ~ session.id) }}</p>
-    </div>
-    <div>
-      <span class="inline-flex items-center rounded-md px-2 py-1 text-sm font-medium
-        {% if session.status == 'pending' %} bg-yellow-100 text-yellow-800
-        {% elif session.status in ['confirmed','in_progress'] %} bg-green-100 text-green-800
-        {% elif session.status in ['cancelled','declined'] %} bg-red-100 text-red-800
-        {% elif session.status in ['completed'] %} bg-blue-100 text-blue-800
-        {% else %} bg-gray-100 text-gray-800 {% endif %}">
-        {{ session.status|replace('_', ' ')|title }}
-      </span>
+
+<!-- Gradient Background Header -->
+<div class="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden">
+  <div class="absolute inset-0 bg-black/10"></div>
+  <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnpNNiAzNGMzLjMxIDAgNi0yLjY5IDYtNnMtMi42OS02LTYtNi02IDIuNjktNiA2IDIuNjkgNiA2IDZ6TTM2IDU0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20"></div>
+  <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-sm mb-6 text-white/80">
+      <a href="{{ url_for('office.dashboard') }}" class="hover:text-white transition-colors flex items-center gap-1">
+        <i class="fas fa-home"></i>
+        <span>Dashboard</span>
+      </a>
+      <i class="fas fa-chevron-right text-xs"></i>
+      <a href="{{ url_for('office.video_counseling') }}" class="hover:text-white transition-colors">Counseling Sessions</a>
+      <i class="fas fa-chevron-right text-xs"></i>
+      <span class="text-white font-medium">Details</span>
+    </nav>
+    
+    <!-- Title & Status -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3">
+          <i class="fas fa-clipboard-list text-white/90"></i>
+          Counseling Request Details
+        </h1>
+        <p class="text-white/70 text-sm font-medium">{{ session.reference_code or ('Session #' ~ session.id) }}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-lg backdrop-blur-sm border border-white/20
+          {% if session.status == 'pending' %} bg-amber-400/90 text-amber-900
+          {% elif session.status == 'confirmed' %} bg-emerald-400/90 text-emerald-900
+          {% elif session.status == 'in_progress' %} bg-green-500/90 text-white animate-pulse
+          {% elif session.status in ['cancelled','declined'] %} bg-red-400/90 text-red-900
+          {% elif session.status == 'completed' %} bg-blue-400/90 text-blue-900
+          {% else %} bg-gray-300/90 text-gray-800 {% endif %}">
+          <span class="w-2 h-2 rounded-full 
+            {% if session.status == 'pending' %} bg-amber-900
+            {% elif session.status == 'confirmed' %} bg-emerald-900
+            {% elif session.status == 'in_progress' %} bg-white
+            {% elif session.status in ['cancelled','declined'] %} bg-red-900
+            {% elif session.status == 'completed' %} bg-blue-900
+            {% else %} bg-gray-800 {% endif %}"></span>
+          {{ session.status|replace('_', ' ')|title }}
+        </span>
+      </div>
     </div>
   </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-6">
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left: Details -->
     <div class="lg:col-span-2 space-y-6">
-      <section class="bg-white shadow rounded-2xl p-5">
-        <div class="flex items-start gap-4">
+      <!-- Student Profile Card with Glass-morphism -->
+      <section class="animate-fade-in-up stagger-1 group relative bg-gradient-to-br from-white via-white to-indigo-50/30 shadow-xl rounded-3xl p-6 border border-indigo-100/50 hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] overflow-hidden">
+        <!-- Decorative gradient orb -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+        
+        <div class="relative flex items-start gap-5">
+          <!-- Avatar with ring animation -->
           <div class="relative shrink-0">
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full blur-md opacity-40 group-hover:opacity-70 transition-opacity"></div>
             {% set avatar = student_user.profile_pic_path if student_user else None %}
             {% if avatar %}
-              <img src="{{ url_for('static', filename=avatar) }}" alt="{{ student_user.full_name if student_user else 'Student' }}" class="w-16 h-16 rounded-full object-cover ring-2 ring-white shadow"/>
+              <img src="{{ url_for('static', filename=avatar) }}" alt="{{ student_user.full_name if student_user else 'Student' }}" class="relative w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-lg"/>
             {% else %}
-              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center text-xl font-semibold ring-2 ring-white shadow">
+              <div class="relative w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center text-2xl font-bold ring-4 ring-white shadow-lg">
                 {% if student_user %}
                   {{ (student_user.first_name[:1] ~ student_user.last_name[:1]).upper() }}
                 {% else %}
@@ -40,124 +138,305 @@
               </div>
             {% endif %}
           </div>
+          
+          <!-- Student Info -->
           <div class="flex-1 min-w-0">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="min-w-0">
-                <h2 class="text-lg font-semibold text-gray-900 leading-tight truncate">{{ student_user.full_name if student_user else 'Student' }}</h2>
-                <a href="mailto:{{ student_user.email if student_user else '' }}" class="text-sm text-indigo-600 hover:text-indigo-700 truncate">{{ student_user.email if student_user else 'N/A' }}</a>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div class="min-w-0 space-y-1">
+                <h2 class="text-xl font-bold text-gray-900 leading-tight truncate flex items-center gap-2">
+                  <i class="fas fa-user-graduate text-indigo-600 text-lg"></i>
+                  {{ student_user.full_name if student_user else 'Student' }}
+                </h2>
+                <a href="mailto:{{ student_user.email if student_user else '' }}" class="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 hover:underline transition-colors truncate">
+                  <i class="fas fa-envelope text-xs"></i>
+                  {{ student_user.email if student_user else 'N/A' }}
+                </a>
               </div>
+              
+              <!-- Badges -->
               <div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">ID: {{ student.student_number if student else 'N/A' }}</span>
-                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 shadow-sm border border-slate-200/50">
+                  <i class="fas fa-id-badge text-slate-500"></i>
+                  {{ student.student_number if student else 'N/A' }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-700 shadow-sm border border-indigo-200/50">
+                  <i class="fas fa-graduation-cap text-indigo-500"></i>
                   {{ student.department_name if student else 'N/A' }}{% if student and student.year_level %}<span class="mx-1">•</span>Y{{ student.year_level }}{% endif %}
                 </span>
               </div>
             </div>
+            
             {% if student and student.section %}
-              <div class="mt-2 text-xs text-gray-500">Section: {{ student.section }}</div>
+              <div class="mt-3 inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200">
+                <i class="fas fa-users text-gray-400"></i>
+                <span class="font-medium">Section:</span> {{ student.section }}
+              </div>
             {% endif %}
           </div>
         </div>
       </section>
 
-      <section class="bg-white shadow rounded-2xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span class="inline-flex w-1.5 h-5 rounded-full bg-indigo-500"></span>
-          Session Info
-        </h2>
-        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div>
-            <dt class="text-gray-500">Type</dt>
-            <dd class="text-gray-900">{{ 'Video' if is_video else 'In-person' }}</dd>
+      <!-- Session Info Card with Color-coded Fields -->
+      <section class="animate-fade-in-up stagger-2 bg-white shadow-xl rounded-3xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+        <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-info-circle"></i>
           </div>
-          <div>
-            <dt class="text-gray-500">Preferred Schedule</dt>
-            <dd class="text-gray-900">
-              {% if session.scheduled_at %}
-                {{ session.scheduled_at.strftime('%b %d, %Y') }} • {{ session.scheduled_at.strftime('%I:%M %p') }}
+          <span>Session Information</span>
+        </h2>
+        
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <!-- Type -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="fas fa-video text-blue-500"></i>
+              Type
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {% if is_video %}
+                <span class="inline-flex items-center gap-1.5">
+                  <i class="fas fa-video text-indigo-600"></i>
+                  Video Counseling
+                </span>
               {% else %}
-                Not yet scheduled
+                <span class="inline-flex items-center gap-1.5">
+                  <i class="fas fa-handshake text-emerald-600"></i>
+                  In-Person
+                </span>
               {% endif %}
             </dd>
           </div>
-          <div>
-            <dt class="text-gray-500">Concern</dt>
-            <dd class="text-gray-900">
+          
+          <!-- Schedule -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="far fa-calendar-alt text-emerald-500"></i>
+              Preferred Schedule
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {% if session.scheduled_at %}
+                <div class="flex items-center gap-2">
+                  <i class="far fa-clock text-emerald-600 text-sm"></i>
+                  {{ session.scheduled_at.strftime('%b %d, %Y') }} • {{ session.scheduled_at.strftime('%I:%M %p') }}
+                </div>
+              {% else %}
+                <span class="text-gray-400 italic">Not yet scheduled</span>
+              {% endif %}
+            </dd>
+          </div>
+          
+          <!-- Concern -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="fas fa-exclamation-circle text-amber-500"></i>
+              Concern
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
               {% if session.nature_of_concern and session.nature_of_concern.name %}
                 {{ session.nature_of_concern.name }}
               {% elif session.nature_of_concern_description %}
                 Other
               {% else %}
-                N/A
+                <span class="text-gray-400">N/A</span>
               {% endif %}
             </dd>
           </div>
-          <div>
-            <dt class="text-gray-500">Created</dt>
-            <dd class="text-gray-900">{{ (session.created_at or session.date_created).strftime('%b %d, %Y %I:%M %p') if (session.created_at or session.date_created) else 'N/A' }}</dd>
+          
+          <!-- Created -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="far fa-clock text-purple-500"></i>
+              Created
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {{ (session.created_at or session.date_created).strftime('%b %d, %Y %I:%M %p') if (session.created_at or session.date_created) else 'N/A' }}
+            </dd>
           </div>
-          <div class="sm:col-span-2">
-            <dt class="text-gray-500">Student Notes / Details</dt>
-            <dd class="text-gray-900 whitespace-pre-wrap">{{ session.nature_of_concern_description or session.notes or '—' }}</dd>
+          
+          <!-- Student Notes (full width) -->
+          <div class="sm:col-span-2 group relative p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <i class="fas fa-sticky-note text-slate-500"></i>
+              Student Notes / Details
+            </dt>
+            <dd class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-white/50 rounded-lg p-3 border border-slate-100">
+              {{ session.nature_of_concern_description or session.notes or '—' }}
+            </dd>
           </div>
         </dl>
       </section>
 
-      <section class="bg-white shadow rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <span class="inline-flex w-1.5 h-5 rounded-full bg-emerald-500"></span>
-            Counselor Notes
+      <!-- Counselor Notes with Modern Editor Styling -->
+      <section class="animate-fade-in-up stagger-3 bg-white shadow-xl rounded-3xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg">
+              <i class="fas fa-edit"></i>
+            </div>
+            <span>Counselor Notes</span>
           </h2>
-          <button id="saveNotesBtn" class="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700">Save</button>
+          <button id="saveNotesBtn" class="group relative px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2">
+            <i class="fas fa-save"></i>
+            <span>Save Notes</span>
+            <div class="absolute inset-0 rounded-xl bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+          </button>
         </div>
-  <textarea id="notesInput" class="w-full h-40 border rounded p-3 focus:outline-none focus:ring" placeholder="Add internal notes visible to office staff only...">{{ session.notes or '' }}</textarea>
-        <p class="text-xs text-gray-500 mt-2">Notes are not visible to students.</p>
+        
+        <div class="relative">
+          <textarea id="notesInput" class="w-full h-48 border-2 border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 resize-none bg-gray-50/50 hover:bg-white font-mono text-sm" placeholder="Add internal notes visible to office staff only...&#10;&#10;• Session observations&#10;• Follow-up actions&#10;• Resources provided">{{ session.notes or '' }}</textarea>
+          <div class="absolute bottom-3 right-3 text-xs text-gray-400 font-medium bg-white/80 px-2 py-1 rounded-lg">
+            <i class="fas fa-lock text-gray-400"></i> Private
+          </div>
+        </div>
+        
+        <p class="text-xs text-gray-500 mt-3 flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+          <i class="fas fa-info-circle text-amber-500"></i>
+          <span>Notes are not visible to students and are for internal use only.</span>
+        </p>
       </section>
     </div>
 
-    <!-- Right: Actions -->
+    <!-- Right: Actions & Quick Info -->
     <aside class="space-y-6">
-      <section class="bg-white shadow rounded-2xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <span class="inline-flex w-1.5 h-5 rounded-full bg-sky-500"></span>
-          Actions
+      <!-- Actions Card -->
+      <section class="animate-fade-in-up stagger-2 bg-gradient-to-br from-white to-sky-50/30 shadow-xl rounded-3xl p-6 border border-sky-100 hover:shadow-2xl transition-all duration-300 sticky top-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-bolt"></i>
+          </div>
+          <span>Actions</span>
         </h2>
-        <div class="flex flex-col gap-2">
+        
+        <div class="flex flex-col gap-3">
           {% if session.status == 'pending' %}
-            <button data-action="assign_confirm" class="action-btn px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Assign & Confirm</button>
-            <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Reschedule</button>
-            <button data-action="decline" class="action-btn px-3 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">Decline</button>
-            <button data-action="remind" class="action-btn px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">Remind</button>
+            <button data-action="assign_confirm" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-check-circle relative z-10"></i>
+              <span class="relative z-10">Assign & Confirm</span>
+            </button>
+            
+            <button data-action="reschedule" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-calendar-alt relative z-10"></i>
+              <span class="relative z-10">Reschedule</span>
+            </button>
+            
+            <button data-action="decline" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-times-circle relative z-10"></i>
+              <span class="relative z-10">Decline</span>
+            </button>
+            
+            <button data-action="remind" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-bell relative z-10"></i>
+              <span class="relative z-10">Send Reminder</span>
+            </button>
+            
           {% elif session.status == 'confirmed' %}
             {% if is_video %}
-              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 text-center">Join</a>
+              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="group relative px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                <i class="fas fa-video relative z-10 animate-pulse"></i>
+                <span class="relative z-10">Join Session Now</span>
+              </a>
             {% endif %}
-            <button data-action="remind" class="action-btn px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">Remind</button>
-            <button data-action="reschedule" class="action-btn px-3 py-2 rounded bg-amber-500 text-white text-sm hover:bg-amber-600">Reschedule</button>
-            <button data-action="cancel" class="action-btn px-3 py-2 rounded bg-red-500 text-white text-sm hover:bg-red-600">Cancel Counseling</button>
+            
+            <button data-action="remind" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-bell relative z-10"></i>
+              <span class="relative z-10">Send Reminder</span>
+            </button>
+            
+            <button data-action="reschedule" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-calendar-alt relative z-10"></i>
+              <span class="relative z-10">Reschedule</span>
+            </button>
+            
+            <button data-action="cancel" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-ban relative z-10"></i>
+              <span class="relative z-10">Cancel Counseling</span>
+            </button>
+            
           {% elif session.status == 'in_progress' %}
             {% if is_video %}
-              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 text-center">Rejoin</a>
+              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="group relative px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                <i class="fas fa-sign-in-alt relative z-10 animate-pulse"></i>
+                <span class="relative z-10">Rejoin Session</span>
+              </a>
             {% endif %}
-            <button data-action="complete" class="action-btn px-3 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-700">Mark as Completed</button>
+            
+            <button data-action="complete" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-check-double relative z-10"></i>
+              <span class="relative z-10">Mark as Completed</span>
+            </button>
           {% endif %}
         </div>
       </section>
 
-      <section class="bg-white shadow rounded-2xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <span class="inline-flex w-1.5 h-5 rounded-full bg-violet-500"></span>
-          Quick Info
+      <!-- Quick Info Card -->
+      <section class="animate-fade-in-up stagger-3 bg-gradient-to-br from-white to-violet-50/30 shadow-xl rounded-3xl p-6 border border-violet-100 hover:shadow-2xl transition-all duration-300">
+        <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-info"></i>
+          </div>
+          <span>Quick Info</span>
         </h2>
-        <dl class="text-sm space-y-2">
-          <div class="flex justify-between"><dt class="text-gray-500">Mode</dt><dd class="text-gray-900">{{ 'Video' if is_video else 'In-person' }}</dd></div>
-          <div class="flex justify-between"><dt class="text-gray-500">Status</dt><dd class="text-gray-900">{{ session.status|replace('_', ' ')|title }}</dd></div>
+        
+        <dl class="space-y-3">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-violet-100">
+            <dt class="text-sm font-semibold text-gray-600 flex items-center gap-2">
+              <i class="fas fa-layer-group text-violet-500"></i>
+              Mode
+            </dt>
+            <dd class="text-sm font-bold text-gray-900">
+              {% if is_video %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700">
+                  <i class="fas fa-video text-xs"></i>
+                  Video
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700">
+                  <i class="fas fa-handshake text-xs"></i>
+                  In-Person
+                </span>
+              {% endif %}
+            </dd>
+          </div>
+          
+          <div class="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-violet-100">
+            <dt class="text-sm font-semibold text-gray-600 flex items-center gap-2">
+              <i class="fas fa-flag text-violet-500"></i>
+              Status
+            </dt>
+            <dd class="text-sm font-bold">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                {% if session.status == 'pending' %} bg-amber-100 text-amber-700
+                {% elif session.status == 'confirmed' %} bg-emerald-100 text-emerald-700
+                {% elif session.status == 'in_progress' %} bg-green-100 text-green-700
+                {% elif session.status in ['cancelled','declined'] %} bg-red-100 text-red-700
+                {% elif session.status == 'completed' %} bg-blue-100 text-blue-700
+                {% else %} bg-gray-100 text-gray-700 {% endif %}">
+                {{ session.status|replace('_', ' ')|title }}
+              </span>
+            </dd>
+          </div>
+          
           {% if is_video %}
-          <div class="flex justify-between items-center gap-4">
-            <dt class="text-gray-500">Meeting</dt>
-            <dd class="text-indigo-700 truncate">
-              <a class="underline" href="{{ url_for('office.join_video_session', session_id=session.id) }}" target="_blank" rel="noopener">Open Link</a>
+          <div class="p-3 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100">
+            <dt class="text-sm font-semibold text-indigo-600 mb-2 flex items-center gap-2">
+              <i class="fas fa-link text-indigo-500"></i>
+              Meeting Link
+            </dt>
+            <dd>
+              <a class="inline-flex items-center gap-2 text-sm font-bold text-indigo-700 hover:text-indigo-800 underline hover:no-underline transition-all" href="{{ url_for('office.join_video_session', session_id=session.id) }}" target="_blank" rel="noopener">
+                <i class="fas fa-external-link-alt text-xs"></i>
+                Open in New Tab
+              </a>
             </dd>
           </div>
           {% endif %}
@@ -325,12 +604,43 @@
   }
 
   document.getElementById('saveNotesBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('saveNotesBtn');
     const notes = document.getElementById('notesInput').value;
+    
+    // Add loading state
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="ml-2">Saving...</span>';
+    btn.disabled = true;
+    btn.classList.add('loading');
+    
     try {
       await postJSON(`{{ url_for('office.update_session_notes', session_id=0) }}`.replace('0', sessionId), { notes });
-      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'success', message: 'Notes saved' }}));
+      
+      // Success feedback
+      btn.innerHTML = '<i class="fas fa-check"></i><span class="ml-2">Saved!</span>';
+      btn.classList.remove('loading');
+      btn.classList.add('bg-green-600');
+      
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'success', message: 'Notes saved successfully' }}));
+      
+      // Reset button after 2s
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        btn.classList.remove('bg-green-600');
+      }, 2000);
     } catch (e) {
+      btn.innerHTML = '<i class="fas fa-exclamation-circle"></i><span class="ml-2">Failed</span>';
+      btn.classList.remove('loading');
+      btn.classList.add('bg-red-600');
+      
       window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Failed to save notes' }}));
+      
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        btn.classList.remove('bg-red-600');
+      }, 2000);
     }
   });
 
@@ -338,6 +648,12 @@
   document.querySelectorAll('.action-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const action = btn.getAttribute('data-action');
+      
+      // Add loading state
+      const originalHTML = btn.innerHTML;
+      btn.classList.add('loading');
+      btn.disabled = true;
+      
       try {
         if (action === 'assign_confirm') {
           // Assign to current admin then confirm
@@ -348,6 +664,8 @@
           return;
         } else if (action === 'reschedule') {
           // Open local reschedule modal
+          btn.classList.remove('loading');
+          btn.disabled = false;
           const m = document.getElementById('detailsRescheduleModal');
           // Prefill with today rounded +1h
           const now = new Date();
@@ -364,8 +682,12 @@
           m && m.classList.remove('hidden');
           return;
         } else if (action === 'decline') {
+          btn.classList.remove('loading');
+          btn.disabled = false;
           let reason = window.prompt('Optional: Provide a reason for declining (will be noted for the student).', '');
           if (reason === null) return; // cancelled
+          btn.classList.add('loading');
+          btn.disabled = true;
           await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled', reason: reason || 'Declined by office' });
         } else if (action === 'remind') {
           await postForm(`{{ url_for('office.send_session_reminder', session_id=0) }}`.replace('0', sessionId), { type: 'in_app' });
@@ -378,6 +700,8 @@
         }
         window.location.reload();
       } catch (e) {
+        btn.classList.remove('loading');
+        btn.disabled = false;
         window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Action failed' }}));
       }
     });
