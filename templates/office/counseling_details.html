@@ -63,73 +63,62 @@
 
 <div id="sessionCtx" data-session-id="{{ session.id }}" class="hidden"></div>
 
-<!-- Gradient Background Header -->
-<div class="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden">
-  <div class="absolute inset-0 bg-black/10"></div>
-  <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnpNNiAzNGMzLjMxIDAgNi0yLjY5IDYtNnMtMi42OS02LTYtNi02IDIuNjktNiA2IDIuNjkgNiA2IDZ6TTM2IDU0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20"></div>
-  <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-sm mb-6 text-white/80">
-      <a href="{{ url_for('office.dashboard') }}" class="hover:text-white transition-colors flex items-center gap-1">
-        <i class="fas fa-home"></i>
-        <span>Dashboard</span>
-      </a>
-      <i class="fas fa-chevron-right text-xs"></i>
-      <a href="{{ url_for('office.video_counseling') }}" class="hover:text-white transition-colors">Counseling Sessions</a>
-      <i class="fas fa-chevron-right text-xs"></i>
-      <span class="text-white font-medium">Details</span>
-    </nav>
-    
-    <!-- Title & Status -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div class="space-y-1">
-        <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <i class="fas fa-clipboard-list text-white/90"></i>
-          Counseling Request Details
-        </h1>
-        <p class="text-white/70 text-sm font-medium">{{ session.reference_code or ('Session #' ~ session.id) }}</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-lg backdrop-blur-sm border border-white/20
-          {% if session.status == 'pending' %} bg-amber-400/90 text-amber-900
-          {% elif session.status == 'confirmed' %} bg-emerald-400/90 text-emerald-900
-          {% elif session.status == 'in_progress' %} bg-green-500/90 text-white animate-pulse
-          {% elif session.status in ['cancelled','declined'] %} bg-red-400/90 text-red-900
-          {% elif session.status == 'completed' %} bg-blue-400/90 text-blue-900
-          {% else %} bg-gray-300/90 text-gray-800 {% endif %}">
-          <span class="w-2 h-2 rounded-full 
-            {% if session.status == 'pending' %} bg-amber-900
-            {% elif session.status == 'confirmed' %} bg-emerald-900
-            {% elif session.status == 'in_progress' %} bg-white
-            {% elif session.status in ['cancelled','declined'] %} bg-red-900
-            {% elif session.status == 'completed' %} bg-blue-900
-            {% else %} bg-gray-800 {% endif %}"></span>
-          {{ session.status|replace('_', ' ')|title }}
-        </span>
+<!-- Gradient Background Header (Rounded) -->
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden rounded-2xl shadow-lg">
+    <div class="absolute inset-0 bg-black/10"></div>
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnpNNiAzNGMzLjMxIDAgNi0yLjY5IDYtNnMtMi42OS02LTYtNi02IDIuNjktNiA2IDIuNjkgNiA2IDZ6TTM2IDU0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20"></div>
+    <div class="relative px-6 py-8">
+      <!-- Title & Status (no breadcrumbs) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <i class="fas fa-clipboard-list text-white/90"></i>
+            Counseling Request Details
+          </h1>
+          <p class="text-white/70 text-sm font-medium">{{ session.reference_code or ('Session #' ~ session.id) }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-lg backdrop-blur-sm border border-white/20
+            {% if session.status == 'pending' %} bg-amber-400/90 text-amber-900
+            {% elif session.status == 'confirmed' %} bg-emerald-400/90 text-emerald-900
+            {% elif session.status == 'in_progress' %} bg-green-500/90 text-white animate-pulse
+            {% elif session.status in ['cancelled','declined'] %} bg-red-400/90 text-red-900
+            {% elif session.status == 'completed' %} bg-blue-400/90 text-blue-900
+            {% else %} bg-gray-300/90 text-gray-800 {% endif %}">
+            <span class="w-2 h-2 rounded-full 
+              {% if session.status == 'pending' %} bg-amber-900
+              {% elif session.status == 'confirmed' %} bg-emerald-900
+              {% elif session.status == 'in_progress' %} bg-white
+              {% elif session.status in ['cancelled','declined'] %} bg-red-900
+              {% elif session.status == 'completed' %} bg-blue-900
+              {% else %} bg-gray-800 {% endif %}"></span>
+            {{ session.status|replace('_', ' ')|title }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-6">
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left: Details -->
     <div class="lg:col-span-2 space-y-6">
       <!-- Student Profile Card with Glass-morphism -->
-      <section class="animate-fade-in-up stagger-1 group relative bg-gradient-to-br from-white via-white to-indigo-50/30 shadow-xl rounded-3xl p-6 border border-indigo-100/50 hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] overflow-hidden">
+  <section class="animate-fade-in-up stagger-1 group relative bg-gradient-to-br from-white via-white to-indigo-50/30 shadow-xl rounded-3xl p-6 border border-indigo-100/50 hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] overflow-hidden">
         <!-- Decorative gradient orb -->
         <div class="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
         
-        <div class="relative flex items-start gap-5">
+  <div class="relative flex items-center gap-5">
           <!-- Avatar with ring animation -->
-          <div class="relative shrink-0">
-            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full blur-md opacity-40 group-hover:opacity-70 transition-opacity"></div>
+          <div class="relative shrink-0 w-20 h-20">
             {% set avatar = student_user.profile_pic_path if student_user else None %}
             {% if avatar %}
-              <img src="{{ url_for('static', filename=avatar) }}" alt="{{ student_user.full_name if student_user else 'Student' }}" class="relative w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-lg"/>
+              <img src="{{ url_for('static', filename=avatar) }}" alt="{{ student_user.full_name if student_user else 'Student' }}" class="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-lg"/>
             {% else %}
-              <div class="relative w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center text-2xl font-bold ring-4 ring-white shadow-lg">
+              <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center text-2xl font-bold ring-4 ring-white shadow-lg">
                 {% if student_user %}
                   {{ (student_user.first_name[:1] ~ student_user.last_name[:1]).upper() }}
                 {% else %}
@@ -141,7 +130,7 @@
           
           <!-- Student Info -->
           <div class="flex-1 min-w-0">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div class="min-w-0 space-y-1">
                 <h2 class="text-xl font-bold text-gray-900 leading-tight truncate flex items-center gap-2">
                   <i class="fas fa-user-graduate text-indigo-600 text-lg"></i>
@@ -154,7 +143,7 @@
               </div>
               
               <!-- Badges -->
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 shadow-sm border border-slate-200/50">
                   <i class="fas fa-id-badge text-slate-500"></i>
                   {{ student.student_number if student else 'N/A' }}
@@ -299,7 +288,7 @@
     <!-- Right: Actions & Quick Info -->
     <aside class="space-y-6">
       <!-- Actions Card -->
-      <section class="animate-fade-in-up stagger-2 bg-gradient-to-br from-white to-sky-50/30 shadow-xl rounded-3xl p-6 border border-sky-100 hover:shadow-2xl transition-all duration-300 sticky top-6">
+  <section class="animate-fade-in-up stagger-2 bg-gradient-to-br from-white to-sky-50/30 shadow-xl rounded-3xl p-6 border border-sky-100 hover:shadow-2xl transition-all duration-300">
         <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
             <i class="fas fa-bolt"></i>
