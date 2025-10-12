@@ -188,7 +188,9 @@ def handle_join_session(data):
         'session_id': session_id,
         'room': room_name,
         'participants': participants,
-        'your_role': current_user.role
+        'your_role': current_user.role,
+        'started_at': session.started_at.isoformat() if getattr(session, 'started_at', None) else None,
+        'ended_at': session.ended_at.isoformat() if getattr(session, 'ended_at', None) else None
     })
     
     # Check if both counselor and student are present
@@ -298,15 +300,15 @@ def handle_start_call(data):
     
     room_name = f"video_session_{session_id}"
     
-    # Update session status
+    # Ensure call is marked as started exactly once, without disrupting external status semantics
     try:
-        if session.status == 'scheduled':
-            session.status = 'active'
+        if not session.started_at:
             session.started_at = datetime.utcnow()
-            db.session.commit()
+        # Avoid forcing a specific status here to preserve compatibility with routes using 'in_progress'
+        db.session.commit()
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error updating session status: {str(e)}")
+        logger.error(f"Error updating session start: {str(e)}")
     
     # Notify all participants that the call is starting
     emit('call_starting', {
@@ -320,6 +322,7 @@ def handle_start_call(data):
             }
             for p in participants.values()
         ],
+        'started_at': session.started_at.isoformat() if session.started_at else None,
         'timestamp': datetime.utcnow().isoformat()
     }, room=room_name)
     
@@ -397,10 +400,21 @@ def handle_join_call(data):
                 'name': participant['name']
             })
     
+    # Fetch authoritative started_at for timer base; set it if missing
+    try:
+        db_session = CounselingSession.query.get(session_id)
+        if db_session and not db_session.started_at:
+            db_session.started_at = datetime.utcnow()
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     emit('call_joined', {
         'session_id': session_id,
         'participants': call_participants,
-        'your_role': current_user.role
+        'your_role': current_user.role,
+        'started_at': (CounselingSession.query.get(session_id).started_at.isoformat()
+                       if CounselingSession.query.get(session_id) and CounselingSession.query.get(session_id).started_at else None)
     })
     
     logger.info(f"User {current_user.id} joined call for session {session_id}")
@@ -729,6 +743,8 @@ def handle_end_session(data):
         'session_id': session_id,
         'ended_by': current_user.get_full_name(),
         'ended_by_role': current_user.role,
+        'started_at': session.started_at.isoformat() if session.started_at else None,
+        'ended_at': session.ended_at.isoformat() if session.ended_at else None,
         'timestamp': datetime.utcnow().isoformat()
     }, room=room_name)
     
@@ -899,7 +915,9 @@ def handle_request_session_info(data):
         'student_name': session.student.user.get_full_name() if session.student else 'Unknown',
         'counselor_name': session.counselor.get_full_name() if session.counselor else 'Unknown',
         'office_name': session.office.name if session.office else 'Unknown',
-        'notes': session.notes if current_user.role in ['office_admin', 'super_admin'] else None
+        'notes': session.notes if current_user.role in ['office_admin', 'super_admin'] else None,
+        'started_at': session.started_at.isoformat() if getattr(session, 'started_at', None) else None,
+        'ended_at': session.ended_at.isoformat() if getattr(session, 'ended_at', None) else None
     }
     
     emit('session_info', session_info)

@@ -13,8 +13,9 @@ class VideoCounselingClient {
         this.isAudioEnabled = true;
         this.isVideoEnabled = true;
         this.isConnected = false;
-        this.sessionTimer = null;
-        this.startTime = null;
+    this.sessionTimer = null;
+    this.startTime = null; // legacy, no longer used for authoritative timer
+    this.sessionStartAt = null; // authoritative start time from server
         this.isInCall = false;
         this.heartbeatInterval = null;
     this.reconnectAttempts = 0;
@@ -123,6 +124,10 @@ class VideoCounselingClient {
         this.socket.on('session_joined', (data) => {
             console.log('Successfully joined session:', data);
             this.updateWaitingRoomMessage('Waiting for counselor to join...');
+            // Sync timer base if session already started
+            if (data && data.started_at) {
+                try { this.sessionStartAt = new Date(data.started_at); this.ensureSessionTimerRunning(); } catch (_) {}
+            }
             
             // Check if counselor is already present
             const counselorPresent = data.participants.some(p => 
@@ -183,6 +188,9 @@ class VideoCounselingClient {
             console.log('Call is starting:', data);
             this.updateConnectionStatus('Call is starting! Join when ready.', 'success');
             this.showJoinCallButton();
+            if (data && data.started_at) {
+                try { this.sessionStartAt = new Date(data.started_at); this.ensureSessionTimerRunning(); } catch (_) {}
+            }
         });
         
         this.socket.on('call_joined', (data) => {
@@ -191,6 +199,9 @@ class VideoCounselingClient {
             this.updateConnectionStatus('Connected to call', 'success');
             // Try fullscreen on join (should be under user gesture if they clicked Join)
             this.requestFullscreenOnCallStart();
+            if (data && data.started_at) {
+                try { this.sessionStartAt = new Date(data.started_at); this.ensureSessionTimerRunning(); } catch (_) {}
+            }
         });
         
         // Apply initial media state for other participants so placeholders are correct on first render
@@ -1496,29 +1507,39 @@ class VideoCounselingClient {
     }
     
     startSessionTimer() {
-        this.startTime = new Date();
-        this.sessionTimer = setInterval(() => {
-            const elapsed = new Date() - this.startTime;
-            const hours = Math.floor(elapsed / 3600000);
-            const minutes = Math.floor((elapsed % 3600000) / 60000);
-            const seconds = Math.floor((elapsed % 60000) / 1000);
-            
+        if (!this.sessionStartAt) return;
+        if (this.sessionTimer) { clearInterval(this.sessionTimer); this.sessionTimer = null; }
+        const update = () => {
+            if (!this.sessionStartAt) return;
+            const elapsedSec = Math.max(0, Math.floor((Date.now() - this.sessionStartAt.getTime()) / 1000));
+            const hours = Math.floor(elapsedSec / 3600);
+            const minutes = Math.floor((elapsedSec % 3600) / 60);
+            const seconds = elapsedSec % 60;
             // Update the main timer element
             const timerElement = document.getElementById('timer');
             if (timerElement) {
-                const timeString = hours > 0 
+                const timeString = hours > 0
                     ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
                     : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 timerElement.textContent = timeString;
             }
-            
-            // Also update sessionTimer if it exists
+            // Also update compact timer if it exists
             const sessionTimerElement = document.getElementById('sessionTimer');
             if (sessionTimerElement) {
-                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                const m = Math.floor(elapsedSec / 60);
+                const s = elapsedSec % 60;
+                const timeString = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                 sessionTimerElement.textContent = timeString;
             }
-        }, 1000);
+        };
+        update();
+        this.sessionTimer = setInterval(update, 1000);
+    }
+
+    ensureSessionTimerRunning() {
+        if (this.sessionStartAt && !this.sessionTimer) {
+            this.startSessionTimer();
+        }
     }
     
     stopSessionTimer() {

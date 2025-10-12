@@ -4,7 +4,7 @@ from app.models import (
     OfficeLoginLog, AuditLog, Announcement, SessionParticipation, 
     SessionRecording, SessionReminder, Notification
 )
-from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, current_app
+from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, current_app, send_file
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
@@ -16,6 +16,7 @@ import os
 from flask_apscheduler import APScheduler
 from app.websockets.student import push_student_notification_to_user, push_student_session_update
 from datetime import datetime, timedelta, time as dtime
+from werkzeug.utils import secure_filename
 
 # Create the scheduler but don't initialize it yet
 scheduler = APScheduler()
@@ -435,6 +436,77 @@ def join_video_session(session_id):
     })
     
     return render_template('office/video_session.html', **context)
+@office_bp.route('/sessions/<int:session_id>/upload_recording', methods=['POST'])
+@login_required
+def upload_session_recording(session_id):
+    """Accept counselor-side recording upload and store securely per session."""
+    # Validate session and permissions
+    session = CounselingSession.query.filter_by(id=session_id, is_video_session=True).first_or_404()
+    allowed = False
+    if current_user.role == 'super_admin':
+        allowed = True
+    elif current_user.role == 'office_admin' and session.counselor_id == current_user.id:
+        allowed = True
+    if not allowed:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    file = request.files.get('recording')
+    if not file:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    # Save under instance/recordings/<session_id>/ to avoid public serving by default
+    base_dir = os.path.join(current_app.instance_path, 'recordings', str(session_id))
+    try:
+        os.makedirs(base_dir, exist_ok=True)
+    except OSError:
+        pass
+
+    filename = secure_filename(file.filename or f'session_{session_id}.webm')
+    path = os.path.join(base_dir, filename)
+    try:
+        file.save(path)
+    except Exception as e:
+        return jsonify({'error': f'Failed to save file: {str(e)}'}), 500
+
+    # Persist a reference if model supports it
+    try:
+        if hasattr(session, 'recording') and session.recording is None:
+            rec = SessionRecording(
+                session_id=session.id,
+                recording_path=path,
+                counselor_consent=True
+            )
+            db.session.add(rec)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    return jsonify({'ok': True})
+
+@office_bp.route('/sessions/<int:session_id>/download_recording', methods=['GET'])
+@login_required
+def download_session_recording(session_id):
+    """Serve a previously uploaded recording securely to authorized office users."""
+    session = CounselingSession.query.filter_by(id=session_id, is_video_session=True).first_or_404()
+    allowed = False
+    if current_user.role == 'super_admin':
+        allowed = True
+    elif current_user.role == 'office_admin' and session.counselor_id == current_user.id:
+        allowed = True
+    if not allowed:
+        flash('You are not allowed to access this recording.', 'error')
+        return redirect(url_for('office.video_counseling'))
+
+    if not session.recording or not session.recording.recording_path or not os.path.exists(session.recording.recording_path):
+        flash('Recording not found.', 'error')
+        return redirect(url_for('office.join_video_session', session_id=session_id))
+
+    filename = os.path.basename(session.recording.recording_path)
+    try:
+        return send_file(session.recording.recording_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        flash(f'Failed to download recording: {str(e)}', 'error')
+        return redirect(url_for('office.join_video_session', session_id=session_id))
 
 
 @office_bp.route('/counseling/<int:session_id>')

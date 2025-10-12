@@ -16,8 +16,12 @@ class VideoCounselingClientOffice {
         this.isScreenSharing = false;
         this.isRecording = false;
         this.isConnected = false;
-        this.sessionTimer = null;
-        this.startTime = null;
+    this.sessionTimer = null;
+    this.startTime = null; // legacy, not authoritative
+    this.sessionStartAt = null; // authoritative from server
+    // Recording support
+    this.mediaRecorder = null;
+    this.recordedChunks = [];
         this.isInCall = false;
         this.heartbeatInterval = null;
         this.reconnectAttempts = 0;
@@ -271,6 +275,9 @@ class VideoCounselingClientOffice {
         this.socket.on('session_joined', (data) => {
             console.log('Successfully joined session:', data);
             this.updateWaitingRoomMessage('Waiting for student to join...');
+            if (data && data.started_at) {
+                try { this.sessionStartAt = new Date(data.started_at); this.ensureSessionTimerRunning(); } catch (_) {}
+            }
             
             // Check if student is already present
             const studentPresent = data.participants.some(p => p.role === 'student');
@@ -310,6 +317,12 @@ class VideoCounselingClientOffice {
             console.log('Session is ready to start:', data);
             this.updateConnectionStatus('Ready to start call', 'success');
             this.showStartCallButton();
+        });
+        // Handle call starting (authoritative start time)
+        this.socket.on('call_starting', (data) => {
+            if (data && data.started_at) {
+                try { this.sessionStartAt = new Date(data.started_at); this.ensureSessionTimerRunning(); } catch (_) {}
+            }
         });
 
         // Apply initial media state for other participants
@@ -399,6 +412,18 @@ class VideoCounselingClientOffice {
             if (data.success) {
                 this.showNotification('Notes saved successfully', 'success');
             }
+        });
+
+        // Recording state propagated to both sides
+        this.socket.on('recording_started', (data) => {
+            this.isRecording = true;
+            this.updateRecordingButtons();
+            this.showNotification(`Recording started by ${data.started_by}`, 'info');
+        });
+        this.socket.on('recording_stopped', (data) => {
+            this.isRecording = false;
+            this.updateRecordingButtons();
+            this.showNotification(`Recording stopped by ${data.stopped_by}`, 'info');
         });
         
         this.socket.on('error', (data) => {
@@ -715,6 +740,31 @@ async handleIceCandidate(candidate) {
                 } else {
                     this.startRecording();
                 }
+                // Keep controls tab buttons in sync if present
+                const sBtn = document.getElementById('startRecordingBtn');
+                const eBtn = document.getElementById('stopRecordingBtn');
+                if (sBtn && eBtn) {
+                    if (this.isRecording) { sBtn.classList.add('hidden'); eBtn.classList.remove('hidden'); }
+                    else { eBtn.classList.add('hidden'); sBtn.classList.remove('hidden'); }
+                }
+            });
+        }
+        const startRecordingBtn = document.getElementById('startRecordingBtn');
+        if (startRecordingBtn) {
+            startRecordingBtn.addEventListener('click', () => {
+                this.startRecording();
+                startRecordingBtn.classList.add('hidden');
+                const eBtn = document.getElementById('stopRecordingBtn');
+                if (eBtn) eBtn.classList.remove('hidden');
+            });
+        }
+        const stopRecordingBtn = document.getElementById('stopRecordingBtn');
+        if (stopRecordingBtn) {
+            stopRecordingBtn.addEventListener('click', () => {
+                this.stopRecording();
+                stopRecordingBtn.classList.add('hidden');
+                const sBtn = document.getElementById('startRecordingBtn');
+                if (sBtn) sBtn.classList.remove('hidden');
             });
         }
         
@@ -858,7 +908,7 @@ async handleIceCandidate(candidate) {
             console.log('Peer connection created successfully');
             
             // Don't show call UI immediately - wait for connection to establish
-            this.startSessionTimer();
+            // Timer will be based on server started_at from call_starting/call_joined
             this.isInCall = true;
             console.log('Is in call after:', this.isInCall);
 
@@ -2354,6 +2404,105 @@ async handleIceCandidate(candidate) {
         setTimeout(() => {
             window.location.href = `/office/session-completed/${this.sessionId}`;
         }, 3000);
+    }
+    // Timer helpers based on sessionStartAt provided by server
+    startSessionTimer() {
+        if (!this.sessionStartAt) return;
+        if (this.sessionTimer) { clearInterval(this.sessionTimer); this.sessionTimer = null; }
+        const update = () => {
+            if (!this.sessionStartAt) return;
+            const elapsedSec = Math.max(0, Math.floor((Date.now() - this.sessionStartAt.getTime()) / 1000));
+            const hours = Math.floor(elapsedSec / 3600);
+            const minutes = Math.floor((elapsedSec % 3600) / 60);
+            const seconds = elapsedSec % 60;
+            const timeString = hours > 0
+                ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            const timerElement = document.getElementById('timer');
+            if (timerElement) timerElement.textContent = timeString;
+            const sessionTimerElement = document.getElementById('sessionTimer');
+            if (sessionTimerElement) sessionTimerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        };
+        update();
+        this.sessionTimer = setInterval(update, 1000);
+    }
+
+    ensureSessionTimerRunning() {
+        if (this.sessionStartAt && !this.sessionTimer) this.startSessionTimer();
+    }
+
+    stopSessionTimer() {
+        if (this.sessionTimer) { clearInterval(this.sessionTimer); this.sessionTimer = null; }
+    }
+
+    // Recording: capture remote + local mic and upload
+    async startRecording() {
+        console.log('Starting session recording...');
+        try {
+            this.socket.emit('start_recording', { session_id: this.sessionId });
+            const remoteEl = document.getElementById('remoteVideo');
+            let captureStream = null;
+            if (remoteEl && (remoteEl.captureStream || remoteEl.mozCaptureStream)) {
+                captureStream = (remoteEl.captureStream || remoteEl.mozCaptureStream).call(remoteEl);
+            } else if (this.remoteStream) {
+                captureStream = this.remoteStream.clone();
+            }
+            if (!captureStream) {
+                this.showNotification('Recording not supported: no remote stream.', 'error');
+                return;
+            }
+            if (this.localStream) {
+                this.localStream.getAudioTracks().forEach(t => { try { captureStream.addTrack(t); } catch (_) {} });
+            }
+            const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+            const type = mimeTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
+            this.recordedChunks = [];
+            this.mediaRecorder = new MediaRecorder(captureStream, type ? { mimeType: type } : undefined);
+            this.mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) this.recordedChunks.push(e.data); };
+            this.mediaRecorder.onstop = async () => {
+                const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder.mimeType || 'video/webm' });
+                await this.uploadRecording(blob);
+            };
+            this.mediaRecorder.start(1000);
+            this.isRecording = true;
+            this.updateRecordingButtons();
+            this.showNotification('Recording started', 'success');
+        } catch (e) {
+            console.error('Recording error:', e);
+            this.showNotification('Failed to start recording', 'error');
+        }
+    }
+
+    async stopRecording() {
+        console.log('Stopping session recording...');
+        try {
+            this.socket.emit('stop_recording', { session_id: this.sessionId });
+            if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
+        } catch (e) {
+            console.error('Stop recording error:', e);
+        } finally {
+            this.isRecording = false;
+            this.updateRecordingButtons();
+            this.showNotification('Recording stopped', 'info');
+        }
+    }
+
+    async uploadRecording(blob) {
+        try {
+            const fd = new FormData();
+            const filename = `session_${this.sessionId}_${Date.now()}.webm`;
+            fd.append('recording', blob, filename);
+            const resp = await fetch(`/office/sessions/${this.sessionId}/upload_recording`, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+            this.showNotification('Recording uploaded successfully', 'success');
+        } catch (e) {
+            console.error('Upload failed:', e);
+            this.showNotification('Failed to upload recording', 'error');
+        }
     }
     
     cleanup() {
