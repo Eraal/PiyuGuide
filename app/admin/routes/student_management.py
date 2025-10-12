@@ -224,7 +224,14 @@ def view_student(student_id):
                     student.department_id = dept.id
                     student.department = None
             student.year_level = request.form.get('year_level')
-            student.section = request.form.get('section')
+            # Sanitize section to single uppercase A–E
+            s = request.form.get('section')
+            if s:
+                import re as _re
+                m = _re.search(r'([A-E])', s.strip(), _re.IGNORECASE)
+                student.section = m.group(1).upper() if m else None
+            else:
+                student.section = None
             
 
             if 'reset_password' in request.form:

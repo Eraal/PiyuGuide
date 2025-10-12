@@ -146,6 +146,11 @@
           {% if student.department_name %}
           <p class="text-sm text-gray-500 mt-1">Department: {{ student.department_name }}</p>
           {% endif %}
+          {% if student.year_level or student.section %}
+          <p class="text-sm text-gray-500 mt-1">
+            {% if student.year_level %}{{ student.year_level }}{% endif %}{% if student.section %}{% if student.year_level %} • {% endif %}Sec {{ student.section }}{% endif %}
+          </p>
+          {% endif %}
           <span class="badge badge-active mt-2">
             <i class="fas fa-circle w-2 h-2 mr-2"></i>
             Active

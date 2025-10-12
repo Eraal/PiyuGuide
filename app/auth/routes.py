@@ -154,7 +154,13 @@ def register():
         # Legacy field replaced by structured department
         department_id = request.form.get('department_id', type=int)
         year_level = request.form.get('year_level')
-        section = request.form.get('section')
+        # Sanitize section: only single letter A–E allowed
+        section_raw = request.form.get('section')
+        section = None
+        if section_raw:
+            import re as _re
+            m = _re.search(r'([A-E])', section_raw.strip(), _re.IGNORECASE)
+            section = m.group(1).upper() if m else None
         # Campus selection from form should take priority if provided
         campus_id_from_form = request.form.get('campus_id', type=int)
         if campus_id_from_form:

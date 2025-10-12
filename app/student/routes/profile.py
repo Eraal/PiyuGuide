@@ -35,7 +35,14 @@ class StudentPersonalInfoForm(FlaskForm):
         ('3rd Year', '3rd Year'),
         ('4th Year', '4th Year'),
     ])
-    section = SelectField('Section', validators=[Optional()], choices=[('', '— Select Section —')])
+    section = SelectField('Section', validators=[Optional()], choices=[
+        ('', '— Select Section —'),
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+        ('D', 'D'),
+        ('E', 'E'),
+    ])
 
 class StudentProfilePictureForm(FlaskForm):
     profile_pic = FileField('Profile Picture', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Images only!')])
@@ -154,18 +161,7 @@ def account_settings():
         dept_choices = [(d.id, d.name) for d in depts]
     personal_form.department_id.choices = [(0, '— Select Department —')] + dept_choices
 
-    # Populate section choices based on current year level
-    YEAR_SECTIONS = {
-        '1st Year': ['1A','1B','1C','1D','1E'],
-        '2nd Year': ['2A','2B','2C','2D','2E'],
-        '3rd Year': ['3A','3B','3C','3D','3E'],
-        '4th Year': ['4A','4B','4C','4D','4E'],
-    }
-    current_year = student.year_level or ''
-    section_choices = [('', '— Select Section —')]
-    if current_year in YEAR_SECTIONS:
-        section_choices += [(s, s) for s in YEAR_SECTIONS[current_year]]
-    personal_form.section.choices = section_choices
+    # Section choices fixed to letters A–E (no dependency on year)
 
     notif_form = StudentNotificationPreferencesForm(
         video_call_notifications=current_user.video_call_notifications,
@@ -229,18 +225,7 @@ def update_personal_info():
         dept_choices = [(d.id, d.name) for d in depts]
     form.department_id.choices = [(0, '— Select Department —')] + dept_choices
 
-    # Populate section choices dynamically based on submitted year level
-    YEAR_SECTIONS = {
-        '1st Year': ['1A','1B','1C','1D','1E'],
-        '2nd Year': ['2A','2B','2C','2D','2E'],
-        '3rd Year': ['3A','3B','3C','3D','3E'],
-        '4th Year': ['4A','4B','4C','4D','4E'],
-    }
-    submitted_year = form.year_level.data or ''
-    section_choices = [('', '— Select Section —')]
-    if submitted_year in YEAR_SECTIONS:
-        section_choices += [(s, s) for s in YEAR_SECTIONS[submitted_year]]
-    form.section.choices = section_choices
+    # Section choices are fixed (A–E) via form definition; no dynamic mapping required
 
     if form.validate_on_submit():
         try:
@@ -266,7 +251,10 @@ def update_personal_info():
                 from app.models import Department
                 d = Department.query.get(form.department_id.data)
                 student.department = d.name if d else None
-            student.section = form.section.data.strip() if form.section.data else None
+            # Sanitize section: keep only the letter A–E (strip any numeric prefixes like '3A')
+            raw_section = (form.section.data or '').strip()
+            m = re.search(r'([A-E])', raw_section, re.IGNORECASE)
+            student.section = m.group(1).upper() if m else None
             student.year_level = form.year_level.data.strip() if form.year_level.data else None
 
             db.session.commit()

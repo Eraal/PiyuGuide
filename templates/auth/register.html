@@ -364,7 +364,11 @@
                                                    transition-all duration-300 hover:border-gray-300 group-hover:shadow-md appearance-none"
                                             required>
                                         <option value="">Select Section</option>
-                                        <!-- Options populated dynamically based on Year Level -->
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                        <option value="E">E</option>
                                     </select>
                                     <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -441,31 +445,7 @@
 <script>
     // Enhanced Registration Form JavaScript with Modern UX Features
     document.addEventListener('DOMContentLoaded', function() {
-        // Year Level -> Section dynamic filtering
-        const YEAR_SECTIONS = {
-            '1st Year': ['1A','1B','1C','1D','1E'],
-            '2nd Year': ['2A','2B','2C','2D','2E'],
-            '3rd Year': ['3A','3B','3C','3D','3E'],
-            '4th Year': ['4A','4B','4C','4D','4E']
-        };
-        const yearSel = document.querySelector('select[name="year_level"]');
-        const sectionSel = document.getElementById('section_select');
-        function populateSections(year, preselect) {
-            if (!sectionSel) return;
-            const opts = ['<option value="">Select Section</option>'];
-            if (year && YEAR_SECTIONS[year]) {
-                YEAR_SECTIONS[year].forEach(sec => {
-                    const selected = preselect && preselect === sec ? ' selected' : '';
-                    opts.push(`<option value="${sec}"${selected}>${sec}</option>`);
-                });
-            }
-            sectionSel.innerHTML = opts.join('');
-        }
-        if (yearSel && sectionSel) {
-            // initial
-            populateSections(yearSel.value, null);
-            yearSel.addEventListener('change', () => populateSections(yearSel.value, null));
-        }
+        // Section options fixed to letters A–E (no dependency on year)
         
         // Enhanced Password Visibility Toggle
         const toggleButtons = document.querySelectorAll('.toggle-password');

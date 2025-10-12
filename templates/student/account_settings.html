@@ -77,8 +77,8 @@
           <li class="flex items-center gap-2"><i class="fas fa-envelope text-blue-600"></i> <span>{{ current_user.email }}</span></li>
           {% if campus %}<li class="flex items-center gap-2"><i class="fas fa-school text-purple-600"></i> <span>{{ campus.name }}</span></li>{% endif %}
           {% if student.department_name %}<li class="flex items-center gap-2"><i class="fas fa-layer-group text-emerald-600"></i> <span>{{ student.department_name }}</span></li>{% endif %}
-          {% if student.section %}<li class="flex items-center gap-2"><i class="fas fa-users text-pink-600"></i> <span>Section {{ student.section }}</span></li>{% endif %}
           {% if student.year_level %}<li class="flex items-center gap-2"><i class="fas fa-graduation-cap text-indigo-600"></i> <span>{{ student.year_level }}</span></li>{% endif %}
+          {% if student.section %}<li class="flex items-center gap-2"><i class="fas fa-users text-pink-600"></i> <span>Section {{ student.section }}</span></li>{% endif %}
         </ul>
         <p class="mt-6 text-xs text-gray-500">Changes are logged for security & audit purposes.</p>
       </div>
@@ -136,12 +136,12 @@
           </div>
           <div class="grid md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Section</label>
-              {{ personal_form.section(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
-            </div>
-            <div>
               <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Year Level</label>
               {{ personal_form.year_level(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Section</label>
+              {{ personal_form.section(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
             </div>
           </div>
           <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-xs text-amber-800">
@@ -277,31 +277,7 @@
       });
     }
 
-    // Year Level -> Section dynamic filtering
-    const YEAR_SECTIONS = {
-      '1st Year': ['1A','1B','1C','1D','1E'],
-      '2nd Year': ['2A','2B','2C','2D','2E'],
-      '3rd Year': ['3A','3B','3C','3D','3E'],
-      '4th Year': ['4A','4B','4C','4D','4E']
-    };
-    const yearField = document.querySelector('select[name="year_level"]');
-    const sectionField = document.querySelector('select[name="section"]');
-    function populateSections(year, preselect){
-      if(!sectionField) return;
-      const base = ['<option value="">— Select Section —</option>'];
-      if (year && YEAR_SECTIONS[year]){
-        YEAR_SECTIONS[year].forEach(s=>{
-          const sel = preselect && preselect === s ? ' selected' : '';
-          base.push(`<option value="${s}"${sel}>${s}</option>`);
-        });
-      }
-      sectionField.innerHTML = base.join('');
-    }
-    if (yearField && sectionField){
-      const preselect = sectionField.getAttribute('data-current') || sectionField.value || '';
-      populateSections(yearField.value || '', preselect);
-      yearField.addEventListener('change', ()=> populateSections(yearField.value || '', null));
-    }
+    // Section choices are letters A–E only; no dynamic mapping needed.
   });
 </script>
 {% endblock %}
