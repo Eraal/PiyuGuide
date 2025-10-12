@@ -39,7 +39,8 @@ def manage_counseling_concern_types():
         if action == 'add':
             name = (request.form.get('concern_name') or '').strip()
             description = (request.form.get('concern_description') or '').strip()
-            allows_other = request.form.get('allows_other') == 'on'
+            allows_other_raw = (request.form.get('allows_other') or '').strip().lower()
+            allows_other = allows_other_raw in ['true', 'on', '1', 'yes']
             if not name:
                 flash('Please enter a concern type name.', 'error')
             elif len(name) > 100:
@@ -87,7 +88,8 @@ def manage_counseling_concern_types():
             concern_type_id = request.form.get('concern_type_id')
             name = (request.form.get('concern_name') or '').strip()
             description = (request.form.get('concern_description') or '').strip()
-            allows_other = request.form.get('allows_other') == 'on'
+            allows_other_raw = (request.form.get('allows_other') or '').strip().lower()
+            allows_other = allows_other_raw in ['true', 'on', '1', 'yes']
             assoc = OfficeConcernType.query.filter_by(office_id=office_id, concern_type_id=concern_type_id).first()
             if not assoc:
                 flash('You cannot edit a concern type your office does not support.', 'error')
