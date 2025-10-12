@@ -276,6 +276,32 @@
         text.textContent = 'Strength: ' + label;
       });
     }
+
+    // Year Level -> Section dynamic filtering
+    const YEAR_SECTIONS = {
+      '1st Year': ['1A','1B','1C','1D','1E'],
+      '2nd Year': ['2A','2B','2C','2D','2E'],
+      '3rd Year': ['3A','3B','3C','3D','3E'],
+      '4th Year': ['4A','4B','4C','4D','4E']
+    };
+    const yearField = document.querySelector('select[name="year_level"]');
+    const sectionField = document.querySelector('select[name="section"]');
+    function populateSections(year, preselect){
+      if(!sectionField) return;
+      const base = ['<option value="">— Select Section —</option>'];
+      if (year && YEAR_SECTIONS[year]){
+        YEAR_SECTIONS[year].forEach(s=>{
+          const sel = preselect && preselect === s ? ' selected' : '';
+          base.push(`<option value="${s}"${sel}>${s}</option>`);
+        });
+      }
+      sectionField.innerHTML = base.join('');
+    }
+    if (yearField && sectionField){
+      const preselect = sectionField.getAttribute('data-current') || sectionField.value || '';
+      populateSections(yearField.value || '', preselect);
+      yearField.addEventListener('change', ()=> populateSections(yearField.value || '', null));
+    }
   });
 </script>
 {% endblock %}

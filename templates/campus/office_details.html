@@ -3,7 +3,11 @@
 {% block title %}{{ office.name }} - {% if current_campus %}{{ current_campus.name }}{% else %}{{ current_campus_name }}{% endif %}{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+<div id="officePage" class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
+  data-office-id="{{ office.id }}"
+  data-total-inquiries="{{ total_inquiries }}"
+  data-pending-inquiries="{{ pending_inquiries }}"
+  data-resolved-inquiries="{{ resolved_inquiries }}">
   <!-- Enhanced Breadcrumb with backdrop blur -->
   <div class="sticky top-0 z-10 backdrop-blur-md bg-white/80 border-b border-white/20 shadow-sm">
     <div class="container mx-auto px-4 py-3">
@@ -154,8 +158,7 @@
                 </span>
               </div>
               <div class="w-full bg-slate-200 rounded-full h-2">
-                <div class="bg-gradient-to-r from-amber-500 to-orange-600 h-2 rounded-full" 
-                     style="width: {% if total_inquiries > 0 %}{{ (pending_inquiries / total_inquiries) * 100 }}%{% else %}0%{% endif %}"></div>
+                <div id="pendingBar" class="bg-gradient-to-r from-amber-500 to-orange-600 h-2 rounded-full" style="width: 0%"></div>
               </div>
             </div>
             
@@ -167,8 +170,7 @@
                 </span>
               </div>
               <div class="w-full bg-slate-200 rounded-full h-2">
-                <div class="bg-gradient-to-r from-emerald-500 to-green-600 h-2 rounded-full" 
-                     style="width: {% if total_inquiries > 0 %}{{ (resolved_inquiries / total_inquiries) * 100 }}%{% else %}0%{% endif %}"></div>
+                <div id="resolvedBar" class="bg-gradient-to-r from-emerald-500 to-green-600 h-2 rounded-full" style="width: 0%"></div>
               </div>
             </div>
             
@@ -301,9 +303,21 @@
 {% block extra_js %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Track page views for analytics
-    const officeId = {{ office.id }};
-    console.log(`Office details viewed: ${officeId}`);
+  // Track page views for analytics without embedding template syntax in JS
+  const rootEl = document.getElementById('officePage');
+  const officeId = Number(rootEl?.dataset.officeId || 0);
+  console.log(`Office details viewed: ${officeId}`);
+
+  // Progress bars widths based on data attributes
+  const total = Number(rootEl?.dataset.totalInquiries || 0);
+  const pending = Number(rootEl?.dataset.pendingInquiries || 0);
+  const resolved = Number(rootEl?.dataset.resolvedInquiries || 0);
+  const pendingPct = total > 0 ? Math.round((pending / total) * 100) : 0;
+  const resolvedPct = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  const pendingBar = document.getElementById('pendingBar');
+  const resolvedBar = document.getElementById('resolvedBar');
+  if (pendingBar) pendingBar.style.width = `${pendingPct}%`;
+  if (resolvedBar) resolvedBar.style.width = `${resolvedPct}%`;
     
     // Add smooth scroll to sections if coming from anchor links
     if (window.location.hash) {

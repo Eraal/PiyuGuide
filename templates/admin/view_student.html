@@ -120,13 +120,22 @@
                     </div>
                     <div>
                         <label for="year_level" class="block text-xs font-medium text-gray-600 mb-1.5">Year Level</label>
-                        <input type="text" id="year_level" name="year_level" value="{{ student.year_level or '' }}" placeholder="e.g., 1st Year, 2nd Year"
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                        <select id="year_level" name="year_level"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                            <option value="">— Select Year —</option>
+                            <option value="1st Year" {% if student.year_level == '1st Year' %}selected{% endif %}>1st Year</option>
+                            <option value="2nd Year" {% if student.year_level == '2nd Year' %}selected{% endif %}>2nd Year</option>
+                            <option value="3rd Year" {% if student.year_level == '3rd Year' %}selected{% endif %}>3rd Year</option>
+                            <option value="4th Year" {% if student.year_level == '4th Year' %}selected{% endif %}>4th Year</option>
+                        </select>
                     </div>
                     <div>
                         <label for="section" class="block text-xs font-medium text-gray-600 mb-1.5">Section</label>
-                        <input type="text" id="section" name="section" value="{{ student.section or '' }}" placeholder="e.g., A, B, CS-1"
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                        <select id="section" name="section"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                            <option value="">— Select Section —</option>
+                            <!-- Options set dynamically based on year level below -->
+                        </select>
                     </div>
                 </div>
             </section>
@@ -357,6 +366,36 @@
                     window.toggleStudentStatus(id, next);
                 }
             });
+        }
+    })();
+    </script>
+    <script>
+    // Year level -> section dynamic options
+    (function(){
+        const YEAR_SECTIONS = {
+            '1st Year': ['1A','1B','1C','1D','1E'],
+            '2nd Year': ['2A','2B','2C','2D','2E'],
+            '3rd Year': ['3A','3B','3C','3D','3E'],
+            '4th Year': ['4A','4B','4C','4D','4E']
+        };
+        const yearSel = document.getElementById('year_level');
+        const sectionSel = document.getElementById('section');
+        function populateSections(year, preselect){
+            if(!sectionSel) return;
+            const base = ['<option value="">— Select Section —</option>'];
+            if (year && YEAR_SECTIONS[year]) {
+                YEAR_SECTIONS[year].forEach(s=>{
+                    const sel = preselect && preselect === s ? ' selected' : '';
+                    base.push(`<option value="${s}"${sel}>${s}</option>`);
+                });
+            }
+            sectionSel.innerHTML = base.join('');
+        }
+        if (yearSel && sectionSel) {
+            // initial from server values
+        const preselectSection = "{{ (student.section or '')|e }}";
+            populateSections(yearSel.value || '', preselectSection);
+            yearSel.addEventListener('change', ()=> populateSections(yearSel.value || '', null));
         }
     })();
     </script>

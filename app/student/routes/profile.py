@@ -28,8 +28,14 @@ class StudentPersonalInfoForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email(), Length(max=100)])
     student_number = StringField('Student Number', validators=[Optional(), Length(max=50)])  # usually read-only
     department_id = SelectField('Department', coerce=int, validators=[Optional()])
-    section = StringField('Section', validators=[Optional(), Length(max=50)])
-    year_level = StringField('Year Level', validators=[Optional(), Length(max=20)])
+    year_level = SelectField('Year Level', validators=[Optional()], choices=[
+        ('', '— Select Year —'),
+        ('1st Year', '1st Year'),
+        ('2nd Year', '2nd Year'),
+        ('3rd Year', '3rd Year'),
+        ('4th Year', '4th Year'),
+    ])
+    section = SelectField('Section', validators=[Optional()], choices=[('', '— Select Section —')])
 
 class StudentProfilePictureForm(FlaskForm):
     profile_pic = FileField('Profile Picture', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Images only!')])
@@ -147,6 +153,19 @@ def account_settings():
         depts = Department.query.filter_by(campus_id=student.campus_id, is_active=True).order_by(Department.name.asc()).all()
         dept_choices = [(d.id, d.name) for d in depts]
     personal_form.department_id.choices = [(0, '— Select Department —')] + dept_choices
+
+    # Populate section choices based on current year level
+    YEAR_SECTIONS = {
+        '1st Year': ['1A','1B','1C','1D','1E'],
+        '2nd Year': ['2A','2B','2C','2D','2E'],
+        '3rd Year': ['3A','3B','3C','3D','3E'],
+        '4th Year': ['4A','4B','4C','4D','4E'],
+    }
+    current_year = student.year_level or ''
+    section_choices = [('', '— Select Section —')]
+    if current_year in YEAR_SECTIONS:
+        section_choices += [(s, s) for s in YEAR_SECTIONS[current_year]]
+    personal_form.section.choices = section_choices
 
     notif_form = StudentNotificationPreferencesForm(
         video_call_notifications=current_user.video_call_notifications,

@@ -222,10 +222,6 @@ def campus_office_details(campus_id, office_id):
     # Check if office is available (has active admins)
     is_available = len(office_admins) > 0
     
-    # Get recent inquiries
-    recent_inquiries = Inquiry.query.filter_by(office_id=office.id) \
-        .order_by(Inquiry.created_at.desc()).limit(10).all()
-    
     return render_template('campus/office_details.html',
                          campus=campus,
                          office=office,
@@ -234,8 +230,7 @@ def campus_office_details(campus_id, office_id):
                          resolved_inquiries=resolved_inquiries,
                          office_admins=office_admins,
                          concern_types=concern_types,
-                         is_available=is_available,
-                         recent_inquiries=recent_inquiries)
+                         is_available=is_available)
 
 @main_bp.route('/campus/<int:campus_id>/securityprivacy')
 def campus_securityprivacy(campus_id):
