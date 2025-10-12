@@ -309,15 +309,15 @@
               >
                 <i class="fas fa-edit"></i>
               </a>
-              <!-- <a
+              <a
                 href="#"
                 class="w-9 h-9 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-600 hover:text-red-800 transition-all duration-200 hover:scale-110 shadow-md hover:shadow-lg deleteInquiryBtn"
                 data-inquiry-id="{{ inquiry.id }}"
                 data-status="{{ inquiry.status }}"
-                title="Delete"
+                title="Archive"
               >
-                <i class="fas fa-trash"></i>
-              </a> -->
+                <i class="fas fa-archive"></i>
+              </a>
             </div>
           </td>
         </tr>
@@ -478,7 +478,7 @@
         <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
           <i class="fas fa-exclamation-triangle text-white"></i>
         </div>
-        <h3 class="text-xl font-bold text-gray-900">Confirm Deletion</h3>
+  <h3 class="text-xl font-bold text-gray-900">Confirm Archive</h3>
       </div>
       <button
         type="button"
@@ -493,13 +493,13 @@
         <div class="flex items-center space-x-3">
           <i class="fas fa-info-circle text-red-500"></i>
           <p class="text-gray-700 font-medium">
-            Are you sure you want to delete this inquiry?
+            Are you sure you want to archive this inquiry?
           </p>
         </div>
       </div>
   <p id="statusWarning" class="text-red-700 font-semibold mb-4 hidden"></p>
       <p class="text-gray-600 text-sm">
-        This action cannot be undone and will permanently remove the inquiry from the system.
+        Archiving will hide this inquiry from the active list without permanently deleting it.
       </p>
     </div>
     <form id="deleteInquiryForm">
@@ -517,7 +517,7 @@
           class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <i class="fas fa-trash mr-2"></i>
-          Delete Inquiry
+          Archive Inquiry
         </button>
       </div>
     </form>
@@ -627,11 +627,11 @@
         });
     });
 
-    // Helper to perform deletion (used by closed auto-delete and modal submit)
+    // Helper to perform archive (used by closed auto-archive and modal submit)
     function performDelete(inquiryId, submitBtn) {
       const btn = submitBtn || deleteInquiryForm.querySelector('button[type="submit"]');
       const originalText = btn.innerHTML;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Archiving...';
       btn.disabled = true;
 
       fetch(
@@ -651,12 +651,12 @@
         .then((response) => response.json())
         .then((data) => {
           if (data.success) {
-            showFlashMessage("success", data.message);
+            showFlashMessage("success", data.message || 'Inquiry archived successfully');
             removeInquiryFromUI(inquiryId);
           } else {
             showFlashMessage(
               "error",
-              data.message || "Failed to delete inquiry"
+              data.message || "Failed to archive inquiry"
             );
           }
         })
@@ -664,7 +664,7 @@
           console.error("Error:", error);
           showFlashMessage(
             "error",
-            "An error occurred while deleting the inquiry"
+            "An error occurred while archiving the inquiry"
           );
         })
         .finally(() => {
@@ -682,7 +682,7 @@
         const status = (this.getAttribute("data-status") || "").toLowerCase();
 
         if (status === "closed") {
-          // For closed inquiries, no warning modal; delete immediately
+          // For closed inquiries, no warning modal; archive immediately
           performDelete(inquiryId, this);
           return;
         }

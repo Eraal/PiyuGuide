@@ -28,7 +28,14 @@ def calculate_response_rate(office_id):
         int: The response rate as a percentage (0-100)
     """
     # Get all inquiries for this office
-    total_inquiries = Inquiry.query.filter_by(office_id=office_id).count()
+    total_inquiries = (
+        Inquiry.query
+        .filter(
+            Inquiry.office_id == office_id,
+            Inquiry.status != 'archived'
+        )
+        .count()
+    )
     
     if total_inquiries == 0:
         return 0  # Avoid division by zero
@@ -40,6 +47,7 @@ def calculate_response_rate(office_id):
         User, InquiryMessage.sender_id == User.id
     ).filter(
         Inquiry.office_id == office_id,
+        Inquiry.status != 'archived',
         User.role == 'office_admin'
     ).scalar()
     
@@ -71,7 +79,8 @@ def api_latest_inquiries():
     q = (Inquiry.query
          .filter(
              Inquiry.office_id == office_admin.office_id,
-             Inquiry.id > after_id
+             Inquiry.id > after_id,
+             Inquiry.status != 'archived'
          )
          .order_by(Inquiry.id.desc())
          .limit(limit))
@@ -137,8 +146,11 @@ def office_inquiries():
         .all()
     )
     
-    # Base query for inquiries from this office
-    query = Inquiry.query.filter_by(office_id=office_admin.office_id)
+    # Base query for inquiries from this office (exclude archived)
+    query = Inquiry.query.filter(
+        Inquiry.office_id == office_admin.office_id,
+        Inquiry.status != 'archived'
+    )
     
     # Calculate the total count
     total_inquiries = query.count()
@@ -492,7 +504,7 @@ def api_close_inquiry(inquiry_id: int):
 @login_required
 @role_required(['office_admin'])
 def delete_inquiry(inquiry_id):
-    """Delete an inquiry"""
+    """Archive an inquiry (soft-delete via status flag)."""
     # Get the current office admin's office
     office_admin = OfficeAdmin.query.filter_by(user_id=current_user.id).first()
     if not office_admin:
@@ -503,10 +515,10 @@ def delete_inquiry(inquiry_id):
     if not inquiry:
         return jsonify({'success': False, 'message': 'Inquiry not found or access denied'})
     
-    # Log this activity before deletion
+    # Log this activity before archiving
     AuditLog.log_action(
         actor=current_user,
-        action="Deleted Inquiry",
+        action="Archived Inquiry",
         target_type="inquiry",
         inquiry=inquiry,
         office=office_admin.office,
@@ -520,21 +532,21 @@ def delete_inquiry(inquiry_id):
     inquiry_subject = inquiry.subject
     
     try:
-        # Delete the inquiry
-        db.session.delete(inquiry)
-        
+        # Archive the inquiry by updating its status
+        inquiry.status = 'archived'
+
         # Create notification for student
         from app.models import Notification
         notification = Notification(
             user_id=student_user_id,
-            title="Inquiry Deleted",
-            message=f"Your inquiry '{inquiry_subject}' has been deleted by the office.",
+            title="Inquiry Archived",
+            message=f"Your inquiry '{inquiry_subject}' has been archived by the office.",
             is_read=False
         )
         db.session.add(notification)
         
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Inquiry deleted successfully'})
+        return jsonify({'success': True, 'message': 'Inquiry archived successfully'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Database error: {str(e)}'})
