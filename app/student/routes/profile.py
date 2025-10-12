@@ -229,6 +229,19 @@ def update_personal_info():
         dept_choices = [(d.id, d.name) for d in depts]
     form.department_id.choices = [(0, '— Select Department —')] + dept_choices
 
+    # Populate section choices dynamically based on submitted year level
+    YEAR_SECTIONS = {
+        '1st Year': ['1A','1B','1C','1D','1E'],
+        '2nd Year': ['2A','2B','2C','2D','2E'],
+        '3rd Year': ['3A','3B','3C','3D','3E'],
+        '4th Year': ['4A','4B','4C','4D','4E'],
+    }
+    submitted_year = form.year_level.data or ''
+    section_choices = [('', '— Select Section —')]
+    if submitted_year in YEAR_SECTIONS:
+        section_choices += [(s, s) for s in YEAR_SECTIONS[submitted_year]]
+    form.section.choices = section_choices
+
     if form.validate_on_submit():
         try:
             # Unique email check
