@@ -121,109 +121,7 @@
           </div>
           {% endif %}
         </div>
-
-        <!-- Enhanced Office Staff Section -->
-        {% if office_admins %}
-        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-300">
-          <div class="flex items-center mb-6">
-            <div class="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
-              <i class="fas fa-users text-white text-lg"></i>
-            </div>
-            <h2 class="text-3xl font-bold text-slate-800">Office Staff</h2>
-          </div>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {% for admin in office_admins %}
-            <div class="group bg-gradient-to-br from-white to-slate-50 border border-slate-200/50 rounded-2xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300">
-              <div class="flex items-center space-x-4">
-                <div class="relative">
-                  {% if admin.profile_pic %}
-                  <img src="{{ admin.profile_pic }}" alt="{{ admin.get_full_name() }}" 
-                       class="w-16 h-16 rounded-2xl object-cover shadow-lg ring-4 ring-white">
-                  {% else %}
-                  <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white">
-                    <i class="fas fa-user text-white text-xl"></i>
-                  </div>
-                  {% endif %}
-                  
-                  <!-- Online status indicator -->
-                  <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-white shadow-lg flex items-center justify-center
-                    {% if admin.is_online %}bg-emerald-500{% else %}bg-slate-400{% endif %}">
-                    <div class="w-2 h-2 rounded-full bg-white"></div>
-                  </div>
-                </div>
-                
-                <div class="flex-1">
-                  <h3 class="font-bold text-slate-800 text-lg mb-1 group-hover:text-blue-600 transition-colors">
-                    {{ admin.get_full_name() }}
-                  </h3>
-                  <p class="text-slate-600 font-medium mb-2">Office Administrator</p>
-                  <div class="flex items-center">
-                    {% if admin.is_online %}
-                    <span class="text-emerald-600 text-sm font-semibold flex items-center">
-                      <div class="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
-                      Online
-                    </span>
-                    {% else %}
-                    <span class="text-slate-500 text-sm font-semibold flex items-center">
-                      <div class="w-2 h-2 bg-slate-400 rounded-full mr-2"></div>
-                      Offline
-                    </span>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-
-        <!-- Enhanced Recent Activity Section -->
-        {% if recent_inquiries %}
-        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-300">
-          <div class="flex items-center mb-6">
-            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
-              <i class="fas fa-clock text-white text-lg"></i>
-            </div>
-            <h2 class="text-3xl font-bold text-slate-800">Recent Activity</h2>
-          </div>
-          
-          <div class="space-y-4">
-            {% for inquiry in recent_inquiries[:5] %}
-            <div class="group bg-gradient-to-r from-white to-slate-50 border border-slate-200/50 rounded-2xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300">
-              <div class="flex items-center justify-between">
-                <div class="flex-1">
-                  <h4 class="font-bold text-slate-800 text-lg mb-2 group-hover:text-blue-600 transition-colors">
-                    {{ inquiry.subject }}
-                  </h4>
-                  <p class="text-slate-600 flex items-center">
-                    <i class="fas fa-calendar-alt mr-2 text-slate-400"></i>
-                    {{ inquiry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
-                  </p>
-                </div>
-                <div class="ml-4">
-                  <span class="inline-flex items-center px-4 py-2 text-sm font-bold rounded-full shadow-lg
-                    {% if inquiry.status == 'pending' %}bg-gradient-to-r from-amber-400 to-orange-500 text-white
-                    {% elif inquiry.status == 'in_progress' %}bg-gradient-to-r from-blue-400 to-indigo-500 text-white
-                    {% elif inquiry.status == 'resolved' %}bg-gradient-to-r from-emerald-400 to-green-500 text-white
-                    {% else %}bg-gradient-to-r from-slate-400 to-slate-500 text-white{% endif %}">
-                    {% if inquiry.status == 'pending' %}
-                    <i class="fas fa-clock mr-2"></i>
-                    {% elif inquiry.status == 'in_progress' %}
-                    <i class="fas fa-spinner mr-2"></i>
-                    {% elif inquiry.status == 'resolved' %}
-                    <i class="fas fa-check mr-2"></i>
-                    {% endif %}
-                    {{ inquiry.status.replace('_', ' ').title() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
+        
       </div>
 
       <!-- Enhanced Sidebar -->
@@ -328,6 +226,37 @@
             </a>
           </div>
         </div>
+
+        <!-- Office Staff moved to sidebar for privacy-friendly layout -->
+        {% if office_admins %}
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+            <i class="fas fa-users text-emerald-600 mr-3"></i>
+            Office Staff
+          </h3>
+          <div class="space-y-4">
+            {% for admin in office_admins %}
+            <div class="flex items-center">
+              <div class="relative mr-3">
+                {% if admin.profile_pic %}
+                <img src="{{ admin.profile_pic }}" alt="{{ admin.get_full_name() }}" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow" />
+                {% else %}
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow">
+                  <i class="fas fa-user text-sm"></i>
+                </div>
+                {% endif %}
+                <span class="absolute -bottom-1 -right-1 block w-3.5 h-3.5 rounded-full border-2 border-white
+                  {% if admin.is_online %}bg-emerald-500{% else %}bg-slate-400{% endif %}"></span>
+              </div>
+              <div class="min-w-0">
+                <p class="text-slate-800 font-semibold truncate">{{ admin.get_full_name() }}</p>
+                <p class="text-slate-500 text-sm">Office Administrator</p>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
 
         <!-- Enhanced Office Hours -->
         <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300">
