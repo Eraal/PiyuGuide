@@ -22,19 +22,16 @@
                         <nav class="mb-4">
                             <ol class="flex items-center space-x-2 text-sm">
                                 <li>
-                                    <a href="{{ url_for('office.dashboard') }}" 
+                                    <a href="{{ url_for('office.dashboard') }}"
                                        class="flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 font-medium">
                                         <i class="fas fa-home mr-1"></i>
                                         Dashboard
                                     </a>
                                 </li>
                                 <li class="flex items-center">
-                                            <div class="w-11 h-6 rounded-full relative overflow-hidden transition-colors duration-300 bg-gray-300 peer-checked:bg-emerald-600">
-                                                <div class="absolute inset-0 flex items-center justify-between px-1 text-[10px] font-semibold text-white pointer-events-none select-none">
-                                                    <span class="opacity-70 peer-checked:opacity-0 transition-opacity duration-300" aria-hidden="true">OFF</span>
-                                                    <span class="opacity-0 peer-checked:opacity-70 transition-opacity duration-300" aria-hidden="true">ON</span>
+                                    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
                                     <span class="text-gray-700 font-medium">Concern Types</span>
-                                                <div id="autoReplyKnob" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 ease-out peer-checked:translate-x-5"></div>
+                                </li>
                             </ol>
                         </nav>
                         

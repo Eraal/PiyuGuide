@@ -120,23 +120,27 @@ def manage_counseling_concern_types():
             if not assoc:
                 flash('Concern type association not found.', 'error')
             else:
-                # Prevent removal if used in counseling sessions for this office
+                # If counseling concern type is already used, archive instead of delete
                 in_use = CounselingSession.query.filter_by(office_id=office_id, nature_of_concern_id=concern_type_id).first()
-                if in_use and assoc.for_counseling:
-                    flash('Cannot remove: used by existing counseling sessions.', 'error')
-                else:
-                    try:
-                        # If association also serves inquiries, just turn off counseling flag instead of deleting
-                        if assoc.for_inquiries:
+                try:
+                    if in_use:
+                        # Archive behavior: keep association but disable counseling visibility
+                        if assoc.for_counseling:
                             assoc.for_counseling = False
-                        else:
-                            db.session.delete(assoc)
                         db.session.commit()
-                        flash('Removed support for concern type.', 'success')
+                        flash('Archived counseling concern type. Existing data is preserved.', 'success')
                         return redirect(url_for('office.manage_counseling_concern_types'))
-                    except Exception as e:
-                        db.session.rollback()
-                        flash(f'An error occurred: {e}', 'error')
+                    # Not in use: if still used for inquiries, just disable counseling; else remove association
+                    if assoc.for_inquiries:
+                        assoc.for_counseling = False
+                    else:
+                        db.session.delete(assoc)
+                    db.session.commit()
+                    flash('Removed support for concern type.', 'success')
+                    return redirect(url_for('office.manage_counseling_concern_types'))
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'An error occurred: {e}', 'error')
         elif action == 'auto_reply':
             # Share logic with inquiry page for per-office auto reply
             concern_type_id = request.form.get('concern_type_id')
