@@ -15,6 +15,13 @@ from app.office import office_bp
 @role_required(['office_admin'])
 def manage_concern_types():
     """Page to manage concern types that this office supports"""
+    # Helper to parse checkbox-like truthy values from forms
+    def _is_truthy(val):
+        if val is None:
+            return False
+        if isinstance(val, bool):
+            return val
+        return str(val).lower() in ['true', 'on', '1', 'yes']
     if not hasattr(current_user, 'office_admin') or not current_user.office_admin:
         flash('Access denied. You do not have permission to view this page.', 'error')
         return redirect(url_for('main.index'))
@@ -33,7 +40,7 @@ def manage_concern_types():
             # Create new concern type for this office
             concern_name = request.form.get('concern_name', '').strip()
             concern_description = request.form.get('concern_description', '').strip()
-            allows_other = request.form.get('allows_other') == 'on'
+            allows_other = _is_truthy(request.form.get('allows_other'))
             
             if not concern_name:
                 flash('Please enter a concern type name.', 'error')
@@ -60,7 +67,7 @@ def manage_concern_types():
                             office_id=office_id,
                             concern_type_id=existing_concern.id,
                             for_inquiries=True,
-                            for_counseling=bool(request.form.get('also_counseling') == 'on')
+                            for_counseling=_is_truthy(request.form.get('also_counseling'))
                         )
                         db.session.add(new_association)
                         
@@ -87,7 +94,7 @@ def manage_concern_types():
                             office_id=office_id,
                             concern_type_id=new_concern_type.id,
                             for_inquiries=True,
-                            for_counseling=bool(request.form.get('also_counseling') == 'on')
+                            for_counseling=_is_truthy(request.form.get('also_counseling'))
                         )
                         db.session.add(new_association)
                         db.session.commit()
@@ -103,7 +110,7 @@ def manage_concern_types():
             concern_type_id = request.form.get('concern_type_id')
             concern_name = request.form.get('concern_name', '').strip()
             concern_description = request.form.get('concern_description', '').strip()
-            allows_other = request.form.get('allows_other') == 'on'
+            allows_other = _is_truthy(request.form.get('allows_other'))
             
             if not concern_type_id:
                 flash('Invalid concern type.', 'error')
@@ -142,8 +149,9 @@ def manage_concern_types():
                                 concern_type.allows_other = allows_other
                                 # Optional toggles
                                 association.for_inquiries = True  # This page always manages inquiry types
-                                if 'toggle_counseling' in request.form:
-                                    association.for_counseling = bool(request.form.get('toggle_counseling') == 'on')
+                                # Respect counseling toggle if present in form (may not be present in UI)
+                                if request.form.get('toggle_counseling') is not None:
+                                    association.for_counseling = _is_truthy(request.form.get('toggle_counseling'))
                                 db.session.commit()
                                 
                                 flash(f'Successfully updated "{concern_name}" concern type.', 'success')
