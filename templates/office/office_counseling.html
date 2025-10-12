@@ -373,7 +373,7 @@
                                                     <i class="fas fa-calendar-alt mr-1"></i> Reschedule
                                                 </button>
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-md cancel-session" data-session-id="{{ session.id }}">
-                                                    <i class="fas fa-times mr-1"></i> Cancel Counseling
+                                                    <i class="fas fa-times mr-1"></i> {% if session.status == 'pending' %}Decline{% else %}Cancel Counseling{% endif %}
                                                 </button>
                                             {% elif session.status == 'pending' and session.counselor_id is none %}
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 shadow-md update-status" data-session-id="{{ session.id }}" data-status="confirmed">
@@ -383,12 +383,12 @@
                                                     <i class="fas fa-calendar-alt mr-1"></i> Reschedule
                                                 </button>
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-md cancel-session" data-session-id="{{ session.id }}">
-                                                    <i class="fas fa-times mr-1"></i> Cancel Counseling
+                                                    <i class="fas fa-times mr-1"></i> {% if session.status == 'pending' %}Decline{% else %}Cancel Counseling{% endif %}
                                                 </button>
                                             {% elif session.status in ['pending', 'confirmed'] and session.counselor_id != current_user.id %}
                                                 <span class="text-gray-400 text-xs bg-gray-100 px-3 py-1 rounded-lg">Assigned to other counselor</span>
                                                 <button class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-md cancel-session" data-session-id="{{ session.id }}">
-                                                    <i class="fas fa-times mr-1"></i> Cancel Counseling
+                                                    <i class="fas fa-times mr-1"></i> {% if session.status == 'pending' %}Decline{% else %}Cancel Counseling{% endif %}
                                                 </button>
                                             {% elif session.status == 'in_progress' and session.counselor_id == current_user.id %}
                                                 {% if session.is_video_session %}
@@ -1026,6 +1026,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache common elements/vars for rescheduling modal
     const rescheduleModal = document.getElementById('rescheduleModal');
     const cancelModal = document.getElementById('cancelModal');
+    const confirmCancelBtn = document.getElementById('confirmCancel');
+    const cancelReasonEl = document.getElementById('cancelReason');
+    let sessionToCancel = null;
     const reschStudentName = document.getElementById('resch-student-name');
     const reschStudentSub = document.getElementById('resch-student-sub');
     const reschCurrentDate = document.getElementById('resch-current-date');
@@ -1443,6 +1446,67 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Handle cancel/decline: open modal and set up confirm
+    document.querySelectorAll('.cancel-session').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            sessionToCancel = this.dataset.sessionId;
+            // Try to read status from the row to adjust modal title/button
+            let isPending = false;
+            const row = this.closest('tr.session-row');
+            if (row) {
+                try {
+                    const data = JSON.parse(row.getAttribute('data-session') || '{}');
+                    isPending = (data.status === 'pending');
+                } catch(_) {}
+            }
+            const titleEl = cancelModal?.querySelector('#modal-title');
+            const primaryBtnEl = confirmCancelBtn;
+            if (titleEl) titleEl.textContent = isPending ? 'Decline Session' : 'Cancel Session';
+            if (primaryBtnEl) primaryBtnEl.textContent = isPending ? 'Decline' : 'Cancel Counseling';
+            if (cancelReasonEl) cancelReasonEl.value = '';
+            cancelModal && cancelModal.classList.remove('hidden');
+        });
+    });
+
+    // Confirm cancel/decline: post to backend using existing update-status endpoint
+    if (confirmCancelBtn) {
+        confirmCancelBtn.addEventListener('click', function() {
+            if (!sessionToCancel) return;
+            const reason = (cancelReasonEl?.value || '').trim();
+            const originalHTML = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Processing...';
+            this.disabled = true;
+
+            fetch(`/office/video-session/${sessionToCancel}/update-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: `status=cancelled&reason=${encodeURIComponent(reason)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Close modal and show toast; backend already pushes realtime notif to student
+                    cancelModal && cancelModal.classList.add('hidden');
+                    showNotification('Session has been cancelled', 'success');
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    showNotification('Failed to cancel: ' + (data.message || 'Unknown error'), 'error');
+                    this.innerHTML = originalHTML;
+                    this.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Cancel error', err);
+                showNotification('An unexpected error occurred. Please try again.', 'error');
+                this.innerHTML = originalHTML;
+                this.disabled = false;
+            });
+        });
+    }
     // Click backdrop to close redesigned reschedule modal
     rescheduleModal?.addEventListener('click', function(e){
         if (e.target && e.target.hasAttribute('data-resch-backdrop')){
