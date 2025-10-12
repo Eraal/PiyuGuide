@@ -29,6 +29,10 @@ def manage_counseling_concern_types():
     if not office:
         flash('Office not found.', 'error')
         return redirect(url_for('office.dashboard'))
+    # Enforce Campus Admin counseling toggle
+    if not bool(getattr(office, 'supports_video', False)):
+        flash('Counseling is disabled for your office.', 'warning')
+        return redirect(url_for('office.dashboard'))
 
     if request.method == 'POST':
         action = request.form.get('action')

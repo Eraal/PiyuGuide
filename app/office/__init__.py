@@ -45,23 +45,11 @@ def inject_office_notifications():
                 CounselingSession.scheduled_at > now
             ).count()
 
-            # Counseling availability flags
-            # First, detect explicit video support on the office record
+            # Counseling availability flag (strictly controlled by Campus Admin toggle)
+            # When disabled (supports_video == False), hide all counseling UI in Office module
             office_obj = Office.query.get(office_id)
             office_supports_video = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
-
-            has_counseling_types = OfficeConcernType.query.filter(
-                OfficeConcernType.office_id == office_id,
-                OfficeConcernType.for_counseling.is_(True)
-            ).first() is not None
-
-            has_any_sessions = CounselingSession.query.filter(
-                CounselingSession.office_id == office_id
-            ).first() is not None
-
-            # Consider the feature available if admin enabled video OR office already
-            # has counseling concern types OR any counseling sessions historically
-            office_offers_counseling = bool(office_supports_video or has_counseling_types or has_any_sessions)
+            office_offers_counseling = office_supports_video
         except Exception:
             # Fail-safe: keep defaults if any query fails
             pass

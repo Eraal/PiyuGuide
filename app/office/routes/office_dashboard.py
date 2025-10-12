@@ -254,19 +254,10 @@ def get_office_context():
             CounselingSession.scheduled_at > now
         ).count()
 
-        # Determine if this office offers counseling (explicit video support enabled,
-        # has any counseling concern types, or any counseling sessions historically)
-        has_counseling_types = db.session.query(OfficeConcernType.id).filter(
-            OfficeConcernType.office_id == office_id,
-            OfficeConcernType.for_counseling.is_(True)
-        ).first() is not None
-        has_any_sessions = db.session.query(CounselingSession.id).filter(
-            CounselingSession.office_id == office_id
-        ).first() is not None
-        # Whether office supports video sessions explicitly
+        # Counseling availability is strictly controlled by Campus Admin via supports_video.
         office_obj = Office.query.get(office_id)
         office_supports_video = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
-        office_offers_counseling = bool(office_supports_video or has_counseling_types or has_any_sessions)
+        office_offers_counseling = office_supports_video
 
         return {
             'unread_notifications_count': unread_notifications_count,
@@ -356,6 +347,15 @@ def appointments():
         return redirect(url_for('main.index'))
     
     office_id = current_user.office_admin.office_id
+    # Block access if counseling disabled for this office
+    try:
+        office_obj = Office.query.get(office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     
     # Get filter parameters
     status = request.args.get('status', 'upcoming')
@@ -553,6 +553,15 @@ def view_appointment(session_id):
         return redirect(url_for('main.index'))
     
     office_id = current_user.office_admin.office_id
+    # Block access if counseling disabled for this office
+    try:
+        office_obj = Office.query.get(office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     session = CounselingSession.query.filter_by(
         id=session_id, office_id=office_id
     ).first_or_404()

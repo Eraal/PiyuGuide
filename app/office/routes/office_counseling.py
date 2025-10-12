@@ -157,27 +157,16 @@ def video_counseling():
         return redirect(url_for('main.index'))
     
     office_id = current_user.office_admin.office_id
-    # If office doesn't offer counseling at all, redirect away. However, if the
-    # Office record has supports_video=True (enabled by Campus Admin), allow access
-    # so the team can start configuring concern types and sessions.
+    # If Campus Admin disabled counseling (supports_video=False), block access entirely.
     try:
-        from app.models import OfficeConcernType, Office
+        from app.models import Office
         office_obj = Office.query.get(office_id)
-        supports_video_flag = bool(getattr(office_obj, 'supports_video', False)) if office_obj else False
-
-        has_counseling_types = db.session.query(OfficeConcernType.id).filter(
-            OfficeConcernType.office_id == office_id,
-            OfficeConcernType.for_counseling.is_(True)
-        ).first() is not None
-        has_any_sessions = db.session.query(CounselingSession.id).filter(
-            CounselingSession.office_id == office_id
-        ).first() is not None
-
-        if not (supports_video_flag or has_counseling_types or has_any_sessions):
-            flash('Counseling is not enabled for your office.', 'warning')
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
             return redirect(url_for('office.dashboard'))
     except Exception:
-        pass
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     
     # Get filter parameters
     # Default to 'upcoming' so the initial view prioritizes upcoming (student-submitted) sessions
@@ -318,6 +307,16 @@ def join_video_session(session_id):
         return redirect(url_for('main.index'))
     
     office_id = current_user.office_admin.office_id
+    # Block if counseling disabled for this office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     session = CounselingSession.query.filter_by(
         id=session_id, 
         office_id=office_id,
@@ -451,6 +450,16 @@ def counseling_details(session_id: int):
         return redirect(url_for('main.index'))
 
     office_id = current_user.office_admin.office_id
+    # Block if counseling disabled for this office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     session = CounselingSession.query.filter_by(id=session_id, office_id=office_id).first_or_404()
 
     # Gather student info
@@ -487,6 +496,14 @@ def end_video_session(session_id):
         id=session_id,
         is_video_session=True
     ).first_or_404()
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'status': 'error', 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Counseling unavailable'}), 403
     
     # Check if counselor is assigned to this session
     if session.counselor_id != current_user.id:
@@ -570,6 +587,16 @@ def complete_session(session_id):
         return redirect(url_for('main.index'))
     
     session = CounselingSession.query.get_or_404(session_id)
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     
     # Check if the session belongs to the current user's office
     if session.office_id != current_user.office_admin.office_id:
@@ -630,6 +657,14 @@ def update_session_status(session_id):
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
     
     session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'status': 'error', 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Counseling unavailable'}), 403
     
     # Check if office admin belongs to the office
     if session.office_id != current_user.office_admin.office_id:
@@ -785,6 +820,14 @@ def send_session_reminder(session_id):
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
     
     session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'status': 'error', 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Counseling unavailable'}), 403
     
     # Check if office admin belongs to the office
     if session.office_id != current_user.office_admin.office_id:
@@ -887,6 +930,14 @@ def reschedule_session(session_id):
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
     
     session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'status': 'error', 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Counseling unavailable'}), 403
     
     # Check if office admin belongs to the office
     if session.office_id != current_user.office_admin.office_id:
@@ -1023,6 +1074,14 @@ def office_calendar_events():
         return jsonify([]), 200
 
     office_id = current_user.office_admin.office_id
+    # Enforce counseling enabled for this office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify([]), 200
+    except Exception:
+        return jsonify([]), 200
     start = request.args.get('start')
     end = request.args.get('end')
 
@@ -1101,6 +1160,16 @@ def office_availability():
     """
     if current_user.role != 'office_admin':
         return jsonify({'error': 'Unauthorized'}), 403
+
+    # Enforce counseling enabled for this office
+    try:
+        from app.models import Office
+        office_id = current_user.office_admin.office_id
+        office_obj = Office.query.get(office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'error': 'Counseling is disabled for your office'}), 403
+    except Exception:
+        return jsonify({'error': 'Counseling unavailable'}), 403
 
     date_str = request.args.get('date')
     if not date_str:
@@ -1188,6 +1257,14 @@ def save_session_notes(session_id):
         id=session_id,
         counselor_id=current_user.id
     ).first_or_404()
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'success': False, 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'success': False, 'message': 'Counseling unavailable'}), 403
     
     try:
         data = request.json
@@ -1217,6 +1294,14 @@ def update_session_notes(session_id):
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     session = CounselingSession.query.get_or_404(session_id)
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'success': False, 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'success': False, 'message': 'Counseling unavailable'}), 403
     
     # Check if the session belongs to the current user's office
     if session.office_id != current_user.office_admin.office_id:
@@ -1264,6 +1349,16 @@ def session_completed(session_id):
     
     # Get the session
     session = CounselingSession.query.get_or_404(session_id)
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            flash('Counseling is disabled for your office.', 'warning')
+            return redirect(url_for('office.dashboard'))
+    except Exception:
+        flash('Counseling is currently unavailable.', 'warning')
+        return redirect(url_for('office.dashboard'))
     
     # Check if the session belongs to the current user's office
     if session.office_id != current_user.office_admin.office_id:
@@ -1344,6 +1439,14 @@ def download_session_summary(session_id):
         return jsonify({'error': 'Access denied'}), 403
     
     session = CounselingSession.query.get_or_404(session_id)
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'error': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'error': 'Counseling unavailable'}), 403
     
     # Check if the session belongs to the current user's office
     if session.office_id != current_user.office_admin.office_id:
@@ -1413,6 +1516,14 @@ def schedule_followup(session_id):
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     session = CounselingSession.query.get_or_404(session_id)
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'success': False, 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'success': False, 'message': 'Counseling unavailable'}), 403
     
     # Check if the session belongs to the current user's office
     if session.office_id != current_user.office_admin.office_id:
@@ -1479,6 +1590,14 @@ def assign_counseling_session(session_id):
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
 
     session = CounselingSession.query.filter_by(id=session_id).first_or_404()
+    # Enforce counseling enabled for the owning office
+    try:
+        from app.models import Office
+        office_obj = Office.query.get(session.office_id)
+        if not office_obj or not bool(getattr(office_obj, 'supports_video', False)):
+            return jsonify({'status': 'error', 'message': 'Counseling is disabled for this office'}), 403
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Counseling unavailable'}), 403
 
     # Ensure the session belongs to the current user's office
     if session.office_id != current_user.office_admin.office_id:

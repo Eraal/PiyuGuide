@@ -25,14 +25,9 @@ def counseling_sessions():
         student_id=student.id    ).order_by(desc(CounselingSession.scheduled_at)).all()
     
     # Get only offices that offer counseling services within student's campus
-    # An office offers counseling if it either supports video OR has had counseling sessions
+    # Counseling availability is controlled by Campus Admin; only include offices with supports_video=True
     campus_id = student.campus_id or session.get('selected_campus_id')
-    office_query = Office.query.filter(
-        or_(
-            Office.supports_video == True,
-            Office.counseling_sessions.any()
-        )
-    )
+    office_query = Office.query.filter(Office.supports_video.is_(True))
     if campus_id:
         office_query = office_query.filter(Office.campus_id == campus_id)
     offices = office_query.all()
@@ -162,9 +157,9 @@ def schedule_session():
             flash('You can only schedule counseling with offices in your campus.', 'error')
             return redirect(url_for('student.request_counseling_session'))
         
-        # If video session is requested, verify office supports it
-        if is_video and not office.supports_video:
-            flash('The selected office does not support video counseling', 'error')
+        # If counseling is disabled for this office (supports_video=False), block any scheduling
+        if not office.supports_video:
+            flash('This office does not offer counseling at this time.', 'error')
             return redirect(url_for('student.request_counseling_session'))
 
         # Validate selected nature_of_concern belongs to this office's counseling concern set
@@ -248,14 +243,9 @@ def request_counseling_session():
     student = Student.query.filter_by(user_id=current_user.id).first_or_404()
     
     # Get only offices that offer counseling services, scoped to student's campus
-    # An office offers counseling if it either supports video OR has had counseling sessions
+    # Counseling availability is controlled by Campus Admin; only include supports_video=True
     campus_id = student.campus_id or session.get('selected_campus_id')
-    office_query = Office.query.filter(
-        or_(
-            Office.supports_video == True,
-            Office.counseling_sessions.any()
-        )
-    )
+    office_query = Office.query.filter(Office.supports_video.is_(True))
     if campus_id:
         office_query = office_query.filter(Office.campus_id == campus_id)
     offices = office_query.all()
@@ -347,9 +337,11 @@ def office_availability(office_id):
     except ValueError:
         return jsonify({'error': 'invalid date format'}), 400
 
-    # Validate student and office campus scope
+    # Validate student and office campus scope and counseling availability
     student = Student.query.filter_by(user_id=current_user.id).first_or_404()
     office = Office.query.get_or_404(office_id)
+    if not office.supports_video:
+        return jsonify({'error': 'Counseling is not available for this office'}), 403
     campus_id = student.campus_id or session.get('selected_campus_id')
     if campus_id and office.campus_id != campus_id:
         return jsonify({'error': 'office not accessible'}), 403
