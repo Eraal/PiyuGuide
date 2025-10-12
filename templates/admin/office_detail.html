@@ -1,290 +1,494 @@
-{% extends "admin/adminbase.html" %} {% block title %}{{ office.name }} - Office
-Details{% endblock %} {% block content %}
-<div class="bg-white p-6 rounded-lg shadow-md">
-  <!-- Back button -->
-  <div class="mb-6">
-    <a
-      href="{{ url_for('admin.office_stats') }}"
-      class="flex items-center text-blue-600 hover:text-blue-800"
-    >
-      <i class="fas fa-arrow-left mr-2"></i> Back to Office Statistics
-    </a>
-  </div>
+{% extends "admin/adminbase.html" %} 
+{% block title %}{{ office.name }} - Office Details{% endblock %} 
 
-  <!-- Office Header -->
-  <div
-    class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-gray-200"
-  >
-    <div>
-      <h1 class="text-2xl font-bold text-blue-800">{{ office.name }}</h1>
-      <p class="text-gray-600 mt-1">Office ID: #{{ office.id }}</p>
-    </div>
-    <div class="mt-4 md:mt-0 flex space-x-2">
-      <a
-        href="#"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-      >
-        <i class="fas fa-edit mr-1"></i> Edit Office
-      </a>
-      <!-- Toggle Status button removed -->
-    </div>
-  </div>
-
-  <!-- Office Info and Stats -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-    <!-- Office Info -->
-    <div class="col-span-1 lg:col-span-2">
-      <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 h-full">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">
-          Office Information
-        </h2>
-
-        <div class="mb-4">
-          <h3 class="text-sm font-medium text-gray-500">Description</h3>
-          <p class="text-gray-900">{{ office.description }}</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <div>
-            <h3 class="text-sm font-medium text-gray-500">
-              Video Counseling Support
-            </h3>
-            <p class="text-gray-900">
-              {% if office.supports_video %}
-              <span class="text-green-600"
-                ><i class="fas fa-video mr-1"></i> Enabled</span
-              >
-              {% else %}
-              <span class="text-red-600"
-                ><i class="fas fa-video-slash mr-1"></i> Disabled</span
-              >
-              {% endif %}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats Card -->
-    <div class="col-span-1">
-      <div class="bg-blue-50 p-6 rounded-lg border border-blue-200 h-full">
-        <h2 class="text-xl font-semibold text-blue-800 mb-4">
-          Inquiry Statistics
-        </h2>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div class="bg-white p-4 rounded-lg border border-blue-100">
-            <h3 class="text-sm font-medium text-blue-800">Total</h3>
-            <p class="text-2xl font-bold text-blue-700">
-              {{ inquiry_stats.total }}
-            </p>
-          </div>
-
-          <div class="bg-white p-4 rounded-lg border border-yellow-100">
-            <h3 class="text-sm font-medium text-yellow-800">Pending</h3>
-            <p class="text-2xl font-bold text-yellow-700">
-              {{ inquiry_stats.pending }}
-            </p>
-          </div>
-
-          <div class="bg-white p-4 rounded-lg border border-purple-100">
-            <h3 class="text-sm font-medium text-purple-800">In Progress</h3>
-            <p class="text-2xl font-bold text-purple-700">
-              {{ inquiry_stats.in_progress }}
-            </p>
-          </div>
-
-          <div class="bg-white p-4 rounded-lg border border-green-100">
-            <h3 class="text-sm font-medium text-green-800">Resolved</h3>
-            <p class="text-2xl font-bold text-green-700">
-              {{ inquiry_stats.resolved }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Office Admins Section -->
-  <div class="mb-8">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-800">Office Administrators</h2>
-      <button
-        onclick="showAssignAdminModal()"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-      >
-        <i class="fas fa-user-plus mr-1"></i> Assign Admin
-      </button>
-    </div>
-
-    <div
-      class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200"
-    >
-      {% if office.office_admins %}
-      <ul class="divide-y divide-gray-200">
-        {% for admin in office.office_admins %}
-        <li class="p-4 hover:bg-gray-50">
-          <div class="flex justify-between items-center">
-            <div class="flex items-center">
-              <div
-                class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-800 text-white flex items-center justify-center"
-              >
-                {% if admin.user.profile_pic %}
-                <img
-                  src="{{ admin.user.profile_pic }}"
-                  alt="Profile"
-                  class="h-10 w-10 rounded-full"
-                />
-                {% else %}
-                <div class="text-lg font-bold">
-                  {{ admin.user.first_name[0] }}{{ admin.user.last_name[0] }}
-                </div>
-                {% endif %}
-              </div>
-              <div class="ml-4">
-                <h3 class="text-lg font-medium text-gray-900">
-                  {{ admin.user.get_full_name() }}
-                </h3>
-                <p class="text-sm text-gray-500">{{ admin.user.email }}</p>
-              </div>
-            </div>
-            <div class="flex space-x-2">
-              <span
-                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {% if admin.user.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}"
-              >
-                {{ 'Active' if admin.user.is_active else 'Inactive' }}
-              </span>
-              <a
-                href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}"
-                class="text-blue-600 hover:text-blue-900"
-              >
-                <i class="fas fa-eye"></i>
-              </a>
-              <a
-                href="{{ url_for('admin.edit_office_admin', admin_id=admin.id) }}"
-                class="text-green-600 hover:text-green-900"
-              >
-                <i class="fas fa-edit"></i>
-              </a>
-              <button
-                onclick="confirmUnassignAdmin({{ admin.id }})"
-                class="text-red-600 hover:text-red-900"
-              >
-                <i class="fas fa-user-minus"></i>
-              </button>
-            </div>
-          </div>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <div class="p-6 text-center">
-        <p class="text-gray-500">No administrators assigned to this office.</p>
-        <button
-          onclick="showAssignAdminModal()"
-          class="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+{% block content %}
+<!-- Enhanced Modern Office Detail Page -->
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+  
+  <!-- Sticky Navigation Bar -->
+  <div class="sticky top-0 z-30 backdrop-blur-lg bg-white/90 border-b border-slate-200/60 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <!-- Back Navigation -->
+        <a
+          href="{{ url_for('admin.office_stats') }}"
+          class="group flex items-center gap-2 text-slate-600 hover:text-blue-600 transition-all duration-200"
         >
-          <i class="fas fa-user-plus mr-1"></i> Assign Admin
+          <div class="p-1.5 rounded-lg bg-slate-100 group-hover:bg-blue-50 transition-colors">
+            <i class="fas fa-arrow-left text-sm"></i>
+          </div>
+          <span class="font-medium">Back to Office Statistics</span>
+        </a>
+
+        <!-- Action Button -->
+        <button
+          onclick="showEditOfficeModal()"
+          class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+        >
+          <i class="fas fa-edit"></i>
+          <span class="font-medium">Edit Office</span>
         </button>
       </div>
-      {% endif %}
     </div>
   </div>
 
-  <!-- Recent Inquiries Section -->
-  <div>
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-800">Recent Inquiries</h2>
-      <a
-        href="{{ url_for('admin.all_inquiries') }}?office_id={{ office.id }}"
-        class="text-blue-600 hover:text-blue-800"
-      >
-        View All <i class="fas fa-arrow-right ml-1"></i>
-      </a>
+  <!-- Hero Section with Office Header -->
+  <div class="relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
+    <!-- Decorative Background Elements -->
+    <div class="absolute inset-0 overflow-hidden">
+      <div class="absolute -top-1/2 -right-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+      <div class="absolute -bottom-1/2 -left-1/4 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl"></div>
+      <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-400/5 rounded-full blur-2xl"></div>
     </div>
 
-    <div
-      class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200"
-    >
-      {% if recent_inquiries %}
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Student
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Subject
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Created At
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            {% for inquiry in recent_inquiries %}
-            <tr>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">
-                  {{ inquiry.student.user.get_full_name() }}
-                </div>
-                <div class="text-sm text-gray-500">
-                  {{ inquiry.student.user.email }}
-                </div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-900">{{ inquiry.subject }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {% if inquiry.status == 'pending' %}bg-yellow-100 text-yellow-800 {% elif inquiry.status == 'in_progress' %}bg-blue-100 text-blue-800 {% elif inquiry.status == 'resolved' %}bg-green-100 text-green-800 {% else %}bg-gray-100 text-gray-800{% endif %}"
-                >
-                  {{ inquiry.status.replace('_', ' ').title() }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ inquiry.created_at.strftime('%Y-%m-%d %H:%M') }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <a
-                  href="{{ url_for('admin.view_inquiry_details', inquiry_id=inquiry.id) }}"
-                  class="text-blue-600 hover:text-blue-900"
-                >
-                  <i class="fas fa-eye"></i>
-                </a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="text-center">
+        <!-- Office Icon -->
+        <div class="inline-flex items-center justify-center w-20 h-20 mb-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl">
+          <i class="fas fa-building text-3xl text-white"></i>
+        </div>
+
+        <!-- Office Name -->
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+          {{ office.name }}
+        </h1>
+        
+        <!-- Office ID Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full mb-6">
+          <i class="fas fa-hashtag text-blue-200 text-sm"></i>
+          <span class="text-white font-medium">Office ID: {{ office.id }}</span>
+        </div>
+
+        <!-- Video Support Indicator -->
+        <div class="flex justify-center mt-4">
+          {% if office.supports_video %}
+          <div class="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/20 backdrop-blur-sm border border-emerald-400/30 rounded-xl">
+            <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
+            <i class="fas fa-video text-emerald-300"></i>
+            <span class="text-emerald-100 font-medium">Video Counseling Enabled</span>
+          </div>
+          {% else %}
+          <div class="flex items-center gap-2 px-5 py-2.5 bg-slate-500/20 backdrop-blur-sm border border-slate-400/30 rounded-xl">
+            <i class="fas fa-video-slash text-slate-300"></i>
+            <span class="text-slate-200 font-medium">Video Counseling Disabled</span>
+          </div>
+          {% endif %}
+        </div>
       </div>
-      {% else %}
-      <div class="p-6 text-center text-gray-500">
-        No inquiries found for this office.
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 pb-12">
+    
+    <!-- Statistics Cards Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      
+      <!-- Total Inquiries Card -->
+      <div class="group bg-white rounded-2xl shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-inbox text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-medium text-slate-500 uppercase tracking-wide">Total</p>
+              <p class="text-3xl font-bold text-slate-800 mt-1">{{ inquiry_stats.total }}</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <span class="text-xs font-medium text-slate-400 uppercase">All Inquiries</span>
+            <div class="flex items-center gap-1 text-blue-600">
+              <i class="fas fa-chart-line text-xs"></i>
+            </div>
+          </div>
+        </div>
       </div>
-      {% endif %}
+
+      <!-- Pending Inquiries Card -->
+      <div class="group bg-white rounded-2xl shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-clock text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-medium text-slate-500 uppercase tracking-wide">Pending</p>
+              <p class="text-3xl font-bold text-slate-800 mt-1">{{ inquiry_stats.pending }}</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <span class="text-xs font-medium text-slate-400 uppercase">Awaiting Action</span>
+            <div class="flex items-center gap-1 text-orange-600">
+              <i class="fas fa-exclamation-circle text-xs"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- In Progress Card -->
+      <div class="group bg-white rounded-2xl shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-spinner text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-medium text-slate-500 uppercase tracking-wide">In Progress</p>
+              <p class="text-3xl font-bold text-slate-800 mt-1">{{ inquiry_stats.in_progress }}</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <span class="text-xs font-medium text-slate-400 uppercase">Being Handled</span>
+            <div class="flex items-center gap-1 text-purple-600">
+              <i class="fas fa-sync-alt text-xs"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resolved Card -->
+      <div class="group bg-white rounded-2xl shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-check-circle text-white text-xl"></i>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-medium text-slate-500 uppercase tracking-wide">Resolved</p>
+              <p class="text-3xl font-bold text-slate-800 mt-1">{{ inquiry_stats.resolved }}</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <span class="text-xs font-medium text-slate-400 uppercase">Completed</span>
+            <div class="flex items-center gap-1 text-green-600">
+              <i class="fas fa-check text-xs"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Left Column - Office Info -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Office Description Card -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-3">
+              <i class="fas fa-info-circle"></i>
+              Office Information
+            </h2>
+          </div>
+          <div class="p-6">
+            <div class="prose max-w-none">
+              <p class="text-slate-700 text-base leading-relaxed">
+                {{ office.description if office.description else 'No description provided for this office.' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Office Administrators Section -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          <div class="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-white flex items-center gap-3">
+              <i class="fas fa-users"></i>
+              Office Administrators
+            </h2>
+            <button
+              onclick="showAssignAdminModal()"
+              class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-all duration-200 flex items-center gap-2 backdrop-blur-sm border border-white/30"
+            >
+              <i class="fas fa-user-plus"></i>
+              <span class="font-medium">Assign Admin</span>
+            </button>
+          </div>
+
+          <div class="p-6">
+            {% if office.office_admins %}
+            <div class="space-y-3">
+              {% for admin in office.office_admins %}
+              <div class="group relative bg-gradient-to-r from-slate-50 to-purple-50/30 hover:from-purple-50 hover:to-purple-100/50 rounded-xl p-4 border border-slate-200 hover:border-purple-300 transition-all duration-300 hover:shadow-md">
+                <div class="flex items-center justify-between gap-4">
+                  <!-- Admin Info -->
+                  <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <!-- Avatar -->
+                    <div class="flex-shrink-0">
+                      {% if admin.user.profile_pic %}
+                      <img
+                        src="{{ admin.user.profile_pic }}"
+                        alt="{{ admin.user.get_full_name() }}"
+                        class="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm"
+                      />
+                      {% else %}
+                      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center border-2 border-white shadow-sm">
+                        <span class="text-white font-bold text-lg">
+                          {{ admin.user.first_name[0] }}{{ admin.user.last_name[0] }}
+                        </span>
+                      </div>
+                      {% endif %}
+                    </div>
+                    
+                    <!-- Details -->
+                    <div class="flex-1 min-w-0">
+                      <h3 class="text-base font-semibold text-slate-800 truncate">
+                        {{ admin.user.get_full_name() }}
+                      </h3>
+                      <p class="text-sm text-slate-500 truncate flex items-center gap-2">
+                        <i class="fas fa-envelope text-xs"></i>
+                        {{ admin.user.email }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Status & Actions -->
+                  <div class="flex items-center gap-3">
+                    <!-- Status Badge -->
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full {% if admin.user.is_active %}bg-emerald-100 text-emerald-700 border border-emerald-200{% else %}bg-red-100 text-red-700 border border-red-200{% endif %}">
+                      {{ 'Active' if admin.user.is_active else 'Inactive' }}
+                    </span>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-1">
+                      <a
+                        href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}"
+                        class="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </a>
+                      <a
+                        href="{{ url_for('admin.edit_office_admin', admin_id=admin.id) }}"
+                        class="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <button
+                        data-admin-id="{{ admin.id }}"
+                        class="unassign-admin-btn p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Unassign"
+                      >
+                        <i class="fas fa-user-minus"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+              <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-2xl mb-4">
+                <i class="fas fa-users text-purple-600 text-2xl"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-slate-800 mb-2">No Administrators Assigned</h3>
+              <p class="text-slate-500 mb-6">This office doesn't have any administrators yet.</p>
+              <button
+                onclick="showAssignAdminModal()"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                <i class="fas fa-user-plus"></i>
+                <span class="font-medium">Assign First Admin</span>
+              </button>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Recent Inquiries Section -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-white flex items-center gap-3">
+              <i class="fas fa-history"></i>
+              Recent Inquiries
+            </h2>
+            <a
+              href="{{ url_for('admin.all_inquiries') }}?office_id={{ office.id }}"
+              class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-all duration-200 flex items-center gap-2 backdrop-blur-sm border border-white/30"
+            >
+              <span class="font-medium">View All</span>
+              <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+
+          <div class="overflow-hidden">
+            {% if recent_inquiries %}
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead>
+                  <tr class="bg-slate-50">
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Student
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Subject
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-100">
+                  {% for inquiry in recent_inquiries %}
+                  <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm">
+                          {{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}
+                        </div>
+                        <div>
+                          <p class="text-sm font-semibold text-slate-800">
+                            {{ inquiry.student.user.get_full_name() }}
+                          </p>
+                          <p class="text-xs text-slate-500">
+                            {{ inquiry.student.user.email }}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <p class="text-sm text-slate-700 line-clamp-2">{{ inquiry.subject }}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full 
+                        {% if inquiry.status == 'pending' %}bg-amber-100 text-amber-700 border border-amber-200
+                        {% elif inquiry.status == 'in_progress' %}bg-blue-100 text-blue-700 border border-blue-200
+                        {% elif inquiry.status == 'resolved' %}bg-emerald-100 text-emerald-700 border border-emerald-200
+                        {% else %}bg-slate-100 text-slate-700 border border-slate-200{% endif %}">
+                        <div class="w-1.5 h-1.5 rounded-full 
+                          {% if inquiry.status == 'pending' %}bg-amber-500
+                          {% elif inquiry.status == 'in_progress' %}bg-blue-500
+                          {% elif inquiry.status == 'resolved' %}bg-emerald-500
+                          {% else %}bg-slate-500{% endif %}">
+                        </div>
+                        {{ inquiry.status.replace('_', ' ').title() }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="text-sm text-slate-600">
+                        <p class="font-medium">{{ inquiry.created_at.strftime('%b %d, %Y') }}</p>
+                        <p class="text-xs text-slate-500">{{ inquiry.created_at.strftime('%I:%M %p') }}</p>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      <a
+                        href="{{ url_for('admin.view_inquiry_details', inquiry_id=inquiry.id) }}"
+                        class="inline-flex items-center justify-center p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+              <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-2xl mb-4">
+                <i class="fas fa-inbox text-indigo-600 text-2xl"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-slate-800 mb-2">No Recent Inquiries</h3>
+              <p class="text-slate-500">This office hasn't received any inquiries yet.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="lg:col-span-1 space-y-6">
+        
+        <!-- Quick Actions Card -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden sticky top-24">
+          <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4">
+            <h3 class="text-xl font-bold text-white flex items-center gap-3">
+              <i class="fas fa-bolt"></i>
+              Quick Actions
+            </h3>
+          </div>
+          <div class="p-6 space-y-3">
+            
+            <!-- Edit Office -->
+            <button
+              onclick="showEditOfficeModal()"
+              class="w-full group flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-200/50 rounded-xl transition-all duration-200 border border-blue-200 hover:border-blue-300 hover:shadow-md"
+            >
+              <div class="p-2 bg-blue-500 rounded-lg group-hover:scale-110 transition-transform">
+                <i class="fas fa-edit text-white"></i>
+              </div>
+              <div class="text-left flex-1">
+                <p class="text-sm font-semibold text-slate-800">Edit Office</p>
+                <p class="text-xs text-slate-500">Update office details</p>
+              </div>
+              <i class="fas fa-chevron-right text-blue-600 text-sm"></i>
+            </button>
+
+            <!-- Assign Administrator -->
+            <button
+              onclick="showAssignAdminModal()"
+              class="w-full group flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100/50 hover:from-purple-100 hover:to-purple-200/50 rounded-xl transition-all duration-200 border border-purple-200 hover:border-purple-300 hover:shadow-md"
+            >
+              <div class="p-2 bg-purple-500 rounded-lg group-hover:scale-110 transition-transform">
+                <i class="fas fa-user-plus text-white"></i>
+              </div>
+              <div class="text-left flex-1">
+                <p class="text-sm font-semibold text-slate-800">Assign Admin</p>
+                <p class="text-xs text-slate-500">Add new administrator</p>
+              </div>
+              <i class="fas fa-chevron-right text-purple-600 text-sm"></i>
+            </button>
+
+            <!-- View All Inquiries -->
+            <a
+              href="{{ url_for('admin.all_inquiries') }}?office_id={{ office.id }}"
+              class="w-full group flex items-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-indigo-100/50 hover:from-indigo-100 hover:to-indigo-200/50 rounded-xl transition-all duration-200 border border-indigo-200 hover:border-indigo-300 hover:shadow-md"
+            >
+              <div class="p-2 bg-indigo-500 rounded-lg group-hover:scale-110 transition-transform">
+                <i class="fas fa-list text-white"></i>
+              </div>
+              <div class="text-left flex-1">
+                <p class="text-sm font-semibold text-slate-800">All Inquiries</p>
+                <p class="text-xs text-slate-500">View complete history</p>
+              </div>
+              <i class="fas fa-chevron-right text-indigo-600 text-sm"></i>
+            </a>
+
+            <!-- Back to Statistics -->
+            <a
+              href="{{ url_for('admin.office_stats') }}"
+              class="w-full group flex items-center gap-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100/50 hover:from-slate-100 hover:to-slate-200/50 rounded-xl transition-all duration-200 border border-slate-200 hover:border-slate-300 hover:shadow-md"
+            >
+              <div class="p-2 bg-slate-500 rounded-lg group-hover:scale-110 transition-transform">
+                <i class="fas fa-chart-bar text-white"></i>
+              </div>
+              <div class="text-left flex-1">
+                <p class="text-sm font-semibold text-slate-800">Office Statistics</p>
+                <p class="text-xs text-slate-500">View analytics dashboard</p>
+              </div>
+              <i class="fas fa-chevron-right text-slate-600 text-sm"></i>
+            </a>
+
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 </div>
@@ -292,71 +496,81 @@ Details{% endblock %} {% block content %}
 <!-- Assign Admin Modal -->
 <div
   id="assignAdminModal"
-  class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full"
-  style="z-index: 100"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50"
 >
-  <div
-    class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white"
-  >
-    <div class="mt-3">
-      <div class="flex justify-between items-center pb-3 border-b">
-        <h3 class="text-xl font-medium text-gray-900">
-          Assign Admin to {{ office.name }}
-        </h3>
+  <div class="relative top-20 mx-auto p-6 border-0 w-11/12 md:w-1/2 max-w-2xl shadow-2xl rounded-2xl bg-white">
+    <div class="space-y-6">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center pb-4 border-b border-slate-200">
+        <div>
+          <h3 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+            <div class="p-2 bg-purple-100 rounded-xl">
+              <i class="fas fa-user-plus text-purple-600"></i>
+            </div>
+            Assign Administrator
+          </h3>
+          <p class="text-sm text-slate-500 mt-1">Add a new administrator to {{ office.name }}</p>
+        </div>
         <button
           type="button"
-          class="text-gray-400 hover:text-gray-500"
+          class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           onclick="closeModal('assignAdminModal')"
         >
-          <i class="fas fa-times"></i>
+          <i class="fas fa-times text-xl"></i>
         </button>
       </div>
-      <div class="mt-4">
-        <form
-          id="assignAdminForm"
-          action="{{ url_for('admin.assign_admin_to_office') }}"
-          method="POST"
-        >
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <input type="hidden" name="office_id" value="{{ office.id }}" />
 
-          <div class="mb-4">
-            <label
-              for="adminSelect"
-              class="block text-sm font-medium text-gray-700"
-              >Select Admin</label
-            >
-            <select
-              id="adminSelect"
-              name="admin_id"
-              class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-            >
-              <option value="">-- Select an Admin --</option>
-              {% for admin in available_admins %}
-              <option value="{{ admin.id }}">
-                {{ admin.get_full_name() }} ({{ admin.email }})
-              </option>
-              {% endfor %}
-            </select>
-          </div>
+      <!-- Modal Body -->
+      <form
+        id="assignAdminForm"
+        action="{{ url_for('admin.assign_admin_to_office') }}"
+        method="POST"
+        class="space-y-6"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="office_id" value="{{ office.id }}" />
 
-          <div class="mt-5 flex justify-end space-x-3">
-            <button
-              type="button"
-              onclick="closeModal('assignAdminModal')"
-              class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Assign
-            </button>
-          </div>
-        </form>
-      </div>
+        <div>
+          <label for="adminSelect" class="block text-sm font-semibold text-slate-700 mb-2">
+            Select Administrator
+          </label>
+          <select
+            id="adminSelect"
+            name="admin_id"
+            class="w-full px-4 py-3 text-base border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 rounded-xl transition-all bg-white"
+            required
+          >
+            <option value="">-- Choose an Administrator --</option>
+            {% for admin in available_admins %}
+            <option value="{{ admin.id }}">
+              {{ admin.get_full_name() }} - {{ admin.email }}
+            </option>
+            {% endfor %}
+          </select>
+          <p class="mt-2 text-xs text-slate-500">
+            <i class="fas fa-info-circle mr-1"></i>
+            Select from available administrators not currently assigned to any office
+          </p>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <button
+            type="button"
+            onclick="closeModal('assignAdminModal')"
+            class="px-6 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all shadow-md hover:shadow-lg"
+          >
+            <i class="fas fa-check mr-2"></i>
+            Assign Administrator
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -364,43 +578,49 @@ Details{% endblock %} {% block content %}
 <!-- Confirmation Modal -->
 <div
   id="confirmationModal"
-  class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full"
-  style="z-index: 100"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50"
 >
-  <div
-    class="relative top-20 mx-auto p-5 border w-11/12 md:w-96 shadow-lg rounded-md bg-white"
-  >
-    <div class="mt-3">
-      <div class="flex justify-between items-center pb-3 border-b">
-        <h3 class="text-xl font-medium text-gray-900" id="confirmationTitle">
+  <div class="relative top-20 mx-auto p-6 border-0 w-11/12 md:w-96 shadow-2xl rounded-2xl bg-white">
+    <div class="space-y-6">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center pb-4 border-b border-slate-200">
+        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-3" id="confirmationTitle">
+          <div class="p-2 bg-red-100 rounded-xl">
+            <i class="fas fa-exclamation-triangle text-red-600"></i>
+          </div>
           Confirm Action
         </h3>
         <button
           type="button"
-          class="text-gray-400 hover:text-gray-500"
+          class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           onclick="closeModal('confirmationModal')"
         >
-          <i class="fas fa-times"></i>
+          <i class="fas fa-times text-lg"></i>
         </button>
       </div>
-      <div class="mt-4">
-        <p class="text-gray-700" id="confirmationMessage">
+
+      <!-- Modal Body -->
+      <div>
+        <p class="text-slate-700 text-base" id="confirmationMessage">
           Are you sure you want to perform this action?
         </p>
       </div>
-      <div class="mt-5 flex justify-end space-x-3">
+
+      <!-- Modal Footer -->
+      <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
         <button
           type="button"
           onclick="closeModal('confirmationModal')"
-          class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          class="px-6 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
           id="confirmActionBtn"
-          class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          class="px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg"
         >
+          <i class="fas fa-check mr-2"></i>
           Confirm
         </button>
       </div>
@@ -411,157 +631,160 @@ Details{% endblock %} {% block content %}
 <!-- Edit Office Modal -->
 <div
   id="editOfficeModal"
-  class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden overflow-y-auto h-full w-full"
-  style="z-index: 100"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50"
 >
-  <div
-    class="relative top-20 mx-auto p-6 border w-11/12 md:w-1/2 shadow-xl rounded-lg bg-white"
-  >
-    <div>
-      <div
-        class="flex justify-between items-center pb-4 border-b border-gray-200"
-      >
-        <h3 class="text-xl font-semibold text-gray-800">
-          Edit Office:
-          <span id="editOfficeTitle" class="text-blue-600"
-            >{{ office.name }}</span
-          >
-        </h3>
+  <div class="relative top-20 mx-auto p-6 border-0 w-11/12 md:w-1/2 max-w-2xl shadow-2xl rounded-2xl bg-white">
+    <div class="space-y-6">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center pb-4 border-b border-slate-200">
+        <div>
+          <h3 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+            <div class="p-2 bg-blue-100 rounded-xl">
+              <i class="fas fa-edit text-blue-600"></i>
+            </div>
+            Edit Office Details
+          </h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Update information for <span class="font-semibold text-blue-600">{{ office.name }}</span>
+          </p>
+        </div>
         <button
           type="button"
-          class="text-gray-500 hover:text-gray-700 transition-colors"
+          class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           onclick="closeModal('editOfficeModal')"
         >
-          <i class="fas fa-times text-lg"></i>
+          <i class="fas fa-times text-xl"></i>
         </button>
       </div>
-      <div class="mt-6">
-        <form
-          id="editOfficeForm"
-          action="{{ url_for('admin.edit_office', office_id=office.id) }}"
-          method="POST"
-        >
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
-          <div class="mb-5">
-            <label
-              for="officeName"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Office Name</label
-            >
-            <input
-              type="text"
-              id="officeName"
-              name="name"
-              value="{{ office.name }}"
-              required
-              class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
-            />
-          </div>
+      <!-- Modal Body -->
+      <form
+        id="editOfficeForm"
+        action="{{ url_for('admin.edit_office', office_id=office.id) }}"
+        method="POST"
+        class="space-y-6"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
-          <div class="mb-5">
-            <label
-              for="officeDescription"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Description</label
-            >
-            <textarea
-              id="officeDescription"
-              name="description"
-              rows="4"
-              class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
-            >
-{{ office.description }}</textarea
-            >
-          </div>
+        <!-- Office Name -->
+        <div>
+          <label for="officeName" class="block text-sm font-semibold text-slate-700 mb-2">
+            <i class="fas fa-building text-blue-600 mr-1"></i>
+            Office Name
+          </label>
+          <input
+            type="text"
+            id="officeName"
+            name="name"
+            value="{{ office.name }}"
+            required
+            class="w-full px-4 py-3 text-base bg-slate-50 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all"
+            placeholder="Enter office name"
+          />
+        </div>
 
-          <div class="mb-5">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >Video Support</label
-            >
-            <div class="flex items-center space-x-6">
-              <div class="flex items-center">
-                <input
-                  type="radio"
-                  id="videoYes"
-                  name="supports_video"
-                  value="true"
-                  {%
-                  if
-                  office.supports_video
-                  %}checked{%
-                  endif
-                  %}
-                  class="focus:ring-blue-500 h-5 w-5 text-blue-600 border-gray-300"
-                />
-                <label for="videoYes" class="ml-2 text-gray-700">Enabled</label>
+        <!-- Office Description -->
+        <div>
+          <label for="officeDescription" class="block text-sm font-semibold text-slate-700 mb-2">
+            <i class="fas fa-align-left text-blue-600 mr-1"></i>
+            Description
+          </label>
+          <textarea
+            id="officeDescription"
+            name="description"
+            rows="4"
+            class="w-full px-4 py-3 text-base bg-slate-50 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all resize-none"
+            placeholder="Describe the office and its services"
+          >{{ office.description }}</textarea>
+          <p class="mt-2 text-xs text-slate-500">
+            <i class="fas fa-info-circle mr-1"></i>
+            Provide a brief description of what this office handles
+          </p>
+        </div>
+
+        <!-- Video Support -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-3">
+            <i class="fas fa-video text-blue-600 mr-1"></i>
+            Video Counseling Support
+          </label>
+          <div class="flex gap-4">
+            <label class="flex-1 cursor-pointer">
+              <input
+                type="radio"
+                id="videoYes"
+                name="supports_video"
+                value="true"
+                {% if office.supports_video %}checked{% endif %}
+                class="peer sr-only"
+              />
+              <div class="flex items-center justify-center gap-3 p-4 bg-slate-50 border-2 border-slate-300 rounded-xl transition-all peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:shadow-md hover:border-slate-400">
+                <div class="w-5 h-5 rounded-full border-2 border-slate-400 peer-checked:border-emerald-500 peer-checked:bg-emerald-500 flex items-center justify-center peer-checked:text-white">
+                  <i class="fas fa-check text-xs hidden peer-checked:block"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-video text-emerald-600"></i>
+                  <span class="font-medium text-slate-700">Enabled</span>
+                </div>
               </div>
-              <div class="flex items-center">
-                <input
-                  type="radio"
-                  id="videoNo"
-                  name="supports_video"
-                  value="false"
-                  {%
-                  if
-                  not
-                  office.supports_video
-                  %}checked{%
-                  endif
-                  %}
-                  class="focus:ring-blue-500 h-5 w-5 text-blue-600 border-gray-300"
-                />
-                <label for="videoNo" class="ml-2 text-gray-700">Disabled</label>
+            </label>
+            
+            <label class="flex-1 cursor-pointer">
+              <input
+                type="radio"
+                id="videoNo"
+                name="supports_video"
+                value="false"
+                {% if not office.supports_video %}checked{% endif %}
+                class="peer sr-only"
+              />
+              <div class="flex items-center justify-center gap-3 p-4 bg-slate-50 border-2 border-slate-300 rounded-xl transition-all peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:shadow-md hover:border-slate-400">
+                <div class="w-5 h-5 rounded-full border-2 border-slate-400 peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center peer-checked:text-white">
+                  <i class="fas fa-check text-xs hidden peer-checked:block"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fas fa-video-slash text-red-600"></i>
+                  <span class="font-medium text-slate-700">Disabled</span>
+                </div>
               </div>
-            </div>
+            </label>
           </div>
+        </div>
 
-          <div class="mt-8 flex justify-end space-x-4">
-            <button
-              type="button"
-              onclick="closeModal('editOfficeModal')"
-              class="px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              id="saveOfficeBtn"
-              class="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center"
-            >
-              <span id="saveButtonText">Save Changes</span>
-              <span id="saveButtonLoader" class="hidden ml-2">
-                <svg
-                  class="animate-spin h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              </span>
-            </button>
-          </div>
-        </form>
-      </div>
+        <!-- Modal Footer -->
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <button
+            type="button"
+            onclick="closeModal('editOfficeModal')"
+            class="px-6 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="saveOfficeBtn"
+            class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+          >
+            <span id="saveButtonText">
+              <i class="fas fa-save mr-2"></i>
+              Save Changes
+            </span>
+            <span id="saveButtonLoader" class="hidden">
+              <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 
-{% endblock %} {% block extra_js %}
+{% endblock %} 
 
+{% block extra_js %}
 <script>
   // Wait for DOM to be fully loaded
   document.addEventListener("DOMContentLoaded", function () {
@@ -571,35 +794,34 @@ Details{% endblock %} {% block content %}
     // Setup the assign admin button
     setupAssignAdminButton();
 
-    // Setup unassign buttons
+    // Setup unassign buttons with new class-based approach
     setupUnassignButtons();
 
-    // FIX #1: Setup ONLY the main Edit Office button to open the modal
-    const editOfficeButtons = document.querySelectorAll(
-      'a[href="#"].px-4.py-2.bg-blue-600.text-white.rounded-lg'
-    );
-    editOfficeButtons.forEach((button) => {
-      button.addEventListener("click", function (e) {
-        e.preventDefault();
-        showEditOfficeModal();
-      });
-    });
+    // Setup Edit Office button
+    setupEditOfficeButton();
 
     // Form validation
     setupFormValidation();
 
     // Handle flash messages
     handleFlashMessages();
+
+    // Add smooth scroll behavior
+    document.documentElement.style.scrollBehavior = 'smooth';
   });
 
   function setupModals() {
-    // Close buttons for all modals
-    const closeButtons = document.querySelectorAll('[onclick^="closeModal"]');
-    closeButtons.forEach((button) => {
-      const modalId = button.getAttribute("onclick").match(/'([^']+)'/)[1];
-      button.onclick = function () {
-        closeModal(modalId);
-      };
+    // Close modals when clicking outside
+    const modals = ['assignAdminModal', 'confirmationModal', 'editOfficeModal'];
+    modals.forEach(modalId => {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            closeModal(modalId);
+          }
+        });
+      }
     });
   }
 
@@ -612,51 +834,72 @@ Details{% endblock %} {% block content %}
       // Remove the inline onclick handler
       button.removeAttribute("onclick");
       // Add event listener
-      button.addEventListener("click", function () {
+      button.addEventListener("click", function (e) {
+        e.preventDefault();
         showAssignAdminModal();
       });
     });
   }
 
   function setupUnassignButtons() {
-    // Find all unassign buttons
-    const unassignButtons = document.querySelectorAll(
-      'button[onclick^="confirmUnassignAdmin"]'
-    );
+    // Find all unassign buttons using the new class
+    const unassignButtons = document.querySelectorAll('.unassign-admin-btn');
     unassignButtons.forEach((button) => {
-      // Get the admin ID from the onclick attribute
-      const adminId = button.getAttribute("onclick").match(/\((\d+)\)/)[1];
-      // Remove the inline onclick handler
-      button.removeAttribute("onclick");
-      // Add event listener
-      button.addEventListener("click", function () {
+      const adminId = button.getAttribute('data-admin-id');
+      button.addEventListener("click", function (e) {
+        e.preventDefault();
         confirmUnassignAdmin(adminId);
       });
     });
   }
 
+  function setupEditOfficeButton() {
+    // Setup all edit office buttons
+    const editButtons = document.querySelectorAll('button[onclick="showEditOfficeModal()"]');
+    editButtons.forEach(button => {
+      button.removeAttribute('onclick');
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        showEditOfficeModal();
+      });
+    });
+  }
+
   function setupFormValidation() {
-    // Form validation
+    // Form validation for assign admin
     const assignAdminForm = document.getElementById("assignAdminForm");
     if (assignAdminForm) {
       assignAdminForm.addEventListener("submit", function (e) {
         const adminSelect = document.getElementById("adminSelect");
         if (!adminSelect.value) {
           e.preventDefault();
-          alert("Please select an admin");
+          showToast('Please select an administrator', 'error');
+        }
+      });
+    }
+
+    // Form validation for edit office
+    const editOfficeForm = document.getElementById("editOfficeForm");
+    if (editOfficeForm) {
+      editOfficeForm.addEventListener("submit", function (e) {
+        const officeName = document.getElementById("officeName");
+        if (!officeName.value.trim()) {
+          e.preventDefault();
+          showToast('Office name is required', 'error');
         }
       });
     }
   }
 
   function handleFlashMessages() {
-    // Flash message handling
+    // Flash message handling with auto-dismiss
     const flashMessage = document.getElementById("flashMessage");
     if (flashMessage) {
       setTimeout(function () {
+        flashMessage.style.transition = 'opacity 0.5s ease';
         flashMessage.style.opacity = "0";
         setTimeout(function () {
-          flashMessage.style.display = "none";
+          flashMessage.remove();
         }, 500);
       }, 5000);
     }
@@ -664,28 +907,51 @@ Details{% endblock %} {% block content %}
 
   // Modal management functions
   function showAssignAdminModal() {
-    document.getElementById("assignAdminModal").classList.remove("hidden");
+    const modal = document.getElementById("assignAdminModal");
+    modal.classList.remove("hidden");
+    // Focus on select after animation
+    setTimeout(() => {
+      document.getElementById("adminSelect").focus();
+    }, 100);
   }
 
   function closeModal(modalId) {
-    document.getElementById(modalId).classList.add("hidden");
+    const modal = document.getElementById(modalId);
+    modal.classList.add("hidden");
+    
+    // Reset forms when closing modals
+    if (modalId === 'assignAdminModal') {
+      const form = document.getElementById('assignAdminForm');
+      if (form) form.reset();
+    } else if (modalId === 'editOfficeModal') {
+      const form = document.getElementById('editOfficeForm');
+      if (form) form.reset();
+    }
   }
 
   function showEditOfficeModal() {
-    // Show the modal
-    document.getElementById("editOfficeModal").classList.remove("hidden");
-
-    // Focus on the first field
+    const modal = document.getElementById("editOfficeModal");
+    modal.classList.remove("hidden");
+    
+    // Focus on the first field after animation
     setTimeout(() => {
       const officeNameElem = document.getElementById("officeName");
-      if (officeNameElem) officeNameElem.focus();
+      if (officeNameElem) {
+        officeNameElem.focus();
+        officeNameElem.select();
+      }
     }, 100);
   }
 
   function confirmUnassignAdmin(adminId) {
-    document.getElementById("confirmationTitle").textContent = "Unassign Admin";
+    document.getElementById("confirmationTitle").innerHTML = `
+      <div class="p-2 bg-red-100 rounded-xl">
+        <i class="fas fa-user-minus text-red-600"></i>
+      </div>
+      Unassign Administrator
+    `;
     document.getElementById("confirmationMessage").textContent =
-      "Are you sure you want to unassign this admin from this office?";
+      "Are you sure you want to unassign this administrator from this office? They will no longer have access to manage this office.";
 
     // Get the CSRF token
     const csrfToken = document.querySelector("[name=csrf_token]").value;
@@ -693,6 +959,10 @@ Details{% endblock %} {% block content %}
     // Setup the confirm button to submit the form
     const confirmButton = document.getElementById("confirmActionBtn");
     confirmButton.onclick = function () {
+      // Show loading state
+      confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+      confirmButton.disabled = true;
+      
       const form = document.createElement("form");
       form.method = "POST";
       form.action = `/admin/office_admin/${adminId}/unassign/`;
@@ -706,12 +976,48 @@ Details{% endblock %} {% block content %}
 
       document.body.appendChild(form);
       form.submit();
-      closeModal("confirmationModal");
     };
 
     // Show the confirmation modal
     document.getElementById("confirmationModal").classList.remove("hidden");
   }
-</script>
 
+  // Utility function for toast notifications
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    const bgColor = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+    toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-xl shadow-lg z-50 transform transition-all duration-300 translate-x-full`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+      toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Animate out and remove
+    setTimeout(() => {
+      toast.classList.add('translate-x-full');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    // ESC to close modals
+    if (e.key === 'Escape') {
+      ['assignAdminModal', 'confirmationModal', 'editOfficeModal'].forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal && !modal.classList.contains('hidden')) {
+          closeModal(modalId);
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}
