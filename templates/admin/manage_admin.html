@@ -3,6 +3,87 @@
 {% block title %}Manage Admin Accounts - {{ current_campus_name }} Campus Admin{% endblock %}
 
 {% block content %}
+<style>
+    /* Enhanced Loading Screen Styles - Consistent with Student/Admin pages */
+    .loading-screen {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.85) 100%);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .loading-screen.hidden { opacity: 0; visibility: hidden; }
+
+    .loading-content {
+        text-align: center;
+        color: white;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: loadingFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+        position: relative;
+    }
+
+    .loader-spinner { width: 70px; height: 70px; position: relative; margin: 0 auto 2rem; }
+    .loader-spinner::before {
+        content: '';
+        position: absolute; inset: 0; border-radius: 50%; border: 4px solid transparent;
+        border-top-color: #60a5fa; border-right-color: #818cf8;
+        animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+    .loader-spinner::after {
+        content: '';
+        position: absolute; inset: 8px; border-radius: 50%; border: 4px solid transparent;
+        border-bottom-color: #c084fc; border-left-color: #fb7185;
+        animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) reverse infinite;
+    }
+    .loader-spinner .spinner-dot {
+        position: absolute; top: 50%; left: 50%; width: 12px; height: 12px;
+        background: linear-gradient(135deg, #60a5fa, #c084fc); border-radius: 50%;
+        transform: translate(-50%, -50%); animation: pulse 1.5s ease-in-out infinite;
+        box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
+    }
+
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes loadingFadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
+    @keyframes pulse { 0%,100% { transform: translate(-50%, -50%) scale(1); opacity: 1;} 50% { transform: translate(-50%, -50%) scale(1.3); opacity: .7;} }
+
+    .loading-text {
+        font-size: 1.25rem; font-weight: 700; margin-bottom: .75rem; letter-spacing: .025em;
+        background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        animation: shimmer 2s ease-in-out infinite;
+    }
+    .loading-subtext { font-size: .875rem; opacity: .85; font-weight: 500; color: #cbd5e1; animation: loadingPulse 2s ease-in-out infinite; }
+    @keyframes shimmer { 0%,100% { opacity: 1;} 50% { opacity: .8;} }
+    @keyframes loadingPulse { 0%,100% { opacity: .85;} 50% { opacity: .6;} }
+
+    .loading-dots { display: inline-flex; gap: 4px; margin-left: 4px; }
+    .loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: #60a5fa; animation: dotBounce 1.4s ease-in-out infinite; }
+    .loading-dots span:nth-child(2) { animation-delay: .2s; }
+    .loading-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes dotBounce { 0%,80%,100% { transform: scale(.8); opacity: .5;} 40% { transform: scale(1.2); opacity: 1;} }
+</style>
+
+<!-- Loading overlay shown on initial navigation -->
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <div class="loader-spinner"><div class="spinner-dot"></div></div>
+        <div class="loading-text">Loading Admin Accounts</div>
+        <div class="loading-subtext">
+            Preparing data
+            <span class="loading-dots"><span></span><span></span><span></span></span>
+        </div>
+    </div>
+    
+</div>
 <div class="p-2 space-y-6 md:space-y-8">
     <!-- Header with Welcome & Quick Stats (aligned to Super Admin directory style) -->
     <div class="relative bg-gradient-to-br from-blue-900 via-indigo-900 to-blue-800 rounded-3xl shadow-2xl p-6 md:p-8 text-white overflow-hidden">
@@ -1048,5 +1129,35 @@
         }
     `;
     document.head.appendChild(style);
+</script>
+<script>
+    // Loading screen timing logic
+    (function() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (!loadingScreen) return;
+
+        const MIN_LOADING_TIME = 600; // ms
+        const MAX_LOADING_TIME = 2000; // ms failsafe
+        const start = Date.now();
+
+        function hide() {
+            const elapsed = Date.now() - start;
+            const wait = Math.max(0, MIN_LOADING_TIME - elapsed);
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                setTimeout(() => { loadingScreen.style.display = 'none'; }, 400);
+            }, wait);
+        }
+
+        if (document.readyState === 'complete') {
+            hide();
+        } else {
+            window.addEventListener('load', hide, { once: true });
+        }
+
+        setTimeout(() => {
+            if (!loadingScreen.classList.contains('hidden')) hide();
+        }, MAX_LOADING_TIME);
+    })();
 </script>
 {% endblock %}
