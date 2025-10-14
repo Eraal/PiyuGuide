@@ -175,7 +175,7 @@ def register():
             return redirect(url_for('auth.register'))
         
         if not email.endswith('@lspu.edu.ph'):
-            flash('Registration is only allowed for LSPU students with @lspu.edu.ph email address', 'error')
+            flash('Please use your institutional email (e.g., juan.delacruz@lspu.edu.ph). Personal emails are not accepted.', 'error')
             return redirect(url_for('auth.register'))
         
         # Validate student number format (NNNN-NNNN)
@@ -186,13 +186,13 @@ def register():
         
         user = User.query.filter_by(email=email).first()
         if user:
-            flash('Email address already exists', 'error')
+            flash('This institutional email is already in use. If this is your email, try signing in or reset your password.', 'error')
             return redirect(url_for('auth.register'))
         
         # Check if student number already exists
         existing_student = Student.query.filter_by(student_number=student_number).first()
         if existing_student:
-            flash('Student number already exists', 'error')
+            flash('This student number is already registered. If you believe this is an error, please contact support.', 'error')
             return redirect(url_for('auth.register'))
         
         if password != confirm_password:
