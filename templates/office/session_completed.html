@@ -251,10 +251,7 @@
                             <i class="fas fa-calendar-plus mr-3 text-blue-600"></i>
                             Schedule Follow-up Session
                         </button>
-                        <button onclick="downloadSummary()" class="w-full text-left p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 flex items-center">
-                            <i class="fas fa-download mr-3 text-green-600"></i>
-                            Download Session Summary
-                        </button>
+                        
                         <a href="{{ url_for('office.video_counseling') }}" class="block w-full text-left p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
                             <i class="fas fa-list mr-3 text-indigo-600"></i>
                             View All Sessions
@@ -438,11 +435,7 @@ document.getElementById('followupForm').addEventListener('submit', function(e) {
     });
 });
 
-// Download session summary
-function downloadSummary() {
-    const sessionId = window.sessionData.id;
-    window.location.href = `/office/session-completed/${sessionId}/download-summary`;
-}
+
 
 // Utility function to show alerts
 function showAlert(message, type) {

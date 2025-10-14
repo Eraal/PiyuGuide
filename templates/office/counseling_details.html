@@ -645,9 +645,7 @@
       
       try {
         if (action === 'assign_confirm') {
-          // Assign to current admin then confirm
-          const assignResp = await postForm(`{{ url_for('office.assign_counseling_session', session_id=0) }}`.replace('0', sessionId), {});
-          // Proceed to confirm only if assign didn't error with conflict
+          // Match list page behavior: rely on backend to assign on confirmation
           await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'confirmed' });
           window.location.reload();
           return;
