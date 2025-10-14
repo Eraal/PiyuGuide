@@ -271,15 +271,7 @@ class VideoCounselingClient {
             this.handleRemoteVideoToggle(data);
         });
         
-        this.socket.on('recording_started', (data) => {
-            this.showRecordingIndicator(true);
-            this.showNotification(`Recording started by ${data.started_by}`, 'info');
-        });
-        
-        this.socket.on('recording_stopped', (data) => {
-            this.showRecordingIndicator(false);
-            this.showNotification(`Recording stopped by ${data.stopped_by}`, 'info');
-        });
+        // Recording events removed
         
         this.socket.on('screen_share_started', (data) => {
             console.log('🖥️ Screen sharing started by counselor:', data.name);
@@ -2368,16 +2360,7 @@ class VideoCounselingClient {
         this.updateWaitingRoomMessage('Ready to start! Click "Join Call" to begin.');
     }
     
-    showRecordingIndicator(isRecording) {
-        const recordingIndicator = document.getElementById('recordingIndicator');
-        if (recordingIndicator) {
-            if (isRecording) {
-                recordingIndicator.classList.remove('hidden');
-            } else {
-                recordingIndicator.classList.add('hidden');
-            }
-        }
-    }
+    showRecordingIndicator(isRecording) { /* no-op: recording removed */ }
     
     handleRemoteAudioToggle(data) {
         console.log(`${data.name} ${data.audio_enabled ? 'enabled' : 'disabled'} their microphone`);
@@ -2649,34 +2632,7 @@ class VideoCounselingClient {
         }
     }
     
-    showRecordingIndicator(isRecording) {
-        // Add a visual indicator for recording
-        let indicator = document.getElementById('recordingIndicator');
-        
-        if (isRecording) {
-            if (!indicator) {
-                indicator = document.createElement('div');
-                indicator.id = 'recordingIndicator';
-                indicator.className = 'absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2 z-20 animate-pulse';
-                indicator.innerHTML = `
-                    <div class="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
-                    <span>Recording</span>
-                `;
-                
-                // Add to video container
-                const videoContainer = document.getElementById('callUI') || document.body;
-                if (videoContainer) {
-                    videoContainer.appendChild(indicator);
-                    console.log('✅ Recording indicator added');
-                }
-            }
-        } else {
-            if (indicator) {
-                indicator.remove();
-                console.log('✅ Recording indicator removed');
-            }
-        }
-    }
+    showRecordingIndicator(isRecording) { /* no-op: recording removed */ }
     
     handleRemoteAudioToggle(data) {
         console.log('Remote audio toggle:', data);

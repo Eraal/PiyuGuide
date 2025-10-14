@@ -2,7 +2,7 @@ from app.models import (
     Inquiry, InquiryMessage, User, Office, db, OfficeAdmin, 
     Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, 
     OfficeLoginLog, AuditLog, Announcement, SessionParticipation, 
-    SessionRecording, SessionReminder, Notification
+    SessionReminder, Notification
 )
 from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, current_app, send_file
 from flask_login import login_required, current_user
@@ -436,77 +436,7 @@ def join_video_session(session_id):
     })
     
     return render_template('office/video_session.html', **context)
-@office_bp.route('/sessions/<int:session_id>/upload_recording', methods=['POST'])
-@login_required
-def upload_session_recording(session_id):
-    """Accept counselor-side recording upload and store securely per session."""
-    # Validate session and permissions
-    session = CounselingSession.query.filter_by(id=session_id, is_video_session=True).first_or_404()
-    allowed = False
-    if current_user.role == 'super_admin':
-        allowed = True
-    elif current_user.role == 'office_admin' and session.counselor_id == current_user.id:
-        allowed = True
-    if not allowed:
-        return jsonify({'error': 'Forbidden'}), 403
-
-    file = request.files.get('recording')
-    if not file:
-        return jsonify({'error': 'No file uploaded'}), 400
-
-    # Save under instance/recordings/<session_id>/ to avoid public serving by default
-    base_dir = os.path.join(current_app.instance_path, 'recordings', str(session_id))
-    try:
-        os.makedirs(base_dir, exist_ok=True)
-    except OSError:
-        pass
-
-    filename = secure_filename(file.filename or f'session_{session_id}.webm')
-    path = os.path.join(base_dir, filename)
-    try:
-        file.save(path)
-    except Exception as e:
-        return jsonify({'error': f'Failed to save file: {str(e)}'}), 500
-
-    # Persist a reference if model supports it
-    try:
-        if hasattr(session, 'recording') and session.recording is None:
-            rec = SessionRecording(
-                session_id=session.id,
-                recording_path=path,
-                counselor_consent=True
-            )
-            db.session.add(rec)
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-
-    return jsonify({'ok': True})
-
-@office_bp.route('/sessions/<int:session_id>/download_recording', methods=['GET'])
-@login_required
-def download_session_recording(session_id):
-    """Serve a previously uploaded recording securely to authorized office users."""
-    session = CounselingSession.query.filter_by(id=session_id, is_video_session=True).first_or_404()
-    allowed = False
-    if current_user.role == 'super_admin':
-        allowed = True
-    elif current_user.role == 'office_admin' and session.counselor_id == current_user.id:
-        allowed = True
-    if not allowed:
-        flash('You are not allowed to access this recording.', 'error')
-        return redirect(url_for('office.video_counseling'))
-
-    if not session.recording or not session.recording.recording_path or not os.path.exists(session.recording.recording_path):
-        flash('Recording not found.', 'error')
-        return redirect(url_for('office.join_video_session', session_id=session_id))
-
-    filename = os.path.basename(session.recording.recording_path)
-    try:
-        return send_file(session.recording.recording_path, as_attachment=True, download_name=filename)
-    except Exception as e:
-        flash(f'Failed to download recording: {str(e)}', 'error')
-        return redirect(url_for('office.join_video_session', session_id=session_id))
+# Recording upload/download endpoints removed per requirement
 
 
 @office_bp.route('/counseling/<int:session_id>')
@@ -600,30 +530,7 @@ def end_video_session(session_id):
     if notes:
         session.notes = notes
     
-    # Handle recording if it exists
-    recording_data = request.form.get('recording_data')
-    if recording_data:
-        # Create directory if it doesn't exist
-        recordings_dir = os.path.join('static', 'uploads', 'recordings')
-        if not os.path.exists(recordings_dir):
-            os.makedirs(recordings_dir)
-        
-        # Save recording file
-        recording_filename = f"session_{session_id}_{uuid.uuid4().hex}.webm"
-        recording_path = os.path.join(recordings_dir, recording_filename)
-        
-        # Save recording to file
-        with open(recording_path, 'wb') as f:
-            f.write(recording_data)
-        
-        # Create recording record
-        recording = SessionRecording(
-            session_id=session_id,
-            recording_path=recording_path,
-            counselor_consent=True,  # Counselor recorded it
-            student_consent=request.form.get('student_consent', 'false') == 'true'
-        )
-        db.session.add(recording)
+    # Recording save removed
     
     # Log activity
     AuditLog.log_action(

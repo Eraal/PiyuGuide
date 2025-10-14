@@ -620,49 +620,7 @@ def handle_toggle_video(data):
         'name': current_user.get_full_name()
     }, room=room_name, include_self=False)
 
-@socketio.on('start_recording', namespace='/video-counseling')
-def handle_start_recording(data):
-    """Handle recording start (counselor only)"""
-    if current_user.role not in ['office_admin', 'super_admin']:
-        emit('error', {'message': 'Only counselors can start recording'})
-        return
-    
-    session_id = data.get('session_id')
-    if not session_id:
-        return
-    
-    room_name = f"video_session_{session_id}"
-    
-    # Notify all participants that recording has started
-    emit('recording_started', {
-        'session_id': session_id,
-        'started_by': current_user.get_full_name(),
-        'timestamp': datetime.utcnow().isoformat()
-    }, room=room_name)
-    
-    logger.info(f"Recording started by {current_user.id} in session {session_id}")
-
-@socketio.on('stop_recording', namespace='/video-counseling')
-def handle_stop_recording(data):
-    """Handle recording stop (counselor only)"""
-    if current_user.role not in ['office_admin', 'super_admin']:
-        emit('error', {'message': 'Only counselors can stop recording'})
-        return
-    
-    session_id = data.get('session_id')
-    if not session_id:
-        return
-    
-    room_name = f"video_session_{session_id}"
-    
-    # Notify all participants that recording has stopped
-    emit('recording_stopped', {
-        'session_id': session_id,
-        'stopped_by': current_user.get_full_name(),
-        'timestamp': datetime.utcnow().isoformat()
-    }, room=room_name)
-    
-    logger.info(f"Recording stopped by {current_user.id} in session {session_id}")
+# Recording features removed as per project requirements
 
 @socketio.on('save_notes', namespace='/video-counseling')
 def handle_save_notes(data):

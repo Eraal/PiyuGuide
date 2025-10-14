@@ -14,7 +14,7 @@ class VideoCounselingClientOffice {
         this.isAudioEnabled = true;
         this.isVideoEnabled = true;
         this.isScreenSharing = false;
-        this.isRecording = false;
+    this.isRecording = false; // recording disabled
         this.isConnected = false;
     this.sessionTimer = null;
     this.startTime = null; // legacy, not authoritative
@@ -414,17 +414,7 @@ class VideoCounselingClientOffice {
             }
         });
 
-        // Recording state propagated to both sides
-        this.socket.on('recording_started', (data) => {
-            this.isRecording = true;
-            this.updateRecordingButtons();
-            this.showNotification(`Recording started by ${data.started_by}`, 'info');
-        });
-        this.socket.on('recording_stopped', (data) => {
-            this.isRecording = false;
-            this.updateRecordingButtons();
-            this.showNotification(`Recording stopped by ${data.stopped_by}`, 'info');
-        });
+        // Recording events removed
         
         this.socket.on('error', (data) => {
             console.error('Server error:', data.message);
@@ -732,41 +722,7 @@ async handleIceCandidate(candidate) {
         }
         
         // Recording controls
-        const recordingBtn = document.getElementById('recordButton');
-        if (recordingBtn) {
-            recordingBtn.addEventListener('click', () => {
-                if (this.isRecording) {
-                    this.stopRecording();
-                } else {
-                    this.startRecording();
-                }
-                // Keep controls tab buttons in sync if present
-                const sBtn = document.getElementById('startRecordingBtn');
-                const eBtn = document.getElementById('stopRecordingBtn');
-                if (sBtn && eBtn) {
-                    if (this.isRecording) { sBtn.classList.add('hidden'); eBtn.classList.remove('hidden'); }
-                    else { eBtn.classList.add('hidden'); sBtn.classList.remove('hidden'); }
-                }
-            });
-        }
-        const startRecordingBtn = document.getElementById('startRecordingBtn');
-        if (startRecordingBtn) {
-            startRecordingBtn.addEventListener('click', () => {
-                this.startRecording();
-                startRecordingBtn.classList.add('hidden');
-                const eBtn = document.getElementById('stopRecordingBtn');
-                if (eBtn) eBtn.classList.remove('hidden');
-            });
-        }
-        const stopRecordingBtn = document.getElementById('stopRecordingBtn');
-        if (stopRecordingBtn) {
-            stopRecordingBtn.addEventListener('click', () => {
-                this.stopRecording();
-                stopRecordingBtn.classList.add('hidden');
-                const sBtn = document.getElementById('startRecordingBtn');
-                if (sBtn) sBtn.classList.remove('hidden');
-            });
-        }
+        // Recording controls removed
         
         // End call button
         const endCallBtn = document.getElementById('endSessionButton');
@@ -904,6 +860,10 @@ async handleIceCandidate(candidate) {
         console.log('Is in call before:', this.isInCall);
         
         try {
+            // Office is authoritative for start time: tell server we're starting the call
+            if (this.socket) {
+                this.socket.emit('start_call', { session_id: this.sessionId });
+            }
             await this.createPeerConnection();
             console.log('Peer connection created successfully');
             
@@ -911,6 +871,10 @@ async handleIceCandidate(candidate) {
             // Timer will be based on server started_at from call_starting/call_joined
             this.isInCall = true;
             console.log('Is in call after:', this.isInCall);
+            // Mark ourselves as in-call for server-side state
+            if (this.socket) {
+                this.socket.emit('join_call', { session_id: this.sessionId });
+            }
 
             // Create and send offer (with codec preference + glare safety)
             await this.createAndSendOffer();
@@ -1746,29 +1710,7 @@ async handleIceCandidate(candidate) {
         }
     }
     
-    startRecording() {
-        console.log('Starting session recording...');
-        
-        this.socket.emit('start_recording', {
-            session_id: this.sessionId
-        });
-        
-        this.isRecording = true;
-        this.updateRecordingButtons();
-        this.showNotification('Recording started', 'success');
-    }
-    
-    stopRecording() {
-        console.log('Stopping session recording...');
-        
-        this.socket.emit('stop_recording', {
-            session_id: this.sessionId
-        });
-        
-        this.isRecording = false;
-        this.updateRecordingButtons();
-        this.showNotification('Recording stopped', 'info');
-    }
+    // Recording methods removed
     
     saveNotes() {
         console.log('Saving session notes...');
@@ -1911,33 +1853,7 @@ async handleIceCandidate(candidate) {
         }
     }
     
-    updateRecordingButtons() {
-        const recordBtn = document.getElementById('recordButton');
-        const recordIndicator = document.getElementById('recordingIndicator');
-        
-        if (recordBtn) {
-            const icon = recordBtn.querySelector('i');
-            const text = recordBtn.querySelector('span');
-            
-            if (this.isRecording) {
-                if (icon) icon.className = 'fas fa-stop mr-2 group-hover:animate-spin transition-transform duration-300';
-                if (text) text.textContent = 'Stop';
-                recordBtn.className = 'group flex items-center px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105';
-            } else {
-                if (icon) icon.className = 'fas fa-record-vinyl mr-2 group-hover:animate-spin transition-transform duration-300';
-                if (text) text.textContent = 'Record';
-                recordBtn.className = 'group flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105';
-            }
-        }
-        
-        if (recordIndicator) {
-            if (this.isRecording) {
-                recordIndicator.classList.remove('hidden');
-            } else {
-                recordIndicator.classList.add('hidden');
-            }
-        }
-    }
+    updateRecordingButtons() { /* no-op: recording removed */ }
     
     showWaitingRoom() {
         console.log('Showing waiting room');
@@ -2435,75 +2351,10 @@ async handleIceCandidate(candidate) {
         if (this.sessionTimer) { clearInterval(this.sessionTimer); this.sessionTimer = null; }
     }
 
-    // Recording: capture remote + local mic and upload
-    async startRecording() {
-        console.log('Starting session recording...');
-        try {
-            this.socket.emit('start_recording', { session_id: this.sessionId });
-            const remoteEl = document.getElementById('remoteVideo');
-            let captureStream = null;
-            if (remoteEl && (remoteEl.captureStream || remoteEl.mozCaptureStream)) {
-                captureStream = (remoteEl.captureStream || remoteEl.mozCaptureStream).call(remoteEl);
-            } else if (this.remoteStream) {
-                captureStream = this.remoteStream.clone();
-            }
-            if (!captureStream) {
-                this.showNotification('Recording not supported: no remote stream.', 'error');
-                return;
-            }
-            if (this.localStream) {
-                this.localStream.getAudioTracks().forEach(t => { try { captureStream.addTrack(t); } catch (_) {} });
-            }
-            const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-            const type = mimeTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
-            this.recordedChunks = [];
-            this.mediaRecorder = new MediaRecorder(captureStream, type ? { mimeType: type } : undefined);
-            this.mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) this.recordedChunks.push(e.data); };
-            this.mediaRecorder.onstop = async () => {
-                const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder.mimeType || 'video/webm' });
-                await this.uploadRecording(blob);
-            };
-            this.mediaRecorder.start(1000);
-            this.isRecording = true;
-            this.updateRecordingButtons();
-            this.showNotification('Recording started', 'success');
-        } catch (e) {
-            console.error('Recording error:', e);
-            this.showNotification('Failed to start recording', 'error');
-        }
-    }
-
-    async stopRecording() {
-        console.log('Stopping session recording...');
-        try {
-            this.socket.emit('stop_recording', { session_id: this.sessionId });
-            if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
-        } catch (e) {
-            console.error('Stop recording error:', e);
-        } finally {
-            this.isRecording = false;
-            this.updateRecordingButtons();
-            this.showNotification('Recording stopped', 'info');
-        }
-    }
-
-    async uploadRecording(blob) {
-        try {
-            const fd = new FormData();
-            const filename = `session_${this.sessionId}_${Date.now()}.webm`;
-            fd.append('recording', blob, filename);
-            const resp = await fetch(`/office/sessions/${this.sessionId}/upload_recording`, {
-                method: 'POST',
-                body: fd,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
-            this.showNotification('Recording uploaded successfully', 'success');
-        } catch (e) {
-            console.error('Upload failed:', e);
-            this.showNotification('Failed to upload recording', 'error');
-        }
-    }
+    // Recording removed: keep stubs to avoid errors if referenced
+    async startRecording() { /* no-op: recording feature removed */ }
+    async stopRecording() { /* no-op: recording feature removed */ }
+    async uploadRecording(blob) { /* no-op: recording feature removed */ }
     
     cleanup() {
         console.log('Cleaning up video counseling session...');
