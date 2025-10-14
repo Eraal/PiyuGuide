@@ -2,28 +2,163 @@
 
 {% block content %}
 
+<style>
+    /* Enhanced View Student Page Styles */
+    .view-student-container {
+        background: linear-gradient(135deg, #f8fafc 0%, #e8f1f8 100%);
+        min-height: 100vh;
+        padding: 1.5rem 0;
+    }
+    
+    .enhanced-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+    }
+    
+    .enhanced-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+    
+    .profile-header-enhanced {
+        background: linear-gradient(135deg, #667eea 0%, #4f69e8 50%, #3b5bdb 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header-enhanced::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+    }
+    
+    .avatar-enhanced {
+        background: linear-gradient(135deg, #fff 0%, #f0f4f8 100%);
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .section-header {
+        background: linear-gradient(to right, #f8fafc, #f1f5f9);
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .input-enhanced {
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+    }
+    
+    .input-enhanced:focus {
+        border-color: #667eea;
+        background-color: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+    
+    .badge-enhanced {
+        padding: 0.375rem 0.875rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.025em;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-button-enhanced {
+        transition: all 0.3s ease;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .action-button-enhanced:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .info-badge {
+        background: linear-gradient(135deg, #f0f4f8 0%, #e6eef5 100%);
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        border-left: 3px solid #667eea;
+    }
+    
+    .label-enhanced {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.813rem;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+    }
+    
+    .animate-fade-in {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .stat-item {
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .icon-wrapper {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #4f69e8 100%);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.25);
+    }
+</style>
+
 <!-- Header / Breadcrumb -->
-<div class="mb-6 flex items-center justify-between">
+<div class="view-student-container">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="mb-6 flex items-center justify-between animate-fade-in">
     <div class="flex items-center gap-3">
-        <a href="{{ url_for('admin.student_manage') }}" class="text-sm text-gray-500 hover:text-blue-700 inline-flex items-center gap-2">
+        <a href="{{ url_for('admin.student_manage') }}" class="text-sm text-gray-600 hover:text-blue-700 inline-flex items-center gap-2 transition-all hover:gap-3 font-medium">
             <i class="fa-solid fa-chevron-left text-xs"></i>
             Back to Students
         </a>
     </div>
-    <div class="text-sm text-gray-400">Edit Student Profile</div>
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+        <i class="fa-solid fa-user-pen text-blue-600"></i>
+        <span class="font-medium">Edit Student Profile</span>
+    </div>
   
     <!-- optional right space -->
     <div class="w-32 hidden md:block"></div>
-  
-    <!-- Save Bar (mobile quick action) -->
 </div>
 
 <!-- Profile Header Card -->
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-    <div class="px-5 py-5 md:px-6 md:py-6 bg-gradient-to-r from-blue-50 to-blue-100/70">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div class="flex items-center gap-4 min-w-0">
-                <div class="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center shadow-sm overflow-hidden relative">
+<div class="enhanced-card overflow-hidden mb-6 animate-fade-in" style="animation-delay: 0.1s;">
+    <div class="px-6 py-6 md:px-8 md:py-8 profile-header-enhanced">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
+            <div class="flex items-center gap-5 min-w-0">
+                <div class="h-20 w-20 md:h-24 md:w-24 rounded-2xl avatar-enhanced text-blue-600 flex items-center justify-center overflow-hidden relative">
                     {% if student.user.profile_pic_path %}
                         <img 
                             src="{{ url_for('static', filename=student.user.profile_pic_path) }}?v={{ student.user.profile_pic }}"
@@ -31,37 +166,49 @@
                             class="h-full w-full object-cover"
                         />
                     {% else %}
-                        <span class="text-2xl md:text-3xl font-semibold tracking-wide">{{ student.user.first_name[0] }}{{ student.user.last_name[0] }}</span>
+                        <span class="text-3xl md:text-4xl font-bold">{{ student.user.first_name[0] }}{{ student.user.last_name[0] }}</span>
                     {% endif %}
                 </div>
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <h3 class="text-lg md:text-xl font-semibold text-gray-900 truncate">{{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}</h3>
-                        <span class="px-2 py-0.5 text-xs font-medium rounded-full {{ 'bg-green-100 text-green-700' if student.user.is_active else 'bg-red-100 text-red-700' }}">
+                    <div class="flex items-center gap-3 flex-wrap mb-1">
+                        <h3 class="text-xl md:text-2xl font-bold text-white truncate">{{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}</h3>
+                        <span class="badge-enhanced {{ 'bg-green-500 text-white' if student.user.is_active else 'bg-red-500 text-white' }}">
+                            <i class="fa-solid {{ 'fa-circle-check' if student.user.is_active else 'fa-circle-xmark' }} mr-1"></i>
                             {{ 'Active' if student.user.is_active else 'Inactive' }}
                         </span>
                     </div>
-                    <p class="text-sm text-gray-600 truncate">{{ student.user.email }}</p>
-                    <div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                        {% if student.student_number %}<span class="inline-flex items-center gap-1"><i class="fa-solid fa-id-card text-gray-400"></i> <strong class="font-medium">Student #:</strong> {{ student.student_number }}</span>{% endif %}
+                    <p class="text-sm text-blue-100 truncate mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-envelope text-xs"></i>
+                        {{ student.user.email }}
+                    </p>
+                    <div class="flex flex-wrap gap-3 text-xs text-white/90">
+                        {% if student.student_number %}
+                        <span class="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                            <i class="fa-solid fa-id-card text-white/80"></i> 
+                            <strong class="font-semibold">ID:</strong> {{ student.student_number }}
+                        </span>
+                        {% endif %}
                         {% if student.department_name %}
-                            <span class="inline-flex items-center gap-1"><i class="fa-solid fa-building text-gray-400"></i> {{ student.department_name }}{% if student.year_level %} • {{ student.year_level }}{% endif %}{% if student.section %} • Sec {{ student.section }}{% endif %}</span>
+                        <span class="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                            <i class="fa-solid fa-building text-white/80"></i> 
+                            {{ student.department_name }}{% if student.year_level %} • {{ student.year_level }}{% endif %}{% if student.section %} • Sec {{ student.section }}{% endif %}
+                        </span>
                         {% endif %}
                     </div>
                 </div>
             </div>
-                    <div class="flex items-center gap-2">
-                        <button 
-                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal"
-                            data-student-id="{{ student.id }}"
-                            data-current-active="{{ 1 if student.user.is_active else 0 }}"
-                            data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
-                            data-reason="{{ student.user.lock_reason or '' }}"
-                        >
-                            <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
-                            {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
-                        </button>
-                    </div>
+            <div class="flex items-center gap-2">
+                <button 
+                    class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold {{ 'bg-white text-red-600 hover:bg-red-50' if student.user.is_active else 'bg-white text-green-600 hover:bg-green-50' }} border border-white/20 open-suspend-modal"
+                    data-student-id="{{ student.id }}"
+                    data-current-active="{{ 1 if student.user.is_active else 0 }}"
+                    data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
+                    data-reason="{{ student.user.lock_reason or '' }}"
+                >
+                    <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                    {% if student.user.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -72,46 +219,64 @@
         <!-- Left/Main: Editable fields -->
         <div class="lg:col-span-2 space-y-6">
             <!-- Personal Information -->
-            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div class="px-5 py-4 border-b border-gray-100">
-                    <h4 class="text-sm font-semibold text-gray-800">Personal Information</h4>
-                    <p class="text-xs text-gray-500 mt-0.5">Basic identity details used across the system.</p>
+            <section class="enhanced-card animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-user text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Personal Information</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Basic identity details used across the system</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
-                        <label for="first_name" class="block text-xs font-medium text-gray-600 mb-1.5">First Name</label>
+                        <label for="first_name" class="label-enhanced block mb-2">First Name</label>
                         <input type="text" id="first_name" name="first_name" value="{{ student.user.first_name }}" required
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter first name" />
                     </div>
                     <div>
-                        <label for="middle_name" class="block text-xs font-medium text-gray-600 mb-1.5">Middle Name</label>
+                        <label for="middle_name" class="label-enhanced block mb-2">Middle Name</label>
                         <input type="text" id="middle_name" name="middle_name" value="{{ student.user.middle_name or '' }}"
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter middle name" />
                     </div>
                     <div>
-                        <label for="last_name" class="block text-xs font-medium text-gray-600 mb-1.5">Last Name</label>
+                        <label for="last_name" class="label-enhanced block mb-2">Last Name</label>
                         <input type="text" id="last_name" name="last_name" value="{{ student.user.last_name }}" required
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter last name" />
                     </div>
                 </div>
             </section>
 
             <!-- Academic / Enrollment Information -->
-            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div class="px-5 py-4 border-b border-gray-100">
-                    <h4 class="text-sm font-semibold text-gray-800">Academic Information</h4>
-                    <p class="text-xs text-gray-500 mt-0.5">Student enrollment details for identification and grouping.</p>
+            <section class="enhanced-card animate-fade-in" style="animation-delay: 0.3s;">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Academic Information</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Student enrollment details for identification and grouping</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                        <label for="student_number" class="block text-xs font-medium text-gray-600 mb-1.5">Student Number</label>
+                        <label for="student_number" class="label-enhanced block mb-2">Student Number</label>
                         <input type="text" id="student_number" name="student_number" value="{{ student.student_number or '' }}"
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter student ID number" />
                     </div>
                     <div>
-                        <label for="department_id" class="block text-xs font-medium text-gray-600 mb-1.5">Department</label>
+                        <label for="department_id" class="label-enhanced block mb-2">Department</label>
                         <select id="department_id" name="department_id"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
                             <option value="">— Select Department —</option>
                             {% for d in departments %}
                                 <option value="{{ d.id }}" {% if student.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
@@ -119,9 +284,9 @@
                         </select>
                     </div>
                     <div>
-                        <label for="year_level" class="block text-xs font-medium text-gray-600 mb-1.5">Year Level</label>
+                        <label for="year_level" class="label-enhanced block mb-2">Year Level</label>
                         <select id="year_level" name="year_level"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
                             <option value="">— Select Year —</option>
                             <option value="1st Year" {% if student.year_level == '1st Year' %}selected{% endif %}>1st Year</option>
                             <option value="2nd Year" {% if student.year_level == '2nd Year' %}selected{% endif %}>2nd Year</option>
@@ -130,9 +295,9 @@
                         </select>
                     </div>
                     <div>
-                        <label for="section" class="block text-xs font-medium text-gray-600 mb-1.5">Section</label>
+                        <label for="section" class="label-enhanced block mb-2">Section</label>
                         <select id="section" name="section"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
                             <option value="">— Select Section —</option>
                             {% for s in ['A','B','C','D','E'] %}
                                 <option value="{{ s }}" {% if student.section == s %}selected{% endif %}>{{ s }}</option>
@@ -143,17 +308,28 @@
             </section>
 
             <!-- Account & Contact -->
-            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div class="px-5 py-4 border-b border-gray-100">
-                    <h4 class="text-sm font-semibold text-gray-800">Account & Contact</h4>
-                    <p class="text-xs text-gray-500 mt-0.5">Used for communications and login.</p>
+            <section class="enhanced-card animate-fade-in" style="animation-delay: 0.4s;">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-envelope text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Account & Contact</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Used for communications and login</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="md:col-span-2">
-                        <label for="email" class="block text-xs font-medium text-gray-600 mb-1.5">Email Address</label>
+                <div class="p-6 grid grid-cols-1 gap-5">
+                    <div>
+                        <label for="email" class="label-enhanced block mb-2">Email Address</label>
                         <input type="email" id="email" name="email" value="{{ student.user.email }}" required
-                                     class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50" />
-                        <p class="text-[11px] text-gray-400 mt-1">We'll send important updates to this address.</p>
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="student@university.edu" />
+                        <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-blue-500"></i>
+                            Important updates and notifications will be sent to this address
+                        </p>
                     </div>
                 </div>
             </section>
@@ -162,35 +338,68 @@
         <!-- Right/Side: Read-only + Security -->
         <aside class="space-y-6">
             <!-- Activity / meta -->
-            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div class="px-5 py-4 border-b border-gray-100">
-                    <h4 class="text-sm font-semibold text-gray-800">Account Activity</h4>
-                </div>
-                <div class="p-5 space-y-3 text-sm">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500">Date Registered</span>
-                        <span class="font-medium text-gray-800">{{ student.user.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+            <section class="enhanced-card animate-fade-in" style="animation-delay: 0.5s;">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Account Activity</h4>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500">Last Login</span>
-                        <span class="font-medium text-gray-800">{% if student.user.last_activity %}{{ student.user.last_activity.strftime('%b %d, %Y %I:%M %p') }}{% else %}Never{% endif %}</span>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="stat-item">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date Registered</span>
+                            <i class="fa-solid fa-calendar-plus text-blue-500"></i>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800 block">{{ student.user.created_at.strftime('%b %d, %Y') }}</span>
+                        <span class="text-xs text-gray-500">{{ student.user.created_at.strftime('%I:%M %p') }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Last Login</span>
+                            <i class="fa-solid fa-clock text-green-500"></i>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800 block">
+                            {% if student.user.last_activity %}
+                                {{ student.user.last_activity.strftime('%b %d, %Y') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </span>
+                        {% if student.user.last_activity %}
+                        <span class="text-xs text-gray-500">{{ student.user.last_activity.strftime('%I:%M %p') }}</span>
+                        {% endif %}
                     </div>
                 </div>
             </section>
 
             <!-- Password Management -->
-            <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-800">Password Management</h4>
-                        <p class="text-xs text-gray-500 mt-0.5">Reset to a system-generated 4-digit password.</p>
+            <section class="enhanced-card animate-fade-in" style="animation-delay: 0.6s;">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                            <i class="fa-solid fa-key text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Password Management</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Reset to system-generated password</p>
+                        </div>
                     </div>
-                    <i class="fa-solid fa-key text-gray-300"></i>
                 </div>
-                <div class="p-5">
+                <div class="p-6">
+                    <div class="info-badge mb-4">
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            <i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>
+                            This will generate a new 4-digit password for the student
+                        </p>
+                    </div>
                     <button type="submit" name="reset_password" value="1"
-                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border border-yellow-300 text-yellow-800 bg-yellow-50 hover:bg-yellow-100"
-                                    onclick="return confirm('Are you sure you want to reset this student\'s password? A new 4-digit password will be generated.')">
+                            class="action-button-enhanced w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-amber-800 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-2 border-amber-200"
+                            onclick="return confirm('Are you sure you want to reset this student\'s password? A new 4-digit password will be generated.')">
                         <i class="fa-solid fa-rotate"></i>
                         Reset Password
                     </button>
@@ -200,56 +409,78 @@
     </div>
 
     <!-- Sticky Action Bar -->
-    <div class="mt-6 sticky bottom-0 z-10">
-        <div class="bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border border-gray-200 rounded-2xl shadow-sm px-4 py-3 flex items-center justify-between">
-            <div class="hidden md:flex items-center text-xs text-gray-500 gap-2">
-                <i class="fa-regular fa-floppy-disk"></i>
-                Review changes before saving.
-            </div>
-            <div class="flex items-center gap-2">
-                <a href="{{ url_for('admin.student_manage') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200">Cancel</a>
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm">
-                    <i class="fa-solid fa-check"></i>
-                    Save Changes
-                </button>
+    <div class="mt-6 sticky bottom-4 z-10 animate-fade-in" style="animation-delay: 0.7s;">
+        <div class="enhanced-card backdrop-blur-lg bg-white/95 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="hidden md:flex items-center text-sm text-gray-600 gap-2">
+                    <i class="fa-regular fa-floppy-disk text-blue-500"></i>
+                    <span class="font-medium">Review changes before saving</span>
+                </div>
+                <div class="flex items-center gap-3 ml-auto">
+                    <a href="{{ url_for('admin.student_manage') }}" 
+                       class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border-2 border-gray-200">
+                        <i class="fa-solid fa-xmark"></i>
+                        Cancel
+                    </a>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                        <i class="fa-solid fa-check"></i>
+                        Save Changes
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </form>
 
+</div>
+</div>
+
 <!-- Suspension Modal -->
 <div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" data-modal-close></div>
-    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-xl border border-gray-200 animate-fade-in">
-        <div class="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm" data-modal-close></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 animate-fade-in">
+        <div class="px-6 py-5 section-header flex items-start justify-between">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900" id="suspendModalTitle">Deactivate Student Account</h3>
-                <p class="text-sm text-gray-500 mt-1" id="suspendModalSubtitle">Provide a reason for deactivation. This will be shown to the student on login.</p>
+                <h3 class="text-xl font-bold text-gray-900" id="suspendModalTitle">Deactivate Student Account</h3>
+                <p class="text-sm text-gray-600 mt-1.5" id="suspendModalSubtitle">Provide a reason for deactivation. This will be shown to the student on login.</p>
             </div>
-            <button class="text-gray-400 hover:text-gray-600 transition" data-modal-close aria-label="Close">
-                <i class="fa-solid fa-xmark text-xl"></i>
+            <button class="text-gray-400 hover:text-gray-600 transition p-1" data-modal-close aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
             </button>
         </div>
         <form id="suspendForm" class="px-6 pt-5 pb-6 space-y-5">
             <input type="hidden" id="suspendStudentId" name="student_id" />
             <input type="hidden" id="suspendTargetState" name="target_state" />
             <div id="suspendReasonGroup" class="space-y-2">
-                <label for="suspendReason" class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <label for="suspendReason" class="label-enhanced flex items-center gap-2">
                     <i class="fa-solid fa-circle-exclamation text-amber-500"></i>
                     Suspension Reason
                 </label>
-                <textarea id="suspendReason" name="reason" rows="4" placeholder="e.g., Repeated policy violations regarding improper inquiries."
-                                    class="w-full rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 text-sm p-3 resize-none"></textarea>
-                <p class="text-xs text-gray-400">Minimum 8 characters. Be concise and professional.</p>
+                <textarea id="suspendReason" name="reason" rows="4" 
+                          placeholder="e.g., Repeated policy violations regarding improper inquiries."
+                          class="input-enhanced w-full rounded-xl text-sm p-4 resize-none"></textarea>
+                <p class="text-xs text-gray-500 flex items-center gap-1.5">
+                    <i class="fa-solid fa-info-circle"></i>
+                    Minimum 8 characters. Be concise and professional.
+                </p>
             </div>
-            <div id="reactivateNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-700 text-xs px-3 py-2 rounded-lg">
-                Reactivating restores access and clears previous suspension reason.
+            <div id="reactivateNotice" class="hidden info-badge bg-blue-50 border-blue-200">
+                <p class="text-sm text-blue-700">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Reactivating restores access and clears previous suspension reason.
+                </p>
             </div>
             <div id="suspendFeedback" class="hidden text-sm"></div>
-            <div class="flex items-center justify-end gap-3 pt-2">
-                <button type="button" class="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" data-modal-close>Cancel</button>
-                <button id="suspendSubmitBtn" type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-sm">
+            <div class="flex items-center justify-end gap-3 pt-3">
+                <button type="button" 
+                        class="action-button-enhanced px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200" 
+                        data-modal-close>
+                    Cancel
+                </button>
+                <button id="suspendSubmitBtn" type="submit" 
+                        class="action-button-enhanced inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700">
                     <i class="fa-solid fa-user-slash"></i>
                     Confirm Deactivate
                 </button>
