@@ -3,8 +3,15 @@
 {% block title %}Edit Admin - {{ current_campus_name }} Campus Admin{% endblock %}
 
 {% block content %}
+
 <style>
-    /* Enhanced Admin Edit Page Styles (aligned with view_student) */
+    /* Enhanced View Student Page Styles */
+    .view-student-container {
+        background: linear-gradient(135deg, #f8fafc 0%, #e8f1f8 100%);
+        min-height: 100vh;
+        padding: 1.5rem 0;
+    }
+    
     .enhanced-card {
         background: white;
         border-radius: 16px;
@@ -12,81 +19,371 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         transition: all 0.3s ease;
     }
-    .enhanced-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-2px); }
-    .profile-header-enhanced { background: linear-gradient(135deg, #667eea 0%, #4f69e8 50%, #3b5bdb 100%); position: relative; overflow: hidden; }
-    .profile-header-enhanced::before { content: ''; position: absolute; top: 0; right: 0; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); border-radius: 50%; transform: translate(30%, -30%); }
-    .avatar-enhanced { background: linear-gradient(135deg, #fff 0%, #f0f4f8 100%); border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .section-header { background: linear-gradient(to right, #f8fafc, #f1f5f9); border-bottom: 2px solid #e2e8f0; }
-    .input-enhanced { border: 2px solid #e2e8f0; transition: all 0.3s ease; background-color: #f8fafc; }
-    .input-enhanced:focus { border-color: #667eea; background-color: #fff; box-shadow: 0 0 0 3px rgba(102,126,234,.1); outline: none; }
-    .label-enhanced { font-weight: 600; color: #475569; font-size: .813rem; letter-spacing: .01em; text-transform: uppercase; }
-    .badge-enhanced { padding: .375rem .875rem; border-radius: 12px; font-weight: 600; font-size: .75rem; letter-spacing: .025em; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
-    .action-button-enhanced { transition: all .3s ease; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-    .action-button-enhanced:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
-    .icon-wrapper { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items:center; justify-content:center; background: linear-gradient(135deg,#667eea 0%, #4f69e8 100%); box-shadow: 0 4px 8px rgba(102,126,234,.25); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
-    @keyframes riseIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
-    .animate-fadeIn { animation: fadeIn .4s ease-out; }
-    .sticky-action { position: sticky; bottom: 1rem; z-index: 10; }
+    
+    .enhanced-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+    
+    .profile-header-enhanced {
+        background: linear-gradient(135deg, #667eea 0%, #4f69e8 50%, #3b5bdb 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header-enhanced::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+    }
+    
+    .avatar-enhanced {
+        background: linear-gradient(135deg, #fff 0%, #f0f4f8 100%);
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .section-header {
+        background: linear-gradient(to right, #f8fafc, #f1f5f9);
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .input-enhanced {
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+    }
+    
+    .input-enhanced:focus {
+        border-color: #667eea;
+        background-color: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+    
+    .badge-enhanced {
+        padding: 0.375rem 0.875rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.025em;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-button-enhanced {
+        transition: all 0.3s ease;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .action-button-enhanced:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .info-badge {
+        background: linear-gradient(135deg, #f0f4f8 0%, #e6eef5 100%);
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        border-left: 3px solid #667eea;
+    }
+    
+    .label-enhanced {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.813rem;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+    }
+    
+    .stat-item {
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .icon-wrapper {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #4f69e8 100%);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.25);
+    }
+    
+    /* Loading Screen Styles */
+    .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.45);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    
+    .loading-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
+    
+    .loading-content {
+        text-align: center;
+        color: white;
+        opacity: 0;
+        transform: scale(0.96);
+        animation: loadingPop 0.28s cubic-bezier(.4,0,.2,1) forwards;
+    }
+    
+    .loader-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1.5rem;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    @keyframes loadingPop {
+        from { opacity: 0; transform: scale(0.96); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .loading-text {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .loading-subtext {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+
+    /* Modal entry animations */
+    .modal-backdrop { opacity: 0; animation: backdropIn 0.22s ease-out forwards; }
+    .modal-panel { opacity: 0; transform: translateY(8px) scale(0.985); animation: modalIn 0.26s cubic-bezier(.2,.8,.2,1) forwards; }
+    @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 </style>
 
-<div class="space-y-6 animate-fadeIn">
-    <!-- Back Button -->
-    <div>
-        <a href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}"
-             class="inline-flex items-center px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-blue-700 hover:border-blue-200 shadow-sm hover:shadow transition-all duration-300 group">
-            <i class="fas fa-arrow-left mr-2 transition-transform duration-300 group-hover:-translate-x-1"></i>
+<!-- Loading Screen (visible on initial load, auto-hides) -->
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <div class="loader-spinner"></div>
+        <div class="loading-text">Loading Office Admin Information</div>
+        <div class="loading-subtext">Please wait...</div>
+    </div>
+</div>
+
+<!-- Header / Breadcrumb -->
+<div class="view-student-container">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="mb-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}" class="text-sm text-gray-600 hover:text-blue-700 inline-flex items-center gap-2 transition-all hover:gap-3 font-medium">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
             Back to Admin Details
         </a>
     </div>
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+        <i class="fa-solid fa-user-pen text-blue-600"></i>
+        <span class="font-medium">Edit Office Admin Profile</span>
+    </div>
+    <!-- optional right space -->
+    <div class="w-32 hidden md:block"></div>
+</div>
 
-    {% if admin %}
-    <!-- Hero Header -->
-    <div class="enhanced-card overflow-hidden">
-        <div class="px-6 py-6 md:px-8 md:py-8 profile-header-enhanced text-white">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
-                <div class="flex items-center gap-5 min-w-0">
-                    <div class="h-20 w-20 md:h-24 md:w-24 rounded-2xl avatar-enhanced text-blue-600 flex items-center justify-center overflow-hidden relative">
-                        {% if admin.user.profile_pic %}
-                            <img src="{{ url_for('static', filename=admin.user.profile_pic) }}" alt="{{ admin.user.get_full_name() }}" class="h-full w-full object-cover" />
-                        {% else %}
-                            <span class="text-3xl md:text-4xl font-bold">{{ admin.user.first_name[0] }}{{ admin.user.last_name[0] }}</span>
-                        {% endif %}
+{% if admin %}
+<!-- Profile Header Card -->
+<div class="enhanced-card overflow-hidden mb-6">
+    <div class="px-6 py-6 md:px-8 md:py-8 profile-header-enhanced">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
+            <div class="flex items-center gap-5 min-w-0">
+                <div class="h-20 w-20 md:h-24 md:w-24 rounded-2xl avatar-enhanced text-blue-600 flex items-center justify-center overflow-hidden relative">
+                    {% if admin.user.profile_pic %}
+                        <img 
+                            src="{{ url_for('static', filename=admin.user.profile_pic) }}"
+                            alt="{{ admin.user.first_name }} {{ admin.user.last_name }}"
+                            class="h-full w-full object-cover"
+                            id="header-profile-preview"
+                        />
+                    {% else %}
+                        <span class="text-3xl md:text-4xl font-bold" id="header-initials">{{ admin.user.first_name[0] }}{{ admin.user.last_name[0] }}</span>
+                    {% endif %}
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-3 flex-wrap mb-1">
+                        <h3 class="text-xl md:text-2xl font-bold text-white truncate">{{ admin.user.first_name }} {% if admin.user.middle_name %}{{ admin.user.middle_name[0] }}. {% endif %}{{ admin.user.last_name }}</h3>
+                        <span class="badge-enhanced {{ 'bg-green-500 text-white' if admin.user.is_active else 'bg-red-500 text-white' }}">
+                            <i class="fa-solid {{ 'fa-circle-check' if admin.user.is_active else 'fa-circle-xmark' }} mr-1"></i>
+                            {{ 'Active' if admin.user.is_active else 'Inactive' }}
+                        </span>
                     </div>
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-3 flex-wrap mb-1">
-                            <h1 class="text-xl md:text-2xl font-bold text-white truncate">Edit Office Admin</h1>
-                            <span class="badge-enhanced {{ 'bg-green-500 text-white' if admin.user.is_active else 'bg-red-500 text-white' }}">
-                                <i class="fa-solid {{ 'fa-circle-check' if admin.user.is_active else 'fa-circle-xmark' }} mr-1"></i>
-                                {{ 'Active' if admin.user.is_active else 'Inactive' }}
-                            </span>
-                        </div>
-                        <p class="text-sm text-blue-100 truncate mb-2 flex items-center gap-2">
-                            <i class="fa-solid fa-user text-xs"></i>
-                            {{ admin.user.get_full_name() }}
-                            <span class="mx-2 text-blue-200">•</span>
-                            <i class="fa-solid fa-envelope text-xs"></i>
-                            {{ admin.user.email }}
-                            <span class="mx-2 text-blue-200">•</span>
-                            <i class="fa-solid fa-building text-xs"></i>
+                    <p class="text-sm text-blue-100 truncate mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-envelope text-xs"></i>
+                        {{ admin.user.email }}
+                    </p>
+                    <div class="flex flex-wrap gap-3 text-xs text-white/90">
+                        <span class="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                            <i class="fa-solid fa-briefcase text-white/80"></i> 
                             {{ admin.office.name }}
-                        </p>
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                            <i class="fa-solid fa-user-shield text-white/80"></i> 
+                            Office Admin
+                        </span>
                     </div>
                 </div>
             </div>
+            <div class="flex items-center gap-2">
+                <button 
+                    class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold {{ 'bg-white text-red-600 hover:bg-red-50' if admin.user.is_active else 'bg-white text-green-600 hover:bg-green-50' }} border border-white/20 open-suspend-modal"
+                    data-admin-id="{{ admin.id }}"
+                    data-current-active="{{ 1 if admin.user.is_active else 0 }}"
+                    data-admin-name="{{ admin.user.first_name }} {{ admin.user.last_name }}"
+                >
+                    <i class="fa-solid {% if admin.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                    {% if admin.user.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+            </div>
         </div>
     </div>
+</div>
 
-    <form method="POST" action="{{ url_for('admin.edit_office_admin', admin_id=admin.id) }}" enctype="multipart/form-data" class="relative">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<!-- Edit Form + Side Info -->
+<form method="POST" action="{{ url_for('admin.edit_office_admin', admin_id=admin.id) }}" enctype="multipart/form-data" class="relative">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left/Main: Editable fields -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Personal Information -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-user text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Personal Information</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Basic identity details used across the system</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <label for="first_name" class="label-enhanced block mb-2">First Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="first_name" name="first_name" value="{{ admin.user.first_name }}" required
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter first name" />
+                    </div>
+                    <div>
+                        <label for="middle_name" class="label-enhanced block mb-2">Middle Name</label>
+                        <input type="text" id="middle_name" name="middle_name" value="{{ admin.user.middle_name or '' }}"
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter middle name" />
+                    </div>
+                    <div>
+                        <label for="last_name" class="label-enhanced block mb-2">Last Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="last_name" name="last_name" value="{{ admin.user.last_name }}" required
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter last name" />
+                    </div>
+                </div>
+            </section>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Sidebar Profile Card -->
-            <aside class="col-span-1 order-last lg:order-first">
-                <div class="enhanced-card p-6 sticky top-24 animate-[riseIn_.5s_ease-out]">
+            <!-- Office Assignment -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-building text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Office Assignment</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Assigned office for administrative responsibilities</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 gap-5">
+                    <div>
+                        <label for="office_id" class="label-enhanced block mb-2">Assigned Office <span class="text-red-500">*</span></label>
+                        <select id="office_id" name="office_id" required
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
+                            {% for office in offices %}
+                                <option value="{{ office.id }}" {% if office.id == admin.office_id %}selected{% endif %}>{{ office.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Account & Contact -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-envelope text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Account & Contact</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Used for communications and login</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 gap-5">
+                    <div>
+                        <label for="email" class="label-enhanced block mb-2">Email Address <span class="text-red-500">*</span></label>
+                        <input type="email" id="email" name="email" value="{{ admin.user.email }}" required
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="admin@university.edu" />
+                        <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-blue-500"></i>
+                            Important updates and notifications will be sent to this address
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right/Side: Read-only + Security -->
+        <aside class="space-y-6">
+            <!-- Profile Picture -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-camera text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Profile Picture</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
                     <div class="flex flex-col items-center text-center">
                         <div class="relative group">
-                            <div class="h-32 w-32 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden mb-4 ring-4 ring-white shadow-sm border border-gray-100 transition-all duration-300">
+                            <div class="h-32 w-32 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden ring-4 ring-white shadow-sm border border-gray-100 transition-all duration-300">
                                 {% if admin.user.profile_pic %}
                                 <img src="{{ url_for('static', filename=admin.user.profile_pic) }}" alt="Profile" class="h-full w-full object-cover" id="profile-preview">
                                 {% else %}
@@ -97,280 +394,574 @@
                             <label for="profile_pic" class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 ease-in-out">
                                 <i class="fas fa-camera text-white text-xl"></i>
                             </label>
-                            <input type="file" id="profile_pic" name="profile_pic" class="hidden">
+                            <input type="file" id="profile_pic" name="profile_pic" class="hidden" accept="image/*">
                         </div>
-                        <div class="mt-2 text-sm text-gray-500">Click to change profile photo</div>
-                    </div>
-                    <div class="mt-6 space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">Role</span>
-                            <span class="font-medium text-gray-900">Office Admin</span>
-                        </div>
-                        <div class="flex justify-between text-sm border-t border-gray-100 pt-3">
-                            <span class="text-gray-500">Joined</span>
-                            <span class="font-medium text-gray-900">{{ admin.user.created_at.strftime('%b %d, %Y') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm border-t border-gray-100 pt-3">
-                            <span class="text-gray-500">Last Login</span>
-                            <span class="font-medium text-gray-900">
-                                {% if admin.user.last_activity %}
-                                    {{ admin.user.last_activity.strftime('%b %d, %Y %I:%M %p') }}
-                                {% else %}Never{% endif %}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Form -->
-            <section class="col-span-1 lg:col-span-2 space-y-6">
-                <!-- Personal Information -->
-                <div class="enhanced-card">
-                    <div class="px-6 py-4 section-header">
-                        <div class="flex items-center gap-3">
-                            <div class="icon-wrapper"><i class="fa-solid fa-id-card text-white text-lg"></i></div>
-                            <div>
-                                <h3 class="text-base font-bold text-gray-800">Personal Information</h3>
-                                <p class="text-xs text-gray-500 mt-0.5">Basic details used across the system</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="first_name" class="label-enhanced block mb-2">First Name <span class="text-red-500">*</span></label>
-                                <input type="text" id="first_name" name="first_name" value="{{ admin.user.first_name }}" required
-                                       class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" placeholder="Enter first name">
-                            </div>
-                            <div>
-                                <label for="last_name" class="label-enhanced block mb-2">Last Name <span class="text-red-500">*</span></label>
-                                <input type="text" id="last_name" name="last_name" value="{{ admin.user.last_name }}" required
-                                       class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" placeholder="Enter last name">
-                            </div>
-                            <div>
-                                <label for="middle_name" class="label-enhanced block mb-2">Middle Name</label>
-                                <input type="text" id="middle_name" name="middle_name" value="{{ admin.user.middle_name or '' }}"
-                                       class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" placeholder="Enter middle name">
-                            </div>
-                            <div>
-                                <label for="email" class="label-enhanced block mb-2">Email Address <span class="text-red-500">*</span></label>
-                                <input type="email" id="email" name="email" value="{{ admin.user.email }}" required
-                                       class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" placeholder="admin@university.edu">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Office Assignment -->
-                <div class="enhanced-card">
-                    <div class="px-6 py-4 section-header">
-                        <div class="flex items-center gap-3">
-                            <div class="icon-wrapper"><i class="fa-solid fa-building text-white text-lg"></i></div>
-                            <div>
-                                <h3 class="text-base font-bold text-gray-800">Office Assignment</h3>
-                                <p class="text-xs text-gray-500 mt-0.5">Assign the admin to an office</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div>
-                            <label for="office_id" class="label-enhanced block mb-2">Assigned Office <span class="text-red-500">*</span></label>
-                            <select id="office_id" name="office_id" required
-                                    class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 appearance-none bg-white">
-                                {% for office in offices %}
-                                <option value="{{ office.id }}" {% if office.id == admin.office_id %}selected{% endif %}>{{ office.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Account Settings -->
-                <div class="enhanced-card">
-                    <div class="px-6 py-4 section-header">
-                        <div class="flex items-center gap-3">
-                            <div class="icon-wrapper" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"><i class="fa-solid fa-user-cog text-white text-lg"></i></div>
-                            <div>
-                                <h3 class="text-base font-bold text-gray-800">Account Settings</h3>
-                                <p class="text-xs text-gray-500 mt-0.5">Security and account status</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="password" class="label-enhanced block mb-2">New Password</label>
-                                <div class="mt-1 relative rounded-md">
-                                    <input type="password" id="password" name="password" placeholder="Leave blank to keep current password"
-                                           class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400">
-                                    <p class="mt-2 text-xs text-gray-500">Leave blank if you don't want to change the password.</p>
-                                </div>
-                            </div>
-                            <div>
-                                <label for="password_confirm" class="label-enhanced block mb-2">Confirm New Password</label>
-                                <div class="mt-1 relative rounded-md">
-                                    <input type="password" id="password_confirm" name="password_confirm" placeholder="Leave blank to keep current password"
-                                           class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <label class="flex items-start cursor-pointer">
-                                <input type="checkbox" id="is_active" name="is_active" {% if admin.user.is_active %}checked{% endif %}
-                                       class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600 transition-colors duration-200 mt-0.5">
-                                <span class="ml-3 text-sm">
-                                    <span class="font-medium text-gray-700">Active Account</span>
-                                    <p class="text-gray-500 mt-1">Allow this admin to log in to the system</p>
-                                </span>
-                            </label>
-
-                            <label class="flex items-start cursor-pointer">
-                                <input type="checkbox" id="reset_password" name="reset_password"
-                                       class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600 transition-colors duration-200 mt-0.5">
-                                <span class="ml-3 text-sm">
-                                    <span class="font-medium text-gray-700">Require Password Reset</span>
-                                    <p class="text-gray-500 mt-1">Force password change on next login</p>
-                                </span>
-                            </label>
-
-                            {% if admin.user.account_locked %}
-                            <label class="flex items-start cursor-pointer md:col-span-2">
-                                <input type="checkbox" id="unlock_account" name="unlock_account"
-                                       class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600 transition-colors duration-200 mt-0.5">
-                                <span class="ml-3 text-sm">
-                                    <span class="font-medium text-gray-700">Unlock Account</span>
-                                    <p class="text-gray-500 mt-1">Re-enable login after lockout</p>
-                                </span>
-                            </label>
-                            {% endif %}
-                        </div>
+                        <div class="mt-3 text-xs text-gray-500">Click to change profile photo</div>
                     </div>
                 </div>
             </section>
 
-            <!-- Right Aside: Activity / Meta -->
-            <aside class="space-y-6">
-                <section class="enhanced-card">
-                    <div class="px-6 py-4 section-header">
-                        <div class="flex items-center gap-3">
-                            <div class="icon-wrapper"><i class="fa-solid fa-chart-line text-white text-lg"></i></div>
-                            <div>
-                                <h4 class="text-base font-bold text-gray-800">Account Activity</h4>
-                            </div>
+            <!-- Activity / meta -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Account Activity</h4>
                         </div>
                     </div>
-                    <div class="p-6 space-y-4">
-                        <div class="stat-item">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date Registered</span>
-                                <i class="fa-solid fa-calendar-plus text-blue-500"></i>
-                            </div>
-                            <span class="text-sm font-bold text-gray-800 block">{{ admin.user.created_at.strftime('%b %d, %Y') }}</span>
-                            <span class="text-xs text-gray-500">{{ admin.user.created_at.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="stat-item">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</span>
+                            <i class="fa-solid fa-user-shield text-blue-500"></i>
                         </div>
-                        <div class="stat-item">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Last Login</span>
-                                <i class="fa-solid fa-clock text-green-500"></i>
-                            </div>
-                            <span class="text-sm font-bold text-gray-800 block">
-                                {% if admin.user.last_activity %}
-                                    {{ admin.user.last_activity.strftime('%b %d, %Y') }}
-                                {% else %}Never{% endif %}
-                            </span>
-                            {% if admin.user.last_activity %}
-                            <span class="text-xs text-gray-500">{{ admin.user.last_activity.strftime('%I:%M %p') }}</span>
-                            {% endif %}
-                        </div>
+                        <span class="text-sm font-bold text-gray-800 block">Office Admin</span>
                     </div>
-                </section>
-            </aside>
-        </div>
+                    <div class="stat-item">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date Joined</span>
+                            <i class="fa-solid fa-calendar-plus text-green-500"></i>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800 block">{{ admin.user.created_at.strftime('%b %d, %Y') }}</span>
+                        <span class="text-xs text-gray-500">{{ admin.user.created_at.strftime('%I:%M %p') }}</span>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Sticky Action Bar -->
-        <div class="mt-6 sticky-action">
-            <div class="enhanced-card backdrop-blur-lg bg-white/95 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="hidden md:flex items-center text-sm text-gray-600 gap-2">
-                        <i class="fa-regular fa-floppy-disk text-blue-500"></i>
-                        <span class="font-medium">Review changes before saving</span>
+            <!-- Password Management -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                            <i class="fa-solid fa-key text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Password Management</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Update administrator credentials</p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 ml-auto">
-                        <a id="cancelBtn" href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}" 
-                           class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border-2 border-gray-200">
-                            <i class="fa-solid fa-xmark"></i>
-                            Cancel
-                        </a>
-                        <button type="submit" 
-                                class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-                            <i class="fa-solid fa-check"></i>
-                            Save Changes
-                        </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label for="password" class="label-enhanced block mb-2">New Password</label>
+                        <input type="password" id="password" name="password" placeholder="Leave blank to keep current"
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" />
+                        <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-amber-500"></i>
+                            Leave blank to keep current password
+                        </p>
                     </div>
+                    <div>
+                        <label for="password_confirm" class="label-enhanced block mb-2">Confirm Password</label>
+                        <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm new password"
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" />
+                    </div>
+                    
+                    <div class="pt-4 space-y-3 border-t border-gray-200">
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" id="is_active" name="is_active" {% if admin.user.is_active %}checked{% endif %}
+                                   class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600 transition-colors duration-200 mt-0.5">
+                            <span class="ml-3 text-sm">
+                                <span class="font-medium text-gray-700">Active Account</span>
+                                <p class="text-gray-500 text-xs mt-0.5">Allow this admin to log in</p>
+                            </span>
+                        </label>
+
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" id="reset_password" name="reset_password"
+                                   class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600 transition-colors duration-200 mt-0.5">
+                            <span class="ml-3 text-sm">
+                                <span class="font-medium text-gray-700">Require Password Reset</span>
+                                <p class="text-gray-500 text-xs mt-0.5">Force password change on next login</p>
+                            </span>
+                        </label>
+
+                        {% if admin.user.account_locked %}
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" id="unlock_account" name="unlock_account"
+                                   class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600 transition-colors duration-200 mt-0.5">
+                            <span class="ml-3 text-sm">
+                                <span class="font-medium text-gray-700">Unlock Account</span>
+                                <p class="text-gray-500 text-xs mt-0.5">Re-enable login after lockout</p>
+                            </span>
+                        </label>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <!-- Sticky Action Bar -->
+    <div class="mt-6 sticky bottom-4 z-10">
+        <div class="enhanced-card backdrop-blur-lg bg-white/95 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="hidden md:flex items-center text-sm text-gray-600 gap-2">
+                    <i class="fa-regular fa-floppy-disk text-blue-500"></i>
+                    <span class="font-medium">Review changes before saving</span>
+                </div>
+                <div class="flex items-center gap-3 ml-auto">
+                    <a href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}" 
+                       class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border-2 border-gray-200">
+                        <i class="fa-solid fa-xmark"></i>
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                        <i class="fa-solid fa-check"></i>
+                        Save Changes
+                    </button>
                 </div>
             </div>
         </div>
-    </form>
-    {% else %}
-    <div class="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div class="text-gray-400 mb-3"><i class="fas fa-user-slash fa-3x"></i></div>
-        <h2 class="text-xl font-semibold text-gray-800 mb-1">Admin Not Found</h2>
-        <p class="text-gray-500">The requested administrator could not be found in the system.</p>
-        <div class="mt-6">
-            <a href="{{ url_for('admin.office_statistics') }}" class="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow">
-                Return to Office Statistics
-            </a>
+    </div>
+</form>
+
+</div>
+</div>
+
+<!-- Suspension/Activation Modal -->
+<div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop" data-modal-close></div>
+    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
+        <!-- Modal Header with Dynamic Color -->
+        <div id="suspendModalHeader" class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-red-600 to-red-700">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <i id="suspendModalIcon" class="fa-solid fa-user-slash text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white" id="suspendModalTitle">Deactivate Office Admin</h3>
+                    <p class="text-sm text-white/90 mt-1.5" id="suspendModalSubtitle">This action will restrict admin access</p>
+                </div>
+            </div>
+            <button class="text-white/80 hover:text-white transition p-1 ml-2" data-modal-close aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        
+        <form id="suspendForm" class="px-6 pt-6 pb-6 space-y-5">
+            <input type="hidden" id="suspendAdminId" name="admin_id" />
+            <input type="hidden" id="suspendTargetState" name="target_state" />
+            
+            <!-- Warning Banner for Deactivation -->
+            <div id="deactivateWarning" class="flex items-start gap-3 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+                <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-red-900">Critical Action</p>
+                    <p class="text-xs text-red-700 mt-1">This will immediately block the admin's access to the system.</p>
+                </div>
+            </div>
+            
+            <div id="reactivateNotice" class="hidden flex items-start gap-3 p-4 bg-green-50 border-l-4 border-green-500 rounded-r-lg">
+                <i class="fa-solid fa-circle-check text-green-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-green-900">Reactivation Confirmation</p>
+                    <p class="text-xs text-green-700 mt-1">This will restore full system access for the admin.</p>
+                </div>
+            </div>
+            
+            <div id="suspendFeedback" class="hidden text-sm rounded-lg p-3"></div>
+            
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" 
+                        class="action-button-enhanced px-6 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" 
+                        data-modal-close>
+                    <i class="fa-solid fa-xmark mr-1"></i>
+                    Cancel
+                </button>
+                <button id="suspendSubmitBtn" type="submit" 
+                        class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-lg">
+                    <i class="fa-solid fa-user-slash"></i>
+                    Confirm Deactivation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Unsaved Changes Modal -->
+<div id="unsavedChangesModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop"></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
+        <!-- Modal Header -->
+        <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-orange-500 to-orange-600">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <i class="fa-solid fa-triangle-exclamation text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Unsaved Changes</h3>
+                    <p class="text-sm text-white/90 mt-1">You have pending modifications</p>
+                </div>
+            </div>
+            <button class="text-white/80 hover:text-white transition p-1 ml-2" onclick="closeUnsavedModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="px-6 py-6 space-y-5">
+            <!-- Warning Message -->
+            <div class="flex items-start gap-3 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-r-lg">
+                <i class="fa-solid fa-exclamation-circle text-orange-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-orange-900">Warning</p>
+                    <p class="text-xs text-orange-700 mt-1">You have unsaved changes that will be lost if you proceed.</p>
+                </div>
+            </div>
+            
+            <!-- Changed Fields List -->
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200" id="changedFieldsList">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Modified Fields</p>
+                <div id="changedFieldsContent" class="space-y-2 text-sm text-gray-700">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Action Question -->
+            <div class="text-center py-2">
+                <p class="text-sm font-semibold text-gray-700">Are you sure you want to cancel without saving?</p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                <button type="button" 
+                        class="action-button-enhanced px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" 
+                        onclick="closeUnsavedModal()">
+                    <i class="fa-solid fa-arrow-left mr-1"></i>
+                    Keep Editing
+                </button>
+                <button type="button" 
+                        onclick="discardChanges()"
+                        class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 shadow-lg">
+                    <i class="fa-solid fa-trash-can"></i>
+                    Discard Changes
+                </button>
+            </div>
         </div>
     </div>
-    {% endif %}
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
+// Page Loading Screen Management
+(function() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    
+    // Hide loading screen once page is fully loaded
+    window.addEventListener('load', function() {
+        if (loadingScreen) {
+            setTimeout(function() {
+                loadingScreen.classList.add('hidden');
+            }, 600);
+        }
+    });
+    
+    // Hide loading screen on DOMContentLoaded as fallback
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle profile picture preview
-        const profileInput = document.getElementById('profile_pic');
-        const profilePreview = document.getElementById('profile-preview');
-        const initials = document.getElementById('initials');
+        if (loadingScreen) {
+            setTimeout(function() {
+                loadingScreen.classList.add('hidden');
+            }, 500);
+        }
+    });
+})();
+
+// Enhanced Form Management System
+(function(){
+    // Original form values for change detection
+    const originalFormData = {};
+    const form = document.querySelector('form[method="POST"]');
+    
+    // Store original values on page load
+    if (form) {
+        const formInputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], select, input[type="checkbox"]');
+        formInputs.forEach(input => {
+            if (input.type === 'checkbox') {
+                originalFormData[input.name] = input.checked;
+            } else {
+                originalFormData[input.name] = input.value;
+            }
+        });
+    }
+    
+    // Function to detect changes
+    function hasUnsavedChanges() {
+        if (!form) return false;
+        const formInputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], select, input[type="checkbox"]');
+        for (let input of formInputs) {
+            if (input.name) {
+                if (input.type === 'checkbox') {
+                    if (originalFormData[input.name] !== input.checked) {
+                        return true;
+                    }
+                } else if (originalFormData[input.name] !== input.value) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    // Function to get changed fields
+    function getChangedFields() {
+        const changes = [];
+        if (!form) return changes;
         
-        if (profileInput) {
-            profileInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const reader = new FileReader();
-                    
-                    reader.onload = function(e) {
+        const fieldLabels = {
+            'first_name': 'First Name',
+            'middle_name': 'Middle Name',
+            'last_name': 'Last Name',
+            'email': 'Email Address',
+            'office_id': 'Assigned Office',
+            'password': 'Password',
+            'is_active': 'Active Status',
+            'reset_password': 'Password Reset Required'
+        };
+        
+        const formInputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], select, input[type="checkbox"]');
+        formInputs.forEach(input => {
+            if (input.name) {
+                if (input.type === 'checkbox') {
+                    if (originalFormData[input.name] !== input.checked) {
+                        changes.push({
+                            field: fieldLabels[input.name] || input.name,
+                            oldValue: originalFormData[input.name] ? 'Enabled' : 'Disabled',
+                            newValue: input.checked ? 'Enabled' : 'Disabled'
+                        });
+                    }
+                } else if (originalFormData[input.name] !== input.value) {
+                    const oldVal = originalFormData[input.name] || '(empty)';
+                    const newVal = input.value || '(empty)';
+                    if (input.type === 'password' && input.value) {
+                        changes.push({
+                            field: fieldLabels[input.name] || input.name,
+                            oldValue: '********',
+                            newValue: '********'
+                        });
+                    } else {
+                        changes.push({
+                            field: fieldLabels[input.name] || input.name,
+                            oldValue: oldVal,
+                            newValue: newVal
+                        });
+                    }
+                }
+            }
+        });
+        return changes;
+    }
+    
+    // Suspension Modal Logic
+    const modal = document.getElementById('suspendModal');
+    if (modal) {
+        const suspendForm = document.getElementById('suspendForm');
+        const idInput = document.getElementById('suspendAdminId');
+        const targetStateInput = document.getElementById('suspendTargetState');
+        const reactivateNotice = document.getElementById('reactivateNotice');
+        const deactivateWarning = document.getElementById('deactivateWarning');
+        const titleEl = document.getElementById('suspendModalTitle');
+        const subtitleEl = document.getElementById('suspendModalSubtitle');
+        const submitBtn = document.getElementById('suspendSubmitBtn');
+        const feedback = document.getElementById('suspendFeedback');
+        const modalHeader = document.getElementById('suspendModalHeader');
+        const modalIcon = document.getElementById('suspendModalIcon');
+        
+        document.addEventListener('click', (e)=>{
+            const trigger = e.target.closest('.open-suspend-modal');
+            if (trigger) {
+                const aid = parseInt(trigger.getAttribute('data-admin-id'),10);
+                const active = trigger.getAttribute('data-current-active') === '1';
+                const name = trigger.getAttribute('data-admin-name') || 'this admin';
+                idInput.value = aid;
+                
+                if (active) {
+                    // Deactivation Mode
+                    targetStateInput.value = '0';
+                    titleEl.textContent = 'Deactivate Office Admin';
+                    subtitleEl.textContent = `This will restrict ${name.split(' ')[0]}'s access to the system.`;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-user-slash"></i> Confirm Deactivation';
+                    submitBtn.classList.remove('bg-green-600','hover:bg-green-700');
+                    submitBtn.classList.add('bg-red-600','hover:bg-red-700');
+                    modalHeader.classList.remove('from-green-600', 'to-green-700');
+                    modalHeader.classList.add('from-red-600', 'to-red-700');
+                    modalIcon.classList.remove('fa-user-check');
+                    modalIcon.classList.add('fa-user-slash');
+                    deactivateWarning.classList.remove('hidden');
+                    reactivateNotice.classList.add('hidden');
+                } else {
+                    // Reactivation Mode
+                    targetStateInput.value = '1';
+                    titleEl.textContent = 'Reactivate Office Admin';
+                    subtitleEl.textContent = `Re-enable full system access for ${name}.`;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> Confirm Reactivation';
+                    submitBtn.classList.remove('bg-red-600','hover:bg-red-700');
+                    submitBtn.classList.add('bg-green-600','hover:bg-green-700');
+                    modalHeader.classList.remove('from-red-600', 'to-red-700');
+                    modalHeader.classList.add('from-green-600', 'to-green-700');
+                    modalIcon.classList.remove('fa-user-slash');
+                    modalIcon.classList.add('fa-user-check');
+                    deactivateWarning.classList.add('hidden');
+                    reactivateNotice.classList.remove('hidden');
+                }
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        });
+        
+        suspendForm.addEventListener('submit', function(ev){
+            ev.preventDefault();
+            feedback.classList.remove('hidden');
+            feedback.className = 'text-sm rounded-lg p-3';
+            const aid = parseInt(idInput.value,10);
+            const targetActive = targetStateInput.value === '1';
+            
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60','cursor-not-allowed');
+            feedback.textContent = targetActive ? 'Reactivating account...' : 'Deactivating account...';
+            feedback.classList.remove('text-red-600', 'bg-red-50', 'border-red-200');
+            feedback.classList.add('text-blue-600', 'bg-blue-50', 'border', 'border-blue-200');
+            
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            fetch('/admin/toggle_admin_status', {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json','X-CSRFToken': csrfToken },
+                body: JSON.stringify({ admin_id: aid, is_active: targetActive })
+            }).then(r=>r.json()).then(data=>{
+                if (data.success) {
+                    feedback.textContent = targetActive ? 'Account reactivated successfully!' : 'Account deactivated successfully.';
+                    feedback.classList.remove('text-blue-600', 'bg-blue-50', 'border-blue-200');
+                    feedback.classList.add('text-green-600', 'bg-green-50', 'border', 'border-green-200');
+                    setTimeout(()=>{ window.location.reload(); }, 800);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+                    feedback.textContent = data.message || 'Operation failed.';
+                    feedback.classList.remove('text-blue-600', 'bg-blue-50', 'border-blue-200');
+                    feedback.classList.add('text-red-600', 'bg-red-50', 'border', 'border-red-200');
+                }
+            }).catch(err=>{
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+                feedback.textContent = 'Unexpected error. Please try again.';
+                feedback.classList.remove('text-blue-600', 'bg-blue-50', 'border-blue-200');
+                feedback.classList.add('text-red-600', 'bg-red-50', 'border', 'border-red-200');
+            });
+        });
+    }
+    
+    // Unsaved Changes Modal Functions
+    window.openUnsavedModal = function() {
+        const unsavedModal = document.getElementById('unsavedChangesModal');
+        const changedFieldsContent = document.getElementById('changedFieldsContent');
+        
+        if (unsavedModal && changedFieldsContent) {
+            const changes = getChangedFields();
+            changedFieldsContent.innerHTML = '';
+            
+            if (changes.length === 0) {
+                changedFieldsContent.innerHTML = '<p class="text-gray-500 italic">No changes detected</p>';
+            } else {
+                changes.forEach(change => {
+                    const changeItem = document.createElement('div');
+                    changeItem.className = 'flex items-start gap-2 pb-2 border-b border-gray-200 last:border-0';
+                    changeItem.innerHTML = `
+                        <i class="fa-solid fa-arrow-right text-orange-500 text-xs mt-1"></i>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-700 text-xs">${change.field}</p>
+                            <p class="text-xs text-gray-500 line-through">${change.oldValue}</p>
+                            <p class="text-xs text-gray-900 font-medium">${change.newValue}</p>
+                        </div>
+                    `;
+                    changedFieldsContent.appendChild(changeItem);
+                });
+            }
+            
+            unsavedModal.classList.remove('hidden');
+            unsavedModal.classList.add('flex');
+        }
+    };
+    
+    window.closeUnsavedModal = function() {
+        const unsavedModal = document.getElementById('unsavedChangesModal');
+        if (unsavedModal) {
+            unsavedModal.classList.add('hidden');
+            unsavedModal.classList.remove('flex');
+        }
+    };
+    
+    window.discardChanges = function() {
+        window.location.href = "{{ url_for('admin.view_admin_details', admin_id=admin.id) }}";
+    };
+    
+    // Intercept Cancel button to check for unsaved changes
+    const cancelBtn = document.querySelector('a[href*="view_admin_details"]');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function(e) {
+            if (hasUnsavedChanges()) {
+                e.preventDefault();
+                openUnsavedModal();
+            }
+        });
+    }
+    
+    // Profile picture preview
+    const profileInput = document.getElementById('profile_pic');
+    const profilePreview = document.getElementById('profile-preview');
+    const headerProfilePreview = document.getElementById('header-profile-preview');
+    const initials = document.getElementById('initials');
+    const headerInitials = document.getElementById('header-initials');
+    
+    if (profileInput) {
+        profileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    if (profilePreview) {
                         profilePreview.src = e.target.result;
                         profilePreview.classList.remove('hidden');
-                        if (initials) {
-                            initials.classList.add('hidden');
-                        }
                     }
-                    
-                    reader.readAsDataURL(this.files[0]);
+                    if (headerProfilePreview) {
+                        headerProfilePreview.src = e.target.result;
+                        headerProfilePreview.classList.remove('hidden');
+                    }
+                    if (initials) {
+                        initials.classList.add('hidden');
+                    }
+                    if (headerInitials) {
+                        headerInitials.classList.add('hidden');
+                    }
                 }
-            });
-        }
-        
-        // Password validation
-        const passwordInput = document.getElementById('password');
-        const confirmPasswordInput = document.getElementById('password_confirm');
-        const form = document.querySelector('form');
-        
+                
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+    
+    // Password validation
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('password_confirm');
+    
+    if (form && passwordInput && confirmPasswordInput) {
         form.addEventListener('submit', function(event) {
             if (passwordInput.value && passwordInput.value !== confirmPasswordInput.value) {
                 event.preventDefault();
                 
-                // Create a more elegant error notification
+                // Create error notification
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'fixed top-4 right-4 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-md z-50';
                 errorDiv.innerHTML = `
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                            </svg>
+                            <i class="fa-solid fa-circle-xmark text-red-500 text-xl"></i>
                         </div>
                         <div class="ml-3">
                             <p class="text-sm font-medium">Passwords do not match!</p>
@@ -393,241 +984,21 @@
                 }, 3000);
             }
         });
-        
-        // Flash message fade out
-        const flashMessage = document.getElementById('flashMessage');
-        if (flashMessage) {
-            setTimeout(function() {
-                flashMessage.style.opacity = '0';
-                flashMessage.style.transition = 'opacity 0.5s ease';
-                
-                setTimeout(function() {
-                    flashMessage.style.display = 'none';
-                }, 500);
-            }, 5000);
-        }
-
-        // Enhanced Unsaved Changes + Save Confirmation (aligned with view_student)
-        const originalFormData = {};
-        const formEl = document.querySelector('form[method="POST"]');
-        if (formEl) {
-            const inputs = formEl.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], select, textarea, input[type="checkbox"]');
-            inputs.forEach(input => {
-                originalFormData[input.name] = input.type === 'checkbox' ? input.checked : input.value;
-            });
-        }
-
-        function hasUnsavedChanges() {
-            if (!formEl) return false;
-            const inputs = formEl.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], select, textarea, input[type="checkbox"]');
-            for (let input of inputs) {
-                if (!input.name) continue;
-                const current = input.type === 'checkbox' ? input.checked : input.value;
-                if (originalFormData[input.name] !== current) return true;
-            }
-            return false;
-        }
-
-        function getChangedFields() {
-            const changes = [];
-            if (!formEl) return changes;
-            const fieldLabels = {
-                'first_name': 'First Name',
-                'middle_name': 'Middle Name',
-                'last_name': 'Last Name',
-                'email': 'Email Address',
-                'office_id': 'Assigned Office',
-                'is_active': 'Active Account',
-                'reset_password': 'Require Password Reset',
-                'unlock_account': 'Unlock Account'
-            };
-            const inputs = formEl.querySelectorAll('input[type="text"], input[type="email"], select, textarea, input[type="checkbox"]');
-            inputs.forEach(input => {
-                if (!input.name) return;
-                const prev = originalFormData[input.name];
-                const curr = input.type === 'checkbox' ? input.checked : input.value;
-                if (prev !== curr) {
-                    const oldVal = input.type === 'checkbox' ? (prev ? 'Enabled' : 'Disabled') : (prev || '(empty)');
-                    const newVal = input.type === 'checkbox' ? (curr ? 'Enabled' : 'Disabled') : (curr || '(empty)');
-                    changes.push({ field: fieldLabels[input.name] || input.name, oldValue: oldVal, newValue: newVal });
-                }
-            });
-            return changes;
-        }
-
-        // Build Unsaved Changes Modal
-        const unsavedModal = document.createElement('div');
-        unsavedModal.id = 'unsavedChangesModal';
-        unsavedModal.className = 'fixed inset-0 z-50 hidden items-center justify-center';
-        unsavedModal.innerHTML = `
-            <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" data-close></div>
-            <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-                <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-orange-500 to-orange-600">
-                    <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <i class="fa-solid fa-triangle-exclamation text-white text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-white">Unsaved Changes</h3>
-                            <p class="text-sm text-white/90 mt-1">You have pending modifications</p>
-                        </div>
-                    </div>
-                    <button class="text-white/80 hover:text-white transition p-1 ml-2" data-close aria-label="Close">
-                        <i class="fa-solid fa-xmark text-2xl"></i>
-                    </button>
-                </div>
-                <div class="px-6 py-6 space-y-5">
-                    <div class="flex items-start gap-3 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-r-lg">
-                        <i class="fa-solid fa-exclamation-circle text-orange-600 text-lg mt-0.5"></i>
-                        <div>
-                            <p class="text-sm font-semibold text-orange-900">Warning</p>
-                            <p class="text-xs text-orange-700 mt-1">You have unsaved changes that will be lost if you proceed. This action cannot be undone.</p>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Modified Fields</p>
-                        <div id="changedFieldsContent" class="space-y-2 text-sm text-gray-700"></div>
-                    </div>
-                    <div class="text-center py-2">
-                        <p class="text-sm font-semibold text-gray-700">Are you sure you want to cancel without saving?</p>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
-                        <button type="button" class="action-button-enhanced px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" data-close>
-                            <i class="fa-solid fa-arrow-left mr-1"></i>
-                            Keep Editing
-                        </button>
-                        <a id="discardLink" href="{{ url_for('admin.view_admin_details', admin_id=admin.id) }}" class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 shadow-lg">
-                            <i class="fa-solid fa-trash-can"></i>
-                            Discard Changes
-                        </a>
-                    </div>
-                </div>
-            </div>`;
-        document.body.appendChild(unsavedModal);
-
-        function openUnsavedModal() {
-            const list = unsavedModal.querySelector('#changedFieldsContent');
-            list.innerHTML = '';
-            const changes = getChangedFields();
-            if (changes.length === 0) {
-                list.innerHTML = '<p class="text-gray-500 italic">No changes detected</p>';
-            } else {
-                changes.forEach(change => {
-                    const item = document.createElement('div');
-                    item.className = 'flex items-start gap-2 pb-2 border-b border-gray-200 last:border-0';
-                    item.innerHTML = `
-                        <i class="fa-solid fa-arrow-right text-orange-500 text-xs mt-1"></i>
-                        <div class="flex-1">
-                            <p class="font-semibold text-gray-700 text-xs">${change.field}</p>
-                            <p class="text-xs text-gray-500 line-through">${change.oldValue}</p>
-                            <p class="text-xs text-gray-900 font-medium">${change.newValue}</p>
-                        </div>`;
-                    list.appendChild(item);
-                });
-            }
-            unsavedModal.classList.remove('hidden');
-            unsavedModal.classList.add('flex');
-        }
-        function closeUnsavedModal() { unsavedModal.classList.add('hidden'); unsavedModal.classList.remove('flex'); }
-        unsavedModal.addEventListener('click', (e)=>{ if (e.target.matches('[data-close]') || e.target.closest('[data-close]')) closeUnsavedModal(); });
-
-        // Intercept cancel
-        const cancelBtn = document.getElementById('cancelBtn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function(e){
-                if (hasUnsavedChanges()) { e.preventDefault(); openUnsavedModal(); }
-            });
-        }
-
-        // Save confirmation modal
-        const saveModal = document.createElement('div');
-        saveModal.id = 'saveChangesModal';
-        saveModal.className = 'fixed inset-0 z-50 hidden items-center justify-center';
-        saveModal.innerHTML = `
-            <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" data-close></div>
-            <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-                <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700">
-                    <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <i class="fa-solid fa-floppy-disk text-white text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-white">Confirm Changes</h3>
-                            <p class="text-sm text-white/90 mt-1">Review and save admin information updates</p>
-                        </div>
-                    </div>
-                    <button class="text-white/80 hover:text-white transition p-1 ml-2" data-close aria-label="Close">
-                        <i class="fa-solid fa-xmark text-2xl"></i>
-                    </button>
-                </div>
-                <div class="px-6 py-6 space-y-5">
-                    <div class="flex items-start gap-3 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
-                        <i class="fa-solid fa-circle-info text-blue-600 text-lg mt-0.5"></i>
-                        <div>
-                            <p class="text-sm font-semibold text-blue-900">Save Confirmation</p>
-                            <p class="text-xs text-blue-700 mt-1">Please review the changes below before confirming. These updates will be applied to the admin profile.</p>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 max-h-64 overflow-y-auto">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Changes to be Saved</p>
-                        <div id="saveChangesContent" class="space-y-3"></div>
-                    </div>
-                    <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-                        <button type="button" class="action-button-enhanced px-6 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" data-close>
-                            <i class="fa-solid fa-xmark mr-1"></i>
-                            Cancel
-                        </button>
-                        <button type="button" id="confirmSaveBtn" class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg">
-                            <i class="fa-solid fa-check"></i>
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-            </div>`;
-        document.body.appendChild(saveModal);
-
-        function openSaveModal() {
-            const container = saveModal.querySelector('#saveChangesContent');
-            container.innerHTML = '';
-            const changes = getChangedFields();
-            if (changes.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 italic text-center py-4">No changes to save</p>';
-            } else {
-                changes.forEach(change => {
-                    const div = document.createElement('div');
-                    div.className = 'bg-white p-3 rounded-lg border border-gray-200';
-                    div.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="font-semibold text-gray-800 text-sm">${change.field}</p>
-                            <i class="fa-solid fa-pen-to-square text-blue-500 text-sm"></i>
-                        </div>
-                        <div class="flex items-center gap-2 text-xs">
-                            <span class="text-gray-400 line-through flex-1">${change.oldValue}</span>
-                            <i class="fa-solid fa-arrow-right text-blue-500"></i>
-                            <span class="text-blue-700 font-semibold flex-1">${change.newValue}</span>
-                        </div>`;
-                    container.appendChild(div);
-                });
-            }
-            saveModal.classList.remove('hidden');
-            saveModal.classList.add('flex');
-        }
-        function closeSaveModal() { saveModal.classList.add('hidden'); saveModal.classList.remove('flex'); }
-        saveModal.addEventListener('click', (e)=>{ if (e.target.matches('[data-close]') || e.target.closest('[data-close]')) closeSaveModal(); });
-
-        const saveBtn = document.querySelector('button[type="submit"]');
-        if (saveBtn && formEl) {
-            saveBtn.addEventListener('click', function(e){
-                if (hasUnsavedChanges()) { e.preventDefault(); openSaveModal(); }
-            });
-        }
-        const confirmSaveBtn = document.getElementById('confirmSaveBtn');
-        if (confirmSaveBtn) {
-            confirmSaveBtn.addEventListener('click', function(){
-                formEl.setAttribute('data-confirmed','1');
-                formEl.submit();
-            });
-        }
-    });
+    }
+})();
 </script>
+
+{% else %}
+<div class="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+    <div class="text-gray-400 mb-3"><i class="fas fa-user-slash fa-3x"></i></div>
+    <h2 class="text-xl font-semibold text-gray-800 mb-1">Admin Not Found</h2>
+    <p class="text-gray-500">The requested administrator could not be found in the system.</p>
+    <div class="mt-6">
+        <a href="{{ url_for('admin.office_statistics') }}" class="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow">
+            Return to Office Statistics
+        </a>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
