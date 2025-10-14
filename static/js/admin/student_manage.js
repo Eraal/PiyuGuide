@@ -321,7 +321,20 @@ function updateButtonStatus(studentId, isActive) {
     const submitBtn = document.getElementById('suspendSubmitBtn');
     const feedback = document.getElementById('suspendFeedback');
 
+    // Ensure the modal is attached to the page-level (body) to prevent clipping by table/containers
+    function ensureModalAtBody() {
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        // Elevate above nav/sidebars/other overlays
+        modal.style.zIndex = '1200';
+    }
+
     function openModal(studentId, currentlyActive, name, existingReason) {
+        // Re-parent to body so it is page-anchored and not constrained by table containers
+        ensureModalAtBody();
+        // Lock background scroll
+        document.body.style.overflow = 'hidden';
         idInput.value = studentId;
         if (currentlyActive) {
             // Deactivate flow
@@ -354,6 +367,8 @@ function updateButtonStatus(studentId, isActive) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         feedback.classList.add('hidden');
+        // Restore background scroll
+        document.body.style.overflow = '';
     }
 
     document.addEventListener('click', (e)=>{

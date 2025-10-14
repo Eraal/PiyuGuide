@@ -171,6 +171,9 @@
             opacity: 1;
         }
     }
+
+    /* Ensure suspend modal covers viewport when reparented to body */
+    #suspendModal.fixed.inset-0 { position: fixed; inset: 0; z-index: 1200; }
 </style>
 
 <!-- Enhanced Loading Screen (visible on initial load, auto-hides) -->

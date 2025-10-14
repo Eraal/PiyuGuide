@@ -3,14 +3,14 @@
 ## Project Overview
 
 **Date**: October 14, 2025  
-**Module**: Campus Admin - Student & Admin Management  
+**Module**: Campus Admin - Student Management  
 **Status**: ✅ **COMPLETED**
 
 ---
 
 ## What Was Implemented
 
-### Enhanced Loading Animations for Three Pages:
+### Enhanced Loading Animations for Two Pages:
 
 1. **View Student Page** (`/admin/view_student/<id>`)
    - Shows when viewing/editing individual student profiles
@@ -19,10 +19,6 @@
 2. **Student Account Page** (`/admin/student_manage`)
    - Shows when navigating to the student accounts list
    - Message: "Loading Student Accounts" / "Preparing data"
-
-3. **Admin Accounts Page** (`/admin/manage-admins`)
-   - Shows when navigating to the admin accounts dashboard
-   - Message: "Loading Admin Accounts" / "Preparing data"
 
 ---
 
