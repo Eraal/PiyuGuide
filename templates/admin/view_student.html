@@ -125,9 +125,9 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(15, 23, 42, 0.35); /* slate-900 at 35% */
-        -webkit-backdrop-filter: blur(8px);
-        backdrop-filter: blur(8px);
+        background: rgba(15, 23, 42, 0.45); /* slightly deeper overlay for visibility */
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -143,6 +143,9 @@
     .loading-content {
         text-align: center;
         color: white;
+        opacity: 0;
+        transform: scale(0.96);
+        animation: loadingPop 0.28s cubic-bezier(.4,0,.2,1) forwards;
     }
     
     .loader-spinner {
@@ -158,6 +161,10 @@
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
+    @keyframes loadingPop {
+        from { opacity: 0; transform: scale(0.96); }
+        to { opacity: 1; transform: scale(1); }
+    }
     
     .loading-text {
         font-size: 1.125rem;
@@ -169,6 +176,12 @@
         font-size: 0.875rem;
         opacity: 0.9;
     }
+
+    /* Modal entry animations */
+    .modal-backdrop { opacity: 0; animation: backdropIn 0.22s ease-out forwards; }
+    .modal-panel { opacity: 0; transform: translateY(8px) scale(0.985); animation: modalIn 0.26s cubic-bezier(.2,.8,.2,1) forwards; }
+    @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 </style>
 
 <!-- Loading Screen (visible on initial load, auto-hides) -->
@@ -484,8 +497,8 @@
 
 <!-- Suspension Modal -->
 <div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" data-modal-close></div>
-    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop" data-modal-close></div>
+    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
         <!-- Modal Header with Dynamic Color -->
         <div id="suspendModalHeader" class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-red-600 to-red-700">
             <div class="flex items-start gap-4">
@@ -561,8 +574,8 @@
 
 <!-- Reset Password Confirmation Modal -->
 <div id="resetPasswordModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeResetPasswordModal()"></div>
-    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop" onclick="closeResetPasswordModal()"></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
         <!-- Modal Header -->
         <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-amber-500 to-amber-600">
             <div class="flex items-start gap-4">
@@ -641,8 +654,8 @@
 
 <!-- Unsaved Changes Modal -->
 <div id="unsavedChangesModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity"></div>
-    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop"></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
         <!-- Modal Header -->
         <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-orange-500 to-orange-600">
             <div class="flex items-start gap-4">
@@ -703,8 +716,8 @@
 
 <!-- Save Changes Confirmation Modal -->
 <div id="saveChangesModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity"></div>
-    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop"></div>
+    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
         <!-- Modal Header -->
         <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700">
             <div class="flex items-start gap-4">
@@ -764,19 +777,12 @@
 (function() {
     const loadingScreen = document.getElementById('loadingScreen');
     
-    // Show loading screen when page is being loaded
-    window.addEventListener('beforeunload', function() {
-        if (loadingScreen) {
-            loadingScreen.classList.remove('hidden');
-        }
-    });
-    
     // Hide loading screen once page is fully loaded
     window.addEventListener('load', function() {
         if (loadingScreen) {
             setTimeout(function() {
                 loadingScreen.classList.add('hidden');
-            }, 300);
+            }, 600);
         }
     });
     
@@ -785,7 +791,7 @@
         if (loadingScreen) {
             setTimeout(function() {
                 loadingScreen.classList.add('hidden');
-            }, 200);
+            }, 500);
         }
     });
 })();
