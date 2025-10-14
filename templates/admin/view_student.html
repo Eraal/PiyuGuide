@@ -125,12 +125,14 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(135deg, #667eea 0%, #4f69e8 100%);
+        background: rgba(15, 23, 42, 0.35); /* slate-900 at 35% */
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 9999;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
     }
     
     .loading-screen.hidden {
@@ -169,8 +171,8 @@
     }
 </style>
 
-<!-- Loading Screen -->
-<div id="loadingScreen" class="loading-screen hidden">
+<!-- Loading Screen (visible on initial load, auto-hides) -->
+<div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
         <div class="loader-spinner"></div>
         <div class="loading-text">Loading Student Information</div>
