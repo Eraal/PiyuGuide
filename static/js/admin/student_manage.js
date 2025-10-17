@@ -265,136 +265,160 @@ function updateButtonStatus(studentId, isActive) {
     }
 }
 
-// ---- Suspension Modal Logic ----
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('suspendModal');
+// ---- Suspension Modal Logic (lazy, event-delegated) ----
+function pg_getSuspendModalEls() {
+    return {
+        modal: document.getElementById('suspendModal'),
+        form: document.getElementById('suspendForm'),
+        idInput: document.getElementById('suspendStudentId'),
+        targetStateInput: document.getElementById('suspendTargetState'),
+        reasonArea: document.getElementById('suspendReason'),
+        reasonGroup: document.getElementById('suspendReasonGroup'),
+        reactivateNotice: document.getElementById('reactivateNotice'),
+        titleEl: document.getElementById('suspendModalTitle'),
+        subtitleEl: document.getElementById('suspendModalSubtitle'),
+        submitBtn: document.getElementById('suspendSubmitBtn'),
+        feedback: document.getElementById('suspendFeedback')
+    };
+}
+
+function pg_ensureModalAtBody(modal) {
     if (!modal) return;
-
-    const form = document.getElementById('suspendForm');
-    const idInput = document.getElementById('suspendStudentId');
-    const targetStateInput = document.getElementById('suspendTargetState');
-    const reasonArea = document.getElementById('suspendReason');
-    const reasonGroup = document.getElementById('suspendReasonGroup');
-    const reactivateNotice = document.getElementById('reactivateNotice');
-    const titleEl = document.getElementById('suspendModalTitle');
-    const subtitleEl = document.getElementById('suspendModalSubtitle');
-    const submitBtn = document.getElementById('suspendSubmitBtn');
-    const feedback = document.getElementById('suspendFeedback');
-
-    function ensureModalAtBody() {
-        if (modal.parentElement !== document.body) {
-            document.body.appendChild(modal);
-        }
-        modal.style.position = 'fixed';
-        modal.style.inset = '0';
-        modal.style.zIndex = '1200';
+    if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
     }
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.zIndex = '1200';
+}
 
-    function openModal(studentId, currentlyActive, name) {
-        ensureModalAtBody();
-        document.body.style.overflow = 'hidden';
-        idInput.value = studentId;
-        if (currentlyActive) {
-            targetStateInput.value = '0';
-            titleEl.textContent = 'Deactivate Student Account';
-            subtitleEl.textContent = `Provide a reason for deactivation. This will be shown to ${name.split(' ')[0]} on next login.`;
-            submitBtn.innerHTML = '<i class="fa-solid fa-user-slash"></i> Confirm Deactivate';
-            submitBtn.classList.remove('bg-blue-600','hover:bg-blue-700');
-            submitBtn.classList.add('bg-red-600','hover:bg-red-700');
-            reasonGroup.classList.remove('hidden');
-            reactivateNotice.classList.add('hidden');
-            reasonArea.value = '';
-        } else {
-            targetStateInput.value = '1';
-            titleEl.textContent = 'Reactivate Student Account';
-            subtitleEl.textContent = `Re-enable access for ${name}.`;
-            submitBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> Confirm Reactivate';
-            submitBtn.classList.remove('bg-red-600','hover:bg-red-700');
-            submitBtn.classList.add('bg-blue-600','hover:bg-blue-700');
-            reasonGroup.classList.add('hidden');
-            reactivateNotice.classList.remove('hidden');
-            feedback.classList.add('hidden');
-        }
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+function pg_openSuspendModal(studentId, currentlyActive, name) {
+    const { modal, idInput, targetStateInput, reasonArea, reasonGroup, reactivateNotice, titleEl, subtitleEl, submitBtn, feedback } = pg_getSuspendModalEls();
+    if (!modal || !idInput || !targetStateInput || !submitBtn) return;
+    pg_ensureModalAtBody(modal);
+    document.body.style.overflow = 'hidden';
+    idInput.value = studentId;
+    if (currentlyActive) {
+        targetStateInput.value = '0';
+        if (titleEl) titleEl.textContent = 'Deactivate Student Account';
+        if (subtitleEl) subtitleEl.textContent = `Provide a reason for deactivation. This will be shown to ${name.split(' ')[0]} on next login.`;
+        submitBtn.innerHTML = '<i class="fa-solid fa-user-slash"></i> Confirm Deactivate';
+        submitBtn.classList.remove('bg-blue-600','hover:bg-blue-700');
+        submitBtn.classList.add('bg-red-600','hover:bg-red-700');
+        if (reasonGroup) reasonGroup.classList.remove('hidden');
+        if (reactivateNotice) reactivateNotice.classList.add('hidden');
+        if (reasonArea) reasonArea.value = '';
+    } else {
+        targetStateInput.value = '1';
+        if (titleEl) titleEl.textContent = 'Reactivate Student Account';
+        if (subtitleEl) subtitleEl.textContent = `Re-enable access for ${name}.`;
+        submitBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> Confirm Reactivate';
+        submitBtn.classList.remove('bg-red-600','hover:bg-red-700');
+        submitBtn.classList.add('bg-blue-600','hover:bg-blue-700');
+        if (reasonGroup) reasonGroup.classList.add('hidden');
+        if (reactivateNotice) reactivateNotice.classList.remove('hidden');
+        if (feedback) feedback.classList.add('hidden');
     }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
 
-    function closeModal() {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        feedback.classList.add('hidden');
-        document.body.style.overflow = '';
+function pg_closeSuspendModal() {
+    const { modal, feedback } = pg_getSuspendModalEls();
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (feedback) feedback.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+// Open trigger (event delegation)
+document.addEventListener('click', (e)=>{
+    const trigger = e.target.closest('.open-suspend-modal');
+    if (trigger) {
+        const sid = parseInt(trigger.getAttribute('data-student-id'),10);
+        const active = trigger.getAttribute('data-current-active') === '1';
+        const name = trigger.getAttribute('data-student-name') || 'this student';
+        pg_openSuspendModal(sid, active, name);
     }
+});
 
-    // Open trigger (event delegation for dynamically created rows)
-    document.addEventListener('click', (e)=>{
-        const trigger = e.target.closest('.open-suspend-modal');
-        if (trigger) {
-            const sid = parseInt(trigger.getAttribute('data-student-id'),10);
-            const active = trigger.getAttribute('data-current-active') === '1';
-            const name = trigger.getAttribute('data-student-name') || 'this student';
-            openModal(sid, active, name);
-        }
-    });
+// Close via backdrop or any element with data-modal-close
+document.addEventListener('click', (e) => {
+    const closeEl = e.target.closest('[data-modal-close]');
+    const { modal } = pg_getSuspendModalEls();
+    if (closeEl || (modal && e.target === modal)) {
+        pg_closeSuspendModal();
+    }
+});
 
-    // Close via backdrop or any element with data-modal-close
-    document.addEventListener('click', (e) => {
-        const closeEl = e.target.closest('[data-modal-close]');
-        if (closeEl || e.target === modal) {
-            closeModal();
-        }
-    });
+// Close on ESC key
+document.addEventListener('keydown', (e) => {
+    const { modal } = pg_getSuspendModalEls();
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        pg_closeSuspendModal();
+    }
+});
 
-    // Close on ESC key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
-        }
-    });
-
-    form.addEventListener('submit', function(ev){
-        ev.preventDefault();
+// Submit handler via delegation (ensures it works even if form is parsed later)
+document.addEventListener('submit', function(ev) {
+    const form = ev.target;
+    if (!form || form.id !== 'suspendForm') return;
+    ev.preventDefault();
+    const { idInput, targetStateInput, reasonArea, submitBtn, feedback } = pg_getSuspendModalEls();
+    if (!idInput || !targetStateInput || !submitBtn) return;
+    if (feedback) {
         feedback.classList.remove('hidden');
         feedback.className = 'text-sm';
-        const studentId = parseInt(idInput.value,10);
-        const targetActive = targetStateInput.value === '1';
-        let reason = reasonArea.value.trim();
-        if (!targetActive && reason.length < 8) {
+    }
+    const studentId = parseInt(idInput.value,10);
+    const targetActive = targetStateInput.value === '1';
+    let reason = reasonArea ? reasonArea.value.trim() : '';
+    if (!targetActive && (!reason || reason.length < 8)) {
+        if (feedback) {
             feedback.textContent = 'Please provide a reason of at least 8 characters.';
             feedback.classList.add('text-red-600');
-            return;
         }
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-60','cursor-not-allowed');
+        return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60','cursor-not-allowed');
+    if (feedback) {
         feedback.textContent = targetActive ? 'Reactivating account...' : 'Deactivating account...';
         feedback.classList.remove('text-red-600');
         feedback.classList.add('text-gray-600');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        fetch('/admin/toggle_student_status', {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json','X-CSRFToken': csrfToken },
-            body: JSON.stringify({ student_id: studentId, is_active: targetActive, reason })
-        }).then(r=>r.json()).then(data=>{
-            if (data.success) {
+    }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    fetch('/admin/toggle_student_status', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json','X-CSRFToken': csrfToken },
+        body: JSON.stringify({ student_id: studentId, is_active: targetActive, reason })
+    }).then(r=>r.json()).then(data=>{
+        if (data.success) {
+            if (feedback) {
                 feedback.textContent = targetActive ? 'Account reactivated successfully.' : 'Account deactivated successfully.';
                 feedback.classList.remove('text-gray-600');
                 feedback.classList.add('text-green-600');
-                setTimeout(()=>{ window.location.reload(); }, 800);
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+            }
+            setTimeout(()=>{ window.location.reload(); }, 800);
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+            if (feedback) {
                 feedback.textContent = data.message || 'Operation failed.';
                 feedback.classList.remove('text-gray-600');
                 feedback.classList.add('text-red-600');
             }
-        }).catch(err=>{
-            submitBtn.disabled = false;
-            submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+        }
+    }).catch(err=>{
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+        if (feedback) {
             feedback.textContent = 'Unexpected error. Please try again.';
             feedback.classList.remove('text-gray-600');
             feedback.classList.add('text-red-600');
-            console.error(err);
-        });
+        }
+        console.error(err);
     });
 });
 
