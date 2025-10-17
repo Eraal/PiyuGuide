@@ -202,8 +202,23 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Status Badge -->
-                                <div class="flex flex-col items-end space-y-1"></div>
+                                <!-- Status Badges -->
+                                <div class="flex flex-col items-end space-y-1">
+                                    {% if not admin.is_active %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 flex items-center">
+                                        <i class="fas fa-user-slash mr-1"></i> Inactive
+                                    </span>
+                                    {% else %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-md bg-green-100 text-green-700 flex items-center">
+                                        <i class="fas fa-user-check mr-1"></i> Active
+                                    </span>
+                                    {% endif %}
+                                    {% if admin.account_locked %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-md bg-yellow-100 text-yellow-800 flex items-center">
+                                        <i class="fas fa-lock mr-1"></i> Locked
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </div>
                             
                             <!-- Admin Details -->
@@ -242,10 +257,14 @@
                                 </div>
                                 
                                 <div class="flex space-x-1">
-                                    <button type="button" data-action="delete-admin" data-admin-id="{{ admin.id }}" data-admin-name="{{ admin.first_name }} {{ admin.last_name }}"
-                                            class="group bg-red-100 hover:bg-red-200 text-red-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110" 
-                                            title="Delete Account">
-                                        <i class="fas fa-trash group-hover:scale-110 transition-transform"></i>
+                                    <button type="button"
+                                            data-action="toggle-admin-active"
+                                            data-admin-id="{{ admin.id }}"
+                                            data-admin-name="{{ admin.first_name }} {{ admin.last_name }}"
+                                            data-admin-active="{{ 'true' if admin.is_active else 'false' }}"
+                                            class="group p-3 rounded-xl transition-all duration-300 transform hover:scale-110 {{ 'bg-red-100 hover:bg-red-200 text-red-700' if admin.is_active else 'bg-green-100 hover:bg-green-200 text-green-700' }}" 
+                                            title="{{ 'Deactivate Account' if admin.is_active else 'Activate Account' }}">
+                                        <i class="fas {{ 'fa-user-slash' if admin.is_active else 'fa-user-check' }} group-hover:scale-110 transition-transform"></i>
                                     </button>
                                 </div>
                             </div>
@@ -297,6 +316,22 @@
                                                 <i class="fas fa-envelope mr-2 text-blue-500"></i>
                                                 {{ admin.email }}
                                             </div>
+                                            <div class="mt-1 flex items-center space-x-2">
+                                                {% if not admin.is_active %}
+                                                <span class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-red-100 text-red-700 inline-flex items-center">
+                                                    <i class="fas fa-user-slash mr-1"></i> Inactive
+                                                </span>
+                                                {% else %}
+                                                <span class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-green-100 text-green-700 inline-flex items-center">
+                                                    <i class="fas fa-user-check mr-1"></i> Active
+                                                </span>
+                                                {% endif %}
+                                                {% if admin.account_locked %}
+                                                <span class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-yellow-100 text-yellow-800 inline-flex items-center">
+                                                    <i class="fas fa-lock mr-1"></i> Locked
+                                                </span>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -321,10 +356,14 @@
                                            title="Edit Admin">
                                             <i class="fas fa-edit group-hover:scale-110 transition-transform"></i>
                                         </a>
-                                        <button type="button" data-action="delete-admin" data-admin-id="{{ admin.id }}" data-admin-name="{{ admin.first_name }} {{ admin.last_name }}"
-                                                class="group bg-red-100 hover:bg-red-200 text-red-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110" 
-                                                title="Delete Account">
-                                            <i class="fas fa-trash group-hover:scale-110 transition-transform"></i>
+                                        <button type="button"
+                                                data-action="toggle-admin-active"
+                                                data-admin-id="{{ admin.id }}"
+                                                data-admin-name="{{ admin.first_name }} {{ admin.last_name }}"
+                                                data-admin-active="{{ 'true' if admin.is_active else 'false' }}"
+                                                class="group p-3 rounded-xl transition-all duration-300 transform hover:scale-110 {{ 'bg-red-100 hover:bg-red-200 text-red-700' if admin.is_active else 'bg-green-100 hover:bg-green-200 text-green-700' }}" 
+                                                title="{{ 'Deactivate Account' if admin.is_active else 'Activate Account' }}">
+                                            <i class="fas {{ 'fa-user-slash' if admin.is_active else 'fa-user-check' }} group-hover:scale-110 transition-transform"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -567,17 +606,17 @@
     </div>
 </div>
 
-<!-- Modern Delete Admin Modal -->
-<div id="deleteModal" class="fixed inset-0 z-50 overflow-y-auto hidden backdrop-blur-sm" aria-modal="true" role="dialog">
+<!-- Activate/Deactivate Admin Modal -->
+<div id="activeToggleModal" class="fixed inset-0 z-50 overflow-y-auto hidden backdrop-blur-sm" aria-modal="true" role="dialog">
     <div class="flex items-center justify-center min-h-screen p-4 text-center sm:block sm:p-0">
         <div class="fixed inset-0 transition-opacity" aria-hidden="true">
             <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
         </div>
         <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border-0">
-            <div class="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white">
+            <div id="activeToggleHeader" class="flex justify-between items-center px-6 py-4 text-white bg-gradient-to-r from-red-600 to-red-700">
                 <h3 class="text-lg font-bold flex items-center">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    Delete Admin Account
+                    <i id="activeToggleIconHeader" class="fas fa-user-slash mr-2"></i>
+                    <span id="activeToggleHeaderText">Deactivate Admin Account</span>
                 </h3>
                 <button type="button" class="close-modal text-white hover:text-gray-200 transition-colors duration-300 p-2 rounded-full hover:bg-white/10">
                     <i class="fas fa-times"></i>
@@ -586,35 +625,27 @@
             <div class="bg-white px-6 py-6">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <div class="flex items-start">
-                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    <div id="activeToggleIcon" class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-user-slash text-red-600 text-xl"></i>
                     </div>
                     <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900">
-                            Delete Admin Account
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="activeToggleTitle">
+                            Deactivate Admin Account
                         </h3>
                         <div class="mt-2">
-                            <div class="p-4 bg-red-50 rounded-lg border border-red-200 mb-4">
-                                <p class="text-sm text-red-800">
-                                    <i class="fas fa-exclamation-circle mr-2"></i>
-                                    <strong>Warning:</strong> This action cannot be undone!
-                                </p>
-                            </div>
-                            <p class="text-sm text-gray-600">
-                                Are you sure you want to permanently delete the admin account for 
-                                <span id="deleteAdminName" class="font-semibold text-gray-900"></span>?
-                            </p>
-                            <p class="text-sm text-red-600 mt-2">
-                                All data associated with this admin will be permanently removed from the system.
+                            <p class="text-sm text-gray-600" id="activeToggleDescription">
+                                Are you sure you want to deactivate the admin account for 
+                                <span id="activeToggleAdminName" class="font-semibold text-gray-900"></span>?
+                                The user will no longer be able to log in until reactivated.
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse border-t border-gray-200">
-                <button type="button" id="confirmDelete" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-all duration-300 transform hover:scale-105">
-                    <i class="fas fa-trash mr-2"></i>
-                    Delete Account
+                <button type="button" id="confirmActiveToggle" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-all duration-300 transform hover:scale-105">
+                    <i id="activeToggleButtonIcon" class="fas fa-user-slash mr-2"></i>
+                    <span id="activeToggleButtonText">Deactivate Account</span>
                 </button>
                 <button type="button" class="close-modal mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:w-auto sm:text-sm transition-all duration-300">
                     <i class="fas fa-times mr-2"></i>
@@ -656,6 +687,7 @@
 <script>
     // Global variables for actions
     let currentAdminId = null;
+    let currentAdminActive = true;
     let isAdminLocked = false;
     let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     let isCardView = true;
@@ -681,13 +713,14 @@
         // Setup confirm buttons
         setupConfirmButtons();
 
-        // Delegated handler for delete buttons
+        // Delegated handler for activate/deactivate buttons
         document.addEventListener('click', function(e) {
-            const btn = e.target.closest('[data-action="delete-admin"]');
+            const btn = e.target.closest('[data-action="toggle-admin-active"]');
             if (!btn) return;
             const adminId = btn.getAttribute('data-admin-id');
             const adminName = btn.getAttribute('data-admin-name');
-            showDeleteModal(adminId, adminName);
+            const isActive = btn.getAttribute('data-admin-active') === 'true';
+            showActiveToggleModal(adminId, adminName, isActive);
         });
     });
 
@@ -739,38 +772,36 @@
     }
 
     function setupConfirmButtons() {
-        // Delete admin confirmation
-        document.getElementById('confirmDelete').addEventListener('click', function() {
+        // Activate/Deactivate confirmation
+        document.getElementById('confirmActiveToggle').addEventListener('click', function() {
             if (!currentAdminId) return;
-            
-            showLoadingState(this, 'Deleting...');
-            
-            fetch(`/admin/${currentAdminId}/delete`, {
+
+            const deactivating = currentAdminActive === true; // if currently active, we deactivate
+            showLoadingState(this, deactivating ? 'Deactivating...' : 'Activating...');
+
+            fetch(`/admin/${currentAdminId}/toggle-status`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRFToken': csrfToken
-                }
+                },
+                credentials: 'same-origin'
             })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json();
-                } else {
-                    throw new Error('Received non-JSON response from server');
-                }
+                return response.json();
             })
             .then(data => {
                 if (data.success) {
-                    document.getElementById('deleteModal').classList.add('hidden');
-                    showToast(data.message, 'success', 'Admin account has been permanently deleted.');
+                    document.getElementById('activeToggleModal').classList.add('hidden');
+                    const msg = deactivating ? 'Admin account has been deactivated.' : 'Admin account has been activated.';
+                    showToast(data.message, 'success', msg);
                     setTimeout(() => {
                         window.location.reload();
-                    }, 2000);
+                    }, 1500);
                 } else {
                     showToast(`Error: ${data.error}`, 'error');
                 }
@@ -779,7 +810,8 @@
                 showToast(`Error: ${error.message}`, 'error');
             })
             .finally(() => {
-                hideLoadingState(this, 'Delete Account');
+                const btnText = deactivating ? 'Deactivate Account' : 'Activate Account';
+                hideLoadingState(this, `<i class=\"fas ${deactivating ? 'fa-user-slash' : 'fa-user-check'} mr-2\"></i>${btnText}`);
             });
         });
 
@@ -974,11 +1006,51 @@
         modal.classList.remove('hidden');
     }
 
-    function showDeleteModal(adminId, adminName) {
+    function showActiveToggleModal(adminId, adminName, isActive) {
         currentAdminId = adminId;
-        document.getElementById('deleteAdminName').textContent = adminName;
+        currentAdminActive = isActive;
+
+        const header = document.getElementById('activeToggleHeader');
+        const headerText = document.getElementById('activeToggleHeaderText');
+        const iconHeader = document.getElementById('activeToggleIconHeader');
+        const icon = document.getElementById('activeToggleIcon');
+        const title = document.getElementById('activeToggleTitle');
+        const description = document.getElementById('activeToggleDescription');
+        const button = document.getElementById('confirmActiveToggle');
+        const buttonText = document.getElementById('activeToggleButtonText');
+        const buttonIcon = document.getElementById('activeToggleButtonIcon');
+        const nameSpan = document.getElementById('activeToggleAdminName');
+
+        nameSpan.textContent = adminName;
+
+        if (isActive) {
+            // Deactivate flow
+            header.classList.remove('from-green-600', 'to-green-700');
+            header.classList.add('from-red-600', 'to-red-700');
+            iconHeader.className = 'fas fa-user-slash mr-2';
+            icon.innerHTML = '<i class="fas fa-user-slash text-red-600 text-xl"></i>';
+            title.textContent = 'Deactivate Admin Account';
+            description.innerHTML = `Are you sure you want to deactivate the admin account for <span class="font-semibold text-gray-900">${adminName}</span>? The user will no longer be able to log in until reactivated.`;
+            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+            button.classList.add('bg-red-600', 'hover:bg-red-700');
+            buttonText.textContent = 'Deactivate Account';
+            buttonIcon.className = 'fas fa-user-slash mr-2';
+        } else {
+            // Activate flow
+            header.classList.remove('from-red-600', 'to-red-700');
+            header.classList.add('from-green-600', 'to-green-700');
+            iconHeader.className = 'fas fa-user-check mr-2';
+            icon.innerHTML = '<i class="fas fa-user-check text-green-600 text-xl"></i>';
+            title.textContent = 'Activate Admin Account';
+            description.innerHTML = `Are you sure you want to activate the admin account for <span class="font-semibold text-gray-900">${adminName}</span>? The user will be able to log in again.`;
+            button.classList.remove('bg-red-600', 'hover:bg-red-700');
+            button.classList.add('bg-green-600', 'hover:bg-green-700');
+            buttonText.textContent = 'Activate Account';
+            buttonIcon.className = 'fas fa-user-check mr-2';
+        }
+
         document.getElementById('adminDetailsModal').classList.add('hidden');
-        document.getElementById('deleteModal').classList.remove('hidden');
+        document.getElementById('activeToggleModal').classList.remove('hidden');
     }
 
     function showToast(message, type = 'success', subMessage = '') {
