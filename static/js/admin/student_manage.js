@@ -188,47 +188,6 @@ function updateLockStatus(studentId, isLocked, lockReason, lockedAt) {
     }
 }
 
-// Keep the original toggleStudentStatus for activation/deactivation
-function toggleStudentStatus(studentId, newStatus) {
-    // Update confirmation message to be clearer about what's happening
-    const action = newStatus ? 'enable access to' : 'restrict access to';
-    if (!confirm(`Are you sure you want to ${action} this student account?`)) {
-        return;
-    }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    
-    fetch('/admin/toggle_student_status', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-        },
-        body: JSON.stringify({
-            student_id: studentId,
-            is_active: newStatus
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update the button text and style without reloading the page
-            updateButtonStatus(studentId, data.is_active);
-            
-            // Show success message
-            createFlashMessage('success', 
-                `Student account ${data.is_active ? 'activated' : 'deactivated'} successfully`);
-        } else {
-            // Show error message
-            createFlashMessage('error', 'Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        createFlashMessage('error', 'An unexpected error occurred. Please try again.');
-    });
-}
-
 // Helper function to create flash messages
 function createFlashMessage(type, message) {
     const flashContainer = document.createElement('div');
@@ -307,9 +266,10 @@ function updateButtonStatus(studentId, isActive) {
 }
 
 // ---- Suspension Modal Logic ----
-(function(){
+document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('suspendModal');
     if (!modal) return;
+
     const form = document.getElementById('suspendForm');
     const idInput = document.getElementById('suspendStudentId');
     const targetStateInput = document.getElementById('suspendTargetState');
@@ -321,26 +281,20 @@ function updateButtonStatus(studentId, isActive) {
     const submitBtn = document.getElementById('suspendSubmitBtn');
     const feedback = document.getElementById('suspendFeedback');
 
-    // Ensure the modal is attached to the page-level (body) to prevent clipping by table/containers
     function ensureModalAtBody() {
-        // Move modal to body to avoid clipping within scrollable/table containers or transformed ancestors
         if (modal.parentElement !== document.body) {
             document.body.appendChild(modal);
         }
-        // Ensure it covers the viewport and overlays everything
         modal.style.position = 'fixed';
         modal.style.inset = '0';
         modal.style.zIndex = '1200';
     }
 
-    function openModal(studentId, currentlyActive, name, existingReason) {
-        // Re-parent to body so it is page-anchored and not constrained by table containers
+    function openModal(studentId, currentlyActive, name) {
         ensureModalAtBody();
-        // Lock background scroll
         document.body.style.overflow = 'hidden';
         idInput.value = studentId;
         if (currentlyActive) {
-            // Deactivate flow
             targetStateInput.value = '0';
             titleEl.textContent = 'Deactivate Student Account';
             subtitleEl.textContent = `Provide a reason for deactivation. This will be shown to ${name.split(' ')[0]} on next login.`;
@@ -351,10 +305,9 @@ function updateButtonStatus(studentId, isActive) {
             reactivateNotice.classList.add('hidden');
             reasonArea.value = '';
         } else {
-            // Reactivate flow
             targetStateInput.value = '1';
             titleEl.textContent = 'Reactivate Student Account';
-            subtitleEl.textContent = `Re-enable access for ${name}.`; 
+            subtitleEl.textContent = `Re-enable access for ${name}.`;
             submitBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> Confirm Reactivate';
             submitBtn.classList.remove('bg-red-600','hover:bg-red-700');
             submitBtn.classList.add('bg-blue-600','hover:bg-blue-700');
@@ -370,20 +323,22 @@ function updateButtonStatus(studentId, isActive) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         feedback.classList.add('hidden');
-        // Restore background scroll
         document.body.style.overflow = '';
     }
 
+    // Open trigger (event delegation for dynamically created rows)
     document.addEventListener('click', (e)=>{
         const trigger = e.target.closest('.open-suspend-modal');
         if (trigger) {
             const sid = parseInt(trigger.getAttribute('data-student-id'),10);
             const active = trigger.getAttribute('data-current-active') === '1';
             const name = trigger.getAttribute('data-student-name') || 'this student';
-            const existingReason = trigger.getAttribute('data-reason') || '';
-            openModal(sid, active, name, existingReason);
+            openModal(sid, active, name);
         }
-        // Close when clicking on backdrop or any element (or its children) that has data-modal-close
+    });
+
+    // Close via backdrop or any element with data-modal-close
+    document.addEventListener('click', (e) => {
         const closeEl = e.target.closest('[data-modal-close]');
         if (closeEl || e.target === modal) {
             closeModal();
@@ -441,6 +396,6 @@ function updateButtonStatus(studentId, isActive) {
             console.error(err);
         });
     });
-})();
+});
 
 
