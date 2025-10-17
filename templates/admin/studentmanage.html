@@ -513,7 +513,7 @@
 })();
 </script>
 
-<script src="/static/js/admin/student_manage.js"></script>
+<script src="{{ url_for('static', filename='js/admin/student_manage.js') }}?v={{ ASSET_VERSION }}"></script>
 <!-- Suspension Modal moved here to be outside blurred/overflow containers -->
 <div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
     <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" data-modal-close></div>
