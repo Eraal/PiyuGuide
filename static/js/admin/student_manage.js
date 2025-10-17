@@ -323,10 +323,13 @@ function updateButtonStatus(studentId, isActive) {
 
     // Ensure the modal is attached to the page-level (body) to prevent clipping by table/containers
     function ensureModalAtBody() {
+        // Move modal to body to avoid clipping within scrollable/table containers or transformed ancestors
         if (modal.parentElement !== document.body) {
             document.body.appendChild(modal);
         }
-        // Elevate above nav/sidebars/other overlays
+        // Ensure it covers the viewport and overlays everything
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
         modal.style.zIndex = '1200';
     }
 
@@ -380,8 +383,17 @@ function updateButtonStatus(studentId, isActive) {
             const existingReason = trigger.getAttribute('data-reason') || '';
             openModal(sid, active, name, existingReason);
         }
-        if (e.target.matches('[data-modal-close]') || e.target.getAttribute('data-modal-close') !== null) {
-            if (e.target === modal || e.target.hasAttribute('data-modal-close')) closeModal();
+        // Close when clicking on backdrop or any element (or its children) that has data-modal-close
+        const closeEl = e.target.closest('[data-modal-close]');
+        if (closeEl || e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Close on ESC key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
         }
     });
 

@@ -415,16 +415,11 @@
 
                         <!-- Button for locking/unlocking (for rule violations) -->
                             <button 
-                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal {{ 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' if student.user.is_active else 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' }}"
                                 data-student-id="{{ student.id }}"
                                 data-current-active="{{ 1 if student.user.is_active else 0 }}"
                                 data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
                                 data-reason="{{ student.user.lock_reason or '' }}"
-                                {% if student.user.is_active %}
-                                    class="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                {% else %}
-                                    class="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                                {% endif %}
                             >
                                 <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
                                 {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
