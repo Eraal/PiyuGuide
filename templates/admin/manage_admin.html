@@ -773,47 +773,18 @@
 
     function setupConfirmButtons() {
         // Activate/Deactivate confirmation
-        document.getElementById('confirmActiveToggle').addEventListener('click', function() {
-            if (!currentAdminId) return;
-
-            const deactivating = currentAdminActive === true; // if currently active, we deactivate
-            showLoadingState(this, deactivating ? 'Deactivating...' : 'Activating...');
-
-            fetch(`/admin/${currentAdminId}/toggle-status`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('activeToggleModal').classList.add('hidden');
-                    const msg = deactivating ? 'Admin account has been deactivated.' : 'Admin account has been activated.';
-                    showToast(data.message, 'success', msg);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showToast(`Error: ${data.error}`, 'error');
-                }
-            })
-            .catch(error => {
-                showToast(`Error: ${error.message}`, 'error');
-            })
-            .finally(() => {
-                const btnText = deactivating ? 'Deactivate Account' : 'Activate Account';
-                hideLoadingState(this, `<i class=\"fas ${deactivating ? 'fa-user-slash' : 'fa-user-check'} mr-2\"></i>${btnText}`);
+        const confirmToggleBtn = document.getElementById('confirmActiveToggle');
+        if (confirmToggleBtn) {
+            confirmToggleBtn.addEventListener('click', function() {
+                if (!currentAdminId) return;
+                const deactivating = currentAdminActive === true; // if currently active, we deactivate
+                showLoadingState(this, deactivating ? 'Deactivating...' : 'Activating...');
+                doActiveToggleRequest(deactivating, () => {
+                    const btnText = deactivating ? 'Deactivate Account' : 'Activate Account';
+                    hideLoadingState(this, `<i class=\"fas ${deactivating ? 'fa-user-slash' : 'fa-user-check'} mr-2\"></i>${btnText}`);
+                });
             });
-        });
+        }
 
         // Reassign admin confirmation
         document.getElementById('confirmReassign').addEventListener('click', function() {
@@ -1047,8 +1018,55 @@
 
         const detailsModal = document.getElementById('adminDetailsModal');
         const activeModal = document.getElementById('activeToggleModal');
+        if (!activeModal) {
+            // Fallback: no modal present (cached or older HTML). Use confirm() prompt and perform request directly.
+            const deactivating = isActive === true;
+            const promptText = deactivating ?
+                `Deactivate admin account for ${adminName}? They will not be able to log in until reactivated.` :
+                `Activate admin account for ${adminName}? They will be able to log in again.`;
+            if (window.confirm(promptText)) {
+                doActiveToggleRequest(deactivating);
+            }
+            return;
+        }
         if (detailsModal) detailsModal.classList.add('hidden');
-        if (activeModal) activeModal.classList.remove('hidden');
+        activeModal.classList.remove('hidden');
+    }
+
+    function doActiveToggleRequest(deactivating, finallyCb) {
+        if (!currentAdminId) return;
+        fetch(`/admin/${currentAdminId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const modal = document.getElementById('activeToggleModal');
+                if (modal) modal.classList.add('hidden');
+                const msg = deactivating ? 'Admin account has been deactivated.' : 'Admin account has been activated.';
+                showToast(data.message, 'success', msg);
+                setTimeout(() => { window.location.reload(); }, 1200);
+            } else {
+                showToast(`Error: ${data.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            showToast(`Error: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            if (typeof finallyCb === 'function') finallyCb();
+        });
     }
 
     function showToast(message, type = 'success', subMessage = '') {
