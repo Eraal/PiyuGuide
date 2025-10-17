@@ -21,11 +21,13 @@
         visibility: visible;
         transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
                     visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: auto; /* Block interactions only while visible */
     }
     
     .loading-screen.hidden {
         opacity: 0;
         visibility: hidden;
+        pointer-events: none; /* Do not block interactions when hidden */
     }
     
     .loading-content {
@@ -469,6 +471,13 @@
     const MIN_LOADING_TIME = 600;
     const startTime = Date.now();
     
+    function reallyHide() {
+        if (loadingScreen) {
+            // Remove from layout entirely after transition ends
+            loadingScreen.style.display = 'none';
+        }
+    }
+
     function hideLoadingScreen() {
         const elapsed = Date.now() - startTime;
         const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
@@ -476,6 +485,8 @@
         setTimeout(function() {
             if (loadingScreen) {
                 loadingScreen.classList.add('hidden');
+                // After CSS transition (~400ms), remove from layout to avoid intercepting any events
+                setTimeout(reallyHide, 450);
             }
         }, remainingTime);
     }
