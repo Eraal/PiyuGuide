@@ -1021,36 +1021,34 @@
         const buttonIcon = document.getElementById('activeToggleButtonIcon');
         const nameSpan = document.getElementById('activeToggleAdminName');
 
-        nameSpan.textContent = adminName;
+        if (nameSpan) nameSpan.textContent = adminName || '';
 
         if (isActive) {
             // Deactivate flow
-            header.classList.remove('from-green-600', 'to-green-700');
-            header.classList.add('from-red-600', 'to-red-700');
-            iconHeader.className = 'fas fa-user-slash mr-2';
-            icon.innerHTML = '<i class="fas fa-user-slash text-red-600 text-xl"></i>';
-            title.textContent = 'Deactivate Admin Account';
-            description.innerHTML = `Are you sure you want to deactivate the admin account for <span class="font-semibold text-gray-900">${adminName}</span>? The user will no longer be able to log in until reactivated.`;
-            button.classList.remove('bg-green-600', 'hover:bg-green-700');
-            button.classList.add('bg-red-600', 'hover:bg-red-700');
-            buttonText.textContent = 'Deactivate Account';
-            buttonIcon.className = 'fas fa-user-slash mr-2';
+            if (header) { header.classList.remove('from-green-600', 'to-green-700'); header.classList.add('from-red-600', 'to-red-700'); }
+            if (iconHeader) iconHeader.className = 'fas fa-user-slash mr-2';
+            if (icon) icon.innerHTML = '<i class="fas fa-user-slash text-red-600 text-xl"></i>';
+            if (title) title.textContent = 'Deactivate Admin Account';
+            if (description) description.innerHTML = `Are you sure you want to deactivate the admin account for <span class=\"font-semibold text-gray-900\">${adminName}</span>? The user will no longer be able to log in until reactivated.`;
+            if (button) { button.classList.remove('bg-green-600', 'hover:bg-green-700'); button.classList.add('bg-red-600', 'hover:bg-red-700'); }
+            if (buttonText) buttonText.textContent = 'Deactivate Account';
+            if (buttonIcon) buttonIcon.className = 'fas fa-user-slash mr-2';
         } else {
             // Activate flow
-            header.classList.remove('from-red-600', 'to-red-700');
-            header.classList.add('from-green-600', 'to-green-700');
-            iconHeader.className = 'fas fa-user-check mr-2';
-            icon.innerHTML = '<i class="fas fa-user-check text-green-600 text-xl"></i>';
-            title.textContent = 'Activate Admin Account';
-            description.innerHTML = `Are you sure you want to activate the admin account for <span class="font-semibold text-gray-900">${adminName}</span>? The user will be able to log in again.`;
-            button.classList.remove('bg-red-600', 'hover:bg-red-700');
-            button.classList.add('bg-green-600', 'hover:bg-green-700');
-            buttonText.textContent = 'Activate Account';
-            buttonIcon.className = 'fas fa-user-check mr-2';
+            if (header) { header.classList.remove('from-red-600', 'to-red-700'); header.classList.add('from-green-600', 'to-green-700'); }
+            if (iconHeader) iconHeader.className = 'fas fa-user-check mr-2';
+            if (icon) icon.innerHTML = '<i class="fas fa-user-check text-green-600 text-xl"></i>';
+            if (title) title.textContent = 'Activate Admin Account';
+            if (description) description.innerHTML = `Are you sure you want to activate the admin account for <span class=\"font-semibold text-gray-900\">${adminName}</span>? The user will be able to log in again.`;
+            if (button) { button.classList.remove('bg-red-600', 'hover:bg-red-700'); button.classList.add('bg-green-600', 'hover:bg-green-700'); }
+            if (buttonText) buttonText.textContent = 'Activate Account';
+            if (buttonIcon) buttonIcon.className = 'fas fa-user-check mr-2';
         }
 
-        document.getElementById('adminDetailsModal').classList.add('hidden');
-        document.getElementById('activeToggleModal').classList.remove('hidden');
+        const detailsModal = document.getElementById('adminDetailsModal');
+        const activeModal = document.getElementById('activeToggleModal');
+        if (detailsModal) detailsModal.classList.add('hidden');
+        if (activeModal) activeModal.classList.remove('hidden');
     }
 
     function showToast(message, type = 'success', subMessage = '') {

@@ -135,7 +135,7 @@ def manage_admins():
         status=status
     )
 
-@admin_bp.route('/admin/<int:admin_id>/details')
+@admin_bp.route('/<int:admin_id>/details')
 @login_required
 def admin_details(admin_id):
     """Get detailed information about a specific admin"""
@@ -188,7 +188,7 @@ def admin_details(admin_id):
     
     return jsonify(admin_details)
 
-@admin_bp.route('/admin/<int:admin_id>/toggle-status', methods=['POST'])
+@admin_bp.route('/<int:admin_id>/toggle-status', methods=['POST'])
 @login_required
 def manage_toggle_admin_status(admin_id):
     """Toggle admin account active status"""
@@ -226,7 +226,7 @@ def manage_toggle_admin_status(admin_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/admin/<int:admin_id>/toggle-lock', methods=['POST'])
+@admin_bp.route('/<int:admin_id>/toggle-lock', methods=['POST'])
 @login_required
 def toggle_admin_lock(admin_id):
     """Toggle admin account lock status"""
@@ -270,7 +270,7 @@ def toggle_admin_lock(admin_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/admin/<int:admin_id>/delete', methods=['POST'])
+@admin_bp.route('/<int:admin_id>/delete', methods=['POST'])
 @login_required
 def delete_admin(admin_id):
     """Delete an admin account"""
@@ -310,7 +310,7 @@ def delete_admin(admin_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/admin/<int:admin_id>/reassign', methods=['POST'])
+@admin_bp.route('/<int:admin_id>/reassign', methods=['POST'])
 @login_required
 @campus_access_required
 def reassign_admin(admin_id):
