@@ -1,5 +1,6 @@
-// Search functionality
-document.getElementById('searchInput').addEventListener('keyup', function() {
+// Search functionality (guard for presence)
+const pg_searchInput = document.getElementById('searchInput');
+if (pg_searchInput) pg_searchInput.addEventListener('keyup', function() {
     const searchText = this.value.toLowerCase();
     const table = document.getElementById('studentTableBody');
     const rows = table.getElementsByTagName('tr');
@@ -26,16 +27,18 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
     }
 });
 
-// Status filter (for active/inactive)
-document.getElementById('statusFilter').addEventListener('change', function() {
+// Status filter (for active/inactive) (guard for presence)
+const pg_statusFilter = document.getElementById('statusFilter');
+if (pg_statusFilter) pg_statusFilter.addEventListener('change', function() {
     // Since we removed status columns, this filter may need to be updated
     // or removed based on whether you want to keep account status filtering
     console.log('Status filter changed:', this.value);
     // Implementation depends on whether you want to keep any status filtering
 });
 
-// Sort functionality
-document.getElementById('sortBy').addEventListener('change', function() {
+// Sort functionality (guard for presence)
+const pg_sortBy = document.getElementById('sortBy');
+if (pg_sortBy) pg_sortBy.addEventListener('change', function() {
     const sortBy = this.value;
     const table = document.getElementById('studentTableBody');
     const rows = Array.from(table.getElementsByTagName('tr'));
@@ -341,6 +344,30 @@ document.addEventListener('click', (e)=>{
         const name = trigger.getAttribute('data-student-name') || 'this student';
         pg_openSuspendModal(sid, active, name);
     }
+});
+
+// Redundant capture-phase listener to survive stopPropagation in bubbling
+document.addEventListener('click', (e)=>{
+    const trigger = e.target.closest('.open-suspend-modal');
+    if (trigger) {
+        const sid = parseInt(trigger.getAttribute('data-student-id'),10);
+        const active = trigger.getAttribute('data-current-active') === '1';
+        const name = trigger.getAttribute('data-student-name') || 'this student';
+        pg_openSuspendModal(sid, active, name);
+    }
+}, true);
+
+// Also bind directly after DOM ready as a fallback
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.open-suspend-modal').forEach(btn => {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            const sid = parseInt(btn.getAttribute('data-student-id'),10);
+            const active = btn.getAttribute('data-current-active') === '1';
+            const name = btn.getAttribute('data-student-name') || 'this student';
+            pg_openSuspendModal(sid, active, name);
+        });
+    });
 });
 
 // Close via backdrop or any element with data-modal-close
