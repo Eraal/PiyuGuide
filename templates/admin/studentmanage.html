@@ -409,8 +409,8 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex space-x-3">
-                        <a href="{{ url_for('admin.view_student', student_id=student.id) }}" 
-                           class="group bg-purple-100 hover:bg-purple-200 text-purple-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110" 
+                                <a href="{{ url_for('admin.view_student', student_id=student.id) }}" 
+                                    class="group bg-purple-100 hover:bg-purple-200 text-purple-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110 relative z-0" 
                            title="Edit Student">
                             <i class="fas fa-edit group-hover:scale-110 transition-transform"></i>
                         </a>
@@ -418,7 +418,8 @@
                         <!-- Button for locking/unlocking (for rule violations) -->
                             <button 
                                 type="button"
-                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal {{ 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' if student.user.is_active else 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' }}"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal pointer-events-auto relative z-20 {{ 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' if student.user.is_active else 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' }}"
+                                style="isolation:isolate;"
                                 data-student-id="{{ student.id }}"
                                 data-current-active="{{ 1 if student.user.is_active else 0 }}"
                                 data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
