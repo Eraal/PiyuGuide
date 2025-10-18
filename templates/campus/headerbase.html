@@ -230,6 +230,13 @@
         class="container mx-auto px-4 py-3 flex justify-between items-center"
       >
         <div class="flex items-center space-x-2 md:space-x-3">
+      {# Back to campus selection (browse-only) #}
+      {% if not current_user.is_authenticated and current_campus %}
+          <a href="{{ url_for('main.campus_selection') }}" class="mr-1 md:mr-2 text-white hover:text-blue-200 flex items-center" title="Back to Campuses">
+            <i class="fas fa-arrow-left text-lg md:text-xl" aria-hidden="true"></i>
+            <span class="sr-only">Back to Campuses</span>
+          </a>
+      {% endif %}
       {% if current_campus %}
           <a href="{{ url_for('main.campus_landing', campus_id=current_campus.id) }}" class="block hover:scale-105 transition-transform duration-200">
             <img
@@ -313,12 +320,14 @@
             class="px-2 py-1 transition {% if request.endpoint == 'main.campus_securityprivacy' %}border-b-2 border-white{% else %}hover:text-blue-200{% endif %}"
             >Security & Privacy</a
           >
+          {% if current_user.is_authenticated %}
           <a
             href="{{ url_for('main.campus_selection') }}"
             class="px-2 py-1 transition hover:text-blue-200"
             title="Change campus"
             >Campuses</a
           >
+          {% endif %}
           {% else %}
           <a
             href="{{ url_for('main.index') }}"
@@ -385,12 +394,14 @@
             class="block hover:text-blue-200 transition"
             >Security & Privacy</a
           >
+          {% if current_user.is_authenticated %}
           <a
             href="{{ url_for('main.campus_selection') }}"
             class="block hover:text-blue-200 transition"
             title="Change campus"
             >Campuses</a
           >
+          {% endif %}
           {% else %}
           <a
             href="{{ url_for('main.index') }}"
