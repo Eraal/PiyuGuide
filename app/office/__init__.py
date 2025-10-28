@@ -77,4 +77,4 @@ def inject_office_notifications():
     }
 
 from .routes import office_base, office_dashboard, office_acount_settings, office_inquiries, office_counseling, office_announcements, office_notifications
-from .routes import office_activity_logs, office_team, office_reports, office_concern_types, office_counseling_concern_types
+from .routes import office_activity_logs, office_team, office_reports, office_concern_types, office_counseling_concern_types, office_feedbacks

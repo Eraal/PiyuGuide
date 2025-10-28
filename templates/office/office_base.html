@@ -632,6 +632,23 @@
             </span>
             {% endif %}
           </a>
+          
+          <!-- Feedbacks (only when counseling is offered) -->
+          <a
+            id="nav-feedbacks"
+            href="{{ url_for('office.office_feedbacks') }}"
+            class="sidebar-item flex items-center px-4 py-3 {% if request.endpoint == 'office.office_feedbacks' %}active-nav{% else %}text-gray-700 hover:text-green-700{% endif %}"
+          >
+            <div class="w-8 flex justify-center">
+              <i class="fas fa-comment-dots"></i>
+            </div>
+            <span class="ml-3 font-medium">Feedbacks</span>
+            {% if request.endpoint == 'office.office_feedbacks' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs"></i>
+            </span>
+            {% endif %}
+          </a>
           {% endif %}
 
           <a
