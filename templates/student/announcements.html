@@ -63,7 +63,7 @@
     <div class="space-y-6" id="announcements-container">
         {% if announcements %}
             {% for announcement in announcements %}
-            <div class="ann-card announcement-card p-6 border-l-4 {% if announcement.is_public %}border-green-500{% else %}border-blue-500{% endif %}">
+            <div id="ann-{{ announcement.id }}" class="ann-card announcement-card p-6 border-l-4 {% if announcement.is_public %}border-green-500{% else %}border-blue-500{% endif %}">
                 <div class="ann-header mb-3">
                     <div class="ann-avatar">
                         {% set pic = announcement.author.profile_pic_path %}
@@ -234,5 +234,22 @@
         if(dateRange) params.append('date_range', dateRange);
         window.location.href = `${window.location.pathname}?${params.toString()}`;
     });
+</script>
+<script>
+    // If a specific announcement is targeted (?highlight=<id>), scroll to and highlight it
+    (function() {
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('highlight');
+        if (!targetId) return;
+        const el = document.getElementById('ann-' + targetId);
+        if (!el) return;
+        // Add a temporary highlight ring/animation
+        el.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'ring-offset-blue-50');
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Remove highlight after a few seconds
+        setTimeout(() => {
+            el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'ring-offset-blue-50');
+        }, 3000);
+    })();
 </script>
 {% endblock %}

@@ -446,7 +446,7 @@
         <div id="student-ann-list" class="max-h-96 overflow-y-auto divide-y divide-transparent">
                   {% if notifications %}
                     {% for n in notifications %}
-          <a href="{% if n.inquiry_id %}{{ url_for('student.view_inquiry', inquiry_id=n.inquiry_id) }}{% elif n.announcement_id %}{{ url_for('student.view_announcement', announcement_id=n.announcement_id) }}{% elif n.link %}{{ n.link }}{% else %}{{ url_for('student.notifications') }}{% endif %}"
+       <a href="{% if n.inquiry_id %}{{ url_for('student.view_inquiry', inquiry_id=n.inquiry_id) }}{% elif n.announcement_id %}{{ url_for('student.announcements') }}?highlight={{ n.announcement_id }}{% elif n.link %}{{ n.link }}{% else %}{{ url_for('student.notifications') }}{% endif %}"
              data-id="{{ n.id }}"
              {% if n.announcement_id %} data-announcement-id="{{ n.announcement_id }}"{% endif %}
              class="office-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}"
@@ -834,36 +834,7 @@
       </div>
     </div>
 
-    <!-- Announcement Details Modal -->
-    <div id="announcementModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="announcementTitle">
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-      <div class="relative h-full w-full flex items-center justify-center p-4">
-        <div class="w-full max-w-2xl rounded-xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
-          <div class="px-5 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <i class="fas fa-bullhorn"></i>
-              </div>
-              <div>
-                <div id="announcementHeaderOffice" class="text-xs text-white/80"></div>
-                <h3 id="announcementTitle" class="font-semibold">Announcement</h3>
-              </div>
-            </div>
-            <button id="announcementCloseBtn" class="text-white/80 hover:text-white" aria-label="Close announcement dialog">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <div class="px-5 py-4 space-y-3">
-            <div id="announcementMeta" class="text-xs text-gray-500 flex flex-wrap items-center gap-3"></div>
-            <div id="announcementContent" class="prose max-w-none text-gray-800"></div>
-            <div id="announcementImages" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
-          </div>
-          <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-2">
-            <a id="announcementOpenPage" href="#" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Open Full Page</a>
-          </div>
-        </div>
-      </div>
-    </div>
+    
 
     <script>
       // Office-style notification/ toast CSS (minimal reuse via class names used above)
@@ -1063,7 +1034,7 @@
           function setBadgeCount(n){ if(!badge) return; if(n<=0){badge.textContent='0'; badge.classList.add('hidden');} else {badge.textContent=String(n); badge.classList.remove('hidden');} }
           function buildItem(data){
             const a = document.createElement('a');
-            const href = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcement/${data.announcement_id}` : (data.link || "{{ url_for('student.notifications') }}"));
+            const href = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcements?highlight=${data.announcement_id}` : (data.link || "{{ url_for('student.notifications') }}"));
             a.href = href; a.className='office-ann-item unread px-4 py-3 transition-colors'; a.dataset.id = data.id || data.notification_id || '';
             if (data.announcement_id) a.dataset.announcementId = String(data.announcement_id);
             const ts = formatPHT(data.created_at || data.timestamp || Date.now());
@@ -1135,68 +1106,16 @@
           const notifOverlay = document.getElementById('student-ann-overlay');
           if(notifOverlay){ notifOverlay.addEventListener('click', ()=> closeDropdown()); }
 
-          // Announcement modal support
-          const annModal = document.getElementById('announcementModal');
-          const annClose = document.getElementById('announcementCloseBtn');
-          const annHeaderOffice = document.getElementById('announcementHeaderOffice');
-          const annTitle = document.getElementById('announcementTitle');
-          const annMeta = document.getElementById('announcementMeta');
-          const annContent = document.getElementById('announcementContent');
-          const annImages = document.getElementById('announcementImages');
-          const annOpenPage = document.getElementById('announcementOpenPage');
-
-          function openAnnouncementModal(announcementId){
-            if(!announcementId) return false;
-            fetch(`/student/api/announcement/${announcementId}`)
-              .then(async res => {
-                if(!res.ok){ throw new Error('Fetch failed'); }
-                return res.json();
-              })
-              .then(data => {
-                // Populate modal
-                const officeBits = [data.office_name || data.posted_by_office_name || '', data.campus_name || ''].filter(Boolean);
-                annHeaderOffice.textContent = officeBits.join(' • ');
-                annTitle.textContent = data.title || 'Announcement';
-                const meta = [];
-                if (data.author_name) meta.push(`${data.author_name}${data.author_role? ' ('+data.author_role.replace(/_/g,' ')+')':''}`);
-                if (data.created_at) meta.push(new Date(data.created_at).toLocaleString());
-                annMeta.textContent = meta.join(' • ');
-                annContent.innerHTML = '';
-                const p = document.createElement('p'); p.textContent = data.content || ''; annContent.appendChild(p);
-                annImages.innerHTML='';
-                if (Array.isArray(data.images)){
-                  data.images.forEach(img => {
-                    if(!img || !img.url) return;
-                    const a = document.createElement('a'); a.href = img.url; a.target='_blank'; a.rel='noopener';
-                    const im = document.createElement('img'); im.src = img.url; im.alt = img.caption||'Announcement image'; im.className='w-full h-28 object-cover rounded-lg border';
-                    a.appendChild(im);
-                    annImages.appendChild(a);
-                  });
-                }
-                annOpenPage.href = data.link || `/student/announcement/${announcementId}`;
-                annModal.classList.remove('hidden');
-              })
-              .catch(() => { window.location.href = `/student/announcement/${announcementId}`; });
-            return true;
-          }
-
-          function closeAnnouncementModal(){ annModal.classList.add('hidden'); }
-          if(annClose) annClose.addEventListener('click', closeAnnouncementModal);
-          if(annModal){ annModal.addEventListener('click', (e)=>{ if(e.target===annModal || e.target.classList.contains('backdrop-blur-sm')) closeAnnouncementModal(); }); }
-
           if(list){
             list.addEventListener('click', async (e)=>{
               const a = e.target.closest('.office-ann-item');
               if(!a) return;
-              // Intercept announcement click to open modal
-              const annId = a.dataset.announcementId;
-              if(annId){ e.preventDefault(); openAnnouncementModal(annId); }
-
+              // Do not intercept announcement clicks; allow navigation to announcements page
               if(a.classList.contains('unread')){
                 a.classList.remove('unread');
                 const id = a.dataset.id;
                 if(badge && !badge.classList.contains('hidden')){ let n=parseInt(badge.textContent||'0'); n=isNaN(n)?0:Math.max(0,n-1); setBadgeCount(n); }
-                if(id){ try { await fetch(`/student/notifications/mark-read/${id}`, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});} catch(err){} }
+                if(id){ try { fetch(`/student/notifications/mark-read/${id}`, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}, keepalive: true}); } catch(err){} }
               }
             });
           }
@@ -1241,7 +1160,7 @@
               if(/success|scheduled|ready/.test(kind)) toastType='success';
               else if(/warning|reminder/.test(kind)) toastType='warning';
               else if(/error|fail/.test(kind)) toastType='error';
-              const link = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcement/${data.announcement_id}` : (data.link || null));
+              const link = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcements?highlight=${data.announcement_id}` : (data.link || null));
               let title = data.title || 'Notification';
               let message = data.message || '';
               if(message.length>180) message = message.slice(0,177)+'…';

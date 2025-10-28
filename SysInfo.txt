@@ -50,3 +50,15 @@ sudo systemctl restart piyuguide
 systemctl status piyuguide --no-pager
 
 /docs/loading_animation_preview.html
+
+# Temporarily stop site
+sudo systemctl stop piyuguide
+sudo systemctl stop nginx
+
+# Bring it back
+sudo systemctl start nginx
+sudo systemctl start piyuguide
+
+# Check status
+sudo systemctl status nginx --no-pager
+sudo systemctl status piyuguide --no-pager
