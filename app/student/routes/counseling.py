@@ -6,7 +6,7 @@ from app.student import student_bp
 from app.models import (
     CounselingSession, Student, User, Office, 
     StudentActivityLog, Notification, OfficeConcernType, ConcernType,
-    SessionParticipation
+    SessionParticipation, Feedback
 )
 from app.extensions import db
 from app.utils import role_required
@@ -98,6 +98,9 @@ def view_session(session_id):
         user_id=current_user.id
     ).order_by(desc(Notification.created_at)).limit(5).all()
     
+    # Load any existing feedback (if already submitted)
+    feedback = Feedback.query.filter_by(session_id=session.id, student_id=student.id).first()
+
     # Log this activity
     log_entry = StudentActivityLog(
         student_id=student.id,
@@ -113,9 +116,59 @@ def view_session(session_id):
     return render_template(
         'student/view_session.html',
         session=session,
+        feedback=feedback,
         unread_notifications_count=unread_notifications_count,
         notifications=notifications
     )
+
+@student_bp.route('/submit-feedback/<int:session_id>', methods=['POST'])
+@login_required
+@role_required(['student'])
+def submit_feedback(session_id):
+    """Accept feedback from the student for a completed counseling session."""
+    student = Student.query.filter_by(user_id=current_user.id).first_or_404()
+    session_obj = CounselingSession.query.filter_by(id=session_id, student_id=student.id).first_or_404()
+
+    # Only allow feedback after session completion
+    if session_obj.status != 'completed':
+        flash('Feedback can be submitted after the session is marked completed.', 'warning')
+        return redirect(url_for('student.view_session', session_id=session_id))
+
+    message = request.form.get('feedback_message', '').strip()
+    if not message:
+        flash('Please share a brief message about your experience.', 'error')
+        return redirect(url_for('student.view_session', session_id=session_id))
+
+    try:
+        existing = Feedback.query.filter_by(session_id=session_obj.id, student_id=student.id).first()
+        if existing:
+            existing.message = message
+            # updated_at auto-updates
+            action = 'Updated feedback'
+        else:
+            fb = Feedback(session_id=session_obj.id, student_id=student.id, message=message)
+            db.session.add(fb)
+            action = 'Submitted feedback'
+
+        # Log student activity
+        log_entry = StudentActivityLog(
+            student_id=student.id,
+            action=f"{action} for counseling session #{session_id}",
+            related_id=session_obj.id,
+            related_type="counseling_session",
+            timestamp=datetime.utcnow(),
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+        db.session.add(log_entry)
+
+        db.session.commit()
+        flash('Thank you for your feedback. It helps us improve our services.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Could not save feedback: {str(e)}', 'error')
+
+    return redirect(url_for('student.view_session', session_id=session_id))
 
 @student_bp.route('/schedule-session', methods=['POST'])
 @login_required

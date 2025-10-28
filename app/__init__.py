@@ -2,7 +2,7 @@ import logging
 import json
 
 from flask import Flask, current_app
-from .extensions import db, socketio
+from .extensions import db, socketio, migrate
 from pathlib import Path
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
@@ -34,6 +34,8 @@ def create_app():
     app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # max file size 20MB
 
     db.init_app(app)
+    # Initialize Flask-Migrate for safe schema migrations
+    migrate.init_app(app, db)
     # Configure Socket.IO using app config
     sio_kwargs = {
         'async_mode': app.config.get('SOCKETIO_ASYNC_MODE', 'eventlet'),

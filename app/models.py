@@ -245,6 +245,8 @@ class Student(db.Model):
     department_rel = db.relationship('Department')
     inquiries = db.relationship('Inquiry', back_populates='student', lazy=True)
     counseling_sessions = db.relationship('CounselingSession', back_populates='student', lazy=True)
+    # Student feedback on counseling sessions
+    feedbacks = db.relationship('Feedback', back_populates='student', lazy=True, cascade='all, delete-orphan')
 
     # Convenience: unified display name for department
     @property
@@ -537,6 +539,8 @@ class CounselingSession(db.Model):
     office = db.relationship('Office', back_populates='counseling_sessions')
     counselor = db.relationship('User', back_populates='counseling_sessions')
     recording = db.relationship('SessionRecording', uselist=False, back_populates='session', cascade='all, delete-orphan')
+    # One feedback per session from the student
+    feedback = db.relationship('Feedback', uselist=False, back_populates='session', cascade='all, delete-orphan')
     # Relationship to concern type (re-uses existing ConcernType model)
     nature_of_concern = db.relationship('ConcernType')
 
@@ -612,6 +616,26 @@ class CounselingSession(db.Model):
     def meeting_link(self, value):
         """Setter for meeting_link that updates meeting_url"""
         self.meeting_url = value
+
+
+class Feedback(db.Model):
+    """Student feedback for completed counseling sessions."""
+    __tablename__ = 'feedback'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('counseling_sessions.id', ondelete='CASCADE'), nullable=False, unique=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), nullable=False, index=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationships
+    session = db.relationship('CounselingSession', back_populates='feedback')
+    student = db.relationship('Student', back_populates='feedbacks')
+
+    __table_args__ = (
+        # Enforce one feedback per session
+        db.UniqueConstraint('session_id', name='uq_feedback_session'),
+    )
 
 # New model for session recording (optional feature)
 class SessionRecording(db.Model):
