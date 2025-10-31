@@ -376,18 +376,27 @@ def _issue_and_send_verification(user: User, ttl_hours: int = 48):
     if Message is None:
         # If Flask-Mail isn't installed, raise a clear error at runtime
         raise RuntimeError('Flask-Mail is required. Install dependencies and set MAIL_* env vars.')
-    msg = Message(subject=subject, recipients=recipients)
+    # Prepare content
+    html = None
+    body = None
     try:
-        msg.html = render_template('email/verify_email.html', user=user, verify_url=verify_url, code=code)
+        html = render_template('email/verify_email.html', user=user, verify_url=verify_url, code=code)
     except Exception:
-        msg.body = (
+        body = (
             f"Hello {user.get_full_name()},\n\n"
             f"Please verify your email to activate your account.\n\n"
             f"Click: {verify_url}\n"
             f"Or enter this 6-digit code: {code} (expires in {ttl_hours}h).\n\n"
             f"If you didn’t create an account, you can ignore this email."
         )
-    mail.send(msg)
+
+    # Send with SMTP first, fallback to Brevo HTTP API if SMTP blocked
+    try:
+        from app.utils.email_backend import send_email_with_fallback
+        send_email_with_fallback(subject=subject, recipients=recipients, html=html, body=body)
+    except Exception:
+        # Re-raise so the route returns 500 and logs the real error
+        raise
 
 
 @auth_bp.route('/verify-email')

@@ -66,8 +66,11 @@ class Config:
     MAIL_PORT = int(os.getenv('MAIL_PORT', '587'))
     MAIL_USE_TLS = _get_bool('MAIL_USE_TLS', True)
     MAIL_USE_SSL = _get_bool('MAIL_USE_SSL', False)
-    MAIL_USERNAME = ***REMOVED***  # Brevo SMTP login (set via environment)
-    MAIL_PASSWORD = ***REMOVED***  # Brevo SMTP key (set via environment)
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')  # Brevo SMTP login (set via environment)
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')  # Brevo SMTP key (set via environment)
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'PiyuGuide <no-reply@piyuguide.live>')
     # When True, Flask-Mail does NOT actually send emails (used for tests). Ensure this is False in real tests.
     MAIL_SUPPRESS_SEND = _get_bool('MAIL_SUPPRESS_SEND', False)
+    # Optional HTTP API fallback (Brevo v3)
+    BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+    BREVO_API_URL = os.getenv('BREVO_API_URL', 'https://api.brevo.com/v3/smtp/email')
