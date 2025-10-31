@@ -1,0 +1,2 @@
+/* Compatibility wrapper to avoid 404s: import the actual stylesheet */
+@import url("./customs.css");
