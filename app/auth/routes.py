@@ -357,10 +357,23 @@ def _issue_and_send_verification(user: User, ttl_hours: int = 48):
         from flask_mail import Message
     except Exception:
         Message = None  # type: ignore
-    # Invalidate old tokens and create a fresh one inside a safe DB block
+    # Try to invalidate old tokens (non-fatal if permissions disallow DELETE in production)
     try:
         VerificationToken.query.filter_by(user_id=user.id, purpose='email_verify', used_at=None).delete()
+    except Exception:
+        # If this fails (e.g., insufficient privilege), just continue without deletion.
+        # We'll issue a new token; lookups always use the most recent when verifying by code.
+        try:
+            current_app.logger.warning('Could not delete old verification tokens; proceeding with new token')
+        except Exception:
+            pass
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
+    # Create a fresh token record
+    try:
         raw_token = secrets.token_urlsafe(48)
         token_hash = _hash_value(raw_token)
         # 6-digit numeric code
