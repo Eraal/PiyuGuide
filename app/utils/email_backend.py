@@ -12,6 +12,12 @@ except Exception:
 
 from flask import current_app
 from app.extensions import mail
+def _as_bool(val) -> bool:
+    try:
+        return str(val).strip().lower() in ("1", "true", "yes", "on")
+    except Exception:
+        return False
+
 
 
 def _parse_sender(default_sender: str) -> tuple[str, str]:
@@ -30,25 +36,44 @@ def send_email_with_fallback(subject: str,
     Try SMTP via Flask-Mail first; if it fails or times out and BREVO_API_KEY is set,
     fall back to Brevo HTTP API v3.
     """
-    # 1) Try SMTP
-    try:
-        from flask_mail import Message  # type: ignore
-        msg = Message(subject=subject, recipients=list(recipients))
-        if html:
-            msg.html = html
-        if body and not html:
-            msg.body = body
-        mail.send(msg)
-        return
-    except Exception as smtp_exc:
-        # Only fallback if API key is configured
+    # If configured to prefer HTTP API (e.g., when SMTP is blocked), use it directly
+    prefer_api = _as_bool(current_app.config.get('EMAIL_PREFER_API') or os.getenv('EMAIL_PREFER_API'))
+    if prefer_api:
         try:
-            current_app.logger.exception("SMTP send failed; evaluating Brevo API fallback")
+            current_app.logger.info("EMAIL_PREFER_API enabled; sending via Brevo HTTP API directly")
         except Exception:
             pass
+        # Go straight to API path
         api_key = current_app.config.get('BREVO_API_KEY') or os.getenv('BREVO_API_KEY')
         if not api_key:
-            raise smtp_exc
+            raise RuntimeError("EMAIL_PREFER_API is set but BREVO_API_KEY is missing")
+        if requests is None:
+            raise RuntimeError("EMAIL_PREFER_API is set but 'requests' is not installed")
+        # fallthrough below to API block by using a flag
+        use_api_direct = True
+    else:
+        use_api_direct = False
+
+    # 1) Try SMTP (unless forcing API)
+    if not use_api_direct:
+        try:
+            from flask_mail import Message  # type: ignore
+            msg = Message(subject=subject, recipients=list(recipients))
+            if html:
+                msg.html = html
+            if body and not html:
+                msg.body = body
+            mail.send(msg)
+            return
+        except Exception as smtp_exc:
+            # Only fallback if API key is configured
+            try:
+                current_app.logger.exception("SMTP send failed; evaluating Brevo API fallback")
+            except Exception:
+                pass
+            api_key = current_app.config.get('BREVO_API_KEY') or os.getenv('BREVO_API_KEY')
+            if not api_key:
+                raise smtp_exc
 
     # 2) Fallback: Brevo HTTP API
     if requests is None:
