@@ -102,6 +102,9 @@ def all_inquiries():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     inquiries = pagination.items
 
+    # Build filter params for pagination links (exclude 'page' to avoid duplicate keys)
+    filters = {k: v for k, v in request.args.items() if k != 'page' and v not in (None, '')}
+
     stats = get_inquiry_stats()
     
     return render_template(
@@ -111,7 +114,8 @@ def all_inquiries():
         offices=offices,
         stats=stats,
         departments=departments,
-        current_department=department_id
+        current_department=department_id,
+        filters=filters
     )
 
 
