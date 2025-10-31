@@ -38,6 +38,11 @@ class User(db.Model, UserMixin):
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
+    # Email verification fields
+    email_verified = db.Column(db.Boolean, default=False, index=True)
+    email_verified_at = db.Column(db.DateTime)
+    email_verification_sent_at = db.Column(db.DateTime)
+
     student = db.relationship('Student', uselist=False, back_populates='user')
     office_admin = db.relationship('OfficeAdmin', uselist=False, back_populates='user')
     campus = db.relationship('Campus', back_populates='super_admins')  # For super_admin users only
@@ -152,6 +157,11 @@ class User(db.Model, UserMixin):
             return self.campus_id
         return None
 
+    # Convenience methods for email verification
+    def mark_email_verified(self):
+        self.email_verified = True
+        self.email_verified_at = datetime.utcnow()
+
 # New model to track account lock history
 class AccountLockHistory(db.Model):
     __tablename__ = 'account_lock_history'
@@ -163,6 +173,34 @@ class AccountLockHistory(db.Model):
     lock_type = db.Column(db.String(50), nullable=False)  # 'lock' or 'unlock'
     
     # Relationships defined via back_populates in User model
+
+
+class VerificationToken(db.Model):
+    """One-time verification tokens for actions like email verification.
+
+    Stores only hashes of tokens/codes. The raw token is sent to the user.
+    """
+    __tablename__ = 'verification_tokens'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    purpose = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'email_verify'
+    token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)  # sha256 hex digest
+    code_hash = db.Column(db.String(64))  # sha256 hex digest for 6-digit code
+    attempts = db.Column(db.Integer, default=0)
+    max_attempts = db.Column(db.Integer, default=5)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    used_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    user = db.relationship('User')
+
+    @property
+    def is_expired(self) -> bool:
+        return datetime.utcnow() > (self.expires_at or datetime.utcnow())
+
+    @property
+    def is_used(self) -> bool:
+        return self.used_at is not None
 
 class Campus(db.Model):
     """Model for university campuses"""

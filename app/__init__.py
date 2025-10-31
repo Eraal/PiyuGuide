@@ -2,7 +2,7 @@ import logging
 import json
 
 from flask import Flask, current_app
-from .extensions import db, socketio, migrate
+from .extensions import db, socketio, migrate, mail
 from pathlib import Path
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
@@ -36,6 +36,18 @@ def create_app():
     db.init_app(app)
     # Initialize Flask-Migrate for safe schema migrations
     migrate.init_app(app, db)
+    # Configure and initialize Flask-Mail (Brevo SMTP or other)
+    try:
+        app.config.setdefault('MAIL_SERVER', app.config.get('MAIL_SERVER', 'smtp-relay.brevo.com'))
+        app.config.setdefault('MAIL_PORT', int(app.config.get('MAIL_PORT', 587)))
+        app.config.setdefault('MAIL_USE_TLS', True)
+        app.config.setdefault('MAIL_USE_SSL', False)
+        # Username is Brevo SMTP login (often your Brevo account email)
+        # Password is Brevo SMTP key
+        # MAIL_DEFAULT_SENDER recommended: "PiyuGuide <no-reply@piyuguide.com>"
+        mail.init_app(app)
+    except Exception:
+        pass
     # Configure Socket.IO using app config
     sio_kwargs = {
         'async_mode': app.config.get('SOCKETIO_ASYNC_MODE', 'eventlet'),

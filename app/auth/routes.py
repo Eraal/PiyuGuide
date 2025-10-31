@@ -1,10 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, session, request
+from flask import Blueprint, render_template, redirect, url_for, flash, session, request, current_app
 from werkzeug.security import check_password_hash, generate_password_hash  
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models import User, Student, AuditLog, Campus, Department
-from datetime import datetime
-from app.extensions import db  
+from app.models import User, Student, AuditLog, Campus, Department, VerificationToken
+from datetime import datetime, timedelta
+from app.extensions import db, mail  
 from flask_wtf.csrf import CSRFProtect
+import secrets, hashlib, hmac
 
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates') 
@@ -52,7 +53,19 @@ def login():
             user.is_online = True
             user.last_activity = datetime.utcnow()
             
-            # Successful login
+            # Enforce email verification for students
+            if user.role == 'student' and not getattr(user, 'email_verified', False):
+                # Optionally auto-resend if last sent is older than 5 minutes
+                try:
+                    if not user.email_verification_sent_at or (datetime.utcnow() - (user.email_verification_sent_at or datetime.utcnow()) > timedelta(minutes=5)):
+                        _issue_and_send_verification(user)
+                        db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                # Show verification guidance page
+                return redirect(url_for('auth.check_email', email=user.email))
+
+            # Successful login (verified or non-student)
             login_user(user)
             flash('Login successful!', 'success')
 
@@ -205,7 +218,8 @@ def register():
             email=email,
             role='student',  
             password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
-            is_active=True
+            is_active=True,
+            email_verified=False
         )
         
         try:
@@ -246,9 +260,13 @@ def register():
             db.session.add(student)
             
             db.session.commit()
-            flash('Registration successful! You can now log in', 'success')
-            # Redirect back to campus-specific login
-            return redirect(url_for('auth.login', campus_id=campus.id))
+
+            # Issue verification email + backup code
+            _issue_and_send_verification(new_user)
+            db.session.commit()
+
+            # Redirect to check-email page (Step 1 of 3)
+            return redirect(url_for('auth.check_email', email=new_user.email))
         except Exception as e:
             db.session.rollback()
             print(f"Error during registration: {e}")  
@@ -312,3 +330,179 @@ def logout():
 
     flash('You have been logged out.', 'success')
     return redirect(url_for('main.campus_selection'))
+
+
+# ===================== Email Verification Flow =====================
+
+def _hash_value(value: str) -> str:
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+def _issue_and_send_verification(user: User, ttl_hours: int = 48):
+    """Create a one-time token + 6-digit code, store hashes, send email via SMTP."""
+    # Import lazily to avoid hard dependency errors during linting without installed package
+    try:
+        from flask_mail import Message
+    except Exception:
+        Message = None  # type: ignore
+    # Invalidate old tokens for same purpose
+    try:
+        VerificationToken.query.filter_by(user_id=user.id, purpose='email_verify', used_at=None).delete()
+    except Exception:
+        pass
+
+    raw_token = secrets.token_urlsafe(48)
+    token_hash = _hash_value(raw_token)
+    # 6-digit numeric code
+    code = f"{secrets.randbelow(1000000):06d}"
+    code_hash = _hash_value(code)
+    vt = VerificationToken(
+        user_id=user.id,
+        purpose='email_verify',
+        token_hash=token_hash,
+        code_hash=code_hash,
+        attempts=0,
+        max_attempts=5,
+        expires_at=datetime.utcnow() + timedelta(hours=ttl_hours)
+    )
+    db.session.add(vt)
+    user.email_verification_sent_at = datetime.utcnow()
+    db.session.flush()
+
+    verify_url = url_for('auth.verify_email', token=raw_token, _external=True)
+
+    # Compose and send email
+    subject = 'Verify your email for PiyuGuide'
+    recipients = [user.email]
+    if Message is None:
+        # If Flask-Mail isn't installed, raise a clear error at runtime
+        raise RuntimeError('Flask-Mail is required. Install dependencies and set MAIL_* env vars.')
+    msg = Message(subject=subject, recipients=recipients)
+    try:
+        msg.html = render_template('email/verify_email.html', user=user, verify_url=verify_url, code=code)
+    except Exception:
+        msg.body = (
+            f"Hello {user.get_full_name()},\n\n"
+            f"Please verify your email to activate your account.\n\n"
+            f"Click: {verify_url}\n"
+            f"Or enter this 6-digit code: {code} (expires in {ttl_hours}h).\n\n"
+            f"If you didn’t create an account, you can ignore this email."
+        )
+    mail.send(msg)
+
+
+@auth_bp.route('/verify-email')
+def verify_email():
+    token = request.args.get('token', type=str)
+    if not token:
+        flash('Invalid verification link.', 'error')
+        return redirect(url_for('auth.login'))
+    token_hash = _hash_value(token)
+    vt = VerificationToken.query.filter_by(token_hash=token_hash, purpose='email_verify').first()
+    if not vt or vt.is_used or vt.is_expired:
+        flash('This verification link is invalid or has expired. You can request a new one below.', 'error')
+        return redirect(url_for('auth.check_email'))
+
+    user = User.query.get(vt.user_id)
+    if not user:
+        flash('Account not found.', 'error')
+        return redirect(url_for('auth.login'))
+
+    # Mark verified and consume token
+    user.mark_email_verified()
+    vt.used_at = datetime.utcnow()
+    db.session.commit()
+
+    # Auto-login (Step 3): set campus context and redirect based on role
+    try:
+        login_user(user)
+        # Ensure campus selected for students
+        if user.role == 'student' and getattr(user, 'student', None) and user.student.campus_id:
+            session['selected_campus_id'] = user.student.campus_id
+        flash('Email verified! Welcome.', 'success')
+        if user.role == 'student':
+            return redirect(url_for('student.dashboard'))
+        elif user.role == 'office_admin':
+            return redirect(url_for('office.dashboard'))
+        elif user.role in ('super_admin', 'super_super_admin'):
+            return redirect(url_for('admin.dashboard')) if user.role == 'super_admin' else redirect(url_for('super_admin.dashboard'))
+        else:
+            return redirect(url_for('auth.login'))
+    except Exception:
+        return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/verify-email/code', methods=['GET', 'POST'])
+def verify_email_code():
+    if request.method == 'GET':
+        email = request.args.get('email')
+        return render_template('auth/verify_code.html', email=email)
+
+    # POST
+    email = request.form.get('email')
+    code = request.form.get('code', '').strip()
+    if not email or not code or len(code) != 6 or not code.isdigit():
+        flash('Invalid code.', 'error')
+        return redirect(url_for('auth.verify_email_code', email=email))
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash('If that email exists, we sent a new code.', 'info')
+        return redirect(url_for('auth.login'))
+    vt = VerificationToken.query.filter(
+        VerificationToken.user_id == user.id,
+        VerificationToken.purpose == 'email_verify',
+        VerificationToken.used_at.is_(None)
+    ).order_by(VerificationToken.created_at.desc()).first()
+    if not vt or vt.is_expired:
+        flash('Code expired. Please request a new one.', 'warning')
+        return redirect(url_for('auth.check_email', email=email))
+    # Rate-limit attempts
+    if vt.attempts >= (vt.max_attempts or 5):
+        flash('Too many attempts. We sent a new verification email.', 'error')
+        _issue_and_send_verification(user)
+        db.session.commit()
+        return redirect(url_for('auth.check_email', email=email))
+
+    vt.attempts += 1
+    if hmac.compare_digest(_hash_value(code), vt.code_hash or ''):
+        user.mark_email_verified()
+        vt.used_at = datetime.utcnow()
+        db.session.commit()
+        # Auto-login after code verify
+        login_user(user)
+        if user.role == 'student' and getattr(user, 'student', None) and user.student.campus_id:
+            session['selected_campus_id'] = user.student.campus_id
+        flash('Email verified! Welcome.', 'success')
+        return redirect(url_for('student.dashboard') if user.role == 'student' else url_for('auth.login'))
+    else:
+        db.session.commit()
+        flash('Incorrect code. Please try again.', 'error')
+        return redirect(url_for('auth.verify_email_code', email=email))
+
+
+@auth_bp.route('/verify-email/resend', methods=['POST'])
+def resend_verification():
+    email = request.form.get('email') or request.args.get('email')
+    if not email:
+        flash('Email is required.', 'error')
+        return redirect(url_for('auth.login'))
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash('If that email exists, a verification email was sent.', 'info')
+        return redirect(url_for('auth.login'))
+    if user.email_verified:
+        flash('Your email is already verified. You can log in.', 'info')
+        return redirect(url_for('auth.login'))
+    # Throttle: 60s between sends
+    if user.email_verification_sent_at and (datetime.utcnow() - user.email_verification_sent_at) < timedelta(seconds=60):
+        flash('Please wait a minute before requesting again.', 'warning')
+        return redirect(url_for('auth.check_email', email=email))
+    _issue_and_send_verification(user)
+    db.session.commit()
+    flash('Verification email sent. Please check your inbox.', 'success')
+    return redirect(url_for('auth.check_email', email=email))
+
+
+@auth_bp.route('/check-email')
+def check_email():
+    email = request.args.get('email')
+    return render_template('auth/check_email.html', email=email)

@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+    <div style="max-width:600px;margin:0 auto;padding:24px;border:1px solid #eee;border-radius:8px;">
+      <h2 style="color:#1e40af;margin-top:0;">Verify your email</h2>
+      <p>Hello {{ user.get_full_name() }},</p>
+      <p>Thanks for registering with PiyuGuide. Please confirm your email to activate your account.</p>
+      <p style="margin:24px 0;">
+        <a href="{{ verify_url }}" style="background:#1e40af;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;display:inline-block;">Verify Email</a>
+      </p>
+      <p>Or enter this 6-digit code in the app:</p>
+      <p style="font-size:22px;font-weight:bold;letter-spacing:2px;">{{ code }}</p>
+      <p style="color:#555;">This link and code expire in 48 hours. If you didn’t create an account, you can ignore this email.</p>
+      <p style="margin-top:24px;color:#666;">— PiyuGuide</p>
+    </div>
+  </body>
+  </html>

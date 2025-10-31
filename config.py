@@ -59,3 +59,15 @@ class Config:
     TURN_URL = os.getenv('TURN_URL')  # e.g., turn:turn.example.com:3478?transport=udp
     TURN_USERNAME = os.getenv('TURN_USERNAME')
     TURN_PASSWORD = os.getenv('TURN_PASSWORD')
+
+    # Email (SMTP) - defaults tuned for Brevo (Sendinblue)
+    # NOTE: Do NOT hardcode credentials here. Provide them via environment variables.
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp-relay.brevo.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', '587'))
+    MAIL_USE_TLS = _get_bool('MAIL_USE_TLS', True)
+    MAIL_USE_SSL = _get_bool('MAIL_USE_SSL', False)
+    MAIL_USERNAME = ***REMOVED***  # Brevo SMTP login (usually your Brevo SMTP username)
+    MAIL_PASSWORD = ***REMOVED***  # Brevo SMTP key
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'PiyuGuide <no-reply@piyuguide.live>')
+    # When True, Flask-Mail does NOT actually send emails (used for tests). Ensure this is False in real tests.
+    MAIL_SUPPRESS_SEND = _get_bool('MAIL_SUPPRESS_SEND', False)

@@ -25,7 +25,37 @@ cp .env.example /etc/piyuguide.env
 sudo chown root:root /etc/piyuguide.env && sudo chmod 600 /etc/piyuguide.env
 ```
 
-Edit `/etc/piyuguide.env` with strong values and your DATABASE_URL.
+Edit `/etc/piyuguide.env` with strong values and your DATABASE_URL and SMTP credentials. Example:
+
+```
+# Core
+SECRET_KEY=<generate-strong-random>
+APP_TIMEZONE=Asia/Manila
+
+# Database (local Postgres example)
+DATABASE_URL=postgresql+psycopg2://<user>:<pass>@localhost/piyuguide
+
+# Cookies / Security
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAMESITE=Lax
+PREFERRED_URL_SCHEME=https
+
+# SMTP (Brevo)
+MAIL_SERVER=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USE_SSL=false
+MAIL_USERNAME=<your-brevo-smtp-login-email>
+MAIL_PASSWORD=<your-brevo-smtp-key-value>
+MAIL_DEFAULT_SENDER=PiyuGuide <no-reply@piyuguide.live>
+MAIL_SUPPRESS_SEND=false
+
+# Optional: Socket.IO CORS and message queue
+SOCKETIO_CORS_ALLOWED_ORIGINS=https://piyuguide.live,https://www.piyuguide.live
+# SOCKETIO_MESSAGE_QUEUE=redis://localhost:6379/0
+```
+
+Then reload the service after edits.
 
 ## 4) Gunicorn (eventlet) via systemd
 ```bash
@@ -55,6 +85,23 @@ sudo certbot --nginx -d example.com -d www.example.com
 	in both the port 80 and 443 server blocks. After editing, run `sudo nginx -t && sudo systemctl reload nginx`.
 
 Optional (Flask app limit): Flask also enforces `MAX_CONTENT_LENGTH` (default 16MB in `app/__init__.py`). If your uploads exceed 16MB, raise it to match Nginx (e.g., 20MB) and redeploy.
+
+## 6a) Database migrations (first deploy and every release with model changes)
+
+Run Alembic migrations against your production database:
+
+```bash
+cd /opt/piyuguide
+source venv/bin/activate
+export FLASK_APP=app:create_app
+flask db upgrade
+```
+
+If the service is already running, restart it after migrations:
+
+```bash
+sudo systemctl restart piyuguide
+```
 
 ## 6) Flask-SocketIO scaling (optional)
 When you scale Gunicorn workers or instances, configure a message queue (Redis):

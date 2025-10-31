@@ -1,0 +1,22 @@
+{% extends 'headerbase.html' %}
+{% block content %}
+<section class="max-w-md mx-auto p-6">
+  <h1 class="text-2xl font-bold text-blue-800 mb-2">Enter verification code</h1>
+  <p class="text-gray-700">Enter the 6-digit code we sent to your email.</p>
+  <form action="{{ url_for('auth.verify_email_code') }}" method="post" class="mt-4 space-y-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="block">
+      <span class="text-sm text-gray-700">Email</span>
+      <input type="email" name="email" required value="{{ email }}" class="border rounded px-3 py-2 w-full" />
+    </label>
+    <label class="block">
+      <span class="text-sm text-gray-700">6-digit code</span>
+      <input type="text" name="code" inputmode="numeric" pattern="\\d{6}" maxlength="6" class="border rounded px-3 py-2 w-full tracking-widest text-center" />
+    </label>
+    <button class="px-4 py-2 bg-green-700 text-white rounded w-full">Verify</button>
+  </form>
+  <div class="mt-4 text-center text-sm">
+    <a class="text-blue-800 underline" href="{{ url_for('auth.check_email', email=email) }}">Resend email</a>
+  </div>
+</section>
+{% endblock %}
