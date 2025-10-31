@@ -42,6 +42,10 @@ def send_email_with_fallback(subject: str,
         return
     except Exception as smtp_exc:
         # Only fallback if API key is configured
+        try:
+            current_app.logger.exception("SMTP send failed; evaluating Brevo API fallback")
+        except Exception:
+            pass
         api_key = current_app.config.get('BREVO_API_KEY') or os.getenv('BREVO_API_KEY')
         if not api_key:
             raise smtp_exc
@@ -70,6 +74,19 @@ def send_email_with_fallback(subject: str,
         "api-key": current_app.config.get('BREVO_API_KEY') or os.getenv('BREVO_API_KEY'),
     }
 
-    resp = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=15)
+    try:
+        resp = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=15)
+    except Exception as api_exc:
+        try:
+            current_app.logger.exception("Brevo API HTTP request failed")
+        except Exception:
+            pass
+        raise
     if resp.status_code >= 300:
+        try:
+            current_app.logger.error(
+                "Brevo API send failed: status=%s body=%s", resp.status_code, resp.text[:500]
+            )
+        except Exception:
+            pass
         raise RuntimeError(f"Brevo API send failed: {resp.status_code} {resp.text}")

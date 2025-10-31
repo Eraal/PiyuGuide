@@ -22,9 +22,12 @@ Set these on your app server (systemd service or `.env` for gunicorn):
 export MAIL_SERVER="smtp-relay.brevo.com"
 export MAIL_PORT="587"
 export MAIL_USE_TLS="true"
-export MAIL_USERNAME="<your-brevo-login>"      # usually your Brevo email
-export ***REMOVED***  # generate in Brevo > SMTP & API
+export MAIL_USERNAME="<your-brevo-smtp-login>"      # usually shown in Brevo SMTP settings
+export MAIL_PASSWORD="<your-brevo-smtp-password>"   # generate in Brevo > SMTP & API
 export MAIL_DEFAULT_SENDER="PiyuGuide <no-reply@piyuguide.live>"
+
+# Optional HTTP API fallback (if SMTP is blocked by your provider, this will still send):
+export BREVO_API_KEY="<your-brevo-v3-api-key>"
 
 # App (ensure set in production)
 export SECRET_KEY="<a-strong-random-secret>"
@@ -40,7 +43,7 @@ If you use a systemd unit, add the `Environment=` lines in `deploy/systemd/piyug
 pip install -r requirements.txt
 ```
 
-`Flask-Mail` is new and required for SMTP.
+`Flask-Mail` is required for SMTP. If outbound SMTP is filtered by your VPS provider, also set `BREVO_API_KEY` to enable the HTTP API fallback.
 
 ## 4) Database migration
 

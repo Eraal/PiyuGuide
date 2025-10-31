@@ -14,8 +14,8 @@ Usage (PowerShell):
   $env:MAIL_SERVER="smtp-relay.brevo.com"
   $env:MAIL_PORT="587"
   $env:MAIL_USE_TLS="true"
-  $env:MAIL_USERNAME="gerald.pandaan@lspu.edu.ph"
-  $env:***REMOVED***
+    $env:MAIL_USERNAME="9a7cb0001@smtp-brevo.com"
+    $env:MAIL_PASSWORD="<your-brevo-smtp-password>"
   $env:MAIL_DEFAULT_SENDER="PiyuGuide <no-reply@piyuguide.live>"
   $env:MAIL_SUPPRESS_SEND="false"
   python scripts/test_email.py you@domain.tld

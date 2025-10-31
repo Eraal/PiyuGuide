@@ -262,8 +262,21 @@ def register():
             db.session.commit()
 
             # Issue verification email + backup code
-            _issue_and_send_verification(new_user)
-            db.session.commit()
+            try:
+                _issue_and_send_verification(new_user)
+            except Exception as send_exc:
+                # Log but continue to Check Email page so user can trigger a resend later
+                try:
+                    current_app.logger.exception("Failed to send verification email right after registration")
+                except Exception:
+                    pass
+                flash('We could not send the verification email right now. You can request a resend on the next page.', 'warning')
+            finally:
+                # Persist any token records created before the send failed
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
 
             # Redirect to check-email page (Step 1 of 3)
             return redirect(url_for('auth.check_email', email=new_user.email))
@@ -505,9 +518,22 @@ def resend_verification():
     if user.email_verification_sent_at and (datetime.utcnow() - user.email_verification_sent_at) < timedelta(seconds=60):
         flash('Please wait a minute before requesting again.', 'warning')
         return redirect(url_for('auth.check_email', email=email))
-    _issue_and_send_verification(user)
-    db.session.commit()
-    flash('Verification email sent. Please check your inbox.', 'success')
+    try:
+        _issue_and_send_verification(user)
+        db.session.commit()
+        flash('Verification email sent. Please check your inbox.', 'success')
+    except Exception as send_exc:
+        # Log the failure; keep the user on the check page with guidance
+        try:
+            current_app.logger.exception('Failed to resend verification email')
+        except Exception:
+            pass
+        # Ensure DB state is consistent (token may already have been created)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        flash('We could not send the verification email right now. Please try again later.', 'warning')
     return redirect(url_for('auth.check_email', email=email))
 
 
