@@ -2674,7 +2674,7 @@ class VideoCounselingClient {
         this.cleanup();
         
         setTimeout(() => {
-            window.location.href = '/student/dashboard';
+            window.location.href = `/student/session/${this.sessionId}/end`;
         }, 3000);
     }
     
