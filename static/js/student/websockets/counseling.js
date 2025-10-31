@@ -1582,9 +1582,9 @@ class VideoCounselingClient {
         this.cleanup();
         this.hideEndSessionModal();
         
-        // Redirect to session summary or dashboard
+        // Redirect to end-of-session page with summary and feedback
         setTimeout(() => {
-            window.location.href = '/student/counseling-sessions';
+            window.location.href = `/student/session/${this.sessionId}/end`;
         }, 2000);
     }
     
@@ -1601,7 +1601,7 @@ class VideoCounselingClient {
         this.cleanup();
         
         setTimeout(() => {
-            window.location.href = '/student/counseling-sessions';
+            window.location.href = `/student/session/${this.sessionId}/end`;
         }, 3000);
     }
     

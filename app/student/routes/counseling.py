@@ -132,12 +132,12 @@ def submit_feedback(session_id):
     # Only allow feedback after session completion
     if session_obj.status != 'completed':
         flash('Feedback can be submitted after the session is marked completed.', 'warning')
-        return redirect(url_for('student.view_session', session_id=session_id))
+        return redirect(url_for('student.end_session_page', session_id=session_id))
 
     message = request.form.get('feedback_message', '').strip()
     if not message:
         flash('Please share a brief message about your experience.', 'error')
-        return redirect(url_for('student.view_session', session_id=session_id))
+        return redirect(url_for('student.end_session_page', session_id=session_id))
 
     try:
         existing = Feedback.query.filter_by(session_id=session_obj.id, student_id=student.id).first()
@@ -168,7 +168,58 @@ def submit_feedback(session_id):
         db.session.rollback()
         flash(f'Could not save feedback: {str(e)}', 'error')
 
-    return redirect(url_for('student.view_session', session_id=session_id))
+    return redirect(url_for('student.end_session_page', session_id=session_id))
+
+@student_bp.route('/session/<int:session_id>/end')
+@login_required
+@role_required(['student'])
+def end_session_page(session_id):
+    """Show the dedicated end-of-session page with summary and feedback."""
+    # Get the student record
+    student = Student.query.filter_by(user_id=current_user.id).first_or_404()
+
+    # Get the session and verify ownership
+    sess = CounselingSession.query.filter_by(
+        id=session_id,
+        student_id=student.id
+    ).first_or_404()
+
+    # Only show this page for completed sessions; otherwise redirect to regular view
+    if sess.status != 'completed':
+        return redirect(url_for('student.view_session', session_id=session_id))
+
+    # Get unread notifications count for navbar
+    unread_notifications_count = Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False
+    ).count()
+
+    # Get notifications for dropdown
+    notifications = Notification.query.filter_by(
+        user_id=current_user.id
+    ).order_by(desc(Notification.created_at)).limit(5).all()
+
+    # Load any existing feedback (if already submitted)
+    feedback = Feedback.query.filter_by(session_id=sess.id, student_id=student.id).first()
+
+    # Log this activity
+    log_entry = StudentActivityLog(
+        student_id=student.id,
+        action=f"Viewed end session page for counseling session #{session_id}",
+        timestamp=datetime.utcnow(),
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string
+    )
+    db.session.add(log_entry)
+    db.session.commit()
+
+    return render_template(
+        'student/session_end.html',
+        session=sess,
+        feedback=feedback,
+        unread_notifications_count=unread_notifications_count,
+        notifications=notifications
+    )
 
 @student_bp.route('/schedule-session', methods=['POST'])
 @login_required

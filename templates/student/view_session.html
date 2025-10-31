@@ -44,15 +44,7 @@
   .concern-description {font-size:.8rem; line-height:1.25rem; color:#475569; white-space:pre-line;}
   .system-concern-desc {background:#ffffff; border:1px solid #e2e8f0; padding:.75rem .85rem; border-radius:.65rem; margin-top:.65rem;}
   .user-concern-desc {background:#f0f9ff; border:1px solid #bae6fd; padding:.7rem .8rem; border-radius:.55rem; margin-top:.55rem;}
-  /* Feedback section */
-  .feedback-card {background:linear-gradient(135deg,#f8fafc 0%, #ffffff 100%); border:1px solid #e2e8f0; border-radius:1rem;}
-  .feedback-cta {display:flex; gap:.75rem; align-items:flex-start;}
-  .feedback-cta .icon {width:36px; height:36px; border-radius:10px; background:#eef2ff; color:#3730a3; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 0 1px #c7d2fe;}
-  .feedback-cta .texts small{display:block; color:#64748b;}
-  .feedback-toggle {border:1px solid #c7d2fe; background:#eef2ff; color:#3730a3;}
-  .feedback-toggle:hover {background:#e0e7ff;}
-  .feedback-form {display:none;}
-  .feedback-form.show {display:block; animation:fadeIn .35s ease;}
+  /* Feedback moved to dedicated end-session page */
 </style>
 {% endblock %}
 {% block content %}
@@ -301,36 +293,7 @@
       {# Duplicate pending guidance removed to avoid redundancy #}
       {% endif %}
 
-      {% if session.status == 'completed' %}
-      <hr class="divider" />
-      <div class="feedback-card p-5 fade-in">
-        <div class="feedback-cta">
-          <div class="icon"><i class="fas fa-comment-dots"></i></div>
-          <div class="texts flex-1">
-            <h3 class="text-base font-semibold text-slate-800">Share your experience to help us improve</h3>
-            <small>Your insights help us enhance our support services.</small>
-          </div>
-          <div>
-            <button id="toggleFeedbackBtn" class="feedback-toggle px-3 py-2 rounded-md text-sm font-semibold shadow-sm">
-              {% if feedback %}Update your feedback{% else %}Share feedback{% endif %}
-            </button>
-          </div>
-        </div>
-        <form id="feedbackForm" class="feedback-form mt-4" action="{{ url_for('student.submit_feedback', session_id=session.id) }}" method="post">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <label for="feedback_message" class="block text-sm font-medium text-slate-700 mb-1">Your message</label>
-          <textarea id="feedback_message" name="feedback_message" rows="4" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Tell us about what worked well and what could be improved...">{{ feedback.message if feedback else '' }}</textarea>
-          <div class="mt-3 flex items-center gap-2">
-            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-semibold">
-              {% if feedback %}Save changes{% else %}Submit feedback{% endif %}
-            </button>
-            {% if feedback %}
-            <span class="text-xs text-slate-500">You can update your feedback anytime.</span>
-            {% endif %}
-          </div>
-        </form>
-      </div>
-      {% endif %}
+      {# Feedback moved to dedicated end-session page #}
     </div>
 
     <!-- Action buttons -->
@@ -442,16 +405,6 @@
     });
 
     // Request Recording feature removed
-    // Feedback toggle
-    try {
-      const fbBtn = document.getElementById('toggleFeedbackBtn');
-      const fbForm = document.getElementById('feedbackForm');
-      if (fbBtn && fbForm) {
-        const hasExisting = "{{ 'yes' if feedback else 'no' }}" === 'yes';
-        if (hasExisting) fbForm.classList.add('show');
-        fbBtn.addEventListener('click', function(e){ e.preventDefault(); fbForm.classList.toggle('show'); });
-      }
-    } catch(e) { /* no-op */ }
   });
 </script>
 <script>
