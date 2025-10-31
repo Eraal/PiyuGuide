@@ -357,29 +357,31 @@ def _issue_and_send_verification(user: User, ttl_hours: int = 48):
         from flask_mail import Message
     except Exception:
         Message = None  # type: ignore
-    # Invalidate old tokens for same purpose
+    # Invalidate old tokens and create a fresh one inside a safe DB block
     try:
         VerificationToken.query.filter_by(user_id=user.id, purpose='email_verify', used_at=None).delete()
-    except Exception:
-        pass
 
-    raw_token = secrets.token_urlsafe(48)
-    token_hash = _hash_value(raw_token)
-    # 6-digit numeric code
-    code = f"{secrets.randbelow(1000000):06d}"
-    code_hash = _hash_value(code)
-    vt = VerificationToken(
-        user_id=user.id,
-        purpose='email_verify',
-        token_hash=token_hash,
-        code_hash=code_hash,
-        attempts=0,
-        max_attempts=5,
-        expires_at=datetime.utcnow() + timedelta(hours=ttl_hours)
-    )
-    db.session.add(vt)
-    user.email_verification_sent_at = datetime.utcnow()
-    db.session.flush()
+        raw_token = secrets.token_urlsafe(48)
+        token_hash = _hash_value(raw_token)
+        # 6-digit numeric code
+        code = f"{secrets.randbelow(1000000):06d}"
+        code_hash = _hash_value(code)
+        vt = VerificationToken(
+            user_id=user.id,
+            purpose='email_verify',
+            token_hash=token_hash,
+            code_hash=code_hash,
+            attempts=0,
+            max_attempts=5,
+            expires_at=datetime.utcnow() + timedelta(hours=ttl_hours)
+        )
+        db.session.add(vt)
+        user.email_verification_sent_at = datetime.utcnow()
+        db.session.flush()
+    except Exception:
+        # Ensure session is clean for callers
+        db.session.rollback()
+        raise
 
     verify_url = url_for('auth.verify_email', token=raw_token, _external=True)
 
@@ -507,6 +509,11 @@ def resend_verification():
     if not email:
         flash('Email is required.', 'error')
         return redirect(url_for('auth.login'))
+    # If a previous error left the transaction in aborted state, clear it first
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
     user = User.query.filter_by(email=email).first()
     if not user:
         flash('If that email exists, a verification email was sent.', 'info')
