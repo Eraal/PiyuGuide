@@ -1297,6 +1297,28 @@
                 img.src = fallback;
             }
         });
+        function swapIfBroken() {
+            const src = img.currentSrc || img.src;
+            if (!src) return;
+            if (img.complete && img.naturalWidth === 0) {
+                if (img.src !== fallback) img.src = fallback;
+                return;
+            }
+            if (typeof img.decode === 'function') {
+                img.decode().catch(function(){
+                    if (img.src !== fallback) img.src = fallback;
+                });
+            } else {
+                const probe = new Image();
+                probe.onload = function() {};
+                probe.onerror = function() {
+                    if (img.src !== fallback) img.src = fallback;
+                };
+                probe.src = src;
+            }
+        }
+        swapIfBroken();
+        setTimeout(swapIfBroken, 800);
     }
     document.addEventListener('DOMContentLoaded', function(){
         document.querySelectorAll('img.avatar-img[data-fallback]')

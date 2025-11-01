@@ -538,6 +538,33 @@
                 img.src = fallback;
             }
         });
+        // Proactively detect broken images when lazy-loading defers events
+        function swapIfBroken() {
+            const src = img.currentSrc || img.src;
+            if (!src) return;
+            // If already marked broken by the browser
+            if (img.complete && img.naturalWidth === 0) {
+                if (img.src !== fallback) img.src = fallback;
+                return;
+            }
+            // Try decoding; if fails, set fallback
+            if (typeof img.decode === 'function') {
+                img.decode().catch(function(){
+                    if (img.src !== fallback) img.src = fallback;
+                });
+            } else {
+                // Create a probe image to check reachability
+                const probe = new Image();
+                probe.onload = function() { /* ok */ };
+                probe.onerror = function() {
+                    if (img.src !== fallback) img.src = fallback;
+                };
+                probe.src = src;
+            }
+        }
+        // Run once after DOM ready and again after a small delay to catch lazy-load swaps
+        swapIfBroken();
+        setTimeout(swapIfBroken, 800);
     }
     document.addEventListener('DOMContentLoaded', function(){
         document.querySelectorAll('img.avatar-img[data-fallback]')
