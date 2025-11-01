@@ -88,7 +88,8 @@ class User(db.Model, UserMixin):
         """
         if not self.profile_pic:
             return None
-        path = self.profile_pic.strip().lstrip('/')
+        # Normalize slashes and trim leading separators
+        path = self.profile_pic.strip().replace('\\', '/').lstrip('/')
         # Strip leading 'static/' if present
         if path.startswith('static/'):
             path = path[len('static/') :]
