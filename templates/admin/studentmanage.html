@@ -345,9 +345,18 @@
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 h-10 w-10 relative">
-                            {% if student.user.profile_pic_path %}
+                            {% set _pp = student.user.profile_pic %}
+                            {% set _ppp = student.user.profile_pic_path %}
+                            {% if _pp and (_pp[:7] == 'http://' or _pp[:8] == 'https://') %}
+                                <img 
+                                    src="{{ _pp }}"
+                                    alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70"
+                                    loading="lazy"
+                                />
+                            {% elif _ppp %}
                                 <img
-                                    src="{{ url_for('static', filename=student.user.profile_pic_path) }}?v={{ student.user.profile_pic }}"
+                                    src="{{ url_for('static', filename=_ppp) }}?v={{ _pp or '' }}"
                                     alt="{{ student.user.first_name }} {{ student.user.last_name }}"
                                     class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70"
                                     loading="lazy"

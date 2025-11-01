@@ -337,9 +337,17 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
             <div class="flex items-center gap-5 min-w-0">
                 <div class="h-20 w-20 md:h-24 md:w-24 rounded-2xl avatar-enhanced text-blue-600 flex items-center justify-center overflow-hidden relative">
-                    {% if student.user.profile_pic_path %}
+                    {% set _pp = student.user.profile_pic %}
+                    {% set _ppp = student.user.profile_pic_path %}
+                    {% if _pp and (_pp[:7] == 'http://' or _pp[:8] == 'https://') %}
                         <img 
-                            src="{{ url_for('static', filename=student.user.profile_pic_path) }}?v={{ student.user.profile_pic }}"
+                            src="{{ _pp }}"
+                            alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                            class="h-full w-full object-cover"
+                        />
+                    {% elif _ppp %}
+                        <img 
+                            src="{{ url_for('static', filename=_ppp) }}?v={{ _pp or '' }}"
                             alt="{{ student.user.first_name }} {{ student.user.last_name }}"
                             class="h-full w-full object-cover"
                         />
