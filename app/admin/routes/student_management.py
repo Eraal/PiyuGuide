@@ -103,13 +103,26 @@ def student_manage():
                      .join(User, User.id == Student.user_id)
                      .filter(Student.campus_id == campus_id))
     
-    students = students_base.order_by(User.last_name.asc(), User.first_name.asc()).all()
-    
-    # Stats scoped to campus
+    students_query = students_base.order_by(User.last_name.asc(), User.first_name.asc())
+
+    # Pagination params
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+
     total_students = (db.session.query(func.count(Student.id))
                       .filter(Student.campus_id == campus_id)
                       .scalar() or 0)
+
+    # Bound page to valid range
+    pages = max((total_students + per_page - 1) // per_page, 1)
+    if page < 1:
+        page = 1
+    elif page > pages:
+        page = pages
+
+    students = students_query.limit(per_page).offset((page - 1) * per_page).all()
     
+    # Stats scoped to campus
     active_students = (db.session.query(func.count(Student.id))
                        .join(User, User.id == Student.user_id)
                        .filter(Student.campus_id == campus_id, User.is_active == True)
@@ -122,12 +135,21 @@ def student_manage():
                            .filter(Student.campus_id == campus_id, User.created_at >= seven_days_ago)
                            .scalar() or 0)
     
+    # Range for current page
+    start_index = 0 if total_students == 0 else (page - 1) * per_page + 1
+    end_index = 0 if total_students == 0 else min(page * per_page, total_students)
+
     return render_template('admin/studentmanage.html',
                            students=students,
                            total_students=total_students,
                            active_students=active_students,
                            inactive_students=inactive_students,
-                           recently_registered=recently_registered)
+                           recently_registered=recently_registered,
+                           page=page,
+                           pages=pages,
+                           per_page=per_page,
+                           start_index=start_index,
+                           end_index=end_index)
 
 
 @admin_bp.route('/verify_student_email', methods=['POST'])
