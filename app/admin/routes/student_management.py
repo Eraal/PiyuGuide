@@ -129,6 +129,63 @@ def student_manage():
                            inactive_students=inactive_students,
                            recently_registered=recently_registered)
 
+
+@admin_bp.route('/verify_student_email', methods=['POST'])
+@login_required
+def verify_student_email():
+    """Campus admin bypass: mark a student's email as verified.
+
+    Request JSON: { student_id: int }
+    Accept only super_admin; ensure campus scope matches.
+    """
+    if current_user.role != 'super_admin':
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    try:
+        data = request.get_json(silent=True) or {}
+        student_id = data.get('student_id')
+        if not student_id:
+            return jsonify({'success': False, 'message': 'Missing student_id'}), 400
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        # Campus scope enforcement
+        if getattr(current_user, 'campus_id', None) and student.campus_id != current_user.campus_id:
+            return jsonify({'success': False, 'message': 'Campus mismatch'}), 403
+        user = student.user
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        # Mark verified (idempotent)
+        if not user.email_verified:
+            user.mark_email_verified()
+            # Audit log
+            try:
+                SuperAdminActivityLog.log_action(
+                    super_admin=current_user,
+                    action='Bypassed student email verification',
+                    target_type='user',
+                    target_user=user,
+                    details=f'Student ID: {student.id}',
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string
+                )
+                AuditLog.log_action(
+                    actor=current_user,
+                    action='Bypassed student email verification',
+                    target_type='user',
+                    status='email_verified',
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string
+                )
+            except Exception:
+                pass
+            db.session.commit()
+        return jsonify({'success': True, 'email_verified': True, 'verified_at': user.email_verified_at.isoformat() if user.email_verified_at else None})
+    except CSRFError:
+        return jsonify({'success': False, 'message': 'CSRF failure'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @admin_bp.route('/toggle_student_lock', methods=['POST'])
 @login_required
 def toggle_student_lock():

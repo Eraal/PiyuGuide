@@ -377,6 +377,15 @@
                                         <i class="fas fa-lock mr-1"></i>Locked
                                     </span>
                                 {% endif %}
+                                {% if student.user.email_verified %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200" title="Email verified">
+                                        <i class="fas fa-circle-check mr-1"></i>Verified
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200" title="Email not verified">
+                                        <i class="fas fa-triangle-exclamation mr-1"></i>Unverified
+                                    </span>
+                                {% endif %}
                             </div>
                             <div class="text-xs text-gray-600 flex items-center">
                                 <i class="fas fa-id-card mr-2 text-blue-500"></i>
@@ -438,6 +447,16 @@
                                 <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
                                 {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
                             </button>
+                        {% if not student.user.email_verified %}
+                        <button 
+                            type="button"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm border bg-emerald-600 text-white hover:bg-emerald-700 mark-verified"
+                            data-student-id="{{ student.id }}"
+                            title="Mark email as verified">
+                            <i class="fa-solid fa-circle-check"></i>
+                            Verify Email
+                        </button>
+                        {% endif %}
                     </div>
                 </td>
             </tr>

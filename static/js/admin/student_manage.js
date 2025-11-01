@@ -220,6 +220,61 @@ function createFlashMessage(type, message) {
     }, 5000);
 }
 
+// Verify student email (admin bypass)
+async function pg_verifyStudentEmail(studentId, button) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    try {
+        if (button) {
+            button.disabled = true;
+            button.classList.add('opacity-60', 'cursor-not-allowed');
+        }
+        const resp = await fetch('/admin/verify_student_email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ student_id: parseInt(studentId, 10) })
+        });
+        if (!resp.ok) {
+            const text = await resp.text();
+            throw new Error(text || `Request failed (${resp.status})`);
+        }
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message || 'Operation failed');
+        // Update UI: swap Unverified badge to Verified and remove button
+        const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+        if (row) {
+            const nameCell = row.querySelector('.font-bold');
+            if (nameCell) {
+                // Remove any existing badge with title starting with 'Email'
+                nameCell.querySelectorAll('span.inline-flex[title^="Email"]').forEach(el => el.remove());
+                const badge = document.createElement('span');
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200';
+                badge.title = 'Email verified';
+                badge.innerHTML = '<i class="fas fa-circle-check mr-1"></i>Verified';
+                nameCell.appendChild(badge);
+            }
+            const btn = row.querySelector('button.mark-verified');
+            if (btn) btn.remove();
+        }
+        createFlashMessage('success', 'Student email marked as verified.');
+    } catch (err) {
+        console.error(err);
+        createFlashMessage('error', 'Failed to verify email: ' + (err.message || err));
+        if (button) {
+            button.disabled = false;
+            button.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+    }
+}
+
+// Event delegation for verify buttons
+document.addEventListener('click', function(e){
+    const btn = e.target.closest('button.mark-verified');
+    if (!btn) return;
+    const id = btn.getAttribute('data-student-id');
+    if (!id) return;
+    pg_verifyStudentEmail(id, btn);
+});
+
 // Helper function to update button without page reload
 function updateButtonStatus(studentId, isActive) {
     // Find the button for this student
