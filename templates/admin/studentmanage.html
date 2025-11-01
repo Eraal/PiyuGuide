@@ -428,7 +428,7 @@
                     {% endif %}
                 </td>
                 <td class="px-4 md:px-6 py-4">
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex items-center gap-2 whitespace-nowrap">
                                 <a href="{{ url_for('admin.view_student', student_id=student.id) }}" 
                                     class="group bg-purple-100 hover:bg-purple-200 text-purple-700 p-2 md:p-3 rounded-xl transition-all duration-300 transform hover:scale-110 relative z-0" 
                            title="Edit Student">
@@ -438,14 +438,13 @@
                         <!-- Button for locking/unlocking (for rule violations) -->
                             <button 
                                 type="button"
-                                class="inline-flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-semibold shadow-sm border transition open-suspend-modal pointer-events-auto relative z-20 {{ 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' if student.user.is_active else 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' }}"
+                                class="inline-flex items-center justify-center p-2 md:p-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal pointer-events-auto relative z-20 {{ 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' if student.user.is_active else 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' }}"
                                 style="isolation:isolate;"
                                 data-student-id="{{ student.id }}"
                                 data-current-active="{{ 1 if student.user.is_active else 0 }}"
                                 data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
-                            >
+                            title="{% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}">
                                 <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
-                                {% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}
                             </button>
                         {% if not student.user.email_verified %}
                         <button 
@@ -454,7 +453,7 @@
                             data-student-id="{{ student.id }}"
                             title="Mark email as verified">
                             <i class="fa-solid fa-circle-check"></i>
-                            Verify Email
+                            <span class="hidden sm:inline">Verify</span>
                         </button>
                         {% endif %}
                     </div>
