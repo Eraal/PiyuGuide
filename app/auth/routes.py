@@ -476,8 +476,32 @@ def verify_email_code():
 
     # POST
     email = request.form.get('email')
-    code = request.form.get('code', '').strip()
-    if not email or not code or len(code) != 6 or not code.isdigit():
+    raw_code = request.form.get('code', '') or ''
+
+    # Normalize the entered code to exactly 6 ASCII digits:
+    # - Remove spaces, hyphens, and any non-digit characters
+    # - Convert any unicode digits (e.g., Arabic-Indic) to ASCII 0-9
+    # - Preserve leading zeros
+    import unicodedata
+    digits = []
+    for ch in raw_code:
+        # Skip obvious separators and whitespace early
+        if ch in {' ', '\u200b', '\u200c', '\u200d', '\u2060', '-', '–', '—', '_'}:
+            continue
+        if ch.isdigit():
+            try:
+                d = unicodedata.digit(ch)
+            except (TypeError, ValueError):
+                # Fallback: if already ASCII digit
+                if '0' <= ch <= '9':
+                    d = ord(ch) - ord('0')
+                else:
+                    # Unknown digit-like char; skip
+                    continue
+            digits.append(str(d))
+    code = ''.join(digits)
+
+    if not email or len(code) != 6:
         flash('Invalid code.', 'error')
         return redirect(url_for('auth.verify_email_code', email=email))
     user = User.query.filter_by(email=email).first()

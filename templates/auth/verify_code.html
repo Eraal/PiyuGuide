@@ -11,7 +11,7 @@
     </label>
     <label class="block">
       <span class="text-sm text-gray-700">6-digit code</span>
-      <input type="text" name="code" inputmode="numeric" pattern="\\d{6}" maxlength="6" class="border rounded px-3 py-2 w-full tracking-widest text-center" />
+  <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" class="border rounded px-3 py-2 w-full tracking-widest text-center" />
     </label>
     <button class="px-4 py-2 bg-green-700 text-white rounded w-full">Verify</button>
   </form>
