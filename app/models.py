@@ -90,7 +90,10 @@ class User(db.Model, UserMixin):
             return None
         # Normalize slashes and trim leading separators
         path = self.profile_pic.strip().replace('\\', '/').lstrip('/')
-        # Strip leading 'static/' if present
+        # If the path contains a 'static/' segment anywhere (e.g., absolute FS path), trim up to it
+        if '/static/' in path:
+            path = path.split('/static/', 1)[1]
+        # Also handle leading 'static/'
         if path.startswith('static/'):
             path = path[len('static/') :]
         # If already starts with uploads/ assume correct

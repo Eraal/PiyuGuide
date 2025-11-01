@@ -351,14 +351,16 @@
                                 <img 
                                     src="{{ _pp }}"
                                     alt="{{ student.user.first_name }} {{ student.user.last_name }}"
-                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70"
+                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70 avatar-img"
+                                    data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
                                     loading="lazy"
                                 />
                             {% elif _ppp %}
                                 <img
                                     src="{{ url_for('static', filename=_ppp) }}?v={{ _pp or '' }}"
                                     alt="{{ student.user.first_name }} {{ student.user.last_name }}"
-                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70"
+                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70 avatar-img"
+                                    data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
                                     loading="lazy"
                                 />
                             {% else %}
@@ -519,6 +521,28 @@
             }, 2000);
         });
     }
+})();
+</script>
+
+<script>
+// Attach fallback handler for avatar images without using inline JS
+(function(){
+    function attachFallback(img){
+        if (!img || !img.dataset || !img.dataset.fallback) return;
+        const fallback = img.dataset.fallback;
+        // If image fails to load, swap to fallback once
+        img.addEventListener('error', function handler(){
+            img.removeEventListener('error', handler);
+            // Prevent infinite loop if fallback also fails
+            if (img.src !== fallback) {
+                img.src = fallback;
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('img.avatar-img[data-fallback]')
+            .forEach(attachFallback);
+    });
 })();
 </script>
 

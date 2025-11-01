@@ -343,13 +343,15 @@
                         <img 
                             src="{{ _pp }}"
                             alt="{{ student.user.first_name }} {{ student.user.last_name }}"
-                            class="h-full w-full object-cover"
+                            class="h-full w-full object-cover avatar-img"
+                            data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
                         />
                     {% elif _ppp %}
                         <img 
                             src="{{ url_for('static', filename=_ppp) }}?v={{ _pp or '' }}"
                             alt="{{ student.user.first_name }} {{ student.user.last_name }}"
-                            class="h-full w-full object-cover"
+                            class="h-full w-full object-cover avatar-img"
+                            data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
                         />
                     {% else %}
                         <span class="text-3xl md:text-4xl font-bold">{{ student.user.first_name[0] }}{{ student.user.last_name[0] }}</span>
@@ -1281,6 +1283,25 @@
         });
     }
     
+})();
+</script>
+<script>
+// Attach fallback handler for avatar images without using inline JS
+(function(){
+    function attachFallback(img){
+        if (!img || !img.dataset || !img.dataset.fallback) return;
+        const fallback = img.dataset.fallback;
+        img.addEventListener('error', function handler(){
+            img.removeEventListener('error', handler);
+            if (img.src !== fallback) {
+                img.src = fallback;
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('img.avatar-img[data-fallback]')
+            .forEach(attachFallback);
+    });
 })();
 </script>
 <script>
