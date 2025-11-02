@@ -98,19 +98,26 @@ def student_manage():
     # Restrict to students within current campus context
     campus_id = getattr(current_user, 'campus_id', None)
 
-    # Build campus-scoped base using correlated EXISTS to avoid join-order pitfalls
+    # Build campus-scoped base using explicit subqueries with EXISTS to avoid auto-correlation issues
     # 1) Student.campus_id == campus_id
-    # 2) Student.department_id -> Department.campus_id == campus_id (structured dept)
+    # 2) Structured department belongs to campus
     # 3) Legacy free-text department matches a Department in campus
     # 4) Student has inquiries to offices in this campus
-    dept_struct_exists = exists().where(
-        and_(Department.id == Student.department_id, Department.campus_id == campus_id)
+    dept_struct_exists = (
+        db.session.query(Department.id)
+        .filter(and_(Department.id == Student.department_id, Department.campus_id == campus_id))
+        .exists()
     )
-    dept_name_exists = exists().where(
-        and_(Department.campus_id == campus_id, func.lower(Department.name) == func.lower(Student.department))
+    dept_name_exists = (
+        db.session.query(Department.id)
+        .filter(and_(Department.campus_id == campus_id, func.lower(Department.name) == func.lower(Student.department)))
+        .exists()
     )
-    inquiry_exists = exists().where(
-        and_(Inquiry.student_id == Student.id, Inquiry.office_id == Office.id, Office.campus_id == campus_id)
+    inquiry_exists = (
+        db.session.query(Inquiry.id)
+        .join(Office, Inquiry.office_id == Office.id)
+        .filter(and_(Inquiry.student_id == Student.id, Office.campus_id == campus_id))
+        .exists()
     )
 
     campus_scope_filter = or_(
@@ -180,8 +187,11 @@ def student_manage():
         students_base = students_base.filter(Student.section == section)
 
     if pending_only == 'yes':
-        pending_exists = exists().where(
-            and_(Inquiry.student_id == Student.id, Inquiry.status == 'pending', Inquiry.office_id == Office.id, Office.campus_id == campus_id)
+        pending_exists = (
+            db.session.query(Inquiry.id)
+            .join(Office, Inquiry.office_id == Office.id)
+            .filter(and_(Inquiry.student_id == Student.id, Inquiry.status == 'pending', Office.campus_id == campus_id))
+            .exists()
         )
         students_base = students_base.filter(pending_exists)
 
