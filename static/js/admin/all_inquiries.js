@@ -27,9 +27,9 @@ document.addEventListener('DOMContentLoaded', function() {
             exportOptions.classList.add('hidden');
         }
     });
-    // Handle export option clicks: build a GET URL with current filters to trigger a download
+    // Handle export option clicks: fetch the file and trigger a client-side download reliably
     exportOptionButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const format = this.getAttribute('data-format');
             const params = new URLSearchParams();
             if (filtersForm) {
@@ -40,14 +40,38 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             params.set('format', format);
             const url = `/admin/inquiry/export?${params.toString()}`;
-            // Open in a new tab to preserve current page state
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            exportOptions.classList.add('hidden');
+            try {
+                const res = await fetch(url, { method: 'GET', credentials: 'same-origin' });
+                if (!res.ok) {
+                    let msg = 'Export failed';
+                    try { const err = await res.json(); if (err && err.error) msg = err.error; } catch(_){}
+                    alert(msg);
+                    return;
+                }
+                const blob = await res.blob();
+                let filename = '';
+                const cd = res.headers.get('Content-Disposition') || res.headers.get('content-disposition');
+                if (cd) {
+                    const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
+                    if (match) filename = decodeURIComponent(match[1] || match[2] || '').trim();
+                }
+                if (!filename) {
+                    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+                    const ext = format === 'pdf' ? 'pdf' : (format === 'excel' ? 'xlsx' : 'csv');
+                    filename = `inquiries_${ts}.${ext}`;
+                }
+                const dlUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = dlUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(dlUrl);
+                exportOptions.classList.add('hidden');
+            } catch (e) {
+                alert('Export failed');
+            }
         });
     });
     
