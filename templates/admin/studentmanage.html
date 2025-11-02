@@ -278,50 +278,140 @@
         </div>
         
         <!-- Search and Filter Controls -->
-        <div class="flex flex-col md:flex-row justify-between mb-6 space-y-4 md:space-y-0">
-            <div class="md:w-1/3">
-                <div class="relative">
-                    <input type="text" id="searchInput" placeholder="Search by name, email, student number, or department..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+        <form id="filtersForm" method="get" class="flex flex-col gap-4 md:gap-3 mb-6">
+            <div class="flex flex-col md:flex-row justify-between gap-3">
+                <div class="md:w-1/2">
+                    <div class="relative">
+                        <input type="text" id="searchInput" name="q" value="{{ q or '' }}" placeholder="Search by name, email, student number, or department..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 flex-1">
+                    <div class="relative">
+                        <select id="statusFilter" name="status" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not status }}>All Status</option>
+                            <option value="active" {{ 'selected' if status=='active' }}>Active</option>
+                            <option value="inactive" {{ 'selected' if status=='inactive' }}>Inactive</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="departmentFilter" name="department_id" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="">All Departments</option>
+                            {% for d in departments %}
+                                <option value="{{ d.id }}" {{ 'selected' if department_id==d.id }}>{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="yearLevelFilter" name="year_level" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not year_level }}>All Years</option>
+                            {% set year_opts = ['1st Year','2nd Year','3rd Year','4th Year','5th Year'] %}
+                            {% for y in year_opts %}
+                                <option value="{{ y }}" {{ 'selected' if year_level==y }}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="sectionFilter" name="section" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not section }}>All Sections</option>
+                            {% for s in ['A','B','C','D','E'] %}
+                                <option value="{{ s }}" {{ 'selected' if section==s }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="emailVerifiedFilter" name="email_verified" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not email_verified }}>Any Email Status</option>
+                            <option value="yes" {{ 'selected' if email_verified=='yes' }}>Email Verified</option>
+                            <option value="no" {{ 'selected' if email_verified=='no' }}>Email Unverified</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="lockedFilter" name="account_locked" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not account_locked }}>Any Lock</option>
+                            <option value="yes" {{ 'selected' if account_locked=='yes' }}>Locked</option>
+                            <option value="no" {{ 'selected' if account_locked=='no' }}>Not Locked</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="flex space-x-3">
-                <div class="relative">
-                    <select id="statusFilter" class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
-                        <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+            <div class="flex flex-col md:flex-row justify-between gap-3 items-center">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <input id="pendingOnly" name="pending_only" value="yes" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded" {{ 'checked' if pending_only=='yes' }}>
+                        <label for="pendingOnly" class="text-sm text-gray-700">With Pending Inquiries</label>
                     </div>
                 </div>
-                
-                <div class="relative">
-                    <select id="sortBy" class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
-                        <option value="">Sort by</option>
-                        <option value="name">Name</option>
-                        <option value="email">Email</option>
-                        <option value="student_number">Student Number</option>
-                        <option value="department">Department</option>
-                        <option value="year_level">Year Level</option>
-                        <option value="section">Section</option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <select id="sortBy" name="sort" class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="name" {{ 'selected' if sort=='name' }}>Sort by: Name</option>
+                            <option value="email" {{ 'selected' if sort=='email' }}>Sort by: Email</option>
+                            <option value="student_number" {{ 'selected' if sort=='student_number' }}>Sort by: Student Number</option>
+                            <option value="department" {{ 'selected' if sort=='department' }}>Sort by: Department</option>
+                            <option value="year_level" {{ 'selected' if sort=='year_level' }}>Sort by: Year Level</option>
+                            <option value="section" {{ 'selected' if sort=='section' }}>Sort by: Section</option>
+                            <option value="created_at" {{ 'selected' if sort=='created_at' }}>Sort by: Registration Date</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
                     </div>
+                    <div class="relative">
+                        <select id="orderBy" name="order" class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="asc" {{ 'selected' if order=='asc' }}>Asc</option>
+                            <option value="desc" {{ 'selected' if order=='desc' }}>Desc</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                        <i class="fas fa-filter"></i>
+                        Apply
+                    </button>
+                    <a href="{{ url_for('admin.student_manage') }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Reset</a>
                 </div>
             </div>
-        </div>
+        </form>
         
        <!-- Table -->
 <div class="overflow-x-auto">
@@ -476,14 +566,14 @@
                 {% endif %}
             </div>
             <nav class="relative z-0 inline-flex rounded-md shadow-sm overflow-hidden" aria-label="Pagination">
-                <a href="{{ url_for('admin.student_manage', page=page-1) }}" class="{{ 'pointer-events-none opacity-50' if page <= 1 else '' }} relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors duration-200">
+                <a href="{{ url_for('admin.student_manage', page=page-1, q=q, status=status, department_id=department_id, year_level=year_level, section=section, email_verified=email_verified, account_locked=account_locked, pending_only=pending_only, sort=sort, order=order) }}" class="{{ 'pointer-events-none opacity-50' if page <= 1 else '' }} relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors duration-200">
                     <span class="sr-only">Previous</span>
                     <svg class="h-4 w-4 md:h-5 md:w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                     </svg>
                 </a>
                 <span class="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-700">Page {{ page }} of {{ pages }}</span>
-                <a href="{{ url_for('admin.student_manage', page=page+1) }}" class="{{ 'pointer-events-none opacity-50' if page >= pages else '' }} relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors duration-200">
+                <a href="{{ url_for('admin.student_manage', page=page+1, q=q, status=status, department_id=department_id, year_level=year_level, section=section, email_verified=email_verified, account_locked=account_locked, pending_only=pending_only, sort=sort, order=order) }}" class="{{ 'pointer-events-none opacity-50' if page >= pages else '' }} relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors duration-200">
                     <span class="sr-only">Next</span>
                     <svg class="h-4 w-4 md:h-5 md:w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
@@ -541,6 +631,21 @@
             }, 2000);
         });
     }
+})();
+</script>
+
+<script>
+// Auto-submit filters on change and submit on Enter in search
+(function(){
+    const form = document.getElementById('filtersForm');
+    if (!form) return;
+    const autoIds = ['statusFilter','departmentFilter','yearLevelFilter','sectionFilter','emailVerifiedFilter','lockedFilter','sortBy','orderBy','pendingOnly'];
+    autoIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', ()=>form.submit());
+    });
+    const search = document.getElementById('searchInput');
+    if (search) search.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); form.submit(); }});
 })();
 </script>
 

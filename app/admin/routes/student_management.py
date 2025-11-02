@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
-from sqlalchemy import func, case, or_
+from sqlalchemy import func, case, or_, and_, exists
 import random
 import os
 from app.admin import admin_bp
@@ -95,22 +95,117 @@ def student_manage():
         flash('Access denied. You do not have permission to view this page.', 'danger')
         return redirect(url_for('main.index'))
     
-    # Restrict to students that belong to the currently logged-in campus via Student.campus_id
+    # Restrict to students within current campus context
     campus_id = getattr(current_user, 'campus_id', None)
-    
-    # Base query: students directly assigned to campus
-    students_base = (db.session.query(Student)
-                     .join(User, User.id == Student.user_id)
-                     .filter(Student.campus_id == campus_id))
-    
-    students_query = students_base.order_by(User.last_name.asc(), User.first_name.asc())
+
+    # Build campus-scoped base: include students by any of the following
+    # 1) Student.campus_id == campus_id
+    # 2) Student.department_rel.campus_id == campus_id (structured department ties student to campus)
+    # 3) Student has inquiries to offices in campus
+    inquiry_exists = db.session.query(Inquiry.id).join(Office, Inquiry.office_id == Office.id).filter(
+        and_(Inquiry.student_id == Student.id, Office.campus_id == campus_id)
+    ).exists()
+
+    dept_name_exists = db.session.query(Department.id).filter(
+        and_(Department.campus_id == campus_id, func.lower(Department.name) == func.lower(Student.department))
+    ).exists()
+
+    campus_scope_filter = or_(
+        Student.campus_id == campus_id,
+        and_(Student.department_id.isnot(None), Department.campus_id == campus_id),
+        dept_name_exists,
+        inquiry_exists
+    )
+
+    students_base = (
+        db.session.query(Student)
+        .join(User, User.id == Student.user_id)
+        .outerjoin(Department, Department.id == Student.department_id)
+        .filter(campus_scope_filter)
+    )
+
+    # Filters and search parameters
+    q = (request.args.get('q') or '').strip()
+    status = (request.args.get('status') or '').strip()  # 'active' | 'inactive' | ''
+    dept_id = request.args.get('department_id', type=int)
+    year_level = (request.args.get('year_level') or '').strip()
+    section = (request.args.get('section') or '').strip()
+    email_verified = request.args.get('email_verified')  # 'yes' | 'no' | None
+    account_locked = request.args.get('account_locked')  # 'yes' | 'no' | None
+    pending_only = request.args.get('pending_only')  # 'yes' | None
+    sort = (request.args.get('sort') or 'name').strip()
+    order = (request.args.get('order') or 'asc').strip()
+
+    # Apply search
+    if q:
+        like = f"%{q}%"
+        students_base = students_base.filter(
+            or_(
+                func.lower(User.first_name).like(func.lower(like)),
+                func.lower(User.middle_name).like(func.lower(like)) if User.middle_name is not None else False,
+                func.lower(User.last_name).like(func.lower(like)),
+                func.lower(User.email).like(func.lower(like)),
+                func.lower(Student.student_number).like(func.lower(like)),
+                func.lower(Student.department).like(func.lower(like)),
+                func.lower(Student.section).like(func.lower(like)),
+                func.lower(Student.year_level).like(func.lower(like)),
+                func.lower(Department.name).like(func.lower(like))
+            )
+        )
+
+    # Status filters
+    if status == 'active':
+        students_base = students_base.filter(User.is_active.is_(True))
+    elif status == 'inactive':
+        students_base = students_base.filter(User.is_active.is_(False))
+
+    if email_verified == 'yes':
+        students_base = students_base.filter(User.email_verified.is_(True))
+    elif email_verified == 'no':
+        students_base = students_base.filter(User.email_verified.is_(False))
+
+    if account_locked == 'yes':
+        students_base = students_base.filter(User.account_locked.is_(True))
+    elif account_locked == 'no':
+        students_base = students_base.filter(User.account_locked.is_(False))
+
+    if dept_id:
+        students_base = students_base.filter(Student.department_id == dept_id)
+    if year_level:
+        students_base = students_base.filter(Student.year_level == year_level)
+    if section:
+        students_base = students_base.filter(Student.section == section)
+
+    if pending_only == 'yes':
+        pending_exists = db.session.query(Inquiry.id).join(Office, Inquiry.office_id == Office.id).filter(
+            and_(Inquiry.student_id == Student.id, Inquiry.status == 'pending', Office.campus_id == campus_id)
+        ).exists()
+        students_base = students_base.filter(pending_exists)
+
+    # Sorting
+    sort_columns = {
+        'name': (User.last_name, User.first_name),
+        'email': (User.email,),
+        'student_number': (Student.student_number,),
+        'department': (Department.name, Student.department),
+        'year_level': (Student.year_level,),
+        'section': (Student.section,),
+        'created_at': (User.created_at,)
+    }
+    cols = sort_columns.get(sort, sort_columns['name'])
+    ordering = []
+    for col in cols:
+        ordering.append(col.asc() if order == 'asc' else col.desc())
+
+    students_query = students_base.order_by(*ordering)
 
     # Pagination params
     page = request.args.get('page', 1, type=int)
     per_page = 50
 
-    total_students = (db.session.query(func.count(Student.id))
-                      .filter(Student.campus_id == campus_id)
+    # Compute total matching students (distinct IDs due to joins)
+    total_students = (db.session.query(func.count(func.distinct(Student.id)))
+                      .select_from(students_base.subquery())
                       .scalar() or 0)
 
     # Bound page to valid range
@@ -123,21 +218,31 @@ def student_manage():
     students = students_query.limit(per_page).offset((page - 1) * per_page).all()
     
     # Stats scoped to campus
-    active_students = (db.session.query(func.count(Student.id))
+    # Active and inactive stats using the same campus-scoped base
+    active_students = (db.session.query(func.count(func.distinct(Student.id)))
+                       .select_from(Student)
                        .join(User, User.id == Student.user_id)
-                       .filter(Student.campus_id == campus_id, User.is_active == True)
+                       .outerjoin(Department, Department.id == Student.department_id)
+                       .filter(campus_scope_filter, User.is_active.is_(True))
                        .scalar() or 0)
     inactive_students = (total_students - active_students) if total_students else 0
 
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    recently_registered = (db.session.query(func.count(Student.id))
+    recently_registered = (db.session.query(func.count(func.distinct(Student.id)))
+                           .select_from(Student)
                            .join(User, User.id == Student.user_id)
-                           .filter(Student.campus_id == campus_id, User.created_at >= seven_days_ago)
+                           .outerjoin(Department, Department.id == Student.department_id)
+                           .filter(campus_scope_filter, User.created_at >= seven_days_ago)
                            .scalar() or 0)
     
     # Range for current page
     start_index = 0 if total_students == 0 else (page - 1) * per_page + 1
     end_index = 0 if total_students == 0 else min(page * per_page, total_students)
+
+    # Provide departments for filter UI (campus-specific)
+    departments = []
+    if campus_id:
+        departments = Department.query.filter_by(campus_id=campus_id, is_active=True).order_by(Department.name.asc()).all()
 
     return render_template('admin/studentmanage.html',
                            students=students,
@@ -149,7 +254,19 @@ def student_manage():
                            pages=pages,
                            per_page=per_page,
                            start_index=start_index,
-                           end_index=end_index)
+                           end_index=end_index,
+                           # filters state for template
+                           q=q,
+                           status=status,
+                           department_id=dept_id,
+                           year_level=year_level,
+                           section=section,
+                           email_verified=email_verified,
+                           account_locked=account_locked,
+                           pending_only=pending_only,
+                           sort=sort,
+                           order=order,
+                           departments=departments)
 
 
 @admin_bp.route('/verify_student_email', methods=['POST'])
