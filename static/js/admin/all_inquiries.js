@@ -27,51 +27,28 @@ document.addEventListener('DOMContentLoaded', function() {
             exportOptions.classList.add('hidden');
         }
     });
-    // Handle export option clicks
+    // Handle export option clicks: build a GET URL with current filters to trigger a download
     exportOptionButtons.forEach(btn => {
-        btn.addEventListener('click', async function() {
+        btn.addEventListener('click', function() {
             const format = this.getAttribute('data-format');
-            // Build form data from current filters
-            const fd = new FormData();
+            const params = new URLSearchParams();
             if (filtersForm) {
                 const formData = new FormData(filtersForm);
                 for (const [k, v] of formData.entries()) {
-                    if (v !== null && v !== '') fd.append(k, v);
+                    if (v !== null && v !== '') params.append(k, v);
                 }
             }
-            fd.append('format', format);
-
-            try {
-                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                const res = await fetch('/admin/inquiry/export', {
-                    method: 'POST',
-                    body: fd,
-                    headers: csrf ? { 'X-CSRFToken': csrf } : undefined
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    alert(err.error || 'Export failed');
-                    return;
-                }
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                // Guess filename by content-type
-                let ext = 'csv';
-                const ct = res.headers.get('Content-Type') || '';
-                if (ct.includes('pdf')) ext = 'pdf';
-                else if (ct.includes('spreadsheet')) ext = 'xlsx';
-                a.href = url;
-                a.download = `inquiries_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${ext}`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-                exportOptions.classList.add('hidden');
-            } catch (e) {
-                alert('Export failed');
-            }
-        })
+            params.set('format', format);
+            const url = `/admin/inquiry/export?${params.toString()}`;
+            // Open in a new tab to preserve current page state
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            exportOptions.classList.add('hidden');
+        });
     });
     
     // Modal handling for view details

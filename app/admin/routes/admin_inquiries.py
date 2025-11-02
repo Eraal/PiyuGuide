@@ -230,14 +230,17 @@ def view_inquiry_details(inquiry_id):
         messages=messages
     )
 
-@admin_bp.route('/admin/inquiry/export', methods=['POST'])
+@admin_bp.route('/admin/inquiry/export', methods=['GET', 'POST'])
 @login_required
 def export_inquiries():
     """
     Export filtered inquiries data in various formats
     """
-    # Accept form-encoded or JSON payload
-    payload = request.form if request.form else (request.get_json(silent=True) or {})
+    # Accept form-encoded, JSON payload, or query string
+    if request.method == 'GET':
+        payload = request.args
+    else:
+        payload = request.form if request.form else (request.get_json(silent=True) or {})
     export_format = (payload.get('format') or 'csv').lower()
 
     # Build the same filtered query used in the page

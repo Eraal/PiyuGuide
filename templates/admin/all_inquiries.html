@@ -32,7 +32,7 @@
     <!-- Filters and Search Panel -->
     <div class="bg-white p-4 rounded-lg shadow-md mb-6">
         <form id="filters-form" action="{{ url_for('admin.all_inquiries') }}" method="GET">
-            <div class="flex flex-wrap gap-4">
+            <div class="flex flex-wrap gap-4 items-end">
                 <div class="flex-1 min-w-[200px]">
                     <label for="office-filter" class="block text-sm font-medium text-gray-700 mb-1">Office</label>
                     <select id="office-filter" name="office" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -84,6 +84,9 @@
                         </div>
                         <input id="search" name="search" type="text" value="{{ request.args.get('search', '') }}" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search by student name, ID, or subject...">
                     </div>
+                </div>
+                <div class="flex-none">
+                    <button type="submit" class="mt-6 bg-blue-800 text-white px-4 py-2 rounded-md hover:bg-blue-900 whitespace-nowrap">Apply Filters</button>
                 </div>
             </div>
 
