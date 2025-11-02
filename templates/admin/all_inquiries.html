@@ -14,18 +14,6 @@
             <button id="refreshBtn" class="bg-blue-800 text-white px-4 py-2 rounded-md flex items-center hover:bg-blue-900">
                 <i class="fas fa-sync-alt mr-2"></i> Refresh
             </button>
-            <div class="relative">
-                <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-md flex items-center hover:bg-green-700">
-                    <i class="fas fa-file-export mr-2"></i> Export
-                </button>
-                <div id="exportOptions" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden z-10">
-                    <div class="py-1">
-                        <button type="button" class="export-option block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-format="csv">Export as CSV</button>
-                        <button type="button" class="export-option block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-format="pdf">Export as PDF</button>
-                        <button type="button" class="export-option block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-format="excel">Export as Excel</button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -191,11 +179,6 @@
 
     <!-- Inquiries Table -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <!-- Analytics: Inquiries per Department -->
-        <div class="p-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Inquiries by Department</h3>
-            <canvas id="deptChart" height="90"></canvas>
-        </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -422,42 +405,7 @@
 </div>
 
 
-
 <script src="/static/js/admin/all_inquiries.js"></script>
 
-<!-- Lightweight Chart.js for the department chart -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-    const ctxEl = document.getElementById('deptChart');
-    if(!ctxEl || typeof Chart === 'undefined') return;
-    fetch('/admin/api/inquiries-per-department')
-        .then(r=>r.json())
-        .then(({data})=>{
-            const labels = data.map(d=>d.department_name);
-            const values = data.map(d=>d.count);
-            const ctx = ctxEl.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Inquiries',
-                        data: values,
-                        backgroundColor: 'rgba(37, 99, 235, 0.25)',
-                        borderColor: 'rgba(37, 99, 235, 1)',
-                        borderWidth: 1,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { precision:0 } } }
-                }
-            });
-        }).catch(()=>{/* ignore errors */});
-})();
-</script>
 
 {% endblock %}

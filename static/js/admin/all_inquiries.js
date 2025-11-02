@@ -11,22 +11,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Export dropdown toggle
+    // Export elements (may be absent when export is disabled)
     const exportBtn = document.getElementById('exportBtn');
     const exportOptions = document.getElementById('exportOptions');
     const exportOptionButtons = document.querySelectorAll('#exportOptions .export-option');
     const filtersForm = document.getElementById('filters-form');
     
-    exportBtn.addEventListener('click', function() {
-        exportOptions.classList.toggle('hidden');
-    });
-    
-    // Close export dropdown when clicking elsewhere
-    document.addEventListener('click', function(event) {
-        if (!exportBtn.contains(event.target)) {
-            exportOptions.classList.add('hidden');
-        }
-    });
+    if (exportBtn && exportOptions) {
+        exportBtn.addEventListener('click', function() {
+            exportOptions.classList.toggle('hidden');
+        });
+        // Close export dropdown when clicking elsewhere
+        document.addEventListener('click', function(event) {
+            if (!exportBtn.contains(event.target)) {
+                exportOptions.classList.add('hidden');
+            }
+        });
+    }
     // Handle export option clicks: fetch the file and trigger a client-side download reliably
     exportOptionButtons.forEach(btn => {
         btn.addEventListener('click', async function() {
@@ -68,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 a.click();
                 a.remove();
                 window.URL.revokeObjectURL(dlUrl);
-                exportOptions.classList.add('hidden');
+                if (exportOptions) exportOptions.classList.add('hidden');
             } catch (e) {
                 alert('Export failed');
             }
