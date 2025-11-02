@@ -20,9 +20,9 @@
                 </button>
                 <div id="exportOptions" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden z-10">
                     <div class="py-1">
-                        <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as CSV</button>
-                        <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as PDF</button>
-                        <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as Excel</button>
+                        <button type="button" class="export-option block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-format="csv">Export as CSV</button>
+                        <button type="button" class="export-option block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-format="pdf">Export as PDF</button>
+                        <button type="button" class="export-option block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-format="excel">Export as Excel</button>
                     </div>
                 </div>
             </div>
@@ -31,7 +31,7 @@
 
     <!-- Filters and Search Panel -->
     <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-        <form action="{{ url_for('admin.all_inquiries') }}" method="GET">
+        <form id="filters-form" action="{{ url_for('admin.all_inquiries') }}" method="GET">
             <div class="flex flex-wrap gap-4">
                 <div class="flex-1 min-w-[200px]">
                     <label for="office-filter" class="block text-sm font-medium text-gray-700 mb-1">Office</label>

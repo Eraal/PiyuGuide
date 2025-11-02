@@ -9,6 +9,21 @@ import random
 import os
 from app.admin import admin_bp
 from app.utils.decorators import campus_access_required
+from io import StringIO, BytesIO
+import csv
+
+try:
+    # Optional dependencies for richer exports
+    from openpyxl import Workbook
+except Exception:  # pragma: no cover
+    Workbook = None
+
+try:
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+    from reportlab.lib import colors
+except Exception:  # pragma: no cover
+    SimpleDocTemplate = None
 
 @admin_bp.route('/admin_inquiries')
 @login_required
@@ -26,65 +41,9 @@ def all_inquiries():
     page = request.args.get('page', 1, type=int)
     per_page = 10
 
-    query = Inquiry.query.join(Student).join(User).join(Office)
-    
-    # Apply campus filtering for super_admin users
-    if current_user.role == 'super_admin' and current_user.campus_id:
-        query = query.filter(Office.campus_id == current_user.campus_id)
-
-    if office_id:
-        query = query.filter(Inquiry.office_id == office_id)
-    
-    if status:
-        query = query.filter(Inquiry.status == status)
-
-    # Optional department filter (based on the student's structured department)
-    if department_id:
-        query = query.filter(Student.department_id == department_id)
-    
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    if date_range == 'today':
-        query = query.filter(Inquiry.created_at >= today)
-    elif date_range == 'yesterday':
-        yesterday = today - timedelta(days=1)
-        query = query.filter(Inquiry.created_at >= yesterday, Inquiry.created_at < today)
-    elif date_range == 'this_week':
-        start_of_week = today - timedelta(days=today.weekday())
-        query = query.filter(Inquiry.created_at >= start_of_week)
-    elif date_range == 'last_week':
-        start_of_last_week = today - timedelta(days=today.weekday() + 7)
-        end_of_last_week = start_of_last_week + timedelta(days=7)
-        query = query.filter(Inquiry.created_at >= start_of_last_week, Inquiry.created_at < end_of_last_week)
-    elif date_range == 'this_month':
-        start_of_month = today.replace(day=1)
-        query = query.filter(Inquiry.created_at >= start_of_month)
-    elif date_range == 'last_month':
-        last_month = today.replace(day=1) - timedelta(days=1)
-        start_of_last_month = last_month.replace(day=1)
-        query = query.filter(Inquiry.created_at >= start_of_last_month, Inquiry.created_at < today.replace(day=1))
-    elif date_range == 'custom':
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(Inquiry.created_at >= start_date)
-        if end_date:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # Include end date
-            query = query.filter(Inquiry.created_at < end_date)
-    
-    if search_query:
-        # Search by student/user name, student number, inquiry subject, or message content
-        search = f"%{search_query}%"
-        query = query.outerjoin(InquiryMessage, Inquiry.id == InquiryMessage.inquiry_id).filter(
-            or_(
-                User.first_name.ilike(search),
-                User.last_name.ilike(search),
-                Student.student_number.ilike(search),
-                Inquiry.subject.ilike(search),
-                InquiryMessage.content.ilike(search)
-            )
-        ).distinct()
-    
+    query = _build_inquiries_query(request.args)
+    # Extract current department for template state
+    department_id = request.args.get('department', type=int)
 
     # Limit office choices shown in filter: campus admins (role super_admin) should only
     # see offices belonging to their assigned campus; higher roles (e.g., super_super_admin)
@@ -105,7 +64,8 @@ def all_inquiries():
     # Build filter params for pagination links (exclude 'page' to avoid duplicate keys)
     filters = {k: v for k, v in request.args.items() if k != 'page' and v not in (None, '')}
 
-    stats = get_inquiry_stats()
+    # Stats reflect current filters (ignoring date_range for week-over-week comparisons)
+    stats = get_inquiry_stats(request.args)
     
     return render_template(
         'admin/all_inquiries.html',
@@ -158,13 +118,20 @@ def inquiries_per_department():
 
     return jsonify({'data': data})
 
-def get_inquiry_stats():
-    """Calculate inquiry statistics for the dashboard"""
+def get_inquiry_stats(params=None):
+    """Calculate inquiry statistics for the dashboard using current filters (excluding date filters).
 
-    total = Inquiry.query.count()
-    pending = Inquiry.query.filter_by(status='pending').count()
-    in_progress = Inquiry.query.filter_by(status='in_progress').count()
-    resolved = Inquiry.query.filter_by(status='resolved').count()
+    Args:
+        params: dict-like of current filters (e.g., request.args). Date filters are ignored here
+                so we can compute week-over-week comparisons consistently under the same constraints.
+    """
+    # Build base query with current filters but ignore date filters
+    base = _build_inquiries_query(params or {}, ignore_dates=True).join(Office)
+
+    total = base.count()
+    pending = base.filter(Inquiry.status == 'pending').count()
+    in_progress = base.filter(Inquiry.status == 'in_progress').count()
+    resolved = base.filter(Inquiry.status == 'resolved').count()
 
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_week = today - timedelta(days=today.weekday())
@@ -172,9 +139,9 @@ def get_inquiry_stats():
     start_of_last_week = start_of_week - timedelta(days=7)
     end_of_last_week = start_of_week - timedelta(seconds=1)
     
-    this_week_total = Inquiry.query.filter(Inquiry.created_at >= start_of_week).count()
+    this_week_total = base.filter(Inquiry.created_at >= start_of_week).count()
     
-    last_week_total = Inquiry.query.filter(
+    last_week_total = base.filter(
         Inquiry.created_at >= start_of_last_week,
         Inquiry.created_at <= end_of_last_week
     ).count()
@@ -184,12 +151,12 @@ def get_inquiry_stats():
     else:
         total_change = 100 if this_week_total > 0 else 0
     
-    this_week_pending = Inquiry.query.filter(
+    this_week_pending = base.filter(
         Inquiry.created_at >= start_of_week,
         Inquiry.status == 'pending'
     ).count()
     
-    last_week_pending = Inquiry.query.filter(
+    last_week_pending = base.filter(
         Inquiry.created_at >= start_of_last_week,
         Inquiry.created_at <= end_of_last_week,
         Inquiry.status == 'pending'
@@ -200,12 +167,12 @@ def get_inquiry_stats():
     else:
         pending_change = 100 if this_week_pending > 0 else 0
     
-    this_week_in_progress = Inquiry.query.filter(
+    this_week_in_progress = base.filter(
         Inquiry.created_at >= start_of_week,
         Inquiry.status == 'in_progress'
     ).count()
     
-    last_week_in_progress = Inquiry.query.filter(
+    last_week_in_progress = base.filter(
         Inquiry.created_at >= start_of_last_week,
         Inquiry.created_at <= end_of_last_week,
         Inquiry.status == 'in_progress'
@@ -216,12 +183,12 @@ def get_inquiry_stats():
     else:
         in_progress_change = 100 if this_week_in_progress > 0 else 0
     
-    this_week_resolved = Inquiry.query.filter(
+    this_week_resolved = base.filter(
         Inquiry.created_at >= start_of_week,
         Inquiry.status == 'resolved'
     ).count()
     
-    last_week_resolved = Inquiry.query.filter(
+    last_week_resolved = base.filter(
         Inquiry.created_at >= start_of_last_week,
         Inquiry.created_at <= end_of_last_week,
         Inquiry.status == 'resolved'
@@ -268,22 +235,228 @@ def export_inquiries():
     """
     Export filtered inquiries data in various formats
     """
-    export_format = request.form.get('format', 'csv')
-    
-    office_id = request.form.get('office', type=int)
-    status = request.form.get('status')
-    date_range = request.form.get('date_range')
-    search_query = request.form.get('search')
-    
-    query = Inquiry.query.join(Student).join(User).join(Office)
+    # Accept form-encoded or JSON payload
+    payload = request.form if request.form else (request.get_json(silent=True) or {})
+    export_format = (payload.get('format') or 'csv').lower()
 
-    inquiries = query.order_by(desc(Inquiry.created_at)).all()
- 
+    # Build the same filtered query used in the page
+    query = _build_inquiries_query(payload)
+
+    # Common headers
+    headers = ['Inquiry ID', 'Student Name', 'Student ID', 'Department', 'Office', 'Subject', 'Status', 'Created At']
+
+    # Prepare filename
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    filename_base = f"inquiries_{timestamp}"
+
     if export_format == 'csv':
-        pass
-    elif export_format == 'pdf':
-        pass
+        def generate():
+            # UTF-8 BOM for Excel friendliness
+            yield b"\xef\xbb\xbf"
+            # Header row
+            header_io = StringIO()
+            csv.writer(header_io).writerow(headers)
+            yield header_io.getvalue().encode('utf-8')
+            header_io.close()
+            # Stream rows
+            for inq in query.order_by(desc(Inquiry.created_at)).yield_per(1000):
+                student = getattr(inq, 'student', None)
+                user = getattr(student, 'user', None) if student else None
+                dept_name = student.department_name if student else ''
+                row_io = StringIO()
+                csv.writer(row_io).writerow([
+                    f"INQ-{inq.id}",
+                    user.get_full_name() if user else '',
+                    student.student_number if student else '',
+                    dept_name or '',
+                    inq.office.name if inq.office else '',
+                    inq.subject,
+                    inq.status,
+                    inq.created_at.strftime('%Y-%m-%d %H:%M:%S') if inq.created_at else ''
+                ])
+                yield row_io.getvalue().encode('utf-8')
+                row_io.close()
+        return Response(
+            generate(),
+            headers={
+                'Content-Disposition': f'attachment; filename={filename_base}.csv',
+                'Content-Type': 'text/csv; charset=utf-8'
+            }
+        )
     elif export_format == 'excel':
-        pass
-    
+        if not Workbook:
+            return jsonify({'error': 'Excel export not available'}), 400
+        # Guard against very large exports
+        try:
+            total_rows = query.count()
+            if total_rows > 50000:
+                return jsonify({'error': 'Too many rows for Excel export. Please narrow your filters or use CSV.'}), 400
+        except Exception:
+            pass
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Inquiries'
+        ws.append(headers)
+        for inq in query.order_by(desc(Inquiry.created_at)).all():
+            student = inq.student
+            user = student.user if student else None
+            dept_name = student.department_name if student else ''
+            ws.append([
+                f"INQ-{inq.id}",
+                user.get_full_name() if user else '',
+                student.student_number if student else '',
+                dept_name or '',
+                inq.office.name if inq.office else '',
+                inq.subject,
+                inq.status,
+                inq.created_at.strftime('%Y-%m-%d %H:%M:%S') if inq.created_at else ''
+            ])
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        return Response(
+            bio.getvalue(),
+            headers={
+                'Content-Disposition': f'attachment; filename={filename_base}.xlsx',
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        )
+    elif export_format == 'pdf':
+        if not SimpleDocTemplate:
+            return jsonify({'error': 'PDF export not available'}), 400
+        try:
+            total_rows = query.count()
+            if total_rows > 10000:
+                return jsonify({'error': 'Too many rows for PDF export. Please narrow your filters or use CSV.'}), 400
+        except Exception:
+            pass
+        bio = BytesIO()
+        doc = SimpleDocTemplate(bio, pagesize=landscape(letter))
+        data = [headers]
+        for inq in query.order_by(desc(Inquiry.created_at)).all():
+            student = inq.student
+            user = student.user if student else None
+            dept_name = student.department_name if student else ''
+            data.append([
+                f"INQ-{inq.id}",
+                user.get_full_name() if user else '',
+                student.student_number if student else '',
+                dept_name or '',
+                inq.office.name if inq.office else '',
+                inq.subject,
+                inq.status,
+                inq.created_at.strftime('%Y-%m-%d %H:%M:%S') if inq.created_at else ''
+            ])
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e40af')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 11),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
+            ('GRID', (0,0), (-1,-1), 0.25, colors.grey)
+        ]))
+        doc.build([table])
+        bio.seek(0)
+        return Response(
+            bio.getvalue(),
+            headers={
+                'Content-Disposition': f'attachment; filename={filename_base}.pdf',
+                'Content-Type': 'application/pdf'
+            }
+        )
+
     return jsonify({'error': 'Export format not supported'}), 400
+
+
+def _build_inquiries_query(params, ignore_dates: bool = False):
+    """Build a filtered SQLAlchemy query for inquiries based on provided params.
+
+    Params can be request.args, request.form, or a dict-like object.
+    Applies campus scoping for campus admins.
+    """
+    # Extract fields (support both dict and MultiDict)
+    get = params.get
+    office_id = _to_int(get('office'))
+    status = get('status')
+    department_id = _to_int(get('department'))
+    date_range = get('date_range')
+    search_query = get('search')
+    start_date = get('start_date')
+    end_date = get('end_date')
+
+    query = Inquiry.query\
+        .join(Student, Inquiry.student)\
+        .join(User, Student.user)\
+        .join(Office, Inquiry.office)
+
+    # Campus scoping for campus admins
+    if current_user.role == 'super_admin' and current_user.campus_id:
+        query = query.filter(Office.campus_id == current_user.campus_id)
+
+    if office_id:
+        query = query.filter(Inquiry.office_id == office_id)
+
+    if status:
+        query = query.filter(Inquiry.status == status)
+
+    if department_id:
+        query = query.filter(Student.department_id == department_id)
+
+    # Date filters
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    if not ignore_dates and date_range == 'today':
+        query = query.filter(Inquiry.created_at >= today)
+    elif not ignore_dates and date_range == 'yesterday':
+        yesterday = today - timedelta(days=1)
+        query = query.filter(Inquiry.created_at >= yesterday, Inquiry.created_at < today)
+    elif not ignore_dates and date_range == 'this_week':
+        start_of_week = today - timedelta(days=today.weekday())
+        query = query.filter(Inquiry.created_at >= start_of_week)
+    elif not ignore_dates and date_range == 'last_week':
+        start_of_last_week = today - timedelta(days=today.weekday() + 7)
+        end_of_last_week = start_of_last_week + timedelta(days=7)
+        query = query.filter(Inquiry.created_at >= start_of_last_week, Inquiry.created_at < end_of_last_week)
+    elif not ignore_dates and date_range == 'this_month':
+        start_of_month = today.replace(day=1)
+        query = query.filter(Inquiry.created_at >= start_of_month)
+    elif not ignore_dates and date_range == 'last_month':
+        last_month = today.replace(day=1) - timedelta(days=1)
+        start_of_last_month = last_month.replace(day=1)
+        query = query.filter(Inquiry.created_at >= start_of_last_month, Inquiry.created_at < today.replace(day=1))
+    elif not ignore_dates and date_range == 'custom':
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, '%Y-%m-%d')
+                query = query.filter(Inquiry.created_at >= sd)
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+                query = query.filter(Inquiry.created_at < ed)
+            except ValueError:
+                pass
+
+    if search_query:
+        search = f"%{search_query}%"
+        query = query.outerjoin(InquiryMessage, Inquiry.id == InquiryMessage.inquiry_id).filter(
+            or_(
+                User.first_name.ilike(search),
+                User.last_name.ilike(search),
+                Student.student_number.ilike(search),
+                Inquiry.subject.ilike(search),
+                InquiryMessage.content.ilike(search)
+            )
+        ).distinct()
+
+    return query
+
+
+def _to_int(value):
+    try:
+        return int(value) if value not in (None, '',) else None
+    except (TypeError, ValueError):
+        return None
