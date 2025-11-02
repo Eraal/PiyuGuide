@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from sqlalchemy import func, case, or_, and_, exists
+from sqlalchemy.orm import aliased
 import random
 import os
 from app.admin import admin_bp
@@ -98,25 +99,47 @@ def student_manage():
     # Restrict to students within current campus context
     campus_id = getattr(current_user, 'campus_id', None)
 
-    # Build campus-scoped base using explicit subqueries with EXISTS to avoid auto-correlation issues
+    # Build campus-scoped base using explicit subqueries with EXISTS and aliased tables to avoid auto-correlation
     # 1) Student.campus_id == campus_id
     # 2) Structured department belongs to campus
     # 3) Legacy free-text department matches a Department in campus
     # 4) Student has inquiries to offices in this campus
+    DeptAlias = aliased(Department)
+    OffAlias = aliased(Office)
+    InqAlias = aliased(Inquiry)
+
     dept_struct_exists = (
-        db.session.query(Department.id)
-        .filter(and_(Department.id == Student.department_id, Department.campus_id == campus_id))
+        db.session.query(1)
+        .select_from(DeptAlias)
+        .filter(
+            and_(
+                DeptAlias.id == Student.department_id,
+                DeptAlias.campus_id == campus_id,
+            )
+        )
         .exists()
     )
     dept_name_exists = (
-        db.session.query(Department.id)
-        .filter(and_(Department.campus_id == campus_id, func.lower(Department.name) == func.lower(Student.department)))
+        db.session.query(1)
+        .select_from(DeptAlias)
+        .filter(
+            and_(
+                DeptAlias.campus_id == campus_id,
+                func.lower(DeptAlias.name) == func.lower(Student.department),
+            )
+        )
         .exists()
     )
     inquiry_exists = (
-        db.session.query(Inquiry.id)
-        .join(Office, Inquiry.office_id == Office.id)
-        .filter(and_(Inquiry.student_id == Student.id, Office.campus_id == campus_id))
+        db.session.query(1)
+        .select_from(InqAlias)
+        .join(OffAlias, InqAlias.office_id == OffAlias.id)
+        .filter(
+            and_(
+                InqAlias.student_id == Student.id,
+                OffAlias.campus_id == campus_id,
+            )
+        )
         .exists()
     )
 
@@ -188,9 +211,16 @@ def student_manage():
 
     if pending_only == 'yes':
         pending_exists = (
-            db.session.query(Inquiry.id)
-            .join(Office, Inquiry.office_id == Office.id)
-            .filter(and_(Inquiry.student_id == Student.id, Inquiry.status == 'pending', Office.campus_id == campus_id))
+            db.session.query(1)
+            .select_from(InqAlias)
+            .join(OffAlias, InqAlias.office_id == OffAlias.id)
+            .filter(
+                and_(
+                    InqAlias.student_id == Student.id,
+                    InqAlias.status == 'pending',
+                    OffAlias.campus_id == campus_id,
+                )
+            )
             .exists()
         )
         students_base = students_base.filter(pending_exists)
