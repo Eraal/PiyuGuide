@@ -79,7 +79,7 @@ def all_inquiries():
     )
 
 
-@admin_bp.route('/admin/api/inquiries-per-department')
+@admin_bp.route('/api/inquiries-per-department')
 @login_required
 def inquiries_per_department():
     """Return JSON of inquiry counts grouped by department for the current campus context.
@@ -212,7 +212,7 @@ def get_inquiry_stats(params=None):
         'resolved_change': round(resolved_change)
     }
 
-@admin_bp.route('/admin/inquiry/<int:inquiry_id>')
+@admin_bp.route('/inquiry/<int:inquiry_id>')
 @login_required
 def view_inquiry_details(inquiry_id):
     """
@@ -230,7 +230,7 @@ def view_inquiry_details(inquiry_id):
         messages=messages
     )
 
-@admin_bp.route('/admin/inquiry/export', methods=['GET', 'POST'])
+@admin_bp.route('/inquiry/export', methods=['GET', 'POST'])
 @login_required
 def export_inquiries():
     """
