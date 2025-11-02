@@ -126,7 +126,8 @@ def get_inquiry_stats(params=None):
                 so we can compute week-over-week comparisons consistently under the same constraints.
     """
     # Build base query with current filters but ignore date filters
-    base = _build_inquiries_query(params or {}, ignore_dates=True).join(Office)
+    # Build on the same filtered query (helper already joins Office/Student/User and scopes campus)
+    base = _build_inquiries_query(params or {}, ignore_dates=True)
 
     total = base.count()
     pending = base.filter(Inquiry.status == 'pending').count()
