@@ -98,21 +98,24 @@ def student_manage():
     # Restrict to students within current campus context
     campus_id = getattr(current_user, 'campus_id', None)
 
-    # Build campus-scoped base: include students by any of the following
+    # Build campus-scoped base using correlated EXISTS to avoid join-order pitfalls
     # 1) Student.campus_id == campus_id
-    # 2) Student.department_rel.campus_id == campus_id (structured department ties student to campus)
-    # 3) Student has inquiries to offices in campus
-    inquiry_exists = db.session.query(Inquiry.id).join(Office, Inquiry.office_id == Office.id).filter(
-        and_(Inquiry.student_id == Student.id, Office.campus_id == campus_id)
-    ).exists()
-
-    dept_name_exists = db.session.query(Department.id).filter(
+    # 2) Student.department_id -> Department.campus_id == campus_id (structured dept)
+    # 3) Legacy free-text department matches a Department in campus
+    # 4) Student has inquiries to offices in this campus
+    dept_struct_exists = exists().where(
+        and_(Department.id == Student.department_id, Department.campus_id == campus_id)
+    )
+    dept_name_exists = exists().where(
         and_(Department.campus_id == campus_id, func.lower(Department.name) == func.lower(Student.department))
-    ).exists()
+    )
+    inquiry_exists = exists().where(
+        and_(Inquiry.student_id == Student.id, Inquiry.office_id == Office.id, Office.campus_id == campus_id)
+    )
 
     campus_scope_filter = or_(
         Student.campus_id == campus_id,
-        and_(Student.department_id.isnot(None), Department.campus_id == campus_id),
+        dept_struct_exists,
         dept_name_exists,
         inquiry_exists
     )
@@ -141,15 +144,15 @@ def student_manage():
         like = f"%{q}%"
         students_base = students_base.filter(
             or_(
-                func.lower(User.first_name).like(func.lower(like)),
-                func.lower(User.middle_name).like(func.lower(like)) if User.middle_name is not None else False,
-                func.lower(User.last_name).like(func.lower(like)),
-                func.lower(User.email).like(func.lower(like)),
-                func.lower(Student.student_number).like(func.lower(like)),
-                func.lower(Student.department).like(func.lower(like)),
-                func.lower(Student.section).like(func.lower(like)),
-                func.lower(Student.year_level).like(func.lower(like)),
-                func.lower(Department.name).like(func.lower(like))
+                User.first_name.ilike(like),
+                func.coalesce(User.middle_name, '').ilike(like),
+                User.last_name.ilike(like),
+                User.email.ilike(like),
+                func.coalesce(Student.student_number, '').ilike(like),
+                func.coalesce(Student.department, '').ilike(like),
+                func.coalesce(Student.section, '').ilike(like),
+                func.coalesce(Student.year_level, '').ilike(like),
+                func.coalesce(Department.name, '').ilike(like)
             )
         )
 
@@ -177,9 +180,9 @@ def student_manage():
         students_base = students_base.filter(Student.section == section)
 
     if pending_only == 'yes':
-        pending_exists = db.session.query(Inquiry.id).join(Office, Inquiry.office_id == Office.id).filter(
-            and_(Inquiry.student_id == Student.id, Inquiry.status == 'pending', Office.campus_id == campus_id)
-        ).exists()
+        pending_exists = exists().where(
+            and_(Inquiry.student_id == Student.id, Inquiry.status == 'pending', Inquiry.office_id == Office.id, Office.campus_id == campus_id)
+        )
         students_base = students_base.filter(pending_exists)
 
     # Sorting

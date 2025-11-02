@@ -210,6 +210,24 @@ def create_app():
         except Exception:
             current_campus_name = 'PiyuGuide'
 
+        # Helper: turn a static relative path into a URL only if the file exists; else return default URL
+        def safe_static_url(path_like: str | None, default_static: str) -> str:
+            try:
+                if isinstance(path_like, str) and not path_like.startswith(('http://', 'https://', '/')):
+                    # relative to static folder
+                    import os
+                    abs_path = os.path.join(app.static_folder, path_like)
+                    if os.path.exists(abs_path):
+                        return url_for('static', filename=path_like)
+                    else:
+                        return url_for('static', filename=default_static)
+                elif isinstance(path_like, str):
+                    # absolute URL or absolute path - let it pass through
+                    return path_like
+            except Exception:
+                pass
+            return url_for('static', filename=default_static)
+
         # System-wide branding defaults
         try:
             from .models import SystemSettings as _Sys
@@ -218,15 +236,8 @@ def create_app():
             brand_tagline = _Sys.get_brand_tagline(default='Campus Inquiry Management System')
             favicon_path = _Sys.get_favicon_path(default='images/schoollogo.png')
 
-            if isinstance(logo_path, str) and (logo_path.startswith(('http://', 'https://', '/'))):
-                brand_logo_url = logo_path
-            else:
-                brand_logo_url = url_for('static', filename=logo_path)
-
-            if isinstance(favicon_path, str) and (favicon_path.startswith(('http://', 'https://', '/'))):
-                favicon_url = favicon_path
-            else:
-                favicon_url = url_for('static', filename=favicon_path)
+            brand_logo_url = safe_static_url(logo_path, 'images/schoollogo.png')
+            favicon_url = safe_static_url(favicon_path, 'images/schoollogo.png')
         except Exception:
             brand_title = 'PiyuGuide'
             brand_logo_url = url_for('static', filename='images/schoollogo.png')
@@ -247,10 +258,10 @@ def create_app():
             if current_campus is not None:
                 clp = getattr(current_campus, 'campus_logo_path', None)
                 if clp:
-                    if isinstance(clp, str) and clp.startswith(('http://', 'https://', '/')):
-                        campus_logo_url = clp
-                    else:
-                        campus_logo_url = url_for('static', filename=clp)
+                    campus_logo_url = safe_static_url(clp, 'images/schoollogo.png')
+                    # If still pointing to default because missing, fallback to system brand logo url
+                    if campus_logo_url.endswith('/images/schoollogo.png'):
+                        campus_logo_url = brand_logo_url
                 else:
                     campus_logo_url = brand_logo_url
 
@@ -360,6 +371,14 @@ def create_app():
                     root, ext = os.path.splitext(base_path)
                     sized_path = f"{root}_{size}{ext}"  # optimistic
                 from flask import url_for
+                # Verify file exists under static; if not, fallback to default avatar
+                import os
+                abs_path = os.path.join(app.static_folder, sized_path)
+                if not os.path.exists(abs_path):
+                    abs_base = os.path.join(app.static_folder, base_path)
+                    if os.path.exists(abs_base):
+                        return url_for('static', filename=base_path) + f"?v={user.profile_pic}"
+                    return url_for('static', filename='images/default_avatar.png')
                 return url_for('static', filename=sized_path) + f"?v={user.profile_pic}"
             except Exception:
                 return None
