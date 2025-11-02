@@ -204,9 +204,7 @@ def student_manage():
     per_page = 50
 
     # Compute total matching students (distinct IDs due to joins)
-    total_students = (db.session.query(func.count(func.distinct(Student.id)))
-                      .select_from(students_base.subquery())
-                      .scalar() or 0)
+    total_students = (students_base.with_entities(func.count(func.distinct(Student.id))).scalar() or 0)
 
     # Bound page to valid range
     pages = max((total_students + per_page - 1) // per_page, 1)
