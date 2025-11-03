@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from app.extensions import db
 from flask_wtf.csrf import CSRFProtect
@@ -39,8 +39,9 @@ def save_image(image_file):
         filename = secure_filename(image_file.filename)
         # Create unique filename to prevent overwriting
         unique_filename = f"{uuid4().hex}_{filename}"
-        # Ensure directory exists
-        upload_folder = os.path.join('static', 'uploads', 'announcements')
+        # Ensure directory exists (absolute path under Flask static folder)
+        static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
+        upload_folder = os.path.join(static_root, 'uploads', 'announcements')
         os.makedirs(upload_folder, exist_ok=True)
         
         # Save the file
@@ -489,7 +490,8 @@ def delete_announcement():
         for image in images:
             # Optionally delete the physical file
             try:
-                file_path = os.path.join('app', 'static', image.image_path)
+                static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
+                file_path = os.path.join(static_root, image.image_path)
                 if os.path.exists(file_path):
                     os.remove(file_path)
             except Exception as e:
@@ -547,7 +549,8 @@ def delete_announcement_image():
         
         # Delete the physical file
         try:
-            file_path = os.path.join('app', 'static', image.image_path)
+            static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
+            file_path = os.path.join(static_root, image.image_path)
             if os.path.exists(file_path):
                 os.remove(file_path)
         except Exception as e:
