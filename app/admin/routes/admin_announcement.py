@@ -54,6 +54,23 @@ def save_image(image_file):
     return None
 
 
+def _static_url_or_default(path_like: str | None, default_static: str = 'images/default.jpg') -> str:
+    """Return a static URL if the relative file exists, else default image URL."""
+    try:
+        if isinstance(path_like, str) and not path_like.startswith(('http://', 'https://', '/')):
+            import os
+            static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
+            abs_path = os.path.join(static_root, path_like)
+            if os.path.exists(abs_path):
+                return url_for('static', filename=path_like)
+            return url_for('static', filename=default_static)
+        elif isinstance(path_like, str):
+            return path_like
+    except Exception:
+        pass
+    return url_for('static', filename=default_static)
+
+
 @admin_bp.route('/admin_announcement', methods=['GET'])
 @login_required
 def announcement():
@@ -328,7 +345,7 @@ def get_announcement(announcement_id):
     images = AnnouncementImage.query.filter_by(announcement_id=announcement_id).all()
     images_data = [{
         'id': image.id,
-        'image_path': url_for('static', filename=image.image_path),
+        'image_path': _static_url_or_default(image.image_path),
         'caption': image.caption,
         'display_order': image.display_order
     } for image in images]
@@ -667,7 +684,7 @@ def get_announcements_api():
                     'images': [
                         {
                             'id': img.id,
-                            'image_path': url_for('static', filename=img.image_path),
+                            'image_path': _static_url_or_default(img.image_path),
                             'caption': img.caption,
                             'display_order': img.display_order
                         } for img in AnnouncementImage.query.filter_by(announcement_id=a.id).order_by(AnnouncementImage.display_order).all()
