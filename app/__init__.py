@@ -75,29 +75,6 @@ def create_app():
     
     app.jinja_env.filters['nl2br'] = nl2br
 
-    # Safe static URL: returns a static URL only if the file exists under static/; else a default static path
-    def static_if_exists(path_like: str | None, default_static: str = 'images/default.jpg') -> str:
-        try:
-            if isinstance(path_like, str) and not path_like.startswith(('http://', 'https://', '/')):
-                import os
-                abs_path = os.path.join(app.static_folder, path_like)
-                if os.path.exists(abs_path):
-                    from flask import url_for
-                    return url_for('static', filename=path_like)
-                else:
-                    from flask import url_for
-                    return url_for('static', filename=default_static)
-            elif isinstance(path_like, str):
-                # Absolute URL or absolute path
-                return path_like
-        except Exception:
-            pass
-        from flask import url_for
-        return url_for('static', filename=default_static)
-
-    # Expose as a template global for easy use in Jinja: {{ static_if_exists(path, 'images/default.jpg') }}
-    app.jinja_env.globals['static_if_exists'] = static_if_exists
-
     # Datetime helpers: convert UTC naive datetimes to configured local timezone
     def to_local(dt: datetime, fmt: str | None = None):
         if not dt:

@@ -75,7 +75,7 @@
         <div class="ann-avatar">
           {% set pic = announcement.author.profile_pic_path %}
           {% if pic %}
-          <img src="{{ static_if_exists(pic, 'images/default.jpg') }}" alt="Profile" class="w-full h-full object-cover" />
+          <img src="{{ url_for('static', filename=pic) }}" alt="Profile" class="w-full h-full object-cover" />
           {% else %}
           <i class="fas fa-user"></i>
           {% endif %}
@@ -125,7 +125,7 @@
           {% for image in announcement.images|sort(attribute='display_order') %}
           <div class="relative rounded-lg overflow-hidden">
             <img
-              src="{{ static_if_exists(image.image_path, 'images/default.jpg') }}"
+              src="{{ url_for('static', filename=image.image_path) }}"
               alt="{{ image.caption or 'Announcement image' }}"
               class="w-full h-64 sm:h-80 object-cover rounded-lg shadow-sm"
             />
@@ -144,7 +144,7 @@
             %}
             <div class="relative rounded-lg overflow-hidden">
               <img
-                src="{{ static_if_exists(image.image_path, 'images/default.jpg') }}"
+                src="{{ url_for('static', filename=image.image_path) }}"
                 alt="{{ image.caption or 'Announcement image' }}"
                 class="w-full h-48 object-cover rounded-lg shadow-sm"
               />
@@ -165,7 +165,7 @@
             %} {% if loop.index == 1 %}
             <div class="relative rounded-lg overflow-hidden col-span-2">
               <img
-                src="{{ static_if_exists(image.image_path, 'images/default.jpg') }}"
+                src="{{ url_for('static', filename=image.image_path) }}"
                 alt="{{ image.caption or 'Announcement image' }}"
                 class="w-full h-56 object-cover rounded-lg shadow-sm"
               />
@@ -180,7 +180,7 @@
             {% else %}
             <div class="relative rounded-lg overflow-hidden">
               <img
-                src="{{ static_if_exists(image.image_path, 'images/default.jpg') }}"
+                src="{{ url_for('static', filename=image.image_path) }}"
                 alt="{{ image.caption or 'Announcement image' }}"
                 class="w-full h-40 object-cover rounded-lg shadow-sm"
               />
@@ -203,7 +203,7 @@
               class="relative rounded-lg overflow-hidden {% if loop.index == 1 %}md:col-span-2 md:row-span-2{% endif %}"
             >
               <img
-                src="{{ static_if_exists(image.image_path, 'images/default.jpg') }}"
+                src="{{ url_for('static', filename=image.image_path) }}"
                 alt="{{ image.caption or 'Announcement image' }}"
                 class="w-full h-40 {% if loop.index == 1 %}md:h-80{% endif %} object-cover rounded-lg shadow-sm"
               />

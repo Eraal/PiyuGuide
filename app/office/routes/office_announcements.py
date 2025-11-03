@@ -3,7 +3,7 @@ from app.models import (
     Student, CounselingSession, StudentActivityLog, SuperAdminActivityLog, 
     OfficeLoginLog, AuditLog, Announcement, AnnouncementImage, Notification
 )
-from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response, current_app
+from flask import Blueprint, redirect, url_for, render_template, jsonify, request, flash, Response
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import time  
@@ -46,9 +46,8 @@ def save_image(image_file):
         filename = secure_filename(image_file.filename)
         # Create unique filename to prevent overwriting
         unique_filename = f"{uuid4().hex}_{filename}"
-        # Ensure directory exists (absolute path under Flask static folder)
-        static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
-        upload_folder = os.path.join(static_root, 'uploads', 'announcements')
+        # Ensure directory exists
+        upload_folder = os.path.join('static', 'uploads', 'announcements')
         os.makedirs(upload_folder, exist_ok=True)
         
         # Save the file
@@ -59,23 +58,6 @@ def save_image(image_file):
         relative_path = os.path.join('uploads', 'announcements', unique_filename)
         return relative_path.replace(os.sep, '/')
     return None
-
-
-def _static_url_or_default(path_like: str | None, default_static: str = 'images/default.jpg') -> str:
-    """Return a static URL if the relative file exists, else default image URL."""
-    try:
-        if isinstance(path_like, str) and not path_like.startswith(('http://', 'https://', '/')):
-            import os
-            static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
-            abs_path = os.path.join(static_root, path_like)
-            if os.path.exists(abs_path):
-                return url_for('static', filename=path_like)
-            return url_for('static', filename=default_static)
-        elif isinstance(path_like, str):
-            return path_like
-    except Exception:
-        pass
-    return url_for('static', filename=default_static)
 
 
 @office_bp.route('/office-announcement')
@@ -415,7 +397,7 @@ def get_announcement(announcement_id):
     images = AnnouncementImage.query.filter_by(announcement_id=announcement_id).all()
     images_data = [{
         'id': image.id,
-        'image_path': _static_url_or_default(image.image_path),
+        'image_path': url_for('static', filename=image.image_path),
         'caption': image.caption,
         'display_order': image.display_order
     } for image in images]
@@ -547,8 +529,7 @@ def delete_announcement():
         for image in images:
             # Optionally delete the physical file
             try:
-                static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
-                file_path = os.path.join(static_root, image.image_path)
+                file_path = os.path.join('app', 'static', image.image_path)
                 if os.path.exists(file_path):
                     os.remove(file_path)
             except Exception as e:
@@ -603,8 +584,7 @@ def delete_announcement_image():
         
         # Delete the physical file
         try:
-            static_root = getattr(current_app, 'static_folder', None) or os.path.join(os.getcwd(), 'static')
-            file_path = os.path.join(static_root, image.image_path)
+            file_path = os.path.join('app', 'static', image.image_path)
             if os.path.exists(file_path):
                 os.remove(file_path)
         except Exception as e:
@@ -680,7 +660,7 @@ def get_office_announcements_api():
                 'images': [
                     {
                         'id': img.id,
-                        'image_path': _static_url_or_default(img.image_path),
+                        'image_path': url_for('static', filename=img.image_path),
                         'caption': img.caption,
                         'display_order': img.display_order
                     }
