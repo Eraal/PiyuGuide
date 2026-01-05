@@ -1,9 +1,7 @@
 {% extends "office/office_base.html" %} 
 {% block title %}Video Session | KapiyuGuide{% endblock %} 
 {% block head_extra %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Fonts loaded via office_base.html -->
 {% endblock %}
 
 {% block content %}
@@ -589,18 +587,22 @@
 {% endblock %} 
 
 {% block extra_js %}
-<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/vendor/adapter.min.js') }}"></script>
+<!-- Socket.IO loaded via office_base.html -->
 <!-- Include counseling socket files -->
 <script id="iceServers" type="application/json">{{ (ICE_SERVERS or []) | tojson }}</script>
 <script>
   try {
     window.PG_ICE_SERVERS = JSON.parse(document.getElementById('iceServers').textContent);
-    if (Array.isArray(window.PG_ICE_SERVERS) && window.PG_ICE_SERVERS.length > 0) {
+    window.PG_LAN_ONLY_MODE = {{ LAN_ONLY_MODE | default(false) | tojson }};
+    if (window.PG_LAN_ONLY_MODE) {
+      console.log('LAN-only mode enabled - video calls work on local network without internet');
+    } else if (Array.isArray(window.PG_ICE_SERVERS) && window.PG_ICE_SERVERS.length > 0) {
       console.log('Using injected ICE servers:', window.PG_ICE_SERVERS);
     }
   } catch (e) {
     window.PG_ICE_SERVERS = [];
+    window.PG_LAN_ONLY_MODE = true; // Default to LAN-only if parsing fails
   }
   </script>
 <script src="{{ url_for('static', filename='js/office/websockets/counseling.js') }}?v={{ ASSET_VERSION }}"></script>

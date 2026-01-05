@@ -4,16 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ brand_title or current_campus_name }}{% endblock %}</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Marcellus+SC&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Tailwind CSS (locally compiled) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}" />
+    <!-- Font Awesome (local) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/fontawesome-local.css') }}" />
     <link
       href="{{ url_for('static', filename='css/customs.css') }}"
       rel="stylesheet"
@@ -28,14 +22,6 @@
     <meta
       name="csrf-token"
       content="{{ csrf_token() if csrf_token is defined else '' }}"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 

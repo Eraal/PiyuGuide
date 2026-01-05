@@ -412,7 +412,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="{{ url_for('static', filename='js/vendor/chart.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Enhanced team sorting functionality

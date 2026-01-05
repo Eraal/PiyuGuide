@@ -419,7 +419,7 @@ endblock %} {% block content %}
 </div>
 {% endblock %} {% block extra_js %}
 <script src="/static/js/admin/admindashboard.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/vendor/chart.min.js') }}"></script>
 <script>
   // Apply progress widths from data attribute to avoid inline templating issues
   document.addEventListener('DOMContentLoaded', function () {

@@ -9,13 +9,43 @@ System Flow(Student) - Landing Page of PiyuGuide with Campus Selection > Student
 ## MAIN FEATURE ##
 
 Inquiry System with Websocket Realtime Communication
-Counseling with WebRTC and Websocket
+Counseling with WebRTC and Websocket (LAN-Only Mode supported)
+
+## OFFLINE / LAN-ONLY MODE ##
+
+This system is configured to work completely offline on a local network (LAN).
+All resources (CSS, JS, fonts) are served locally - no internet required.
+
+# Video Call / Counseling (LAN-Only)
+By default, LAN_ONLY_MODE=True in config.py
+- Video calls work when devices are connected to the same router/hotspot
+- No external STUN/TURN servers needed
+- Both camera and microphone access work on local network
+- To enable internet-based calls, set LAN_ONLY_MODE=False and configure TURN servers
+
+# To disable LAN-only mode (requires internet):
+Set environment variable: LAN_ONLY_MODE=False
+Then configure TURN servers:
+- TURN_HOST=your-turn-server.com
+- TURN_USERNAME=your-username
+- TURN_PASSWORD=your-password
 
 ## HOW TO RUN THIS SYSTEM
 
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force;
 .\env\Scripts\activate
 python run.py
+
+## TAILWIND CSS BUILD (for offline support)
+
+# First time setup (install dependencies):
+npm install
+
+# Build Tailwind CSS (run after modifying any template classes):
+npm run build:css
+
+# Watch mode for development (auto-rebuilds on changes):
+npm run watch:css
 
 ## COMMIT TO GITHUB REPO
 
@@ -48,6 +78,9 @@ sudo systemctl reload nginx
 
 sudo systemctl restart piyuguide
 systemctl status piyuguide --no-pager
+
+
+sudo tail -n 150 /var/log/piyuguide/error.log
 
 /docs/loading_animation_preview.html
 

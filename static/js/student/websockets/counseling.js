@@ -29,20 +29,26 @@ class VideoCounselingClient {
     this._qualityInterval = null;
     this._unmuteHandlerInstalled = false;
         
-        // ICE servers configuration (prefer server-injected TURN if present)
+        // ICE servers configuration (prefer server-injected config)
+        // LAN-only mode: Empty array = direct peer-to-peer on local network
         const injectedIce = (typeof window !== 'undefined' && Array.isArray(window.PG_ICE_SERVERS)) ? window.PG_ICE_SERVERS : null;
-        this.iceServers = injectedIce && injectedIce.length > 0 ? injectedIce : [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-        ];
-        try {
-            const flatUrls = (this.iceServers || []).flatMap(s => Array.isArray(s.urls) ? s.urls : [s.urls]);
-            const hasTurn = flatUrls.some(u => typeof u === 'string' && u.startsWith('turn'));
-            if (!hasTurn) {
-                console.warn('[VideoCounseling][Student] No TURN servers configured. Cross-ISP / mobile calls may show black video. Configure TURN_HOST or ICE_SERVERS_JSON.');
-            }
-        } catch (e) {}
+        const isLanOnly = (typeof window !== 'undefined' && window.PG_LAN_ONLY_MODE === true);
+        
+        if (isLanOnly || (injectedIce && injectedIce.length === 0)) {
+            // LAN-only mode: No external STUN/TURN needed
+            this.iceServers = [];
+            console.log('[VideoCounseling][Student] LAN-only mode enabled - direct peer connection');
+        } else if (injectedIce && injectedIce.length > 0) {
+            this.iceServers = injectedIce;
+        } else {
+            // Fallback to public STUN servers (requires internet)
+            this.iceServers = [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ];
+            console.warn('[VideoCounseling][Student] Using public STUN servers - requires internet connection');
+        }
         
         // Media constraints
         this.mediaConstraints = {

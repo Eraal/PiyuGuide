@@ -2,8 +2,7 @@
 {% block title %}View Inquiry - KapiyuGuide{% endblock %}
 
 {% block extra_head %}
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+<!-- Font Awesome already loaded via student_base.html -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/chat-bubbles.css') }}" />
 <style>
 	/* Page/viewport control */
@@ -330,8 +329,7 @@
 	Your browser does not support the audio element.
 	</audio>
 
-<!-- Chat WebSocket Script -->
-<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+<!-- Chat WebSocket Script (Socket.IO loaded via student_base.html) -->
 <script src="{{ url_for('static', filename='js/student/websockets/chat.js') }}"></script>
 
 <!-- Resolution Confirmation Modal -->

@@ -1674,9 +1674,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- FullCalendar (via CDN) -->
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" onerror="this.remove()">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js" onerror="this.remove()"></script>
+<!-- FullCalendar (local) -->
+<script src="{{ url_for('static', filename='js/vendor/fullcalendar.min.js') }}" onerror="this.remove()"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('calendarModal');

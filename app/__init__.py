@@ -289,6 +289,7 @@ def create_app():
     def inject_webrtc_ice():
         """Expose ICE servers to templates for WebRTC clients.
         Priority:
+          0. LAN_ONLY_MODE (True) -> empty list (no external servers needed for LAN)
           1. ICE_SERVERS_JSON (full explicit list as JSON string)
           2. TURN_HOST (+ TURN_USERNAME + TURN_PASSWORD) -> expand into STUN + TURN (udp,tcp,tls)
           3. TURN_URL (+ TURN_USERNAME + TURN_PASSWORD) legacy single entry
@@ -297,6 +298,11 @@ def create_app():
         ice_servers = None
         cfg = app.config
         try:
+            # LAN-only mode: No external STUN/TURN servers needed
+            if cfg.get('LAN_ONLY_MODE', False):
+                ice_servers = []  # Empty list = LAN-only direct connection
+                return dict(ICE_SERVERS=ice_servers, LAN_ONLY_MODE=True)
+            
             if cfg.get('ICE_SERVERS_JSON'):
                 try:
                     ice_servers = json.loads(cfg['ICE_SERVERS_JSON'])
@@ -331,7 +337,7 @@ def create_app():
                 }]
         except Exception:
             ice_servers = None
-        return dict(ICE_SERVERS=ice_servers)
+        return dict(ICE_SERVERS=ice_servers, LAN_ONLY_MODE=False)
 
     @app.context_processor
     def inject_notifications_for_super_admin():

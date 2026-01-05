@@ -4,36 +4,8 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Campus • {{ brand_title or 'PiyuGuide' }}</title>
-        <!-- Tailwind CSS -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        colors: {
-                            brand: {
-                                // Modern academic palette
-                                royal: '#1d4ed8',    // royal blue
-                                emerald: '#10b981',  // emerald green
-                                slate: '#111827'     // dark slate for dark mode text
-                            }
-                        },
-                        boxShadow: {
-                            glow:'0 10px 25px rgba(29,78,216,.22)'
-                        },
-                        borderRadius: {
-                            '2xl':'1rem'
-                        },
-                        animation: {
-                            fadeUp: 'fadeUp .6s ease-out both',
-                            float: 'float 6s ease-in-out infinite'
-                        }
-                    }
-                }
-            };
-        </script>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <!-- Tailwind CSS (locally compiled) -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}" />
         <script>
             // Prevent FOUC for dark mode
             (function(){

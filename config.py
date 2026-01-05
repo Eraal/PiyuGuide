@@ -74,3 +74,7 @@ class Config:
     # Optional HTTP API fallback (Brevo v3)
     BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
     BREVO_API_URL = os.getenv('BREVO_API_URL', 'https://api.brevo.com/v3/smtp/email')
+
+    # LAN-Only Mode - When True, video calls work only on local network (no internet required)
+    # Disables external STUN/TURN servers; relies on direct LAN connectivity
+    LAN_ONLY_MODE = _get_bool('LAN_ONLY_MODE', True)  # Default True for offline operation
