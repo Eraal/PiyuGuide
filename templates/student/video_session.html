@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Video Session — {{ session.office.name if session.office else 'Counseling' }}</title>
+  <meta name="description" content="Secure video counseling session"/>
+  <meta name="csrf-token" content="{{ csrf_token() }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/video_call.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/fontawesome-local.css') }}"/>
+</head>
+<body class="vc-page">
+<div class="vc-container" id="vcContainer">
+
+  <!-- ═══ LOBBY ═══ -->
+  <div class="vc-lobby" id="vcLobby">
+    <div class="vc-lobby-card">
+      <!-- Camera preview -->
+      <div class="vc-lobby-preview">
+        <video id="lobbyPreview" autoplay muted playsinline></video>
+        <div class="vc-preview-off" id="lobbyPreviewOff">
+          <div class="vc-avatar" id="lobbyAvatar">
+            {% set initials = (current_user.first_name[0] + current_user.last_name[0])|upper %}
+            {% if current_user.profile_pic_path %}
+              <img src="{{ url_for('static', filename=current_user.profile_pic_path) }}" alt="You"/>
+            {% else %}
+              {{ initials }}
+            {% endif %}
+          </div>
+          <p style="color:var(--vc-text-secondary); font-size:13px; margin-top:12px;">Camera is off</p>
+        </div>
+      </div>
+
+      <!-- User info -->
+      <div class="vc-lobby-name">{{ current_user.get_full_name() }}</div>
+
+      <!-- Lobby mic/camera toggles -->
+      <div class="vc-lobby-controls">
+        <button class="vc-lobby-btn" id="lobbyMicBtn" data-tooltip="Toggle microphone">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button class="vc-lobby-btn" id="lobbyCamBtn" data-tooltip="Toggle camera">
+          <i class="fas fa-video"></i>
+        </button>
+      </div>
+
+      <!-- Waiting status -->
+      <div class="vc-lobby-status" id="lobbyStatus">
+        <span>Waiting for counselor to join</span>
+        <span class="vc-dots"><span></span><span></span><span></span></span>
+      </div>
+
+      <!-- Counselor info card (hidden until counselor joins) -->
+      <div class="vc-lobby-info" id="lobbyCounselorCard" style="display:none;">
+        <div class="vc-avatar-sm" id="lobbyCounselorAvatar">
+          {% if counselor and counselor.profile_pic_path %}
+            <img src="{{ url_for('static', filename=counselor.profile_pic_path) }}" alt="Counselor"/>
+          {% elif counselor %}
+            {{ (counselor.first_name[0] + counselor.last_name[0])|upper }}
+          {% else %}
+            <i class="fas fa-user" style="font-size:16px;"></i>
+          {% endif %}
+        </div>
+        <div class="vc-lobby-info-text">
+          <strong id="lobbyCounselorName">{{ counselor.get_full_name() if counselor else 'Counselor' }}</strong>
+          <span>{{ session.office.name if session.office else '' }}</span>
+        </div>
+      </div>
+
+      <!-- Join Call button (appears when session ready) -->
+      <button class="vc-lobby-join" id="joinCallBtn">
+        <i class="fas fa-video"></i> Join Call
+      </button>
+
+      <!-- Session info -->
+      <div class="vc-lobby-info" style="opacity:0.6;">
+        <i class="fas fa-shield-alt" style="font-size:20px; color:var(--vc-accent);"></i>
+        <div class="vc-lobby-info-text">
+          <strong>Secure & Confidential</strong>
+          <span>{{ session.office.name if session.office else 'Counseling' }} — {{ session.scheduled_at.strftime('%b %d, %Y at %I:%M %p') if session.scheduled_at else 'Unscheduled' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ IN-CALL ═══ -->
+  <div class="vc-call" id="vcCall">
+    <!-- Toast notifications zone -->
+    <div class="vc-toast-zone" id="vcToastZone"></div>
+
+    <!-- Timer -->
+    <div class="vc-timer" id="vcTimer">
+      <span class="vc-rec-dot"></span>
+      <span id="vcTimerText">00:00</span>
+    </div>
+
+    <!-- Connection quality -->
+    <div class="vc-quality" id="vcQuality">
+      <span class="vc-quality-dot unknown" id="vcQualityDot"></span>
+      <span id="vcQualityText">Connecting</span>
+    </div>
+
+    <!-- Video area -->
+    <div class="vc-video-area" id="vcVideoArea">
+      <div class="vc-remote-video-wrap">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="vc-remote-placeholder" id="remoteVideoPlaceholder">
+          <div class="vc-avatar">
+            {% if counselor and counselor.profile_pic_path %}
+              <img src="{{ url_for('static', filename=counselor.profile_pic_path) }}" alt="Counselor"/>
+            {% elif counselor %}
+              {{ (counselor.first_name[0] + counselor.last_name[0])|upper }}
+            {% else %}
+              <i class="fas fa-user"></i>
+            {% endif %}
+          </div>
+          <span class="vc-remote-name-overlay" id="remoteNameOverlay">{{ counselor.get_full_name() if counselor else 'Counselor' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Local PiP -->
+    <div class="vc-local-pip" id="vcLocalPip">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <div class="vc-pip-placeholder" id="localPipPlaceholder">
+        <div class="vc-avatar-sm">
+          {% if current_user.profile_pic_path %}
+            <img src="{{ url_for('static', filename=current_user.profile_pic_path) }}" alt="You"/>
+          {% else %}
+            {{ (current_user.first_name[0] + current_user.last_name[0])|upper }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Control Bar -->
+    <div class="vc-controls" id="vcControls">
+      <button class="vc-ctrl-btn toggle" id="micToggle" data-tooltip="Microphone">
+        <i class="fas fa-microphone"></i>
+      </button>
+      <button class="vc-ctrl-btn toggle" id="camToggle" data-tooltip="Camera">
+        <i class="fas fa-video"></i>
+      </button>
+      <button class="vc-ctrl-btn action" id="screenShareBtn" data-tooltip="Share screen">
+        <i class="fas fa-desktop"></i>
+      </button>
+      <div class="vc-ctrl-divider"></div>
+      <button class="vc-ctrl-btn action" id="chatToggle" data-tooltip="Chat">
+        <i class="fas fa-comment"></i>
+        <span class="vc-ctrl-badge hidden" id="chatBadge">0</span>
+      </button>
+      <button class="vc-ctrl-btn action" id="fullscreenBtn" data-tooltip="Fullscreen">
+        <i class="fas fa-expand"></i>
+      </button>
+      <div class="vc-ctrl-divider"></div>
+      <button class="vc-ctrl-btn end-call" id="endCallBtn" data-tooltip="Leave call">
+        <i class="fas fa-phone-slash"></i>
+      </button>
+    </div>
+
+    <!-- Chat Panel -->
+    <div class="vc-chat" id="vcChat">
+      <div class="vc-chat-header">
+        <h3>In-call messages</h3>
+        <button class="vc-chat-close" id="chatCloseBtn"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="vc-chat-messages" id="chatMessages">
+        <div class="vc-msg vc-msg-system">Messages are not saved after the session ends.</div>
+      </div>
+      <div class="vc-chat-typing" id="chatTyping"></div>
+      <div class="vc-chat-input">
+        <input type="text" id="chatInput" placeholder="Send a message…" autocomplete="off" maxlength="1000"/>
+        <button id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
+      </div>
+    </div>
+
+    <!-- Reconnection overlay -->
+    <div class="vc-reconnect" id="vcReconnect">
+      <div class="vc-reconnect-spinner"></div>
+      <div class="vc-reconnect-text">Reconnecting…</div>
+      <div class="vc-reconnect-sub" id="vcReconnectSub">Please wait while we restore your connection</div>
+    </div>
+  </div>
+
+  <!-- End Session Modal -->
+  <div class="vc-modal-overlay" id="endSessionModal">
+    <div class="vc-modal">
+      <h3>Leave this call?</h3>
+      <p>You can rejoin if the session is still active.</p>
+      <div class="vc-modal-actions">
+        <button class="vc-modal-btn cancel" id="cancelEndBtn">Cancel</button>
+        <button class="vc-modal-btn danger" id="confirmEndBtn">Leave call</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/adapter.min.js') }}"></script>
+<script>
+  // Session config injected by server
+  window.VIDEO_SESSION_CONFIG = {
+    sessionId: {{ session.id }},
+    userId: {{ current_user.id }},
+    userName: {{ current_user.get_full_name()|tojson }},
+    userRole: 'student',
+    meetingId: {{ meeting_id|tojson }},
+    meetingPassword: {{ meeting_password|tojson }},
+    csrfToken: document.querySelector('meta[name="csrf-token"]').content,
+    sessionDetailsUrl: "{{ url_for('student.view_session', session_id=session.id) }}",
+    endSessionUrl: "{{ url_for('student.end_session_page', session_id=session.id) }}",
+    counselorName: {{ (counselor.get_full_name() if counselor else 'Counselor')|tojson }},
+    userInitials: {{ ((current_user.first_name[0] + current_user.last_name[0])|upper)|tojson }},
+    counselorInitials: {{ ((counselor.first_name[0] + counselor.last_name[0])|upper if counselor else 'C')|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/student/websockets/counseling.js') }}"></script>
+</body>
+</html>

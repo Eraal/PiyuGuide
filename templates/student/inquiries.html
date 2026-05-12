@@ -1,0 +1,471 @@
+{% extends "student/student_base.html" %}
+{% block title %}My Inquiries &mdash; KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Shared tokens (mirror dashboard) ── */
+  .stat-card { background:#fff; border:1px solid #e2e8f0; border-radius:.875rem; padding:1.25rem 1.5rem; transition:box-shadow .2s,transform .2s; }
+  .stat-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.09); transform:translateY(-2px); }
+  .stat-icon { width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0; }
+  .stat-number { font-size:2rem;font-weight:700;line-height:1;letter-spacing:-.02em; }
+
+  /* ── Filter bar ── */
+  .filter-bar { background:#fff; border:1px solid #e2e8f0; border-radius:.875rem; padding:1.25rem; }
+  .filter-control { width:100%; border:1px solid #e2e8f0; border-radius:.625rem; padding:.5rem .875rem; font-size:.875rem; color:#334155; background:#fff; transition:border-color .15s,box-shadow .15s; outline:none; }
+  .filter-control:focus { border-color:#1d4ed8; box-shadow:0 0 0 3px rgba(29,78,216,.1); }
+
+  /* ── Inquiry list ── */
+  .inq-row {
+    display:flex; align-items:stretch; gap:0;
+    background:#fff; border:1px solid #e2e8f0; border-radius:.875rem;
+    overflow:hidden; transition:box-shadow .15s, border-color .15s;
+    cursor:pointer; text-decoration:none; color:inherit;
+  }
+  .inq-row:hover { border-color:#bfdbfe; box-shadow:0 4px 16px rgba(0,0,0,.08); }
+
+  /* Status accent bar */
+  .inq-accent { width:4px; flex-shrink:0; }
+  .acc-pending   { background:#f59e0b; }
+  .acc-in_progress { background:#1d4ed8; }
+  .acc-resolved  { background:#16a34a; }
+  .acc-reopened  { background:#7c3aed; }
+  .acc-default   { background:#cbd5e1; }
+
+  .inq-body { flex:1; min-width:0; padding:.875rem 1.125rem; }
+
+  /* Status pills */
+  .pill { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .625rem;border-radius:999px;font-size:.7rem;font-weight:600; white-space:nowrap; }
+  .pill-pending  { background:#fef9c3;color:#854d0e;border:1px solid #fef08a; }
+  .pill-progress { background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe; }
+  .pill-resolved { background:#dcfce7;color:#14532d;border:1px solid #bbf7d0; }
+  .pill-reopened { background:#ede9fe;color:#5b21b6;border:1px solid #ddd6fe; }
+  .pill-default  { background:#f1f5f9;color:#475569;border:1px solid #e2e8f0; }
+
+  /* Panel */
+  .panel { background:#fff; border:1px solid #e2e8f0; border-radius:.875rem; overflow:hidden; }
+  .panel-header { display:flex;justify-content:space-between;align-items:center;padding:.875rem 1.25rem;border-bottom:1px solid #f1f5f9; }
+  .panel-title { font-size:.9375rem;font-weight:600;color:#0f172a;display:flex;align-items:center;gap:.5rem; }
+
+  /* Office cards */
+  .office-card { background:#fff; border:1px solid #e2e8f0; border-radius:.875rem; overflow:hidden; transition:box-shadow .2s,transform .2s; display:flex;flex-direction:column; }
+  .office-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.1); transform:translateY(-2px); border-color:#bfdbfe; }
+  .office-card-top { height:4px; background:#1d4ed8; flex-shrink:0; }
+
+  /* Buttons */
+  .btn-primary { display:inline-flex;align-items:center;gap:.375rem;padding:.5rem 1.125rem;font-size:.875rem;font-weight:500;background:#1d4ed8;color:#fff;border-radius:.625rem;transition:background .15s; border:none; cursor:pointer; }
+  .btn-primary:hover { background:#1e3a8a; }
+  .btn-outline { display:inline-flex;align-items:center;gap:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;background:#fff;color:#475569;border:1px solid #e2e8f0;border-radius:.625rem;transition:background .15s; }
+  .btn-outline:hover { background:#f8fafc; }
+  .btn-ghost { display:inline-flex;align-items:center;gap:.375rem;padding:.4rem .875rem;font-size:.8rem;font-weight:500;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:.5rem;background:#eff6ff;transition:background .15s; }
+  .btn-ghost:hover { background:#dbeafe; }
+
+  /* Pagination */
+  .page-btn { display:inline-flex;align-items:center;justify-content:center;min-w-[36px];height:36px;padding:0 .75rem;border-radius:.5rem;font-size:.875rem;border:1px solid #e2e8f0;color:#475569;background:#fff;transition:background .15s; }
+  .page-btn:hover { background:#f8fafc; }
+  .page-btn.active { background:#1d4ed8;color:#fff;border-color:#1d4ed8;font-weight:600; }
+  .page-btn.disabled { background:#f1f5f9;color:#94a3b8;pointer-events:none; }
+
+  /* Tag/attachment chip */
+  .chip { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .5rem;border-radius:999px;font-size:.68rem;font-weight:500;background:#f8fafc;border:1px solid #e2e8f0;color:#64748b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-2 py-5 space-y-5">
+
+  <!-- ── Page Header ── -->
+  <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <i class="fas fa-envelope-open-text text-white text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-slate-900">My Inquiries</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Track and manage all your submitted inquiries</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <a href="{{ url_for('student.university_offices') }}" class="btn-primary" id="newInquiryBtn">
+        <i class="fas fa-paper-plane text-sm"></i>
+        <span>New Inquiry</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Stats Cards ── -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Total</p>
+          <p class="stat-number text-slate-800">{{ stats.total }}</p>
+          <p class="text-xs text-slate-400 mt-1">All submissions</p>
+        </div>
+        <div class="stat-icon bg-slate-100 text-slate-600"><i class="fas fa-inbox"></i></div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Pending</p>
+          <p class="stat-number text-amber-600">{{ stats.pending }}</p>
+          <p class="text-xs text-slate-400 mt-1">Awaiting response</p>
+        </div>
+        <div class="stat-icon bg-amber-50 text-amber-500"><i class="fas fa-clock"></i></div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">In Progress</p>
+          <p class="stat-number text-blue-700">{{ stats.in_progress }}</p>
+          <p class="text-xs text-slate-400 mt-1">Being handled</p>
+        </div>
+        <div class="stat-icon bg-blue-50 text-blue-700"><i class="fas fa-comments"></i></div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Resolved</p>
+          <p class="stat-number text-green-600">{{ stats.resolved }}</p>
+          <p class="text-xs text-slate-400 mt-1">Completed</p>
+        </div>
+        <div class="stat-icon bg-green-50 text-green-600"><i class="fas fa-check-circle"></i></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Filter Bar ── -->
+  <div class="filter-bar">
+    <div class="flex items-center gap-2 mb-3">
+      <i class="fas fa-filter text-blue-700 text-sm"></i>
+      <span class="text-sm font-semibold text-slate-700">Filter &amp; Search</span>
+      {% if current_status != 'all' or current_office != 'all' or current_search %}
+      <span class="ml-1 text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase tracking-wide">Active</span>
+      {% endif %}
+    </div>
+    <form action="{{ url_for('student.inquiries') }}" method="get" id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div>
+        <label for="status" class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+        <select id="status" name="status" class="filter-control">
+          <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+          <option value="pending"     {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="resolved"    {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="reopened"    {% if current_status == 'reopened' %}selected{% endif %}>Reopened</option>
+        </select>
+      </div>
+      <div>
+        <label for="office_id" class="block text-xs font-semibold text-slate-600 mb-1">Office</label>
+        <select id="office_id" name="office_id" class="filter-control">
+          <option value="all" {% if current_office == 'all' %}selected{% endif %}>All Offices</option>
+          {% for office in offices %}
+          <option value="{{ office.id }}" {% if current_office|int == office.id %}selected{% endif %}>{{ office.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="search" class="block text-xs font-semibold text-slate-600 mb-1">Keywords</label>
+        <input type="text" id="search" name="search" placeholder="Search subjects&hellip;"
+               value="{{ current_search or '' }}" class="filter-control">
+      </div>
+      <div class="flex items-end gap-2">
+        <button type="submit" class="btn-primary flex-1 justify-center" id="applyBtn">
+          <i class="fas fa-search text-xs"></i>Apply
+        </button>
+        {% if current_status != 'all' or current_office != 'all' or current_search %}
+        <a href="{{ url_for('student.inquiries') }}" class="btn-outline justify-center px-3">
+          <i class="fas fa-times text-xs"></i>Clear
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Your Inquiries ── -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">
+        <i class="fas fa-list-alt text-blue-700"></i>
+        Your Inquiries
+      </span>
+      <span class="text-xs text-slate-400 font-medium">
+        Showing {{ inquiries|length }} of {{ stats.total }}
+      </span>
+    </div>
+
+    {% if inquiries %}
+    <div class="divide-y divide-slate-100">
+      {% for inquiry in inquiries %}
+      <a href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}" class="inq-row block">
+        <!-- Status accent bar -->
+        <div class="inq-accent
+          {% if inquiry.status == 'pending' %}acc-pending
+          {% elif inquiry.status == 'in_progress' %}acc-in_progress
+          {% elif inquiry.status == 'resolved' %}acc-resolved
+          {% elif inquiry.status == 'reopened' %}acc-reopened
+          {% else %}acc-default{% endif %}">
+        </div>
+
+        <!-- Body -->
+        <div class="inq-body">
+          <div class="flex items-start justify-between gap-3">
+            <!-- Left: icon + text -->
+            <div class="flex items-start gap-3 min-w-0 flex-1">
+              <div class="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5
+                {% if inquiry.status == 'pending' %}bg-amber-50 text-amber-500
+                {% elif inquiry.status == 'in_progress' %}bg-blue-50 text-blue-700
+                {% elif inquiry.status == 'resolved' %}bg-green-50 text-green-600
+                {% elif inquiry.status == 'reopened' %}bg-purple-50 text-purple-600
+                {% else %}bg-slate-100 text-slate-500{% endif %}">
+                <i class="fas
+                  {% if inquiry.status == 'pending' %}fa-clock
+                  {% elif inquiry.status == 'in_progress' %}fa-comments
+                  {% elif inquiry.status == 'resolved' %}fa-check-circle
+                  {% elif inquiry.status == 'reopened' %}fa-redo
+                  {% else %}fa-envelope{% endif %} text-sm"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2 mb-0.5">
+                  <h3 class="font-semibold text-slate-800 text-sm truncate">{{ inquiry.subject }}</h3>
+                </div>
+
+                <!-- Meta row -->
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 mb-1.5">
+                  <span class="flex items-center gap-1">
+                    <i class="fas fa-building text-[10px]"></i>{{ inquiry.office.name }}
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <i class="fas fa-calendar text-[10px]"></i>{{ inquiry.created_at.strftime('%b %d, %Y') }}
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <i class="fas fa-clock text-[10px]"></i>{{ inquiry.created_at.strftime('%I:%M %p') }}
+                  </span>
+                </div>
+
+                <!-- Preview -->
+                <p class="text-xs text-slate-500 line-clamp-1">
+                  {% if inquiry.messages and inquiry.messages|length > 0 %}
+                    {{ inquiry.messages[0].content|truncate(110) }}
+                  {% else %}
+                    <span class="italic text-slate-400">No message content yet</span>
+                  {% endif %}
+                </p>
+
+                <!-- Tags / attachments (mobile hidden) -->
+                {% if inquiry.concern_types or inquiry.attachments %}
+                <div class="hidden sm:flex flex-wrap gap-1.5 mt-2">
+                  {% if inquiry.concern_types %}
+                  <span class="chip"><i class="fas fa-tag text-[9px]"></i>{{ inquiry.concern_types[0].name }}{% if inquiry.concern_types|length > 1 %} +{{ inquiry.concern_types|length - 1 }}{% endif %}</span>
+                  {% endif %}
+                  {% if inquiry.attachments %}
+                  <span class="chip"><i class="fas fa-paperclip text-[9px]"></i>{{ inquiry.attachments|length }} file{% if inquiry.attachments|length > 1 %}s{% endif %}</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Right: status pill + message count -->
+            <div class="flex flex-col items-end gap-2 flex-shrink-0">
+              <span class="pill
+                {% if inquiry.status == 'pending' %}pill-pending
+                {% elif inquiry.status == 'in_progress' %}pill-progress
+                {% elif inquiry.status == 'resolved' %}pill-resolved
+                {% elif inquiry.status == 'reopened' %}pill-reopened
+                {% else %}pill-default{% endif %}">
+                {% if inquiry.status == 'pending' %}<i class="fas fa-clock text-[9px]"></i>
+                {% elif inquiry.status == 'in_progress' %}<i class="fas fa-comments text-[9px]"></i>
+                {% elif inquiry.status == 'resolved' %}<i class="fas fa-check-circle text-[9px]"></i>
+                {% elif inquiry.status == 'reopened' %}<i class="fas fa-redo text-[9px]"></i>{% endif %}
+                {{ inquiry.status|replace('_',' ')|title }}
+              </span>
+              {% if inquiry.messages %}
+              <span class="chip"><i class="fas fa-comments text-[9px]"></i>{{ inquiry.messages|length }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t border-slate-100 bg-slate-50">
+      <p class="text-xs text-slate-500">
+        Page <span class="font-semibold text-slate-700">{{ pagination.page }}</span> of
+        <span class="font-semibold text-slate-700">{{ pagination.pages }}</span>
+        &middot; {{ stats.total }} total
+      </p>
+      <div class="flex items-center gap-1">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('student.inquiries', page=pagination.prev_num, status=current_status, office_id=current_office, search=current_search) }}" class="page-btn">
+          <i class="fas fa-chevron-left text-xs"></i>
+        </a>
+        {% else %}
+        <span class="page-btn disabled"><i class="fas fa-chevron-left text-xs"></i></span>
+        {% endif %}
+
+        {% for page_num in pagination.iter_pages() %}
+          {% if page_num %}
+            {% if page_num != pagination.page %}
+            <a href="{{ url_for('student.inquiries', page=page_num, status=current_status, office_id=current_office, search=current_search) }}" class="page-btn">{{ page_num }}</a>
+            {% else %}
+            <span class="page-btn active">{{ page_num }}</span>
+            {% endif %}
+          {% else %}
+          <span class="px-1 text-slate-400 text-sm">&hellip;</span>
+          {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+        <a href="{{ url_for('student.inquiries', page=pagination.next_num, status=current_status, office_id=current_office, search=current_search) }}" class="page-btn">
+          <i class="fas fa-chevron-right text-xs"></i>
+        </a>
+        {% else %}
+        <span class="page-btn disabled"><i class="fas fa-chevron-right text-xs"></i></span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-16 px-4">
+      <div class="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-5">
+        <i class="fas fa-inbox text-slate-400 text-3xl"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-800 mb-2">
+        {% if current_status != 'all' or current_office != 'all' or current_search %}
+        No results found
+        {% else %}
+        No inquiries yet
+        {% endif %}
+      </h3>
+      <p class="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
+        {% if current_status != 'all' or current_office != 'all' or current_search %}
+        Try adjusting your filters or search terms.
+        {% else %}
+        You haven't submitted any inquiries yet. Get help from a university office below.
+        {% endif %}
+      </p>
+      <div class="flex items-center justify-center gap-3 flex-wrap">
+        {% if current_status != 'all' or current_office != 'all' or current_search %}
+        <a href="{{ url_for('student.inquiries') }}" class="btn-outline"><i class="fas fa-times text-xs"></i>Clear Filters</a>
+        {% endif %}
+        <a href="{{ url_for('student.university_offices') }}" class="btn-primary"><i class="fas fa-paper-plane text-xs"></i>Submit Inquiry</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── University Offices ── -->
+  <div id="offices-section">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center">
+          <i class="fas fa-building text-white text-sm"></i>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-800">University Offices</h2>
+          <p class="text-xs text-slate-500">Click any office to submit a new inquiry</p>
+        </div>
+      </div>
+      <a href="{{ url_for('student.university_offices') }}" class="btn-ghost hidden sm:flex">
+        View all <i class="fas fa-arrow-right text-[10px]"></i>
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for office in offices %}
+      <div class="office-card">
+        <div class="office-card-top"></div>
+        <div class="p-5 flex flex-col flex-1">
+          <!-- Header -->
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-building text-blue-700 text-base"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-slate-800 text-sm leading-tight">{{ office.name }}</h3>
+              <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ office.description|truncate(80) }}</p>
+            </div>
+          </div>
+
+          <!-- Features -->
+          <div class="flex flex-wrap gap-1.5 mb-4">
+            {% if office.supports_video %}
+            <span class="chip bg-green-50 text-green-700 border-green-200"><i class="fas fa-video text-[9px]"></i>Video</span>
+            {% endif %}
+            {% if office.email %}
+            <span class="chip bg-blue-50 text-blue-700 border-blue-200"><i class="fas fa-envelope text-[9px]"></i>Email</span>
+            {% endif %}
+          </div>
+
+          <!-- Stats row -->
+          <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg mb-4 text-center">
+            <div>
+              <p class="text-[10px] text-slate-500 font-medium">Your Inquiries</p>
+              <p class="text-lg font-bold text-slate-800">{{ inquiries|selectattr('office.id', 'equalto', office.id)|list|length }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500 font-medium">Avg. Response</p>
+              <p class="text-lg font-bold text-blue-700">~24h</p>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}"
+             class="btn-primary justify-center w-full mt-auto">
+            <i class="fas fa-paper-plane text-xs"></i>Submit Inquiry
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Make inquiry rows keyboard-accessible
+  document.querySelectorAll('.inq-row').forEach(row => {
+    row.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+    });
+  });
+
+  // Filter form: loading state on submit
+  const filterForm = document.getElementById('filterForm');
+  const applyBtn = document.getElementById('applyBtn');
+  if (filterForm && applyBtn) {
+    filterForm.addEventListener('submit', () => {
+      applyBtn.disabled = true;
+      applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i>Applying…';
+    });
+  }
+
+  // Scroll to offices on "New Inquiry" click if already on page
+  const newInquiryBtn = document.getElementById('newInquiryBtn');
+  const officesSection = document.getElementById('offices-section');
+  if (newInquiryBtn && officesSection) {
+    newInquiryBtn.addEventListener('click', function(e) {
+      if (window.location.pathname.includes('/inquiries')) {
+        e.preventDefault();
+        officesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

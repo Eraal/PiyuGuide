@@ -1,0 +1,683 @@
+{% extends "student/student_base.html" %}
+{% block title %}University Offices - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-header,
+  .stats-card,
+  .search-card,
+  .panel-card,
+  .office-card,
+  .empty-state {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+  }
+
+  .page-header {
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .stats-card {
+    position: relative;
+    overflow: hidden;
+    padding: 1.15rem 1.25rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+    border-color: #bfdbfe;
+  }
+
+  .stats-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 4px;
+    background: #cbd5e1;
+  }
+
+  .stats-card.stat-blue::before { background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 100%); }
+  .stats-card.stat-emerald::before { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+  .stats-card.stat-amber::before { background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%); }
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+  }
+
+  .stat-number {
+    font-size: 1.9rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+
+  .search-card,
+  .panel-card {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #eef2f7;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  }
+
+  .panel-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .filter-control,
+  .search-control {
+    width: 100%;
+    border: 1px solid #dbe3ef;
+    border-radius: 0.75rem;
+    padding: 0.72rem 0.9rem;
+    font-size: 0.9375rem;
+    color: #334155;
+    background: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+  }
+
+  .search-control {
+    padding-left: 2.75rem;
+  }
+
+  .filter-control:focus,
+  .search-control:focus {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+  }
+
+  .btn-primary,
+  .btn-outline,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+    color: #fff;
+    border: 1px solid #1d4ed8;
+    box-shadow: 0 8px 20px rgba(29, 78, 216, 0.16);
+  }
+
+  .btn-primary:hover {
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(29, 78, 216, 0.2);
+  }
+
+  .btn-outline {
+    background: #fff;
+    color: #334155;
+    border: 1px solid #dbe3ef;
+  }
+
+  .btn-outline:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #bfdbfe;
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+  }
+
+  .btn-ghost:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1rem;
+    border-radius: 0.85rem;
+    border: 1px solid #dbe3ef;
+    background: #fff;
+    color: #475569;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .filter-pill:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+    background: #f8fafc;
+    border-color: #bfdbfe;
+  }
+
+  .filter-pill.active {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+    color: #fff;
+    border-color: #1d4ed8;
+    box-shadow: 0 10px 20px rgba(29, 78, 216, 0.18);
+  }
+
+  .quick-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 1rem;
+    border-radius: 0.85rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .quick-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px rgba(29, 78, 216, 0.12);
+    background: #dbeafe;
+  }
+
+  .office-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+    min-height: 100%;
+  }
+
+  .office-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+    border-color: #bfdbfe;
+  }
+
+  .office-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 100%);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s ease;
+  }
+
+  .office-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .office-card-content {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+  }
+
+  .office-avatar {
+    width: 3.15rem;
+    height: 3.15rem;
+    border-radius: 1rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid #dbeafe;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .badge--inquiry {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+  }
+
+  .badge--counseling {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
+  }
+
+  .badge--video {
+    background: #f5f3ff;
+    color: #6d28d9;
+    border-color: #ddd6fe;
+  }
+
+  .badge--count {
+    background: #f8fafc;
+    color: #475569;
+    border-color: #e2e8f0;
+  }
+
+  .office-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem 1.25rem;
+    border-top: 1px solid #eef2f7;
+    background: rgba(248, 250, 252, 0.82);
+  }
+
+  .empty-state {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px dashed #cbd5e1;
+  }
+
+  .empty-icon {
+    width: 4.25rem;
+    height: 4.25rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  @media (max-width: 767px) {
+    .page-header { padding: 1rem; }
+    .stat-number { font-size: 1.65rem; }
+    .panel-header { align-items: flex-start; padding: 0.95rem 1rem; }
+    .office-card-content,
+    .office-footer { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-2 py-5 space-y-6">
+  <section class="page-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <i class="fas fa-building text-white text-lg"></i>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Campus support</p>
+        <h1 class="text-xl md:text-2xl font-bold text-slate-900 mt-1">University Offices</h1>
+        <p class="text-sm text-slate-500 mt-1.5 max-w-2xl">Find the right office for inquiries and counseling in a consistent student-module layout.</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ url_for('student.inquiries') }}" class="btn-primary">
+        <i class="fas fa-envelope-open-text text-xs"></i>
+        <span>My Inquiries</span>
+      </a>
+      <a href="{{ url_for('student.request_counseling_session') }}" class="btn-outline">
+        <i class="fas fa-calendar-plus text-xs"></i>
+        <span>Schedule</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="stats-card stat-blue">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Total Offices</p>
+          <div class="stat-number text-slate-900">{{ total_offices if total_offices is defined else offices|length }}</div>
+          <p class="text-xs text-slate-400 mt-2">Available to your campus</p>
+        </div>
+        <div class="stat-icon bg-blue-50 text-blue-700"><i class="fas fa-building"></i></div>
+      </div>
+    </div>
+
+    <div class="stats-card stat-emerald">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Video Ready</p>
+          <div class="stat-number text-emerald-600">{{ video_services_count if video_services_count is defined else (video_offices|length if video_offices else 0) }}</div>
+          <p class="text-xs text-slate-400 mt-2">Offices offering video counseling</p>
+        </div>
+        <div class="stat-icon bg-emerald-50 text-emerald-600"><i class="fas fa-video"></i></div>
+      </div>
+    </div>
+
+    <div class="stats-card stat-amber">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Video Coverage</p>
+          <div class="stat-number text-amber-600">
+            {% if total_offices %}
+              {{ ((video_services_count / total_offices) * 100) | round(0) }}%
+            {% else %}
+              0%
+            {% endif %}
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Share of offices with video support</p>
+        </div>
+        <div class="stat-icon bg-amber-50 text-amber-600"><i class="fas fa-chart-pie"></i></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="search-card p-5 md:p-6">
+    <div class="flex flex-col lg:flex-row gap-6 lg:items-end lg:justify-between">
+      <div class="flex-1">
+        <label for="office-search" class="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Search offices</label>
+        <div class="relative">
+          <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="office-search" placeholder="Search by office name, services, or keywords..." class="search-control" />
+          <button type="button" id="clear-search" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hidden">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="w-full lg:w-auto">
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Filter by service</label>
+        <div class="flex flex-wrap gap-2">
+          <button id="filter-all" type="button" class="filter-pill active">
+            <i class="fas fa-th-large text-xs"></i>
+            <span>All Offices</span>
+          </button>
+          <button id="filter-video" type="button" class="filter-pill">
+            <i class="fas fa-video text-xs"></i>
+            <span>Video Counseling</span>
+          </button>
+          <button id="filter-inquiries" type="button" class="filter-pill">
+            <i class="fas fa-inbox text-xs"></i>
+            <span>Inquiry Only</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3 mt-6 pt-6 border-t border-slate-100">
+      <a href="{{ url_for('student.inquiries') }}" class="quick-action">
+        <i class="fas fa-envelope-open-text"></i>
+        <span>My Inquiries</span>
+      </a>
+      <a href="{{ url_for('student.request_counseling_session') }}" class="quick-action">
+        <i class="fas fa-calendar-plus"></i>
+        <span>Schedule Counseling</span>
+      </a>
+      <button type="button" id="refresh-offices" class="quick-action">
+        <i class="fas fa-rotate-right"></i>
+        <span>Refresh</span>
+      </button>
+    </div>
+
+    {% if video_offices %}
+    <div class="mt-5 rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <p class="text-sm text-blue-900">
+        Video counseling is available in {{ video_services_count }} office{{ '' if video_services_count == 1 else 's' }} on your campus.
+      </p>
+      <a href="#featured-offices" class="btn-outline bg-white justify-center">
+        <i class="fas fa-building text-xs"></i>
+        <span>Browse offices</span>
+      </a>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="panel-card" id="featured-offices">
+    <div class="panel-header">
+      <div class="panel-title">
+        <i class="fas fa-layer-group text-blue-700"></i>
+        <span>Browse Offices</span>
+      </div>
+      <span class="text-xs text-slate-500 font-medium">
+        Showing <span id="office-count">{{ offices|length }}</span> of {{ offices|length }} offices
+      </span>
+    </div>
+
+    {% if offices %}
+    <div class="p-5 md:p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="office-grid">
+        {% for office in offices %}
+        <article class="office-card group" data-office-id="{{ office.id }}" data-detail-url="{{ url_for('student.view_office_detail', office_id=office.id) }}" data-tags="{% if office.supports_video %}video inquiry{% else %}inquiry-only{% endif %}">
+          <div class="office-card-content">
+            <div class="flex items-start gap-4">
+              <div class="office-avatar group-hover:scale-105 transition-transform duration-200">
+                <i class="fas fa-building text-lg"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-700 transition-colors duration-200 truncate">{{ office.name }}</h3>
+                <p class="text-sm text-slate-500 mt-1 leading-6 line-clamp-3">{{ office.description|default('Comprehensive support services and guidance for students.')|truncate(120) }}</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <span class="badge badge--inquiry"><i class="fas fa-paper-plane text-[9px]"></i>Inquiry</span>
+              {% if office.supports_video %}
+              <span class="badge badge--counseling"><i class="fas fa-user-md text-[9px]"></i>Counseling</span>
+              <span class="badge badge--video"><i class="fas fa-video text-[9px]"></i>Video</span>
+              {% endif %}
+            </div>
+
+            <p class="text-xs text-slate-500 leading-6">
+              {% if office.supports_video %}
+              Video counseling is available for this office.
+              {% else %}
+              This office focuses on general student inquiries.
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="office-footer">
+            <div class="flex flex-col sm:flex-row gap-2">
+              <a href="{{ url_for('student.submit_inquiry', office_id=office.id) }}" class="btn-primary flex-1 justify-center">
+                <i class="fas fa-paper-plane text-xs"></i>
+                <span>Send Inquiry</span>
+              </a>
+              {% if office.supports_video %}
+              <a href="{{ url_for('student.request_counseling_session') }}?office_id={{ office.id }}" class="btn-outline flex-1 justify-center">
+                <i class="fas fa-calendar-plus text-xs"></i>
+                <span>Schedule</span>
+              </a>
+              {% endif %}
+              <a href="{{ url_for('student.view_office_detail', office_id=office.id) }}" class="btn-ghost justify-center">
+                <i class="fas fa-circle-info text-xs"></i>
+                <span>Details</span>
+              </a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div id="office-empty-state" class="hidden py-10">
+        <div class="empty-state p-8 md:p-10 text-center">
+          <div class="empty-icon mb-5">
+            <i class="fas fa-building text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-slate-900 mb-2">No offices match your search</h3>
+          <p class="text-sm text-slate-500 max-w-md mx-auto leading-7">Try clearing the search term or switching the service filter to see more offices.</p>
+          <div class="flex flex-wrap justify-center gap-3 mt-6">
+            <button type="button" id="clear-filters" class="btn-primary justify-center">
+              <i class="fas fa-times text-xs"></i>
+              <span>Clear Filters</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="p-8 md:p-12">
+      <div class="empty-state p-8 md:p-10 text-center">
+        <div class="empty-icon mb-5">
+          <i class="fas fa-building text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-slate-900 mb-2">No offices available</h3>
+        <p class="text-sm text-slate-500 max-w-md mx-auto leading-7">University offices will appear here once they are enabled for your campus.</p>
+        <div class="flex flex-wrap justify-center gap-3 mt-6">
+          <button type="button" onclick="window.location.reload()" class="btn-primary justify-center">
+            <i class="fas fa-rotate-right text-xs"></i>
+            <span>Refresh</span>
+          </button>
+          <a href="{{ url_for('student.inquiries') }}" class="btn-outline justify-center">
+            <i class="fas fa-envelope-open-text text-xs"></i>
+            <span>My Inquiries</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('office-search');
+  const clearSearchBtn = document.getElementById('clear-search');
+  const refreshBtn = document.getElementById('refresh-offices');
+  const clearFiltersBtn = document.getElementById('clear-filters');
+  const officeCards = Array.from(document.querySelectorAll('.office-card'));
+  const officeCount = document.getElementById('office-count');
+  const emptyState = document.getElementById('office-empty-state');
+  const filters = {
+    all: document.getElementById('filter-all'),
+    video: document.getElementById('filter-video'),
+    inquiries: document.getElementById('filter-inquiries')
+  };
+
+  let activeFilter = 'all';
+  let searchTimeout = null;
+
+  function setActiveFilter(filterName) {
+    activeFilter = filterName;
+    Object.entries(filters).forEach(([name, button]) => {
+      if (!button) return;
+      button.classList.toggle('active', name === filterName);
+    });
+    applyFilters();
+  }
+
+  function matchesSearch(card, term) {
+    if (!term) return true;
+    const text = (card.textContent || '').toLowerCase();
+    return text.includes(term);
+  }
+
+  function matchesFilter(card) {
+    if (activeFilter === 'all') return true;
+    const tags = (card.getAttribute('data-tags') || '').toLowerCase();
+    if (activeFilter === 'video') return tags.includes('video');
+    if (activeFilter === 'inquiries') return tags.includes('inquiry-only');
+    return true;
+  }
+
+  function applyFilters() {
+    const searchTerm = (searchInput?.value || '').trim().toLowerCase();
+    let visibleCount = 0;
+
+    officeCards.forEach(card => {
+      const shouldShow = matchesSearch(card, searchTerm) && matchesFilter(card);
+      card.classList.toggle('hidden', !shouldShow);
+      if (shouldShow) visibleCount += 1;
+    });
+
+    if (officeCount) officeCount.textContent = String(visibleCount);
+    if (emptyState) emptyState.classList.toggle('hidden', visibleCount !== 0);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', !this.value.trim());
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 180);
+    });
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', function() {
+      if (!searchInput) return;
+      searchInput.value = '';
+      clearSearchBtn.classList.add('hidden');
+      applyFilters();
+      searchInput.focus();
+    });
+  }
+
+  Object.entries(filters).forEach(([name, button]) => {
+    if (!button) return;
+    button.addEventListener('click', function() {
+      setActiveFilter(name);
+    });
+  });
+
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', function() {
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      if (clearSearchBtn) {
+        clearSearchBtn.classList.add('hidden');
+      }
+      setActiveFilter('all');
+      applyFilters();
+    });
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function() {
+      window.location.reload();
+    });
+  }
+
+  officeCards.forEach(card => {
+    card.addEventListener('click', function(event) {
+      if (event.target.closest('a') || event.target.closest('button')) return;
+      const href = this.getAttribute('data-detail-url');
+      if (href) window.location.href = href;
+    });
+  });
+
+  applyFilters();
+});
+</script>
+{% endblock %}

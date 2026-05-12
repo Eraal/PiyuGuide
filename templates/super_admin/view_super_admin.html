@@ -1,0 +1,446 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}{{ super_admin.get_full_name() }} - Super Admin Details{% endblock %}
+
+{% block page_title %}Super Admin Details{% endblock %}
+{% block page_subtitle %}{{ super_admin.get_full_name() }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Button -->
+    <div class="flex items-center">
+        <a href="{{ url_for('super_admin.super_admin_list') }}" 
+           class="group bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border-2 border-gray-200 transition-all duration-300 flex items-center">
+            <i class="fas fa-arrow-left mr-3 group-hover:-translate-x-1 transition-transform duration-300"></i>
+            Back to Super Admins
+        </a>
+    </div>
+
+    <!-- Enhanced Header Section -->
+    <div class="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-4 left-4 w-32 h-32 border-2 border-white rounded-full animate-ping"></div>
+            <div class="absolute bottom-10 right-20 w-16 h-16 border-2 border-white rounded-full animate-bounce delay-700"></div>
+        </div>
+        
+        <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            <div class="flex items-center">
+                <div class="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mr-6">
+                    <span class="text-white font-bold text-3xl">
+                        {{ super_admin.first_name[0] }}{{ super_admin.last_name[0] }}
+                    </span>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">{{ super_admin.get_full_name() }}</h1>
+                    <p class="text-purple-200 text-lg mb-2">{{ super_admin.email }}</p>
+                    <div class="flex items-center space-x-4">
+                        <span class="bg-purple-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                            <i class="fas fa-users-cog mr-2"></i>
+                            Super Administrator
+                        </span>
+                        {% if super_admin.is_active %}
+                            <span class="bg-green-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Active
+                            </span>
+                        {% else %}
+                            <span class="bg-red-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Inactive
+                            </span>
+                        {% endif %}
+                        {% if super_admin.is_online %}
+                            <span class="bg-blue-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                                <div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse inline-block"></div>
+                                Online
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ml-auto flex space-x-4">
+                <a href="{{ url_for('super_admin.edit_super_admin', admin_id=super_admin.id) }}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center space-x-2">
+                    <i class="fas fa-edit"></i>
+                    <span>Edit Details</span>
+                </a>
+                <button onclick="toggleAdminStatus({{ super_admin.id }}, {{ super_admin.is_active|lower }})" 
+                        class="{% if super_admin.is_active %}bg-red-600 hover:bg-red-700{% else %}bg-green-600 hover:bg-green-700{% endif %} text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300">
+                    <i class="fas {% if super_admin.is_active %}fa-user-slash{% else %}fa-user-check{% endif %} mr-2"></i>
+                    {% if super_admin.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Admin Details -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Personal Information Card -->
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-purple-50 px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-user mr-3 text-purple-600"></i>
+                        Personal Information
+                    </h3>
+                </div>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
+                            <p class="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-xl">{{ super_admin.first_name }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
+                            <p class="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-xl">{{ super_admin.last_name }}</p>
+                        </div>
+                        {% if super_admin.middle_name %}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Middle Name</label>
+                            <p class="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-xl">{{ super_admin.middle_name }}</p>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                            <p class="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-xl">{{ super_admin.email }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campus Assignment Card -->
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-2xl font-bold text-gray-900 flex items-center">
+                            <i class="fas fa-university mr-3 text-blue-600"></i>
+                            Campus Assignment
+                        </h3>
+                        <button onclick="showCampusAssignmentModal()" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300">
+                            <i class="fas fa-edit mr-2"></i>
+                            Change Assignment
+                        </button>
+                    </div>
+                </div>
+                <div class="p-8">
+                    {% if super_admin.campus %}
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h4 class="text-xl font-bold text-blue-900 mb-2 flex items-center">
+                                        <i class="fas fa-university mr-3"></i>
+                                        {{ super_admin.campus.name }}
+                                    </h4>
+                                    <div class="space-y-2">
+                                        <p class="text-blue-700"><strong>Code:</strong> {{ super_admin.campus.code }}</p>
+                                        <p class="text-blue-700"><strong>Address:</strong> {{ super_admin.campus.address or 'Not specified' }}</p>
+                                        {% if super_admin.campus.description %}
+                                        <p class="text-blue-700"><strong>Description:</strong> {{ super_admin.campus.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold mb-2">
+                                        <i class="fas fa-building mr-1"></i>
+                                        {{ office_count }} Offices
+                                    </div>
+                                    {% if super_admin.campus.is_active %}
+                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                            Active Campus
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                            Inactive Campus
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+                            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-exclamation-triangle text-2xl text-yellow-600"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-yellow-900 mb-2">No Campus Assigned</h4>
+                            <p class="text-yellow-700 mb-4">
+                                This super admin is not currently assigned to any campus. 
+                                Assign a campus to enable full administrative capabilities.
+                            </p>
+                            <button onclick="showCampusAssignmentModal()" 
+                                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300">
+                                <i class="fas fa-plus mr-2"></i>
+                                Assign Campus
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Offices Overview -->
+            {% if super_admin.campus and offices %}
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-green-50 px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-building mr-3 text-green-600"></i>
+                        Campus Offices ({{ office_count }})
+                    </h3>
+                </div>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for office in offices %}
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                            <h4 class="font-bold text-green-900 mb-2 flex items-center">
+                                <i class="fas fa-building mr-2"></i>
+                                {{ office.name }}
+                            </h4>
+                            <div class="space-y-1 text-sm text-green-700">
+                                {% if office.description %}
+                                <p>{{ office.description }}</p>
+                                {% endif %}
+                                <p class="flex items-center">
+                                    <i class="fas fa-users mr-2"></i>
+                                    {{ office.office_admins|length }} Admin(s)
+                                </p>
+                                {% if office.supports_video %}
+                                <p class="flex items-center text-blue-700">
+                                    <i class="fas fa-video mr-2"></i>
+                                    Video Counseling Supported
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Statistics and Activity -->
+        <div class="space-y-8">
+            <!-- Quick Stats Card -->
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-indigo-50 px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-chart-bar mr-3 text-indigo-600"></i>
+                        Quick Statistics
+                    </h3>
+                </div>
+                <div class="p-8 space-y-6">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Campus Offices</p>
+                                <p class="text-2xl font-bold text-indigo-900">{{ office_count }}</p>
+                            </div>
+                            <i class="fas fa-building text-2xl text-indigo-600"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Account Status</p>
+                                <p class="text-lg font-bold {% if super_admin.is_active %}text-green-700{% else %}text-red-700{% endif %}">
+                                    {% if super_admin.is_active %}Active{% else %}Inactive{% endif %}
+                                </p>
+                            </div>
+                            <i class="fas {% if super_admin.is_active %}fa-check-circle text-green-600{% else %}fa-times-circle text-red-600{% endif %} text-2xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Account Created</p>
+                                <p class="text-lg font-bold text-purple-900">{{ super_admin.created_at.strftime('%b %d, %Y') }}</p>
+                            </div>
+                            <i class="fas fa-calendar text-2xl text-purple-600"></i>
+                        </div>
+                    </div>
+
+                    {% if super_admin.last_activity %}
+                    <div class="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Last Activity</p>
+                                <p class="text-lg font-bold text-orange-900">{{ super_admin.last_activity.strftime('%b %d, %Y') }}</p>
+                            </div>
+                            <i class="fas fa-clock text-2xl text-orange-600"></i>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Activity Card -->
+            <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-teal-50 px-8 py-6 border-b border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-history mr-3 text-teal-600"></i>
+                        Recent Activity
+                    </h3>
+                </div>
+                <div class="p-8">
+                    {% if recent_activities %}
+                        <div class="space-y-4">
+                            {% for activity in recent_activities %}
+                            <div class="border-l-4 border-teal-500 pl-4 py-2 bg-teal-50 rounded-r-lg">
+                                <p class="font-semibold text-teal-900">{{ activity.action }}</p>
+                                <p class="text-sm text-teal-700">{{ activity.timestamp.strftime('%b %d, %Y at %I:%M %p') }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-history text-2xl text-gray-400"></i>
+                            </div>
+                            <p class="text-gray-500">No recent activity recorded</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Campus Assignment Modal -->
+<div id="campusAssignmentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-8 max-w-lg w-full mx-4 transform transition-all duration-300 scale-95">
+        <div class="mb-6">
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Campus Assignment</h3>
+            <p class="text-gray-600">Select a campus to assign to this super admin</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('super_admin.assign_campus', admin_id=super_admin.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="mb-6">
+                <label for="campus_id" class="block text-sm font-semibold text-gray-700 mb-3">Campus</label>
+                <select name="campus_id" id="campus_id" 
+                        class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300">
+                    <option value="">No Campus (Unassigned)</option>
+                    {% for campus in campuses %}
+                    <option value="{{ campus.id }}" {% if super_admin.campus_id == campus.id %}selected{% endif %}>
+                        {{ campus.name }} ({{ campus.code }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button type="button" onclick="closeCampusAssignmentModal()" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                    Update Assignment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Status Toggle Modal -->
+<div id="statusModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-95">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl text-yellow-600"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Confirm Status Change</h3>
+            <p class="text-gray-600 mb-6" id="statusModalText">
+                Are you sure you want to change this super admin's status?
+            </p>
+            <div class="flex space-x-4">
+                <button onclick="closeStatusModal()" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                    Cancel
+                </button>
+                <button onclick="confirmStatusToggle()" 
+                        class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentAdminId = {{ super_admin.id }};
+let currentStatus = {{ super_admin.is_active|lower }};
+
+function toggleAdminStatus(adminId, isActive) {
+    currentAdminId = adminId;
+    currentStatus = isActive;
+    
+    const action = isActive ? 'deactivate' : 'activate';
+    document.getElementById('statusModalText').textContent = 
+        `Are you sure you want to ${action} this super admin account?`;
+    
+    document.getElementById('statusModal').classList.remove('hidden');
+    document.getElementById('statusModal').classList.add('flex');
+}
+
+function closeStatusModal() {
+    document.getElementById('statusModal').classList.add('hidden');
+    document.getElementById('statusModal').classList.remove('flex');
+}
+
+function confirmStatusToggle() {
+    if (currentAdminId === null) return;
+    
+    fetch(`{{ url_for('super_admin.toggle_super_admin_status', admin_id=0) }}`.replace('0', currentAdminId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the status');
+    });
+    
+    closeStatusModal();
+}
+
+function showCampusAssignmentModal() {
+    document.getElementById('campusAssignmentModal').classList.remove('hidden');
+    document.getElementById('campusAssignmentModal').classList.add('flex');
+}
+
+function closeCampusAssignmentModal() {
+    document.getElementById('campusAssignmentModal').classList.add('hidden');
+    document.getElementById('campusAssignmentModal').classList.remove('flex');
+}
+
+// Close modals when clicking outside
+document.getElementById('statusModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeStatusModal();
+    }
+});
+
+document.getElementById('campusAssignmentModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCampusAssignmentModal();
+    }
+});
+</script>
+
+{% endblock %}

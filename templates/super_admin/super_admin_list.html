@@ -1,0 +1,531 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Campus Admin Management{% endblock %}
+
+{% block page_title %}Campus Admin Management{% endblock %}
+{% block page_subtitle %}Manage all campus administrators across campuses{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Enhanced Header Section with Glassmorphism Design -->
+    <div class="relative bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+        <!-- Animated Background Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-4 left-4 w-32 h-32 border-2 border-white rounded-full animate-ping"></div>
+            <div class="absolute top-20 right-20 w-24 h-24 border-2 border-white rounded-full animate-pulse delay-300"></div>
+            <div class="absolute bottom-10 left-20 w-16 h-16 border-2 border-white rounded-full animate-bounce delay-700"></div>
+        </div>
+        
+        <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="flex-1">
+                <div class="flex items-center mb-4">
+                    <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-4">
+                        <i class="fas fa-users-cog text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-4xl font-bold mb-1">Campus Admin Management</h1>
+                        <p class="text-blue-200 text-lg">
+                            Comprehensive campus administrator oversight and control
+                        </p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-6">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-users-cog text-2xl text-purple-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Total Campus Admins</p>
+                                <p class="text-2xl font-bold">{{ super_admins.total if super_admins.items else 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle text-2xl text-green-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Active</p>
+                                <p class="text-2xl font-bold">{{ super_admins.items | selectattr('is_active') | list | length if super_admins.items else 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-university text-2xl text-blue-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Assigned</p>
+                                <p class="text-2xl font-bold">{{ super_admins.items | selectattr('campus_id') | list | length if super_admins.items else 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-2xl text-yellow-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Unassigned</p>
+                                <p class="text-2xl font-bold">{{ super_admins.items | rejectattr('campus_id') | list | length if super_admins.items else 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <a href="{{ url_for('super_admin.create_super_admin') }}" 
+                   class="group bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center">
+                    <i class="fas fa-user-plus mr-3 group-hover:rotate-90 transition-transform duration-300"></i>
+                    <span>Add Campus Admin</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Search and Filter Section -->
+    <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8">
+        <div class="mb-6">
+            <h3 class="text-2xl font-bold text-gray-900 mb-2 flex items-center">
+                <i class="fas fa-filter mr-3 text-purple-600"></i>
+                Search & Filter Campus Admins
+            </h3>
+            <p class="text-gray-600">Find and filter campus administrators using advanced options</p>
+        </div>
+        
+        <form method="GET" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Search Input -->
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400 group-focus-within:text-purple-500 transition-colors duration-200"></i>
+                    </div>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search_term or '' }}"
+                           placeholder="Search by name or email..."
+                           class="w-full pl-12 pr-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 text-lg font-medium placeholder-gray-400">
+                </div>
+
+                <!-- Campus Filter -->
+                <div class="relative">
+                    <select name="campus_id" 
+                            class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 text-lg font-medium text-gray-700">
+                        <option value="">All Campuses</option>
+                        <option value="unassigned" {{ 'selected' if campus_filter == 'unassigned' else '' }}>Unassigned</option>
+                        {% for campus in campuses %}
+                        <option value="{{ campus.id }}" {{ 'selected' if campus_filter == campus.id|string else '' }}>
+                            {{ campus.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="relative">
+                    <select name="status" 
+                            class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 text-lg font-medium text-gray-700">
+                        <option value="">All Status</option>
+                        <option value="active" {{ 'selected' if status_filter == 'active' else '' }}>Active</option>
+                        <option value="inactive" {{ 'selected' if status_filter == 'inactive' else '' }}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button type="submit" 
+                        class="group bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center">
+                    <i class="fas fa-search mr-3 group-hover:scale-110 transition-transform duration-300"></i>
+                    <span>Apply Filters</span>
+                </button>
+                {% if search_term or campus_filter or status_filter %}
+                <a href="{{ url_for('super_admin.super_admin_list') }}" 
+                   class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-4 px-8 rounded-2xl transition-all duration-300 flex items-center justify-center border-2 border-gray-200 hover:border-gray-300">
+                    <i class="fas fa-times mr-3"></i>
+                    <span>Clear Filters</span>
+                </a>
+                {% endif %}
+            </div>
+
+            {% if search_term or campus_filter or status_filter %}
+            <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                <div class="flex items-center">
+                    <i class="fas fa-info-circle text-purple-600 mr-3"></i>
+                    <p class="text-purple-800">
+                        <span class="font-semibold">{{ super_admins.total or 0 }}</span> campus admin(s) found with current filters
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Modern Campus Admin List -->
+    <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div class="bg-gradient-to-r from-gray-50 to-purple-50 px-8 py-6 border-b border-gray-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-list mr-3 text-purple-600"></i>
+                        Campus Administrator Directory
+                        {% if search_term or campus_filter or status_filter %}
+                            <span class="ml-3 text-lg font-normal text-gray-600">
+                                ({{ super_admins.total or 0 }} results)
+                            </span>
+                        {% endif %}
+                    </h3>
+                    <p class="text-gray-600 mt-1">
+                        Manage and monitor campus administrator accounts
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500">Showing {{ super_admins.items|length }} of {{ super_admins.total }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-8">
+            {% if super_admins.items %}
+                <!-- Desktop View -->
+                <div class="hidden lg:block">
+                    <div class="overflow-hidden rounded-2xl border-2 border-gray-100">
+                        <table class="min-w-full">
+                            <thead class="bg-gradient-to-r from-purple-50 to-indigo-50">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Admin Details</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Campus Assignment</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Statistics</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                {% for admin in super_admins.items %}
+                                <tr class="hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 transition-all duration-300">
+                                    <td class="px-6 py-6">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-12 w-12">
+                                                <div class="h-12 w-12 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                                                    <span class="text-white font-bold text-lg">
+                                                        {{ admin.first_name[0] }}{{ admin.last_name[0] }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-lg font-bold text-gray-900">
+                                                    {{ admin.get_full_name() }}
+                                                </div>
+                                                <div class="text-sm text-gray-600 flex items-center">
+                                                    <i class="fas fa-envelope mr-2 text-purple-500"></i>
+                                                    {{ admin.email }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        {% if admin.campus %}
+                                            <div class="flex items-center">
+                                                <div class="bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-semibold flex items-center">
+                                                    <i class="fas fa-university mr-2"></i>
+                                                    {{ admin.campus.name }}
+                                                </div>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                Code: {{ admin.campus.code }}
+                                            </div>
+                                        {% else %}
+                                            <div class="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-full text-sm font-semibold flex items-center">
+                                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                                Unassigned
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        <div class="space-y-2">
+                                            <div class="flex items-center text-sm text-gray-600">
+                                                <i class="fas fa-building mr-2 text-blue-500"></i>
+                                                {{ admin_stats[admin.id].office_count if admin.id in admin_stats else 0 }} Offices
+                                            </div>
+                                            <div class="flex items-center text-sm text-gray-600">
+                                                <i class="fas fa-clock mr-2 text-green-500"></i>
+                                                {% if admin.last_activity %}
+                                                    Last seen: {{ admin.last_activity.strftime('%b %d, %Y') }}
+                                                {% else %}
+                                                    Never logged in
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        <div class="flex items-center space-x-3">
+                                            <a href="{{ url_for('super_admin.view_super_admin', admin_id=admin.id) }}" 
+                                               class="group bg-blue-100 hover:bg-blue-200 text-blue-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110" 
+                                               title="View Details">
+                                                <i class="fas fa-eye group-hover:scale-110 transition-transform duration-300"></i>
+                                            </a>
+                                            <a href="{{ url_for('super_admin.edit_super_admin', admin_id=admin.id) }}" 
+                                               class="group bg-purple-100 hover:bg-purple-200 text-purple-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110" 
+                                               title="Edit Details">
+                                                <i class="fas fa-edit group-hover:scale-110 transition-transform duration-300"></i>
+                                            </a>
+                                            <button data-toggle-admin-status="1" data-id="{{ admin.id }}" data-active="{{ admin.is_active | tojson }}"
+                                                    class="group {% if admin.is_active %}bg-red-100 hover:bg-red-200 text-red-700{% else %}bg-green-100 hover:bg-green-200 text-green-700{% endif %} p-3 rounded-xl transition-all duration-300 transform hover:scale-110" 
+                                                    title="{% if admin.is_active %}Deactivate{% else %}Activate{% endif %} Account">
+                                                <i class="fas {% if admin.is_active %}fa-user-slash{% else %}fa-user-check{% endif %} group-hover:scale-110 transition-transform duration-300"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mobile View -->
+                <div class="lg:hidden space-y-6">
+                    {% for admin in super_admins.items %}
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                        <div class="p-6">
+                            <!-- Admin Header -->
+                            <div class="flex items-center mb-4">
+                                <div class="flex-shrink-0 h-16 w-16">
+                                    <div class="h-16 w-16 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                                        <span class="text-white font-bold text-xl">
+                                            {{ admin.first_name[0] }}{{ admin.last_name[0] }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <h3 class="text-xl font-bold text-gray-900">{{ admin.get_full_name() }}</h3>
+                                    <p class="text-sm text-gray-600">{{ admin.email }}</p>
+                                    <div class="mt-2">
+                                        {% if admin.is_active %}
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                                Active
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                <i class="fas fa-times-circle mr-1"></i>
+                                                Inactive
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Admin Details -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Campus:</span>
+                                    {% if admin.campus %}
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">
+                                            {{ admin.campus.name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm font-medium">
+                                            Unassigned
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Offices:</span>
+                                    <span class="text-sm font-medium text-gray-900">
+                                        {{ admin_stats[admin.id].office_count if admin.id in admin_stats else 0 }}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <!-- Created date removed as per requirement -->
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="mt-6 flex space-x-3">
+                                <a href="{{ url_for('super_admin.view_super_admin', admin_id=admin.id) }}" 
+                                   class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 text-center">
+                                    <i class="fas fa-eye mr-2"></i>
+                                    View
+                                </a>
+                                <a href="{{ url_for('super_admin.edit_super_admin', admin_id=admin.id) }}" 
+                                   class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 text-center">
+                                    <i class="fas fa-edit mr-2"></i>
+                                    Edit
+                                </a>
+                                <button data-toggle-admin-status="1" data-id="{{ admin.id }}" data-active="{{ admin.is_active | tojson }}"
+                                        class="{% if admin.is_active %}bg-red-600 hover:bg-red-700{% else %}bg-green-600 hover:bg-green-700{% endif %} text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                                    <i class="fas {% if admin.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if super_admins.pages > 1 %}
+                <div class="mt-8 flex justify-center">
+                    <nav class="flex items-center space-x-2">
+                        {% if super_admins.has_prev %}
+                            <a href="{{ url_for('super_admin.super_admin_list', page=super_admins.prev_num, search=search_term, campus_id=campus_filter, status=status_filter) }}" 
+                               class="bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 rounded-xl border-2 border-gray-200 transition-all duration-300">
+                                <i class="fas fa-chevron-left mr-2"></i>
+                                Previous
+                            </a>
+                        {% endif %}
+
+                        <div class="flex space-x-1">
+                            {% for page_num in super_admins.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != super_admins.page %}
+                                        <a href="{{ url_for('super_admin.super_admin_list', page=page_num, search=search_term, campus_id=campus_filter, status=status_filter) }}" 
+                                           class="bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 rounded-xl border-2 border-gray-200 transition-all duration-300">
+                                            {{ page_num }}
+                                        </a>
+                                    {% else %}
+                                        <span class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-xl">
+                                            {{ page_num }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-gray-400 py-2 px-2">…</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        {% if super_admins.has_next %}
+                            <a href="{{ url_for('super_admin.super_admin_list', page=super_admins.next_num, search=search_term, campus_id=campus_filter, status=status_filter) }}" 
+                               class="bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 rounded-xl border-2 border-gray-200 transition-all duration-300">
+                                Next
+                                <i class="fas fa-chevron-right ml-2"></i>
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+                {% endif %}
+
+            {% else %}
+                <!-- Empty State -->
+                <div class="text-center py-16">
+                    <div class="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-users-cog text-4xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">No Campus Admins Found</h3>
+                    {% if search_term or campus_filter or status_filter %}
+                        <p class="text-gray-600 mb-6">
+                            No campus administrators match your current filters. 
+                            <a href="{{ url_for('super_admin.super_admin_list') }}" class="text-purple-600 hover:text-purple-700 font-semibold">
+                                Clear filters
+                            </a> to see all campus admins.
+                        </p>
+                    {% else %}
+                        <p class="text-gray-600 mb-6">
+                            Get started by creating your first campus administrator account.
+                        </p>
+                    {% endif %}
+                    <a href="{{ url_for('super_admin.create_super_admin') }}" 
+                       class="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Create Campus Admin
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Status Toggle Modal -->
+<div id="statusModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-95">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl text-yellow-600"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Confirm Status Change</h3>
+            <p class="text-gray-600 mb-6" id="statusModalText">
+                Are you sure you want to change this campus admin's status?
+            </p>
+            <div class="flex space-x-4">
+                <button onclick="closeStatusModal()" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                    Cancel
+                </button>
+                <button onclick="confirmStatusToggle()" 
+                        class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentAdminId = null;
+let currentStatus = null;
+
+function toggleAdminStatus(adminId, isActive) {
+    currentAdminId = adminId;
+    currentStatus = isActive;
+    
+    const action = isActive ? 'deactivate' : 'activate';
+    document.getElementById('statusModalText').textContent = 
+        `Are you sure you want to ${action} this campus admin account?`;
+    
+    document.getElementById('statusModal').classList.remove('hidden');
+    document.getElementById('statusModal').classList.add('flex');
+}
+
+function closeStatusModal() {
+    document.getElementById('statusModal').classList.add('hidden');
+    document.getElementById('statusModal').classList.remove('flex');
+    currentAdminId = null;
+    currentStatus = null;
+}
+
+function confirmStatusToggle() {
+    if (currentAdminId === null) return;
+    
+    fetch(`{{ url_for('super_admin.toggle_super_admin_status', admin_id=0) }}`.replace('0', currentAdminId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the status');
+    });
+    
+    closeStatusModal();
+}
+
+function clearSearch() {
+    document.querySelector('input[name="search"]').value = '';
+    document.querySelector('select[name="campus_id"]').value = '';
+    document.querySelector('select[name="status"]').value = '';
+    document.querySelector('form').submit();
+}
+
+// Close modal when clicking outside
+document.getElementById('statusModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeStatusModal();
+    }
+});
+
+// Delegate clicks for status toggle buttons
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-toggle-admin-status]');
+    if (!btn) return;
+    const id = parseInt(btn.getAttribute('data-id'));
+    const activeAttr = btn.getAttribute('data-active');
+    const isActive = activeAttr === 'true';
+    toggleAdminStatus(id, isActive);
+});
+</script>
+
+{% endblock %}

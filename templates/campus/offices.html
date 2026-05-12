@@ -1,0 +1,401 @@
+{% extends 'campus/headerbase.html' %}
+
+{% block title %}{% if current_campus %}{{ current_campus.name }} - Supported Offices{% else %}{{ current_campus_name }} - Supported Offices{% endif %}{% endblock %}
+
+{% block content %}
+{% set _logo_path = current_campus.campus_logo_path if current_campus and current_campus.campus_logo_path else None %}
+{% if _logo_path %}
+  {% if _logo_path.startswith('http') or _logo_path.startswith('/') %}
+    {% set campus_logo_url = _logo_path %}
+  {% else %}
+    {% set campus_logo_url = url_for('static', filename=_logo_path) %}
+  {% endif %}
+{% else %}
+  {% set campus_logo_url = brand_logo_url %}
+{% endif %}
+<!-- Hero Section with Enhanced Styling -->
+<div class="relative overflow-hidden">
+  {% set _bg_path = current_campus.campus_landing_bg_path if current_campus and current_campus.campus_landing_bg_path else 'images/backgroundlanding.png' %}
+  {% if _bg_path.startswith('http') or _bg_path.startswith('/') %}
+    {% set campus_bg_url = _bg_path %}
+  {% else %}
+    {% set campus_bg_url = url_for('static', filename=_bg_path) %}
+  {% endif %}
+  <div
+    class="bg-cover bg-center h-80 md:h-96 relative"
+    style="background-image: url('{{ campus_bg_url }}');"
+  >
+    <!-- Enhanced overlay with gradient -->
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-purple-900/60"></div>
+    
+    <!-- Floating elements for visual interest -->
+    <div class="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl animate-pulse"></div>
+    <div class="absolute bottom-20 right-20 w-32 h-32 bg-blue-400/20 rounded-full blur-2xl animate-pulse delay-1000"></div>
+    
+    <!-- School Logo - Enhanced positioning -->
+    <div class="relative container mx-auto px-4 pt-6 text-center">
+      <img
+        src="{{ campus_logo_url }}"
+        alt="{% if current_campus %}{{ current_campus.name }}{% else %}{{ current_campus_name }}{% endif %} Logo"
+        class="w-20 md:w-56 mx-auto md:absolute md:top-6 md:right-6 md:mx-0 drop-shadow-lg hover:scale-105 transition-transform duration-300"
+      />
+    </div>
+    
+    <div class="relative container mx-auto px-4 h-full flex flex-col justify-center items-center md:items-start mt-4 md:mt-0">
+      <div class="text-center md:text-left text-white max-w-4xl">
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent drop-shadow-2xl animate-fade-in">
+          {% if current_campus %}{{ current_campus.name }}{% else %}{{ current_campus_name }}{% endif %}
+        </h1>
+        <p class="text-xl md:text-2xl mb-4 font-semibold text-blue-100 drop-shadow-lg">
+          "Manage Your Campus Inquiries with Ease"
+        </p>
+        <p class="text-base md:text-lg mb-6 text-blue-50 leading-relaxed">
+          Easily reach the right office for your concern at {% if current_campus %}{{ current_campus.name }}{% else %}{{ current_campus_name }}{% endif %}<br>
+          <span class="text-yellow-200">—anytime, anywhere</span>
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+          <div class="flex items-center gap-2 text-sm text-blue-100">
+            <i class="fas fa-shield-alt text-green-400"></i>
+            <span>Secure & Confidential</span>
+          </div>
+          <div class="flex items-center gap-2 text-sm text-blue-100">
+            <i class="fas fa-clock text-yellow-400"></i>
+            <span>24/7 Available</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Enhanced Supported Offices Section -->
+<section class="py-12 md:py-16 bg-gradient-to-b from-gray-50 to-white">
+  <div class="container mx-auto px-4">
+    <!-- Section Header with improved typography -->
+    <div class="text-center max-w-3xl mx-auto mb-12">
+      <h2 class="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-blue-800 via-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+        Supported Offices
+      </h2>
+      <p class="text-lg md:text-xl text-gray-600 leading-relaxed">
+        Connect with official {% if current_campus %}{{ current_campus.name }}{% else %}{{ current_campus_name }}{% endif %} offices effortlessly. Our system ensures your inquiries 
+        are handled <span class="text-blue-600 font-semibold">efficiently</span>, 
+        <span class="text-green-600 font-semibold">securely</span>, and 
+        <span class="text-purple-600 font-semibold">professionally</span>.
+      </p>
+    </div>
+
+    <!-- Enhanced Offices Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-10">
+      {% for data in office_data %}
+      <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden border border-gray-100 flex flex-col office-card transform hover:-translate-y-2 transition-all duration-300" data-office-id="{{ data.office.id }}">
+        
+        <!-- Enhanced Dynamic Header with modern gradients -->
+        <div class="relative {% if loop.index0 % 10 == 0 %}bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800
+                    {% elif loop.index0 % 10 == 1 %}bg-gradient-to-br from-emerald-600 via-green-700 to-teal-800
+                    {% elif loop.index0 % 10 == 2 %}bg-gradient-to-br from-amber-500 via-orange-600 to-red-600
+                    {% elif loop.index0 % 10 == 3 %}bg-gradient-to-br from-pink-600 via-rose-700 to-purple-800
+                    {% elif loop.index0 % 10 == 4 %}bg-gradient-to-br from-orange-600 via-red-600 to-pink-700
+                    {% elif loop.index0 % 10 == 5 %}bg-gradient-to-br from-purple-600 via-violet-700 to-indigo-800
+                    {% elif loop.index0 % 10 == 6 %}bg-gradient-to-br from-teal-600 via-cyan-700 to-blue-800
+                    {% elif loop.index0 % 10 == 7 %}bg-gradient-to-br from-indigo-600 via-purple-700 to-pink-800
+                    {% elif loop.index0 % 10 == 8 %}bg-gradient-to-br from-sky-600 via-blue-700 to-indigo-800
+                    {% else %}bg-gradient-to-br from-red-600 via-rose-700 to-pink-800{% endif %} text-white py-6 px-6 relative overflow-hidden">
+          
+          <!-- Decorative elements -->
+          <div class="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
+          <div class="absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-8 -translate-x-8"></div>
+          
+          <div class="relative">
+            <h3 class="text-xl md:text-2xl font-bold text-center leading-tight">
+              {{ data.office.name }}
+            </h3>
+          </div>
+        </div>
+        
+        <div class="p-6 md:p-8 flex flex-col flex-grow">
+          <!-- Enhanced Office Description -->
+          <div class="mb-6">
+            <p class="text-gray-700 leading-relaxed text-justify line-clamp-4 group-hover:line-clamp-none transition-all duration-300">
+              {{ data.office.description or "This office provides comprehensive services to support students and staff in their academic and administrative needs." }}
+            </p>
+          </div>
+          
+          <!-- Enhanced Status and Stats with modern cards -->
+          <div class="mb-6 space-y-3">
+            <!-- Status Badge -->
+            <div class="flex items-center justify-between p-3 rounded-xl {% if data.is_available %}bg-green-50 border border-green-200{% else %}bg-red-50 border border-red-200{% endif %}">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full {% if data.is_available %}bg-green-500 animate-pulse{% else %}bg-red-500{% endif %}"></div>
+                <span class="text-sm font-medium text-gray-700">Status</span>
+              </div>
+              <span class="{% if data.is_available %}text-green-700 bg-green-100{% else %}text-red-700 bg-red-100{% endif %} px-3 py-1 rounded-full text-sm font-semibold">
+                {% if data.is_available %}Available{% else %}Offline{% endif %}
+              </span>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                <div class="text-2xl font-bold text-blue-700">{{ data.total_inquiries }}</div>
+                <div class="text-xs text-blue-600 font-medium">Total Inquiries</div>
+              </div>
+              
+              {% if data.pending_inquiries > 0 %}
+              <div class="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                <div class="text-2xl font-bold text-amber-700">{{ data.pending_inquiries }}</div>
+                <div class="text-xs text-amber-600 font-medium">Pending</div>
+              </div>
+              {% else %}
+              <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div class="text-2xl font-bold text-gray-400">0</div>
+                <div class="text-xs text-gray-500 font-medium">Pending</div>
+              </div>
+              {% endif %}
+            </div>
+            
+            <!-- Video Support Badge -->
+            {% if data.office.supports_video %}
+            <div class="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+              <i class="fas fa-video text-purple-600"></i>
+              <span class="text-sm font-medium text-purple-700">Video Consultations Available</span>
+            </div>
+            {% endif %}
+          </div>
+          
+          <!-- Enhanced Supported Concerns -->
+          {% if data.concern_types %}
+          <div class="mb-6">
+            <h4 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+              <i class="fas fa-cogs text-blue-600"></i>
+              Main Services
+            </h4>
+            <div class="space-y-2">
+              {% for concern in data.concern_types[:3] %}
+              <div class="flex items-center gap-2 text-sm text-gray-700 bg-gradient-to-r from-gray-50 to-blue-50 px-3 py-2 rounded-lg border border-gray-100">
+                <i class="fas fa-check-circle text-green-500 text-xs"></i>
+                <span>{{ concern.name }}</span>
+              </div>
+              {% endfor %}
+              {% if data.concern_types|length > 3 %}
+              <div class="text-sm text-blue-600 font-medium italic text-center py-2">
+                <i class="fas fa-plus-circle mr-1"></i>
+                {{ data.concern_types|length - 3 }} more services available
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+          
+          <!-- Enhanced Action Buttons -->
+          <div class="mt-auto pt-4 space-y-3">
+            <a href="{{ url_for('main.office_details', office_id=data.office.id) }}" 
+               class="group flex items-center justify-center gap-2 w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg">
+              <i class="fas fa-info-circle group-hover:rotate-12 transition-transform duration-300"></i>
+              <span>View Details</span>
+            </a>
+            
+            {% if data.is_available %}
+            <a href="{{ url_for('student.submit_inquiry', office_id=data.office.id) }}" 
+               class="group flex items-center justify-center gap-2 w-full bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg">
+              <i class="fas fa-paper-plane group-hover:translate-x-1 transition-transform duration-300"></i>
+              <span>Submit Inquiry</span>
+            </a>
+            {% else %}
+            <button class="flex items-center justify-center gap-2 w-full bg-gray-300 text-gray-500 font-semibold py-3 px-6 rounded-xl cursor-not-allowed" disabled>
+              <i class="fas fa-ban"></i>
+              <span>Office Unavailable</span>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <!-- Enhanced No offices available message -->
+      <div class="col-span-full">
+        <div class="text-center py-16">
+          <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-12 max-w-md mx-auto shadow-lg">
+            <div class="w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i class="fas fa-building text-gray-500 text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-700 mb-3">No Offices Available</h3>
+            <p class="text-gray-500 leading-relaxed">There are currently no offices available in the system. Please check back later.</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <!-- Enhanced Statistics Summary -->
+    {% if office_data %}
+    <div class="mt-16 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-3xl p-8 md:p-12 shadow-xl border border-blue-100">
+      <div class="text-center mb-8">
+        <h3 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-800 to-purple-800 bg-clip-text text-transparent mb-2">
+          System Overview
+        </h3>
+        <p class="text-gray-600">Real-time statistics across all offices</p>
+      </div>
+      
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="text-center group">
+          <div class="bg-white rounded-2xl p-6 shadow-lg border border-blue-100 group-hover:shadow-xl transition-all duration-300 transform group-hover:-translate-y-1">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-building text-white text-xl"></i>
+            </div>
+            <div class="text-3xl font-bold text-blue-700 mb-1">{{ office_data|length }}</div>
+            <div class="text-sm text-gray-600 font-medium">Total Offices</div>
+          </div>
+        </div>
+        
+        <div class="text-center group">
+          <div class="bg-white rounded-2xl p-6 shadow-lg border border-green-100 group-hover:shadow-xl transition-all duration-300 transform group-hover:-translate-y-1">
+            <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-check-circle text-white text-xl"></i>
+            </div>
+            <div class="text-3xl font-bold text-green-700 mb-1">{{ office_data|selectattr('is_available')|list|length }}</div>
+            <div class="text-sm text-gray-600 font-medium">Available Now</div>
+          </div>
+        </div>
+        
+        <div class="text-center group">
+          <div class="bg-white rounded-2xl p-6 shadow-lg border border-purple-100 group-hover:shadow-xl transition-all duration-300 transform group-hover:-translate-y-1">
+            <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-envelope text-white text-xl"></i>
+            </div>
+            <div class="text-3xl font-bold text-purple-700 mb-1">{{ office_data|sum(attribute='total_inquiries') }}</div>
+            <div class="text-sm text-gray-600 font-medium">Total Inquiries</div>
+          </div>
+        </div>
+        
+        <div class="text-center group">
+          <div class="bg-white rounded-2xl p-6 shadow-lg border border-amber-100 group-hover:shadow-xl transition-all duration-300 transform group-hover:-translate-y-1">
+            <div class="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-clock text-white text-xl"></i>
+            </div>
+            <div class="text-3xl font-bold text-amber-700 mb-1">{{ office_data|sum(attribute='pending_inquiries') }}</div>
+            <div class="text-sm text-gray-600 font-medium">Pending</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Custom CSS for enhanced animations -->
+<style>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 1s ease-out;
+  }
+  
+  .line-clamp-4 {
+    display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-none {
+    display: block;
+  -webkit-line-clamp: none;
+  line-clamp: unset;
+  }
+    .office-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  }
+  
+  .office-card:hover {
+    background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  }
+
+  /* Custom scrollbar for better UX */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #3b82f6, #6366f1);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #2563eb, #4f46e5);
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced hover effects with smooth transitions
+    const officeCards = document.querySelectorAll('.office-card');
+    officeCards.forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-8px) scale(1.02)';
+        this.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25)';
+        this.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0) scale(1)';
+        this.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+        this.style.transition = 'all 0.3s ease-out';
+      });
+    });
+    
+    // Enhanced click tracking with visual feedback
+    const contactButtons = document.querySelectorAll('a[href*="office_details"], a[href*="submit_inquiry"]');
+    contactButtons.forEach(button => {
+      button.addEventListener('click', function(e) {
+        const officeCard = this.closest('.office-card');
+        const officeId = officeCard.getAttribute('data-office-id');
+        const action = this.href.includes('submit_inquiry') ? 'inquiry' : 'details';
+        
+        // Add ripple effect
+        const ripple = document.createElement('span');
+        ripple.classList.add('ripple');
+        this.appendChild(ripple);
+        
+        setTimeout(() => {
+          ripple.remove();
+        }, 600);
+        
+        // Track the interaction
+        console.log(`Office interaction: ${action} for office ID ${officeId}`);
+      });
+    });
+    
+    // Smooth scroll reveal animation for cards
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, observerOptions);
+    
+    // Apply initial styles and observe cards
+    officeCards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(50px)';
+      card.style.transition = `all 0.6s ease-out ${index * 0.1}s`;
+      observer.observe(card);
+    });
+  });
+</script>
+{% endblock %}

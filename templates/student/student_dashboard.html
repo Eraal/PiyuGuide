@@ -1,0 +1,378 @@
+{% extends "student/student_base.html" %}
+{% block title %}Dashboard &mdash; KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  .stat-card { background:#fff; border:1px solid #e2e8f0; border-radius:0.875rem; padding:1.5rem; transition:box-shadow .2s, transform .2s; }
+  .stat-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.09); transform:translateY(-2px); }
+  .stat-icon { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0; }
+  .stat-number { font-size:2.25rem;font-weight:700;line-height:1;letter-spacing:-.02em; }
+
+  .panel { background:#fff; border:1px solid #e2e8f0; border-radius:0.875rem; overflow:hidden; }
+  .panel-header { display:flex;justify-content:space-between;align-items:center;padding:.875rem 1.25rem; border-bottom:1px solid #f1f5f9; }
+  .panel-title { font-size:.9375rem;font-weight:600;color:#0f172a;display:flex;align-items:center;gap:.5rem; }
+
+  .session-row { display:flex;align-items:start;gap:1rem;padding:1rem;border-radius:.75rem;border:1px solid #e2e8f0;transition:background .15s,border-color .15s; }
+  .session-row:hover { background:#f8fafc;border-color:#bfdbfe; }
+  .session-row.today { background:#eff6ff;border-color:#bfdbfe; border-left:3px solid #1d4ed8; }
+  .date-badge { text-align:center;background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:.375rem .625rem;min-width:52px;flex-shrink:0; }
+  .date-badge .mon { font-size:.6rem;font-weight:700;color:#1d4ed8;text-transform:uppercase; }
+  .date-badge .day { font-size:1.375rem;font-weight:700;color:#0f172a;line-height:1; }
+  .date-badge .wday { font-size:.6rem;color:#94a3b8;text-transform:uppercase; }
+
+  .status-pill { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .625rem;border-radius:999px;font-size:.7rem;font-weight:600; }
+  .pill-pending  { background:#fef9c3;color:#854d0e;border:1px solid #fef08a; }
+  .pill-progress { background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe; }
+  .pill-resolved { background:#dcfce7;color:#14532d;border:1px solid #bbf7d0; }
+  .pill-confirmed{ background:#dcfce7;color:#14532d;border:1px solid #bbf7d0; }
+  .pill-default  { background:#f1f5f9;color:#475569;border:1px solid #e2e8f0; }
+
+  .btn-view { display:inline-flex;align-items:center;gap:.25rem;padding:.375rem .75rem;font-size:.75rem;font-weight:500;border:1px solid #1d4ed8;color:#1d4ed8;border-radius:.5rem;transition:background .15s,color .15s; }
+  .btn-view:hover { background:#1d4ed8;color:#fff; }
+
+  .btn-primary { display:inline-flex;align-items:center;gap:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;background:#16a34a;color:#fff;border-radius:.625rem;transition:background .15s; }
+  .btn-primary:hover { background:#15803d; }
+  .btn-outline { display:inline-flex;align-items:center;gap:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;background:#fff;color:#475569;border:1px solid #e2e8f0;border-radius:.625rem;transition:background .15s; }
+  .btn-outline:hover { background:#f8fafc; }
+
+  .tbl th { font-size:.7rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;padding:.75rem 1.25rem;background:#f8fafc;text-align:left; }
+  .tbl td { padding:.875rem 1.25rem;font-size:.875rem;color:#334155; }
+  .tbl tbody tr { border-top:1px solid #f1f5f9;transition:background .15s; }
+  .tbl tbody tr:hover { background:#f8fafc; }
+
+  .activity-item { display:flex;align-items:start;gap:.75rem;padding:.75rem;border-radius:.75rem;border:1px solid transparent;transition:border-color .15s,background .15s; }
+  .activity-item:hover { background:#f8fafc;border-color:#e2e8f0; }
+  .activity-dot { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0; }
+
+  .ann-item { padding:.875rem 1.25rem;border-bottom:1px solid #f1f5f9;transition:background .15s; }
+  .ann-item:last-child { border-bottom:none; }
+  .ann-item:hover { background:#f8fafc; }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="px-2 py-5 space-y-6">
+
+  <!-- â”€â”€ Welcome Header â”€â”€ -->
+  <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <i class="fas fa-graduation-cap text-white text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-slate-900">Welcome back, {{ current_user.first_name }}!</h1>
+        <p class="text-sm text-slate-500 mt-0.5">{{ today|to_local('%A, %B %d, %Y') }} &mdash; Your academic journey continues</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <a href="{{ url_for('student.university_offices') }}" class="btn-outline">
+        <i class="fas fa-paper-plane text-sm"></i>
+        <span class="text-sm">Submit Inquiry</span>
+      </a>
+      <a href="{{ url_for('student.request_counseling_session') }}" class="btn-primary">
+        <i class="fas fa-calendar-plus text-sm"></i>
+        <span class="text-sm">Request Session</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- â”€â”€ Stats Cards â”€â”€ -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <!-- Pending Inquiries -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Pending Inquiries</p>
+          <p class="stat-number text-amber-600 pending-inquiries">{{ stats.pending_inquiries|default(0) }}</p>
+          <a href="{{ url_for('student.inquiries', status='pending') }}" class="mt-3 text-xs text-amber-600 hover:text-amber-800 font-medium flex items-center gap-1">
+            <i class="fas fa-arrow-right text-[10px]"></i>View details
+          </a>
+        </div>
+        <div class="stat-icon bg-amber-50 text-amber-500"><i class="fas fa-clock"></i></div>
+      </div>
+    </div>
+
+    <!-- Total Inquiries -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Total Inquiries</p>
+          <p class="stat-number text-blue-700 total-inquiries">{{ stats.total_inquiries|default(0) }}</p>
+          <a href="{{ url_for('student.inquiries') }}" class="mt-3 text-xs text-blue-700 hover:text-blue-900 font-medium flex items-center gap-1">
+            <i class="fas fa-arrow-right text-[10px]"></i>View all
+          </a>
+        </div>
+        <div class="stat-icon bg-blue-50 text-blue-700"><i class="fas fa-inbox"></i></div>
+      </div>
+    </div>
+
+    <!-- Upcoming Sessions -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Upcoming Sessions</p>
+          <p class="stat-number text-green-600 upcoming-sessions">{{ stats.upcoming_sessions|default(0) }}</p>
+          <a href="{{ url_for('student.counseling_dashboard') }}" class="mt-3 text-xs text-green-600 hover:text-green-800 font-medium flex items-center gap-1">
+            <i class="fas fa-arrow-right text-[10px]"></i>View schedule
+          </a>
+        </div>
+        <div class="stat-icon bg-green-50 text-green-600"><i class="fas fa-calendar-alt"></i></div>
+      </div>
+    </div>
+
+    <!-- Announcements -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">New Announcements</p>
+          <p class="stat-number text-teal-600 new-announcements">{{ stats.new_announcements|default(0) }}</p>
+          <a href="{{ url_for('student.announcements') }}" class="mt-3 text-xs text-teal-600 hover:text-teal-800 font-medium flex items-center gap-1">
+            <i class="fas fa-arrow-right text-[10px]"></i>Read all
+          </a>
+        </div>
+        <div class="stat-icon bg-teal-50 text-teal-600"><i class="fas fa-bullhorn"></i></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- â”€â”€ Main Content Grid â”€â”€ -->
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+
+    <!-- Left: Schedule + Inquiries (8/12) -->
+    <div class="xl:col-span-8 space-y-5">
+
+      <!-- Upcoming Schedule -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title"><i class="fas fa-calendar-day text-blue-700"></i>Upcoming Schedule</span>
+          <a href="{{ url_for('student.counseling_dashboard') }}" class="btn-view">View all <i class="fas fa-arrow-right text-[10px]"></i></a>
+        </div>
+        <div class="p-4 space-y-3">
+          {% if upcoming_schedule %}
+            {% for session in upcoming_schedule[:3] %}
+            <div class="session-row {% if session.is_today %}today{% endif %}">
+              <div class="date-badge">
+                <div class="mon">{{ session.scheduled_at|mon }}</div>
+                <div class="day">{{ session.scheduled_at.day }}</div>
+                <div class="wday">{{ session.scheduled_at|wday }}</div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-building text-blue-700 text-xs"></i>
+                  </div>
+                  <p class="font-semibold text-slate-800 text-sm truncate">{{ session.office.name }}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mb-2">
+                  <span><i class="far fa-clock mr-1"></i>{{ session.scheduled_at|time12 }}</span>
+                  <span><i class="far fa-user mr-1"></i>{{ session.counselor.first_name }} {{ session.counselor.last_name }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="status-pill
+                    {% if session.status == 'confirmed' %}pill-confirmed
+                    {% elif session.status == 'pending' %}pill-pending
+                    {% else %}pill-default{% endif %}">
+                    {{ session.status|replace('_',' ')|title }}
+                  </span>
+                  {% if session.is_video_session %}
+                  <span class="status-pill pill-progress"><i class="fas fa-video text-[9px]"></i>Video</span>
+                  {% endif %}
+                  <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="btn-view ml-auto"><i class="fas fa-eye text-[10px]"></i>View</a>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="text-center py-10">
+            <i class="fas fa-calendar-day text-slate-300 text-3xl mb-3"></i>
+            <p class="text-slate-500 font-medium text-sm">No upcoming sessions</p>
+            <p class="text-slate-400 text-xs mb-4">Schedule your first counseling session</p>
+            <a href="{{ url_for('student.request_counseling_session') }}" class="btn-primary mx-auto">
+              <i class="fas fa-calendar-plus text-xs"></i>Schedule Session
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Inquiries -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title"><i class="fas fa-inbox text-blue-700"></i>Recent Inquiries</span>
+          <a href="{{ url_for('student.inquiries') }}" class="btn-view">View all <i class="fas fa-arrow-right text-[10px]"></i></a>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden p-4 space-y-3">
+          {% if recent_inquiries %}
+            {% for inquiry in recent_inquiries[:3] %}
+            <div class="session-row">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-envelope text-blue-700 text-xs"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                  <p class="text-sm font-semibold text-slate-800 truncate">{{ inquiry.subject }}</p>
+                  <span class="status-pill flex-shrink-0
+                    {% if inquiry.status == 'pending' %}pill-pending
+                    {% elif inquiry.status == 'in_progress' %}pill-progress
+                    {% elif inquiry.status == 'resolved' %}pill-resolved
+                    {% else %}pill-default{% endif %}">
+                    {{ inquiry.status|replace('_',' ')|title }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">{{ inquiry.office.name }} &middot; {{ inquiry.created_at|dt12 }}</p>
+                <a href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}" class="btn-view mt-2"><i class="fas fa-eye text-[10px]"></i>View</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="text-center py-8">
+            <i class="fas fa-inbox text-slate-300 text-3xl mb-2"></i>
+            <p class="text-slate-500 text-sm">No inquiries yet</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="min-w-full tbl">
+            <thead>
+              <tr>
+                <th>Subject</th><th>Office</th><th>Status</th><th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white">
+              {% if recent_inquiries %}
+              {% for inquiry in recent_inquiries[:3] %}
+              <tr>
+                <td>
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-envelope text-blue-700 text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium text-slate-800 truncate max-w-[200px]">{{ inquiry.subject }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="font-medium text-slate-700">{{ inquiry.office.name }}</td>
+                <td>
+                  <span class="status-pill
+                    {% if inquiry.status == 'pending' %}pill-pending
+                    {% elif inquiry.status == 'in_progress' %}pill-progress
+                    {% elif inquiry.status == 'resolved' %}pill-resolved
+                    {% else %}pill-default{% endif %}">
+                    {{ inquiry.status|replace('_',' ')|title }}
+                  </span>
+                </td>
+                <td class="text-slate-500 whitespace-nowrap">{{ inquiry.created_at|dt12 }}</td>
+                <td>
+                  <a href="{{ url_for('student.view_inquiry', inquiry_id=inquiry.id) }}" class="btn-view">
+                    <i class="fas fa-eye text-[10px]"></i>View
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+              {% else %}
+              <tr>
+                <td colspan="5" class="text-center py-10">
+                  <i class="fas fa-inbox text-slate-300 text-3xl mb-2 block"></i>
+                  <p class="text-slate-500 text-sm">No inquiries found</p>
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- end left col -->
+
+    <!-- Right: Activities + Announcements (4/12) -->
+    <div class="xl:col-span-4 space-y-5">
+
+      <!-- Today's Activities -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title"><i class="fas fa-tasks text-blue-700"></i>Today's Activities</span>
+        </div>
+        <div class="p-3 space-y-1">
+          {% if todays_activities %}
+            {% for activity in todays_activities[:3] %}
+            <div class="activity-item">
+              <div class="activity-dot {% if activity.type == 'counseling' %}bg-green-100 text-green-600{% else %}bg-blue-100 text-blue-700{% endif %}">
+                <i class="{% if activity.type == 'counseling' %}fas fa-user-md{% else %}fas fa-envelope{% endif %}"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-800 leading-tight">{{ activity.description }}</p>
+                <p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-clock mr-1"></i>{{ activity.time|time12 }}</p>
+                <a href="{{ activity.link_url }}" class="btn-view mt-2 text-[11px]"><i class="fas fa-eye text-[9px]"></i>View</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="text-center py-8">
+            <i class="fas fa-calendar-check text-slate-300 text-2xl mb-2"></i>
+            <p class="text-slate-500 text-sm font-medium">No activities today</p>
+            <p class="text-slate-400 text-xs">Activities appear here when scheduled</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Announcements -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title"><i class="fas fa-bullhorn text-blue-700"></i>Announcements</span>
+          <a href="{{ url_for('student.announcements') }}" class="btn-view">View all <i class="fas fa-arrow-right text-[10px]"></i></a>
+        </div>
+        <div>
+          {% if recent_announcements %}
+            {% for announcement in recent_announcements %}
+            <div class="ann-item">
+              <div class="flex items-start gap-2 mb-1">
+                <div class="w-6 h-6 rounded-md bg-blue-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i class="fas fa-bullhorn text-white text-[9px]"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-semibold text-slate-800 text-sm truncate">{{ announcement.title }}</h3>
+                    {% if announcement.is_new %}
+                    <span class="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full flex-shrink-0">NEW</span>
+                    {% endif %}
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">{{ announcement.content|truncate(100) }}</p>
+                </div>
+              </div>
+              <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+                <span><i class="fas fa-clock mr-1"></i>{{ announcement.created_at|dt12 }}</span>
+                <a href="{{ url_for('student.view_announcement', announcement_id=announcement.id) }}" class="text-blue-700 hover:text-blue-900 font-medium">Read more</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="text-center py-8">
+            <i class="fas fa-volume-mute text-slate-300 text-2xl mb-2"></i>
+            <p class="text-slate-500 text-sm">No announcements yet</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div><!-- end right col -->
+  </div><!-- end main grid -->
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialization scripts if needed
+});
+</script>
+{% endblock %}

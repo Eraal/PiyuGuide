@@ -1,0 +1,1065 @@
+﻿{% extends "office/office_base.html" %}
+{% block title %}View Inquiry - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-modern.css') }}" />
+<style>
+  html, body { height: 100%; }
+  main.main-content {
+    overflow-y: hidden !important;
+    padding: 0 !important;
+  }
+  main.main-content > .chat-page-container {
+    width: 100%;
+  }
+  [data-chat-container] { overflow-x: hidden; }
+  #messageHistory { overflow-x: hidden; overscroll-behavior: contain; }
+  #messageHistory .message-bubble { overflow-wrap: anywhere; word-break: break-word; }
+  .msg-row .message-meta i.fa-check-double.seen { color: #60a5fa !important; opacity: 1 !important; }
+  .chat-locked-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.75); -webkit-backdrop-filter: saturate(180%) blur(2px); backdrop-filter: saturate(180%) blur(2px);
+  }
+  /* Office green accent override */
+  :root { --accent: #059669; --accent-light: #d1fae5; --accent-lighter: #ecfdf5; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set si = student_info if student_info is defined else {} %}
+<div class="chat-page-container" data-inquiry-id="{{ inquiry.id }}" data-inquiry-status="{{ inquiry.status }}" data-chat-container="true"{% if current_user.profile_pic_path %} data-current-avatar-url="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"{% endif %}>
+<div class="mobile-drawer-overlay" id="drawerOverlay"></div>
+<div class="chat-three-col">
+	<!-- LEFT PANEL -->
+	<aside class="chat-panel panel-left mobile-drawer" id="panelLeft">
+		<div class="chat-panel-header"><h3><i class="fas fa-info-circle mr-2"></i>Inquiry Details</h3></div>
+		<div class="chat-panel-body">
+			<div class="inquiry-summary-card">
+				<div class="summary-subject">{{ inquiry.subject }}</div>
+				<div class="summary-row"><i class="fas fa-building"></i> {{ inquiry.office.name }}</div>
+				<div class="summary-row"><i class="fas fa-calendar"></i> {{ inquiry.created_at.strftime('%B %d, %Y') }}</div>
+				<div class="summary-row"><i class="fas fa-flag"></i> <span class="status-badge {{ inquiry.status }}">{{ inquiry.status|replace('_',' ')|title }}</span></div>
+			</div>
+			{% if related_inquiries %}
+      <div class="panel-section">
+        <div class="panel-section-title"><i class="fas fa-list"></i>Related Inquiries</div>
+        {% for related in related_inquiries %}
+        <a href="{{ url_for('office.view_inquiry', inquiry_id=related.id) }}" class="related-inquiry-card{% if related.id == inquiry.id %} active{% endif %}">
+          <div class="ri-subject">{{ related.subject }}</div>
+          <div class="ri-meta"><span class="ri-date">{{ related.created_at.strftime('%b %d, %Y') }}</span><span class="status-badge {{ related.status }}">{{ related.status|replace('_',' ')|title }}</span></div>
+        </a>
+        {% endfor %}
+      </div>
+			{% endif %}
+		</div>
+	</aside>
+
+	<!-- CENTER PANEL -->
+	<div class="chat-center">
+		<div class="chat-conv-header">
+			<div class="chat-conv-header-left">
+				<button class="chat-header-btn mobile-panel-toggle toggle-left" id="toggleLeftPanel" title="Details"><i class="fas fa-info-circle"></i></button>
+				<div class="chat-header-avatar">
+					{% set stu_avatar = inquiry.student.user.profile_pic_path %}
+					{% if stu_avatar %}<img src="{{ url_for('static', filename=stu_avatar) }}" alt=""/>{% else %}<span>{{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}</span>{% endif %}
+				</div>
+				<div class="chat-header-info">
+					<div class="chat-header-name">{{ inquiry.student.user.get_full_name() }}</div>
+					<div class="chat-header-sub"><span class="online-dot"></span> {{ inquiry.student.student_number or 'Student' }}</div>
+				</div>
+			</div>
+			<div class="chat-conv-header-right">
+				<button id="statusControlBtn" class="chat-header-btn" title="Update status" {% if inquiry.status == 'closed' %}disabled{% endif %}><i class="fas fa-flag"></i></button>
+				<button class="chat-header-btn mobile-panel-toggle toggle-right" id="toggleRightPanel" title="Student Info"><i class="fas fa-user"></i></button>
+				<a href="{{ url_for('office.office_inquiries') }}" class="chat-header-back"><i class="fas fa-arrow-left"></i><span>Back</span></a>
+			</div>
+		</div>
+
+		<div class="p-0 flex-1 overflow-hidden flex flex-col min-h-0 chat-container-main chat-body relative">
+			<div id="connectionStatus" class="chat-connection-status">Connecting...</div>
+			<div class="chat-history-wrapper message-container" id="messageHistory" data-inquiry-attachments='[{% for att in inquiry.attachments %}{"filename":"{{ att.filename|e }}","file_path":"{{ att.file_path|e }}","file_type":"{{ att.file_type|e }}","file_size":{{ att.file_size or 0 }} }{% if not loop.last %},{% endif %}{% endfor %}]'>
+				{% if has_more_messages %}<div id="load-more-container" class="flex justify-center mb-4"><button id="load-more-button" class="load-more-button shadow-sm"><i class="fas fa-arrow-up mr-2"></i>Load Older Messages</button></div>{% endif %}
+				{% if inquiry.messages %}
+				{% for message in inquiry.messages[-6:] %}
+				<div class="msg-row {% if message.sender_id == current_user.id %}outgoing{% else %}incoming{% endif %}">
+					{% if message.sender_id != current_user.id %}
+					<div class="chat-avatar incoming mr-2">{% if message.sender and message.sender.profile_pic_path %}<img src="{{ url_for('static', filename=message.sender.profile_pic_path) }}?v={{ message.sender.profile_pic or '' }}" alt="" class="w-full h-full object-cover rounded-full"/>{% else %}{{ message.sender.first_name[0] }}{{ message.sender.last_name[0] }}{% endif %}</div>
+					{% endif %}
+					<div class="message-bubble {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}" data-message-id="{{ message.id }}" data-sender-id="{{ message.sender_id }}"{% if message.sender_id == current_user.id and message.status == 'read' and message.read_at %} data-read-at="{{ message.read_at.isoformat() }}"{% endif %}>
+						{% if message.sender_id != current_user.id %}<div class="text-xs font-semibold mb-1 text-gray-700">{{ message.sender.get_full_name() }}{% if message.sender.role == 'student' %} <span class="text-green-600">(Student)</span>{% endif %}</div>{% endif %}
+						<div class="message-text">{{ message.content|nl2br }}</div>
+						{% if message.attachments %}
+						<div class="mt-2 flex flex-wrap gap-2">{% for attachment in message.attachments %}<a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank" class="block">{% if attachment.file_path.endswith(('.jpg','.jpeg','.png','.gif')) %}<img src="{{ url_for('static', filename=attachment.file_path) }}" alt="" class="attachment-preview"/>{% else %}<div class="attachment-chip">{% if attachment.file_path.endswith('.pdf') %}<i class="far fa-file-pdf text-red-500"></i>{% elif attachment.file_path.endswith(('.doc','.docx')) %}<i class="far fa-file-word text-blue-500"></i>{% else %}<i class="far fa-file text-slate-500"></i>{% endif %}<span class="text-xs">{{ attachment.filename|default('Attachment') }}</span></div>{% endif %}</a>{% endfor %}</div>
+						{% endif %}
+						<div class="message-meta"><span>{{ message.created_at.strftime('%I:%M %p') }}</span>{% if message.sender_id == current_user.id %}<i class="fas {% if message.status == 'read' %}fa-check-double seen{% elif message.status == 'delivered' %}fa-check-double opacity-80{% else %}fa-check opacity-80{% endif %}"></i>{% endif %}</div>
+					</div>
+					{% if message.sender_id == current_user.id %}
+					<div class="chat-avatar outgoing ml-2">{% if current_user.profile_pic_path %}<img src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}" alt="" class="w-full h-full object-cover rounded-full"/>{% else %}{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}{% endif %}</div>
+					{% endif %}
+				</div>
+				{% endfor %}
+				{% else %}
+				<div class="chat-empty-state" id="emptyStateContainer"><div class="chat-empty-icon"><i class="far fa-comments"></i></div><h3 class="text-lg font-medium text-slate-700 mb-1">No messages yet</h3><p class="text-sm">Start the conversation by typing below.</p></div>
+				{% endif %}
+			</div>
+			<div id="jumpToBottom" class="jump-to-bottom shadow-md ring-1 ring-slate-900/5 backdrop-blur-md"><i class="fas fa-chevron-down"></i><span class="jump-badge hidden">0</span></div>
+			<div id="typingIndicator" class="typing-indicator-container px-4"><div class="chat-avatar incoming"><i class="fas fa-keyboard text-white text-xs"></i></div><div class="typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>
+			<form id="messageForm" class="mt-auto flex-shrink-0">
+				<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+				<div class="relative bg-white rounded-xl border border-slate-200 shadow-sm chat-input-bar">
+					<textarea name="message" rows="2" placeholder="{% if inquiry.status == 'closed' %}This inquiry is closed.{% else %}Type your reply here...{% endif %}" id="messageInput" class="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none leading-relaxed text-slate-800 placeholder:text-slate-400" {% if inquiry.status == 'closed' %}disabled{% endif %}></textarea>
+					<div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 bg-slate-50 rounded-b-xl chat-input-toolbar">
+						<div class="flex items-center gap-2"><div class="relative"><input type="file" id="replyAttachments" name="attachments" multiple class="hidden" {% if inquiry.status == 'closed' %}disabled{% endif %}/><label for="replyAttachments" class="inline-flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-emerald-700 icon-btn file-input-trigger {% if inquiry.status == 'closed' %}pointer-events-none opacity-50{% endif %}"><i class="fas fa-paperclip text-lg"></i><span class="label-text-attach">Attach</span></label></div></div>
+						<button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 icon-btn" id="sendButton" {% if inquiry.status == 'closed' %}disabled{% endif %}><span class="label-text-send">Send</span><i class="fas fa-paper-plane"></i></button>
+					</div>
+				</div>
+				<div id="attachmentErrors" class="mt-2 text-sm text-red-600"></div>
+				<div id="replyAttachmentPreview" class="mt-2 flex flex-wrap gap-2"></div>
+			</form>
+			<button id="scrollToBottomBtn" class="hidden self-end sticky bottom-4 right-4 z-10 translate-y-2 rounded-full bg-white/90 shadow-lg ring-1 ring-slate-900/5 px-3 py-2 text-slate-700 hover:text-emerald-700 backdrop-blur-md"><i class="fas fa-arrow-down mr-2"></i> New messages</button>
+		</div>
+	</div>
+
+	<!-- RIGHT PANEL: Student Info + Files -->
+	<aside class="chat-panel panel-right mobile-drawer drawer-right" id="panelRight">
+		<div class="chat-panel-header"><h3><i class="fas fa-user mr-2"></i>Student Info</h3></div>
+		<div class="chat-panel-body">
+      <div class="student-profile-card">
+				{% set stu_pic = si.profile_pic or inquiry.student.user.profile_pic_path %}
+				{% if stu_pic %}
+        <img src="{{ url_for('static', filename=stu_pic) }}" alt="" class="student-profile-avatar">
+				{% else %}
+        <div class="student-profile-initials">{{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}</div>
+				{% endif %}
+        <div class="student-profile-name">{{ si.full_name or inquiry.student.user.get_full_name() }}</div>
+        <div class="student-profile-id">{{ si.student_number or inquiry.student.student_number or '' }}</div>
+			</div>
+      <div class="detail-row"><div class="detail-label">Email</div><div class="detail-value student-profile-email">{{ si.email or inquiry.student.user.email or 'Not provided' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Campus</div><div class="detail-value">{{ si.campus_name or 'Not specified' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Department</div><div class="detail-value">{{ si.department_name or inquiry.student.department_name or 'Not specified' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Section</div><div class="detail-value">{{ si.section or inquiry.student.section or 'Not specified' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Year Level</div><div class="detail-value">{{ si.year_level or inquiry.student.year_level or 'Not specified' }}</div></div>
+
+      {% if inquiry.concerns %}
+      <div class="panel-section">
+        <div class="panel-section-title"><i class="fas fa-tags"></i>Concern Types</div>
+        <div class="concern-list">
+          {% for concern in inquiry.concerns %}
+          <div class="concern-item">
+            <div class="concern-dot"></div>
+            <div class="min-w-0">
+              <div class="concern-item-title">{{ concern.concern_type.name }}</div>
+              {% if concern.other_specification %}<div class="concern-item-sub">{{ concern.other_specification }}</div>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="panel-section">
+        <div class="panel-section-title"><i class="fas fa-paperclip"></i>Shared Files</div>
+			{% set all_attachments = [] %}
+			{% for msg in inquiry.messages %}{% for att in msg.attachments %}{% if all_attachments.append(att) %}{% endif %}{% endfor %}{% endfor %}
+			{% for att in inquiry.attachments %}{% if att not in all_attachments and all_attachments.append(att) %}{% endif %}{% endfor %}
+			{% if all_attachments %}{% for att in all_attachments %}
+			<a href="{{ url_for('static', filename=att.file_path) }}" target="_blank" class="file-card">
+				<div class="file-card-icon {% if att.file_path.endswith('.pdf') %}pdf{% elif att.file_path.endswith(('.doc','.docx')) %}doc{% elif att.file_path.endswith(('.xls','.xlsx','.csv')) %}xls{% elif att.file_path.endswith(('.jpg','.jpeg','.png','.gif','.webp')) %}img{% else %}other{% endif %}">{% if att.file_path.endswith('.pdf') %}<i class="far fa-file-pdf"></i>{% elif att.file_path.endswith(('.doc','.docx')) %}<i class="far fa-file-word"></i>{% elif att.file_path.endswith(('.xls','.xlsx','.csv')) %}<i class="far fa-file-excel"></i>{% elif att.file_path.endswith(('.jpg','.jpeg','.png','.gif','.webp')) %}<i class="far fa-image"></i>{% else %}<i class="far fa-file"></i>{% endif %}</div>
+				<div class="file-card-info"><div class="file-card-name">{{ att.filename|default('Attachment') }}</div>{% if att.file_size %}<div class="file-card-size">{{ (att.file_size / 1024)|round(1) }} KB</div>{% endif %}</div>
+				<div class="file-card-dl"><i class="fas fa-download"></i></div>
+			</a>
+      {% endfor %}{% else %}
+      <div class="panel-empty-state"><i class="fas fa-folder-open"></i><p class="text-xs">No files shared yet</p></div>
+			{% endif %}
+      </div>
+		</div>
+	</aside>
+</div>
+</div>
+
+<!-- Add notification sound -->
+<audio id="notificationSound" preload="auto">
+  <source src="{{ url_for('static', filename='sounds/ChatSoundNotification.mp3') }}" type="audio/mpeg">
+</audio>
+
+<!-- Status Update Modal -->
+<div id="statusUpdateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Update Inquiry Status</h2>
+      <button class="text-gray-400 hover:text-gray-600 focus:outline-none" id="closeStatusModal" title="Close" aria-label="Close dialog">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+  <form id="statusUpdateForm" action="{{ url_for('office.update_inquiry_status', inquiry_id=inquiry.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="inquiry_id" value="{{ inquiry.id }}" />
+      
+      <div class="mb-4">
+        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+        <select id="status" name="status" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+          <option value="pending" {% if inquiry.status == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="in_progress" {% if inquiry.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="resolved" {% if inquiry.status == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="closed" {% if inquiry.status == 'closed' %}selected{% endif %}>Closed</option>
+        </select>
+      </div>
+      <div class="mb-4">
+        <label for="noteToStudent" class="block text-sm font-medium text-gray-700 mb-1">Add Note (Optional)</label>
+        <textarea id="noteToStudent" name="note" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Add an optional note to the student"></textarea>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button type="button" id="cancelStatusUpdate" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">
+          Update Status
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Close Confirmation Modal (appears when student confirms) -->
+<div id="closeConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Student Accepted Resolution</h2>
+      <button class="text-gray-400 hover:text-gray-600 focus:outline-none" id="closeConfirmDismiss" title="Close" aria-label="Close dialog">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <p class="text-sm text-gray-700 mb-4">The student confirmed this inquiry is resolved. Do you want to close the inquiry now? This will disable further messages on this thread.</p>
+    <div class="flex justify-end space-x-3">
+      <button type="button" id="closeConfirmNo" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md">No</button>
+      <button type="button" id="closeConfirmYes" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">Yes, Close</button>
+    </div>
+  </div>
+  </div>
+
+<!-- WebSocket Chat Script (Socket.IO loaded via office_base.html) -->
+<script src="{{ url_for('static', filename='js/office/websockets/chat.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the office chat manager
+    const chatManager = new OfficeChatSocketManager();
+  // Read inquiry id from the dedicated chat container to avoid picking unrelated elements
+  const chatContainer = document.querySelector('[data-chat-container][data-inquiry-id]');
+  const inquiryId = (chatContainer && chatContainer.getAttribute('data-inquiry-id')) || (document.querySelector('input[name="inquiry_id"]')?.value);
+    const messageContainer = document.getElementById('messageHistory');
+    const messageInput = document.getElementById('messageInput');
+    const messageForm = document.getElementById('messageForm');
+    const sendButton = document.getElementById('sendButton');
+  const statusControlBtn = document.getElementById('statusControlBtn');
+  const statusControlText = document.getElementById('statusControlText');
+  const scrollBtn = document.getElementById('scrollToBottomBtn');
+  const attachmentInput = document.getElementById('replyAttachments');
+  const attachmentPreview = document.getElementById('replyAttachmentPreview');
+    
+    // Set user ID on body for the chat manager
+    document.body.setAttribute('data-user-id', '{{ current_user.id }}');
+    
+    // Connection status handling
+    const connectionStatusEl = document.getElementById('connectionStatus');
+    let hasLostConnection = false;
+    chatManager.onConnectionStatusChange(function(status) {
+      if (!connectionStatusEl) return;
+      
+      // Reset classes
+      connectionStatusEl.className = 'chat-connection-status';
+      
+      switch(status) {
+        case 'connecting':
+          // Silently connect initially without noisy UI
+          break;
+        case 'reconnecting':
+          hasLostConnection = true;
+          connectionStatusEl.textContent = 'Reconnecting...';
+          connectionStatusEl.classList.add('visible', 'reconnecting');
+          break;
+        case 'disconnected':
+        case 'failed':
+          hasLostConnection = true;
+          connectionStatusEl.textContent = 'Connection Lost';
+          connectionStatusEl.classList.add('visible', 'reconnecting');
+          break;
+        case 'connected':
+          if (hasLostConnection) {
+            connectionStatusEl.textContent = 'Connection Restored';
+            connectionStatusEl.classList.add('visible', 'connected');
+            setTimeout(() => {
+              if (chatManager.connectionState === 'connected') {
+                connectionStatusEl.classList.remove('visible');
+              }
+            }, 3000);
+            hasLostConnection = false;
+          }
+          // If it hasn't lost connection, stay hidden (silent initial connect)
+          break;
+      }
+    });
+    chatManager.onMessageReceived(function(message) {
+      // Create and add message to the UI
+      if (messageContainer) {
+        // Remove empty state if present
+        const emptyState = document.getElementById('emptyStateContainer');
+        if (emptyState) emptyState.remove();
+
+        // Check if this is an echo of our own optimistic message
+        if (message.client_msg_id) {
+          const existingBubble = document.querySelector(`.message-bubble[data-client-msg-id="${message.client_msg_id}"]`);
+          if (existingBubble) {
+            existingBubble.setAttribute('data-message-id', message.id);
+            existingBubble.classList.remove('status-sending');
+            const metaIcon = existingBubble.querySelector('.message-meta i.fas');
+            if (metaIcon) {
+              metaIcon.className = 'fas fa-check opacity-80';
+            }
+            return; // Handled optimistically
+          }
+        }
+
+        const messageElement = createMessageElement(message);
+        const atBottom = isAtBottom();
+        messageContainer.appendChild(messageElement);
+        if (atBottom) {
+          scrollToBottom();
+        } else if (scrollBtn) {
+          scrollBtn.classList.remove('hidden');
+        }
+  // Re-evaluate seen label when messages flow
+  renderSeenTimestampUnderLatest();
+        
+        // Play notification sound for messages from others
+        if (!message.is_current_user) {
+          const notificationSound = document.getElementById('notificationSound');
+          if (notificationSound) {
+            notificationSound.play().catch(function(err) {
+              console.log('Could not play notification sound', err);
+            });
+          }
+        }
+      }
+    });
+
+    // Update checkmarks when recipient reads
+    chatManager.onMessageRead(function(data){
+      const id = data && data.message_id;
+      if (!id) return;
+      const bubble = document.querySelector(`.message-bubble[data-message-id="${id}"]`);
+      if (!bubble) return;
+      const isMine = String(bubble.getAttribute('data-sender-id')) === String('{{ current_user.id }}');
+      if (!isMine) return;
+      const meta = bubble.querySelector('.message-meta');
+      if (!meta) return;
+      const icon = meta.querySelector('i.fas');
+      if (icon) {
+        icon.classList.remove('fa-check','opacity-80');
+        icon.classList.add('fa-check-double','seen');
+      }
+      if (data.read_at) {
+        bubble.setAttribute('data-read-at', data.read_at);
+      }
+      renderSeenTimestampUnderLatest();
+  // Update seen label when my latest outgoing message is read
+  renderSeenTimestampUnderLatest();
+    });
+
+    // Typing indicator handling
+    const typingIndicator = document.getElementById('typingIndicator');
+    let typingHideTimeout;
+    chatManager.onTyping(function(data) {
+      if (parseInt(data.user_id) === parseInt('{{ current_user.id }}')) return; // ignore self
+      if (typingIndicator) {
+        const avatarContainer = typingIndicator.querySelector('.chat-avatar');
+        if (avatarContainer) {
+          avatarContainer.innerHTML = '';
+          if (data.user_avatar_url) {
+            const img = document.createElement('img');
+            img.src = data.user_avatar_url;
+            img.className = 'w-full h-full object-cover rounded-full';
+            avatarContainer.appendChild(img);
+          } else {
+            const initials = (data.user_name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            avatarContainer.textContent = initials || '?';
+          }
+        }
+        typingIndicator.classList.add('visible');
+        clearTimeout(typingHideTimeout);
+        typingHideTimeout = setTimeout(() => typingIndicator.classList.remove('visible'), 3000);
+        if (!isAtBottom() && scrollBtn) scrollBtn.classList.remove('hidden');
+      }
+    });
+    chatManager.onStopTyping(function(data) {
+      if (parseInt(data.user_id) === parseInt('{{ current_user.id }}')) return;
+      if (typingIndicator) typingIndicator.classList.remove('visible');
+    });
+    
+    chatManager.onMessageSent(function(data) {
+      if (data.success) {
+        console.log('Message sent successfully:', data.message_id);
+        // Clear the input field
+        if (messageInput) {
+          messageInput.value = '';
+          messageInput.focus();
+          // Reset textarea height
+          messageInput.style.height = 'auto';
+        }
+        
+        if (data.client_msg_id) {
+          const existingBubble = document.querySelector(`.message-bubble[data-client-msg-id="${data.client_msg_id}"]`);
+          if (existingBubble) {
+            existingBubble.setAttribute('data-message-id', data.message_id);
+            existingBubble.classList.remove('status-sending');
+            const metaIcon = existingBubble.querySelector('.message-meta i.fas');
+            if (metaIcon) {
+              metaIcon.className = 'fas fa-check opacity-80';
+            }
+          }
+        }
+
+        // Hide/update seen label after a new outgoing message
+        renderSeenTimestampUnderLatest();
+      } else if (data.client_msg_id) {
+        const existingBubble = document.querySelector(`.message-bubble[data-client-msg-id="${data.client_msg_id}"]`);
+        if (existingBubble) {
+          existingBubble.classList.remove('status-sending');
+          existingBubble.classList.add('status-failed');
+          const metaIcon = existingBubble.querySelector('.message-meta i.fas');
+          if (metaIcon) {
+            metaIcon.className = 'fas fa-exclamation-circle text-red-500';
+          }
+        }
+      }
+    });
+    
+    chatManager.onError(function(errorMessage) {
+      console.error('Chat error:', errorMessage);
+      // Show error to user
+      const errorElement = document.createElement('div');
+      errorElement.className = 'p-2 mb-2 text-sm text-red-700 bg-red-100 rounded-md';
+      errorElement.textContent = errorMessage;
+      
+      if (messageContainer) {
+        messageContainer.appendChild(errorElement);
+        scrollToBottom();
+        
+        // Remove error message after 5 seconds
+        setTimeout(function() {
+          errorElement.remove();
+        }, 5000);
+      }
+    });
+    
+    // Connect to WebSocket server and join inquiry room
+    chatManager.connect()
+      .then(function() {
+        console.log('Connected to chat server');
+        chatManager.joinInquiryRoom(inquiryId);
+        
+        // no-op: removed inline connection status injection
+      })
+      .catch(function(error) {
+        console.error('Failed to connect to chat server:', error);
+      });
+
+  // After initial render, attempt to set seen label
+  setTimeout(() => renderSeenTimestampUnderLatest(), 150);
+
+    // IntersectionObserver for marking messages as read when visible
+    const alreadyMarked = new Set();
+    function setupReadObserver(){
+      const container = document.getElementById('messageHistory');
+      if (!('IntersectionObserver' in window) || !container) return;
+      const myId = String('{{ current_user.id }}');
+      const observer = new IntersectionObserver((entries)=>{
+        entries.forEach(entry=>{
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            const msgId = el.getAttribute('data-message-id');
+            const senderId = el.getAttribute('data-sender-id');
+            if (msgId && senderId && senderId !== myId && !alreadyMarked.has(msgId)) {
+              alreadyMarked.add(msgId);
+              chatManager.markMessageAsRead(msgId);
+            }
+          }
+        });
+      }, { root: container, threshold: 0.75 });
+
+      container.querySelectorAll('.message-bubble').forEach(el => observer.observe(el));
+      const mo = new MutationObserver((mutations)=>{
+        mutations.forEach(m => {
+          m.addedNodes.forEach(node => {
+            if (node.nodeType === 1) {
+              const bubble = node.querySelector?.('.message-bubble') || (node.classList?.contains('message-bubble') ? node : null);
+              if (bubble) observer.observe(bubble);
+            }
+          });
+        });
+      });
+      mo.observe(container, { childList: true, subtree: true });
+    }
+    setupReadObserver();
+
+  // Open status modal when clicking interactive control
+  const updateBtn = document.getElementById('updateStatusBtn');
+  const statusModal = document.getElementById('statusUpdateModal');
+  const closeStatusModalBtn = document.getElementById('closeStatusModal');
+  const cancelStatusUpdateBtn = document.getElementById('cancelStatusUpdate');
+  function openStatusModal(){ if (statusModal) statusModal.classList.remove('hidden'); }
+  function closeStatusModal(){ if (statusModal) statusModal.classList.add('hidden'); }
+  if (statusControlBtn) statusControlBtn.addEventListener('click', openStatusModal);
+  if (updateBtn) updateBtn.addEventListener('click', openStatusModal);
+  if (closeStatusModalBtn) closeStatusModalBtn.addEventListener('click', closeStatusModal);
+  if (cancelStatusUpdateBtn) cancelStatusUpdateBtn.addEventListener('click', closeStatusModal);
+
+    // AJAX submit for status update to avoid JSON page navigation
+    const statusForm = document.getElementById('statusUpdateForm');
+    if (statusForm) {
+      statusForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const formData = new FormData(statusForm);
+        const url = statusForm.getAttribute('action');
+        try {
+          const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+          try { const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content'); if (csrf) headers['X-CSRFToken'] = csrf; } catch {}
+          const res = await fetch(url, { method: 'POST', body: formData, headers });
+          const json = await res.json();
+          if (json && json.success) {
+            // Update status badges/text in UI
+            const badge = document.querySelector('.inquiry-status-{{ inquiry.status }}');
+            if (badge) { badge.textContent = (json.new_status || '').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()); }
+            if (statusControlText) statusControlText.textContent = (json.new_status || '').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+            closeStatusModal();
+          } else {
+            alert(json?.message || 'Failed to update status');
+          }
+        } catch (err) {
+          alert('Network error while updating status');
+        }
+      });
+    }
+    
+  // Send message on form submit (with attachments)
+    if (messageForm) {
+      messageForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        sendMessageWithAttachments();
+      });
+    }
+    
+    // Send message on Enter key press (but allow Shift+Enter for new lines)
+    if (messageInput) {
+      messageInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendMessageWithAttachments();
+        }
+      });
+      messageInput.addEventListener('input', function(){
+        chatManager.startTyping();
+      });
+      // Auto-resize textarea
+      const autoResize = () => {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+      };
+      messageInput.addEventListener('input', autoResize);
+      setTimeout(autoResize, 0);
+    }
+
+  // Attachments preview + drag & drop
+  if (attachmentInput && attachmentPreview) {
+      attachmentInput.addEventListener('change', function() {
+        attachmentPreview.innerHTML = '';
+        const errorsEl = document.getElementById('attachmentErrors');
+        if (errorsEl) errorsEl.textContent = '';
+        const allowed = ['jpg','jpeg','png','gif','webp','bmp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv'];
+        const maxSize = 15 * 1024 * 1024; // 15MB
+        const incoming = Array.from(attachmentInput.files || []);
+        const dt = new DataTransfer();
+        const errs = [];
+        incoming.forEach(file => {
+          const ext = (file.name.split('.').pop() || '').toLowerCase();
+          if (!allowed.includes(ext)) { errs.push(`${file.name}: type not allowed`); return; }
+          if (file.size > maxSize) { errs.push(`${file.name}: exceeds 15MB`); return; }
+          dt.items.add(file);
+        });
+        attachmentInput.files = dt.files;
+        if (errorsEl && errs.length) errorsEl.innerHTML = errs.map(e=>`<div>â€¢ ${e}</div>`).join('');
+        const files = Array.from(attachmentInput.files || []);
+        // If there are files, ensure the form can submit without text
+        try { if (messageInput) messageInput.removeAttribute('required'); } catch {}
+        files.forEach(file => {
+          const ext = (file.name.split('.').pop() || '').toLowerCase();
+          const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+          const chip = document.createElement('div');
+          chip.className = 'inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs ring-1 ring-slate-900/5';
+          if (isImage) {
+            const img = document.createElement('img');
+            img.className = 'w-8 h-8 object-cover rounded';
+            img.alt = file.name;
+            const reader = new FileReader();
+            reader.onload = e => img.src = e.target.result;
+            reader.readAsDataURL(file);
+            chip.appendChild(img);
+          } else {
+            const icon = document.createElement('i');
+            icon.className = 'far fa-file text-slate-500';
+            chip.appendChild(icon);
+          }
+          const name = document.createElement('span');
+          name.textContent = file.name;
+          chip.appendChild(name);
+          attachmentPreview.appendChild(chip);
+        });
+      });
+      const inputBar = document.querySelector('.relative.bg-white.rounded-xl.border');
+      if (inputBar) {
+        const prevent = e => { e.preventDefault(); e.stopPropagation(); };
+        ['dragenter','dragover','dragleave','drop'].forEach(evt => inputBar.addEventListener(evt, prevent));
+        inputBar.addEventListener('dragover', ()=> inputBar.classList.add('ring-2','ring-sky-300'));
+        inputBar.addEventListener('dragleave', ()=> inputBar.classList.remove('ring-2','ring-sky-300'));
+        inputBar.addEventListener('drop', e => {
+          inputBar.classList.remove('ring-2','ring-sky-300');
+          const dt = e.dataTransfer; const files = Array.from(dt.files || []);
+          if (!files.length) return;
+          const allowed = ['jpg','jpeg','png','gif','webp','bmp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv'];
+          const maxSize = 15 * 1024 * 1024; // 15MB
+          const dataTransfer = new DataTransfer();
+          const errs = [];
+          files.forEach(f => {
+            const ext = (f.name.split('.').pop() || '').toLowerCase();
+            if (!allowed.includes(ext)) { errs.push(`${f.name}: type not allowed`); return; }
+            if (f.size > maxSize) { errs.push(`${f.name}: exceeds 15MB`); return; }
+            dataTransfer.items.add(f);
+          });
+          attachmentInput.files = dataTransfer.files; attachmentInput.dispatchEvent(new Event('change'));
+          const errorsEl = document.getElementById('attachmentErrors');
+          if (errorsEl && errs.length) errorsEl.innerHTML = errs.map(e=>`<div>â€¢ ${e}</div>`).join('');
+        });
+      }
+    }
+    
+    // Send via API with progress and attachments
+    async function sendMessageWithAttachments() {
+      const content = (messageInput?.value || '').trim();
+      const files = Array.from(attachmentInput?.files || []);
+      if (!content && files.length === 0) {
+        const errorsEl = document.getElementById('attachmentErrors');
+        if (errorsEl) {
+          errorsEl.textContent = 'Type a message or attach a file to send.';
+        }
+        return;
+      }
+
+      // Generate a client message ID for optimistic UI
+      const clientMsgId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+      // Remove empty state if present
+      const emptyState = document.getElementById('emptyStateContainer');
+      if (emptyState) emptyState.remove();
+
+      // Optimistic UI update
+      const optimisticMsg = {
+        id: null,
+        client_msg_id: clientMsgId,
+        content: content,
+        sender_id: '{{ current_user.id }}',
+        sender_name: '{{ current_user.get_full_name() }}',
+        sender_role: 'office_admin',
+        sender_avatar_url: '{% if current_user.profile_pic_path %}{{ url_for("static", filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or "" }}{% endif %}',
+        created_at: new Date().toISOString(),
+        status: 'sending',
+        is_current_user: true,
+        attachments: files.map(f => ({ filename: f.name })) // Temporary visual only
+      };
+      
+      const messageElement = createMessageElement(optimisticMsg);
+      messageContainer.appendChild(messageElement);
+      scrollToBottom();
+
+      const fd = new FormData();
+      fd.append('message', content);
+      fd.append('client_msg_id', clientMsgId);
+      files.forEach(f => fd.append('attachments', f));
+
+      let progressEl;
+      if (attachmentPreview) {
+        progressEl = document.createElement('div');
+        progressEl.className = 'w-full bg-gray-200 rounded h-1 mt-2';
+        const bar = document.createElement('div');
+        bar.style.width = '0%'; bar.style.height = '100%'; bar.style.background = '#0ea5e9'; bar.style.borderRadius = '9999px';
+        progressEl.appendChild(bar); attachmentPreview.appendChild(progressEl);
+      }
+
+      const sendWithProgress = (url, formData, onProgress) => new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        try {
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+          if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
+        } catch {}
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded/e.total)*100)); };
+        xhr.onload = () => { try { resolve(JSON.parse(xhr.responseText)); } catch(e){ reject(e); } };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(formData);
+      });
+
+      try {
+        sendButton.disabled = true;
+        const data = await sendWithProgress(`{{ url_for('office.api_send_message', inquiry_id=inquiry.id) }}`, fd, pct => {
+          const bar = progressEl?.firstChild; if (bar) bar.style.width = pct + '%';
+        });
+
+        // The websocket event will handle marking as sent, or if this returns earlier, we handle it here
+        if (data.message_id && data.client_msg_id) {
+          const existingBubble = document.querySelector(`.message-bubble[data-client-msg-id="${data.client_msg_id}"]`);
+          if (existingBubble) {
+            existingBubble.setAttribute('data-message-id', data.message_id);
+            existingBubble.classList.remove('status-sending');
+            const metaIcon = existingBubble.querySelector('.message-meta i.fas');
+            if (metaIcon) {
+              metaIcon.className = 'fas fa-check opacity-80';
+            }
+          }
+        }
+
+        if (!data.success) throw new Error(data.message || 'Failed to send');
+        if (messageInput) messageInput.value = '';
+        if (attachmentInput) attachmentInput.value = '';
+        if (attachmentPreview) attachmentPreview.innerHTML = '';
+        // Stop typing indicator after send
+        try { chatManager.stopTyping(); } catch {}
+      } catch (e) {
+        // Mark as failed
+        const existingBubble = document.querySelector(`.message-bubble[data-client-msg-id="${clientMsgId}"]`);
+        if (existingBubble) {
+          existingBubble.classList.remove('status-sending');
+          existingBubble.classList.add('status-failed');
+          const metaIcon = existingBubble.querySelector('.message-meta i.fas');
+          if (metaIcon) {
+            metaIcon.className = 'fas fa-exclamation-circle text-red-500';
+          }
+        }
+        if (window.alert) alert(e.message || 'Failed to send');
+      } finally {
+        sendButton.disabled = false;
+        if (progressEl) progressEl.remove();
+      }
+    }
+    
+    // Create a message element for the UI
+    function createMessageElement(message) {
+      const senderId = parseInt(message.sender_id);
+      const currentId = parseInt('{{ current_user.id }}');
+      const isSentByMe = senderId === currentId;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `msg-row ${isSentByMe ? 'outgoing' : 'incoming'} message-fade-in`;
+
+      if (!isSentByMe) {
+        const avatar = document.createElement('div');
+        avatar.className = 'chat-avatar incoming mr-2';
+        const url = message.sender_avatar_url;
+        if (url) {
+          const img = document.createElement('img'); img.src = url; img.alt = 'Avatar'; img.className = 'w-full h-full object-cover rounded-full'; avatar.appendChild(img);
+        } else {
+          try {
+            const initials = (message.sender_name || '').trim().split(' ').map(n => n[0]).join('').substring(0,2) || '?';
+            avatar.textContent = initials;
+          } catch { avatar.textContent = '?'; }
+        }
+        wrapper.appendChild(avatar);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = `message-bubble ${isSentByMe ? 'message-sent' : 'message-received'}`;
+      if (message.id) bubble.setAttribute('data-message-id', message.id);
+      if (message.client_msg_id) bubble.setAttribute('data-client-msg-id', message.client_msg_id);
+      bubble.setAttribute('data-sender-id', senderId);
+
+      if (message.status === 'sending') {
+        bubble.classList.add('status-sending');
+      }
+
+      if (!isSentByMe && message.sender_name) {
+        const header = document.createElement('div');
+        header.className = 'text-xs font-semibold mb-1 text-gray-700';
+        header.textContent = message.sender_name || 'Unknown';
+        if (message.sender_role === 'student') {
+          const role = document.createElement('span');
+          role.className = 'text-green-600';
+          role.textContent = ' (Student)';
+          header.appendChild(role);
+        }
+        bubble.appendChild(header);
+      }
+
+      if (message.content) {
+        const content = document.createElement('div');
+        content.className = 'message-text';
+        content.textContent = message.content;
+        bubble.appendChild(content);
+      }
+
+      // Attachments: If no message-level attachments for the first message, fallback to inquiry-level attachments (server-rendered into JS context)
+      const isFirstMessage = !document.querySelector('#messageHistory .message-bubble');
+      let attachments = Array.isArray(message.attachments) ? message.attachments.slice() : [];
+      if ((!attachments || attachments.length === 0) && isFirstMessage) {
+        // Inject inquiry-level attachments from a data attribute rendered server-side
+        try {
+          const inquiryAttsRaw = document.getElementById('messageHistory')?.getAttribute('data-inquiry-attachments');
+          if (inquiryAttsRaw) {
+            const inquiryAtts = JSON.parse(inquiryAttsRaw);
+            if (Array.isArray(inquiryAtts) && inquiryAtts.length) attachments = inquiryAtts;
+          }
+        } catch(e) {}
+      }
+      if (attachments && attachments.length) {
+        const wrap = document.createElement('div');
+        wrap.className = 'mt-2 flex flex-wrap gap-2';
+        attachments.forEach(att => {
+          const href = att.file_path ? `{{ url_for('static', filename='') }}` + att.file_path : '#';
+          const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.className = 'block';
+          const lower = (att.file_path || '').toLowerCase();
+          if (/(\.jpg|\.jpeg|\.png|\.gif|\.webp|\.bmp)$/.test(lower)) {
+            const img = document.createElement('img'); img.src = href; img.alt = att.filename || 'Attachment'; img.className = 'attachment-preview'; a.appendChild(img);
+          } else {
+            const chip = document.createElement('div'); chip.className = 'attachment-chip';
+            const icon = document.createElement('i');
+            if (lower.endsWith('.pdf')) icon.className = 'far fa-file-pdf text-red-500';
+            else if (/(\.docx?|\.rtf)$/.test(lower)) icon.className = 'far fa-file-word text-blue-500';
+            else if (/(\.xlsx?|\.csv)$/.test(lower)) icon.className = 'far fa-file-excel text-green-600';
+            else icon.className = 'far fa-file text-slate-500';
+            const name = document.createElement('span'); name.className = 'text-xs'; name.textContent = att.filename || 'Attachment';
+            chip.appendChild(icon); chip.appendChild(name); a.appendChild(chip);
+          }
+          wrap.appendChild(a);
+        });
+        bubble.appendChild(wrap);
+      }
+
+  const meta = document.createElement('div');
+      meta.className = 'message-meta';
+      const time = document.createElement('span');
+      const dt = message.timestamp ? new Date(message.timestamp) : new Date();
+      time.textContent = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      meta.appendChild(time);
+      if (isSentByMe) {
+        const statusIcon = document.createElement('i');
+        let iconClass = 'fa-check opacity-80';
+        if (message.status === 'read') iconClass = 'fa-check-double seen';
+        else if (message.status === 'delivered') iconClass = 'fa-check-double opacity-80';
+        else if (message.status === 'sending') iconClass = 'fa-clock opacity-50';
+        statusIcon.className = 'fas ' + iconClass;
+        meta.appendChild(statusIcon);
+      }
+      bubble.appendChild(meta);
+
+      wrapper.appendChild(bubble);
+      if (isSentByMe) {
+        const avatar = document.createElement('div');
+        avatar.className = 'chat-avatar outgoing ml-2';
+        const myUrl = document.querySelector('[data-current-avatar-url]')?.getAttribute('data-current-avatar-url');
+        if (myUrl) {
+          const img = document.createElement('img'); img.src = myUrl; img.alt = 'My Avatar'; img.className = 'w-full h-full object-cover rounded-full'; avatar.appendChild(img);
+        } else {
+          avatar.textContent = '{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}';
+        }
+        wrapper.appendChild(avatar);
+      }
+      return wrapper;
+    }
+
+  // Removed footer last seen label function. Using renderSeenTimestampUnderLatest instead.
+
+    function renderSeenTimestampUnderLatest() {
+      const container = document.getElementById('messageHistory');
+      if (!container) return;
+      const myId = String('{{ current_user.id }}');
+      const bubbles = Array.from(container.querySelectorAll('.message-bubble[data-message-id]'));
+      const latestOutgoing = [...bubbles].reverse().find(b => b.getAttribute('data-sender-id') === myId);
+      container.querySelectorAll('.seen-timestamp').forEach(el => el.remove());
+      if (!latestOutgoing) return;
+      const seenIcon = latestOutgoing.querySelector('.message-meta i.fa-check-double.seen');
+      if (!seenIcon) return;
+      const readIso = latestOutgoing.getAttribute('data-read-at');
+      let timeText = '';
+      if (readIso) {
+        try { timeText = new Date(readIso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch {}
+      }
+      if (!timeText) {
+        const timeEl = latestOutgoing.querySelector('.message-meta span');
+        timeText = timeEl ? timeEl.textContent.trim() : '';
+      }
+      const ts = document.createElement('div');
+      ts.className = 'seen-timestamp text-xs text-gray-500 mt-1';
+      ts.textContent = timeText ? `Seen â€¢ ${timeText}` : 'Seen';
+      latestOutgoing.appendChild(ts);
+    }
+    
+    // Scroll chat to bottom
+    function scrollToBottom() {
+      if (messageContainer) {
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+      }
+    }
+
+    function isAtBottom() {
+      if (!messageContainer) return true;
+      const threshold = 80; // px
+      return messageContainer.scrollHeight - messageContainer.scrollTop - messageContainer.clientHeight < threshold;
+    }
+    
+    // Initial scroll to bottom
+    setTimeout(scrollToBottom, 100);
+
+    // Toggle "scroll to bottom" button visibility
+    if (messageContainer && scrollBtn) {
+      messageContainer.addEventListener('scroll', function() {
+        if (isAtBottom()) {
+          scrollBtn.classList.add('hidden');
+        } else {
+          scrollBtn.classList.remove('hidden');
+        }
+      });
+      scrollBtn.addEventListener('click', function() {
+        scrollToBottom();
+        scrollBtn.classList.add('hidden');
+      });
+    }
+
+    // Load older messages via API
+    const loadMoreBtn = document.getElementById('load-more-button');
+    if (loadMoreBtn && messageContainer) {
+      loadMoreBtn.addEventListener('click', function() {
+        const oldest = messageContainer.querySelector('[data-message-id]');
+        const beforeId = oldest ? oldest.getAttribute('data-message-id') : null;
+        const url = `{{ url_for('office.get_older_messages', inquiry_id=inquiry.id) }}` + (beforeId ? `?before_id=${beforeId}` : '');
+        loadMoreBtn.disabled = true;
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && Array.isArray(data.messages)) {
+              const frag = document.createDocumentFragment();
+        data.messages.forEach(msg => {
+                const enriched = {
+                  id: msg.id,
+                  content: msg.content,
+                  sender_id: msg.is_student ? '{{ inquiry.student.user_id if inquiry.student and inquiry.student.user_id else 0 }}' : '{{ current_user.id }}',
+                  sender_name: msg.sender_name,
+                  sender_role: msg.is_student ? 'student' : 'office_admin',
+          timestamp: msg.timestamp,
+          sender_avatar_url: msg.sender_avatar_url || null,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+                };
+                frag.appendChild(createMessageElement(enriched));
+              });
+              // Insert before the first child (after load-more container if present)
+              const container = document.getElementById('messageHistory');
+              const afterLoadMore = document.getElementById('load-more-container');
+              if (afterLoadMore && afterLoadMore.nextSibling) {
+                container.insertBefore(frag, afterLoadMore.nextSibling);
+              } else {
+                container.insertBefore(frag, container.firstChild);
+              }
+              if (!data.has_more) {
+                const parent = document.getElementById('load-more-container');
+                if (parent) parent.remove();
+              }
+            }
+          })
+          .finally(() => { loadMoreBtn.disabled = false; });
+      });
+    }
+    
+    // Clean up when leaving the page
+    window.addEventListener('beforeunload', function() {
+      chatManager.disconnect();
+    });
+
+    // Listen for student's confirmation/clarification on resolution
+    if (chatManager && chatManager.socket) {
+      chatManager.socket.on('resolution_confirmed', function(data){
+        try {
+          // Enable a quick close call for admin
+          const ctrl = statusControlBtn; if (!ctrl) return;
+          ctrl.disabled = false;
+          ctrl.title = 'Close inquiry (student confirmed)';
+          ctrl.classList.remove('bg-slate-100');
+          ctrl.classList.add('bg-green-100','text-green-800');
+          statusControlText && (statusControlText.textContent = 'Close');
+          // Show close confirmation modal
+          const ccModal = document.getElementById('closeConfirmModal');
+          const ccNo = document.getElementById('closeConfirmNo');
+          const ccYes = document.getElementById('closeConfirmYes');
+          const ccDismiss = document.getElementById('closeConfirmDismiss');
+          const openCC = () => ccModal && ccModal.classList.remove('hidden');
+          const closeCC = () => ccModal && ccModal.classList.add('hidden');
+          // open immediately on real-time event
+          openCC();
+          // keep control clickable to reopen if itâ€™s dismissed
+          ctrl.onclick = openCC;
+          ccDismiss && ccDismiss.addEventListener('click', closeCC);
+          ccNo && ccNo.addEventListener('click', closeCC);
+          ccYes && ccYes.addEventListener('click', async function(){
+            try {
+              const headers = { 'X-Requested-With':'XMLHttpRequest' };
+              try { const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content'); if (csrf) headers['X-CSRFToken'] = csrf; } catch {}
+              const res = await fetch(`{{ url_for('office.api_close_inquiry', inquiry_id=inquiry.id) }}`, { method: 'POST', headers });
+              const json = await res.json();
+              if (json && json.success) {
+                closeCC();
+              } else {
+                alert(json?.message || 'Failed to close inquiry');
+              }
+            } catch(e) { alert('Network error closing inquiry'); }
+          });
+        } catch(e) { console.log(e); }
+      });
+      chatManager.socket.on('resolution_needs_clarification', function(data){
+        try {
+          // Revert control visuals to in_progress
+          const ctrl = statusControlBtn; if (!ctrl) return;
+          ctrl.disabled = false;
+          ctrl.title = 'Update status';
+          ctrl.classList.remove('bg-green-100','text-green-800');
+          ctrl.classList.add('bg-blue-100','text-blue-800');
+          statusControlText && (statusControlText.textContent = 'In Progress');
+        } catch(e) {}
+      });
+      chatManager.socket.on('inquiry_closed', function(data){
+        try {
+          const ctrl = statusControlBtn; if (!ctrl) return;
+          statusControlText && (statusControlText.textContent = 'Closed');
+          ctrl.classList.remove('bg-green-100','bg-blue-100');
+          ctrl.classList.add('bg-red-100','text-red-800');
+          ctrl.disabled = true;
+
+          // Disable chat input on closure
+          try {
+            const input = document.getElementById('messageInput');
+            const btn = document.getElementById('sendButton');
+            const fileInput = document.getElementById('replyAttachments');
+            const attachLabel = document.querySelector('label[for="replyAttachments"]');
+            if (input) { input.disabled = true; input.placeholder = 'This inquiry is closed. Messaging disabled.'; }
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); }
+            if (fileInput) { fileInput.disabled = true; }
+            if (attachLabel) { attachLabel.classList.add('pointer-events-none','opacity-50'); }
+            // Update container data-status
+            try {
+              const container = document.querySelector('[data-chat-container][data-inquiry-id]');
+              if (container) container.setAttribute('data-inquiry-status','closed');
+            } catch {}
+            // Overlay removed; keep history scrollable while inputs are disabled.
+          } catch {}
+        } catch(e) {}
+      });
+    }
+  });
+</script>
+
+{% endblock %}

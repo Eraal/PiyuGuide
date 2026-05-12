@@ -1,0 +1,226 @@
+{% extends 'headerbase.html' %}
+
+{% block title %}{{ current_campus_name }} - Security & Privacy{% endblock %}
+
+{% block content %}
+<!-- Hero Section with Enhanced Background -->
+<div class="relative overflow-hidden">
+  <div
+    class="bg-cover bg-center h-80 md:h-96 relative"
+    style="background-image: url('{{ url_for('static', filename='images/backgroundlanding.png') }}');"
+  >
+    <!-- Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-indigo-900/80"></div>
+    
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0 overflow-hidden">
+      <div class="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-white/5 to-transparent rounded-full animate-pulse"></div>
+      <div class="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-blue-400/10 to-transparent rounded-full animate-pulse delay-1000"></div>
+    </div>
+    
+    <!-- Content -->
+    <div class="relative container mx-auto px-4 h-full flex items-center justify-center text-center">
+      <div class="max-w-4xl">
+        <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+          Security & Privacy
+        </h1>
+        <p class="text-xl md:text-2xl text-blue-100 leading-relaxed max-w-3xl mx-auto">
+          Your privacy and security are our top priorities. Learn how we protect your information and ensure a safe experience.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="py-16 bg-white">
+  <div class="container mx-auto px-4">
+    
+    <!-- Security Overview -->
+    <div class="max-w-4xl mx-auto mb-16">
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
+          <i class="fas fa-shield-alt text-2xl text-blue-600"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">Our Commitment to Security</h2>
+        <p class="text-lg text-gray-600 leading-relaxed">
+          {{ current_campus_name }} employs industry-standard security measures to protect your personal information and ensure the confidentiality of your inquiries.
+        </p>
+      </div>
+    </div>
+
+    <!-- Security Features Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+      <!-- Data Encryption -->
+      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 hover:shadow-lg transition-shadow">
+        <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
+          <i class="fas fa-lock text-white text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-3">Data Encryption</h3>
+        <p class="text-gray-600">
+          All data transmitted between your device and our servers is encrypted using industry-standard SSL/TLS protocols.
+        </p>
+      </div>
+
+      <!-- Secure Authentication -->
+      <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 hover:shadow-lg transition-shadow">
+        <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mb-4">
+          <i class="fas fa-user-shield text-white text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-3">Secure Authentication</h3>
+        <p class="text-gray-600">
+          Multi-factor authentication and secure password policies protect your account from unauthorized access.
+        </p>
+      </div>
+
+      <!-- Privacy Controls -->
+      <div class="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100 hover:shadow-lg transition-shadow">
+        <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mb-4">
+          <i class="fas fa-eye-slash text-white text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-3">Privacy Controls</h3>
+        <p class="text-gray-600">
+          You have full control over your personal information and can manage your privacy settings at any time.
+        </p>
+      </div>
+
+      <!-- Data Minimization -->
+      <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100 hover:shadow-lg transition-shadow">
+        <div class="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center mb-4">
+          <i class="fas fa-database text-white text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-3">Data Minimization</h3>
+        <p class="text-gray-600">
+          We only collect the information necessary to provide our services and process your inquiries effectively.
+        </p>
+      </div>
+
+      <!-- Regular Audits -->
+      <div class="bg-gradient-to-br from-teal-50 to-cyan-50 p-6 rounded-2xl border border-teal-100 hover:shadow-lg transition-shadow">
+        <div class="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center mb-4">
+          <i class="fas fa-search text-white text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-3">Regular Audits</h3>
+        <p class="text-gray-600">
+          Our security measures are regularly reviewed and updated to ensure they meet the latest standards.
+        </p>
+      </div>
+
+      <!-- Incident Response -->
+      <div class="bg-gradient-to-br from-red-50 to-rose-50 p-6 rounded-2xl border border-red-100 hover:shadow-lg transition-shadow">
+        <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+          <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-3">Incident Response</h3>
+        <p class="text-gray-600">
+          We have comprehensive incident response procedures to quickly address any security concerns.
+        </p>
+      </div>
+    </div>
+
+    <!-- Privacy Policy Section -->
+    <div class="max-w-4xl mx-auto">
+      <div class="bg-gray-50 rounded-2xl p-8 mb-12">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Privacy Policy Highlights</h2>
+        
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Information We Collect</h3>
+            <p class="text-gray-600">
+              We collect only the information necessary to provide our services, including your name, email, student ID, and inquiry details. We never sell or share your personal information with third parties.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">How We Use Your Information</h3>
+            <p class="text-gray-600">
+              Your information is used solely to process your inquiries, provide support, and improve our services. We maintain detailed logs for security and quality assurance purposes.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Your Rights</h3>
+            <p class="text-gray-600">
+              You have the right to access, update, or delete your personal information at any time. You can also request a copy of all data we have about you.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Data Retention</h3>
+            <p class="text-gray-600">
+              We retain your information only as long as necessary to provide our services and comply with legal requirements. Inquiry records are typically kept for academic record purposes.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="text-center">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Questions About Privacy?</h2>
+        <p class="text-gray-600 mb-6">
+          If you have any questions about our privacy practices or need to report a security concern, please contact us immediately.
+        </p>
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <a
+            href="{{ url_for('auth.login') }}"
+            class="bg-blue-600 text-white py-3 px-8 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            <i class="fas fa-sign-in-alt mr-2"></i>
+            Login to Your Account
+          </a>
+          <a
+            href="{{ url_for('main.offices') }}"
+            class="border border-blue-600 text-blue-600 py-3 px-8 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+          >
+            <i class="fas fa-building mr-2"></i>
+            Contact an Office
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Security Tips Section -->
+<div class="bg-gradient-to-r from-gray-800 to-gray-900 py-16">
+  <div class="container mx-auto px-4">
+    <div class="max-w-4xl mx-auto text-center">
+      <h2 class="text-3xl font-bold text-white mb-8">Security Tips for Students</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+          <i class="fas fa-key text-3xl mb-4 text-blue-400"></i>
+          <h3 class="text-xl font-semibold mb-3">Strong Passwords</h3>
+          <p class="text-gray-300">
+            Use unique, complex passwords and enable two-factor authentication when available.
+          </p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+          <i class="fas fa-wifi text-3xl mb-4 text-green-400"></i>
+          <h3 class="text-xl font-semibold mb-3">Secure Connections</h3>
+          <p class="text-gray-300">
+            Always use secure networks and look for the lock icon in your browser when submitting forms.
+          </p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+          <i class="fas fa-eye text-3xl mb-4 text-purple-400"></i>
+          <h3 class="text-xl font-semibold mb-3">Stay Vigilant</h3>
+          <p class="text-gray-300">
+            Be cautious of phishing attempts and never share your login credentials with others.
+          </p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+          <i class="fas fa-mobile-alt text-3xl mb-4 text-orange-400"></i>
+          <h3 class="text-xl font-semibold mb-3">Device Security</h3>
+          <p class="text-gray-300">
+            Keep your devices updated and log out from public computers after use.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

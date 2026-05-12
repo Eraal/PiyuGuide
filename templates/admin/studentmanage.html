@@ -1,0 +1,741 @@
+{% extends "admin/adminbase.html" %}
+
+{% block content %}
+
+<style>
+    /* Enhanced Loading Screen Styles - Consistent with View Student Page */
+    .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.85) 100%);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                    visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: auto; /* Block interactions only while visible */
+    }
+    
+    .loading-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none; /* Do not block interactions when hidden */
+    }
+    
+    .loading-content {
+        text-align: center;
+        color: white;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: loadingFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+        position: relative;
+    }
+    
+    /* Modern Spinner with Gradient Ring */
+    .loader-spinner {
+        width: 70px;
+        height: 70px;
+        position: relative;
+        margin: 0 auto 2rem;
+    }
+    
+    .loader-spinner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 4px solid transparent;
+        border-top-color: #60a5fa;
+        border-right-color: #818cf8;
+        animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+    
+    .loader-spinner::after {
+        content: '';
+        position: absolute;
+        inset: 8px;
+        border-radius: 50%;
+        border: 4px solid transparent;
+        border-bottom-color: #c084fc;
+        border-left-color: #fb7185;
+        animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) reverse infinite;
+    }
+    
+    /* Pulsing center dot */
+    .loader-spinner .spinner-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, #60a5fa, #c084fc);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: pulse 1.5s ease-in-out infinite;
+        box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes loadingFadeIn {
+        from { 
+            opacity: 0; 
+            transform: translateY(10px);
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { 
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        50% { 
+            transform: translate(-50%, -50%) scale(1.3);
+            opacity: 0.7;
+        }
+    }
+    
+    .loading-text {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        letter-spacing: 0.025em;
+        background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: shimmer 2s ease-in-out infinite;
+    }
+    
+    .loading-subtext {
+        font-size: 0.875rem;
+        opacity: 0.85;
+        font-weight: 500;
+        color: #cbd5e1;
+        animation: loadingPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes shimmer {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+    
+    @keyframes loadingPulse {
+        0%, 100% { opacity: 0.85; }
+        50% { opacity: 0.6; }
+    }
+    
+    /* Loading dots animation */
+    .loading-dots {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 4px;
+    }
+    
+    .loading-dots span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #60a5fa;
+        animation: dotBounce 1.4s ease-in-out infinite;
+    }
+    
+    .loading-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .loading-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes dotBounce {
+        0%, 80%, 100% { 
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+        40% { 
+            transform: scale(1.2);
+            opacity: 1;
+        }
+    }
+
+    /* Ensure suspend modal covers viewport when reparented to body */
+    #suspendModal.fixed.inset-0 { position: fixed; inset: 0; z-index: 1200; }
+</style>
+
+<!-- Enhanced Loading Screen (visible on initial load, auto-hides) -->
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <div class="loader-spinner">
+            <div class="spinner-dot"></div>
+        </div>
+        <div class="loading-text">Loading Student Accounts</div>
+        <div class="loading-subtext">
+            Preparing data
+            <span class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="p-2 space-y-6 md:space-y-8">
+    <!-- Header + Quick Stats (mirrors Admin Accounts design) -->
+    {% set ns = namespace(locked=0, pending_students=0) %}
+    {% for s in students %}
+        {% if s.user and s.user.account_locked %}{% set ns.locked = ns.locked + 1 %}{% endif %}
+        {% if s.inquiries and (s.inquiries|selectattr('status','equalto','pending')|list|length) > 0 %}
+            {% set ns.pending_students = ns.pending_students + 1 %}
+        {% endif %}
+    {% endfor %}
+
+    <div class="relative bg-gradient-to-br from-blue-900 via-indigo-900 to-blue-800 rounded-3xl shadow-2xl p-6 md:p-8 text-white overflow-hidden">
+        <!-- Decorative elements -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-6 left-6 w-24 h-24 border-2 border-white rounded-full animate-ping"></div>
+            <div class="absolute top-20 right-16 w-20 h-20 border-2 border-white rounded-full animate-pulse delay-300"></div>
+            <div class="absolute bottom-10 left-24 w-16 h-16 border-2 border-white rounded-full animate-bounce delay-700"></div>
+        </div>
+
+        <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div class="flex-1">
+                <div class="flex items-center mb-4">
+                    <div class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-4">
+                        <i class="fas fa-user-graduate text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold mb-1">Student Accounts</h1>
+                        <p class="text-blue-200 text-base md:text-lg">Manage and monitor student profiles and access</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mt-4">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-users text-2xl text-blue-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Total Registered</p>
+                                <p class="text-2xl font-bold">{{ total_students or 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-check text-2xl text-emerald-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Active Students</p>
+                                <p class="text-2xl font-bold">{{ active_students or 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-lock text-2xl text-red-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Locked Accounts</p>
+                                <p class="text-2xl font-bold">{{ ns.locked }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-inbox text-2xl text-yellow-300 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-200">Students w/ Pending Inquiries</p>
+                                <p class="text-2xl font-bold">{{ ns.pending_students }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Student List Table -->
+    <div class="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden transition-all duration-300">
+        <div class="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <i class="fas fa-users mr-3 text-blue-600"></i>
+                Student Accounts
+            </h2>
+            <span class="text-sm text-gray-500">Total: {{ total_students }}</span>
+        </div>
+        
+        <!-- Search and Filter Controls -->
+        <form id="filtersForm" method="get" class="flex flex-col gap-4 md:gap-3 mb-6">
+            <div class="flex flex-col md:flex-row justify-between gap-3">
+                <div class="md:w-1/2">
+                    <div class="relative">
+                        <input type="text" id="searchInput" name="q" value="{{ q or '' }}" placeholder="Search by name, email, student number, or department..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 flex-1">
+                    <div class="relative">
+                        <select id="statusFilter" name="status" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not status }}>All Status</option>
+                            <option value="active" {{ 'selected' if status=='active' }}>Active</option>
+                            <option value="inactive" {{ 'selected' if status=='inactive' }}>Inactive</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="departmentFilter" name="department_id" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="">All Departments</option>
+                            {% for d in departments %}
+                                <option value="{{ d.id }}" {{ 'selected' if department_id==d.id }}>{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="yearLevelFilter" name="year_level" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not year_level }}>All Years</option>
+                            {% set year_opts = ['1st Year','2nd Year','3rd Year','4th Year','5th Year'] %}
+                            {% for y in year_opts %}
+                                <option value="{{ y }}" {{ 'selected' if year_level==y }}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="sectionFilter" name="section" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not section }}>All Sections</option>
+                            {% for s in ['A','B','C','D','E'] %}
+                                <option value="{{ s }}" {{ 'selected' if section==s }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="emailVerifiedFilter" name="email_verified" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not email_verified }}>Any Email Status</option>
+                            <option value="yes" {{ 'selected' if email_verified=='yes' }}>Email Verified</option>
+                            <option value="no" {{ 'selected' if email_verified=='no' }}>Email Unverified</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="lockedFilter" name="account_locked" class="w-full appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="" {{ 'selected' if not account_locked }}>Any Lock</option>
+                            <option value="yes" {{ 'selected' if account_locked=='yes' }}>Locked</option>
+                            <option value="no" {{ 'selected' if account_locked=='no' }}>Not Locked</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row justify-between gap-3 items-center">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <input id="pendingOnly" name="pending_only" value="yes" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded" {{ 'checked' if pending_only=='yes' }}>
+                        <label for="pendingOnly" class="text-sm text-gray-700">With Pending Inquiries</label>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <select id="sortBy" name="sort" class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="name" {{ 'selected' if sort=='name' }}>Sort by: Name</option>
+                            <option value="email" {{ 'selected' if sort=='email' }}>Sort by: Email</option>
+                            <option value="student_number" {{ 'selected' if sort=='student_number' }}>Sort by: Student Number</option>
+                            <option value="department" {{ 'selected' if sort=='department' }}>Sort by: Department</option>
+                            <option value="year_level" {{ 'selected' if sort=='year_level' }}>Sort by: Year Level</option>
+                            <option value="section" {{ 'selected' if sort=='section' }}>Sort by: Section</option>
+                            <option value="created_at" {{ 'selected' if sort=='created_at' }}>Sort by: Registration Date</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <select id="orderBy" name="order" class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200">
+                            <option value="asc" {{ 'selected' if order=='asc' }}>Asc</option>
+                            <option value="desc" {{ 'selected' if order=='desc' }}>Desc</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                        <i class="fas fa-filter"></i>
+                        Apply
+                    </button>
+                    <a href="{{ url_for('admin.student_manage') }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Reset</a>
+                </div>
+            </div>
+        </form>
+        
+       <!-- Table -->
+<div class="overflow-x-auto">
+    <table class="min-w-full">
+        <thead class="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <tr>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">#</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Student Details</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Email</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Student Number</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Department</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Year Level</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Section</th>
+                <th class="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-100" id="studentTableBody">
+            {% for student in students %}
+            <tr class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 align-top" data-student-id="{{ student.id }}">
+                <td class="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-700">{{ start_index + loop.index0 }}</td>
+                <td class="px-4 md:px-6 py-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 relative">
+                            {% set _pp = student.user.profile_pic %}
+                            {% set _ppp = student.user.profile_pic_path %}
+                            {% if _pp and (_pp[:7] == 'http://' or _pp[:8] == 'https://') %}
+                                <img 
+                                    src="{{ _pp }}"
+                                    alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70 avatar-img"
+                                    data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
+                                    loading="lazy"
+                                />
+                            {% elif _ppp %}
+                                <img
+                                    src="{{ url_for('static', filename=_ppp) }}?v={{ _pp or '' }}"
+                                    alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                                    class="h-10 w-10 rounded-full object-cover shadow-md ring-2 ring-white/70 avatar-img"
+                                    data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
+                                    loading="lazy"
+                                />
+                            {% else %}
+                                <div class="rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 text-white flex items-center justify-center h-10 w-10 text-sm font-bold shadow-md">
+                                    {{ student.user.first_name[0] if student.user.first_name else '' }}{{ student.user.last_name[0] if student.user.last_name else '' }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4 min-w-0">
+                            <div class="text-sm font-bold text-gray-900 flex items-center gap-2 flex-wrap">
+                                {{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}
+                                {% if student.user.account_locked %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200" title="Account Locked">
+                                        <i class="fas fa-lock mr-1"></i>Locked
+                                    </span>
+                                {% endif %}
+                                {% if student.user.email_verified %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200" title="Email verified">
+                                        <i class="fas fa-circle-check mr-1"></i>Verified
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200" title="Email not verified">
+                                        <i class="fas fa-triangle-exclamation mr-1"></i>Unverified
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-gray-600 flex items-center">
+                                <i class="fas fa-id-card mr-2 text-blue-500"></i>
+                                Student
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-600 whitespace-normal break-words">{{ student.user.email }}</td>
+                <!-- Student Number -->
+                <td class="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-600 whitespace-normal">
+                    {% if student.student_number %}
+                        {{ student.student_number }}
+                    {% else %}
+                        <span class="text-gray-400">Not Set</span>
+                    {% endif %}
+                </td>
+                <!-- Department -->
+                <td class="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-600 whitespace-normal">
+                        {% if student.department_name %}
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ student.department_name }}</span>
+                    {% else %}
+                        <span class="text-gray-400">Not Set</span>
+                    {% endif %}
+                </td>
+                <!-- Year Level -->
+                <td class="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-600 whitespace-normal">
+                    {% if student.year_level %}
+                        {{ student.year_level }}
+                    {% else %}
+                        <span class="text-gray-400">Not Set</span>
+                    {% endif %}
+                </td>
+                <!-- Section -->
+                <td class="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-600 whitespace-normal">
+                    {% if student.section %}
+                        {{ student.section }}
+                    {% else %}
+                        <span class="text-gray-400">Not Set</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 md:px-6 py-4">
+                    <div class="flex items-center gap-2 whitespace-nowrap">
+                                <a href="{{ url_for('admin.view_student', student_id=student.id) }}" 
+                                    class="group bg-purple-100 hover:bg-purple-200 text-purple-700 p-2 md:p-3 rounded-xl transition-all duration-300 transform hover:scale-110 relative z-0" 
+                           title="Edit Student">
+                            <i class="fas fa-edit group-hover:scale-110 transition-transform"></i>
+                        </a>
+
+                        <!-- Button for locking/unlocking (for rule violations) -->
+                            <button 
+                                type="button"
+                                class="inline-flex items-center justify-center p-2 md:p-2.5 rounded-xl text-sm font-semibold shadow-sm border transition open-suspend-modal pointer-events-auto relative z-20 {{ 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' if student.user.is_active else 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' }}"
+                                style="isolation:isolate;"
+                                data-student-id="{{ student.id }}"
+                                data-current-active="{{ 1 if student.user.is_active else 0 }}"
+                                data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
+                            title="{% if student.user.is_active %}Deactivate Account{% else %}Activate Account{% endif %}">
+                                <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                            </button>
+                        {% if not student.user.email_verified %}
+                        <button 
+                            type="button"
+                            class="inline-flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-semibold shadow-sm border bg-emerald-600 text-white hover:bg-emerald-700 mark-verified"
+                            data-student-id="{{ student.id }}"
+                            title="Mark email as verified">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span class="hidden sm:inline">Verify</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+    
+        
+        <!-- Pagination controls -->
+        <div class="mt-6 flex flex-col lg:flex-row justify-between items-center gap-3">
+            <div class="mb-2 lg:mb-0 text-xs md:text-sm text-gray-700">
+                {% if total_students > 0 %}
+                Showing <span class="font-medium">{{ start_index }}</span> to <span class="font-medium">{{ end_index }}</span> of <span class="font-medium">{{ total_students }}</span> results
+                {% else %}
+                No students found.
+                {% endif %}
+            </div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm overflow-hidden" aria-label="Pagination">
+                <a href="{{ url_for('admin.student_manage', page=page-1, q=q, status=status, department_id=department_id, year_level=year_level, section=section, email_verified=email_verified, account_locked=account_locked, pending_only=pending_only, sort=sort, order=order) }}" class="{{ 'pointer-events-none opacity-50' if page <= 1 else '' }} relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors duration-200">
+                    <span class="sr-only">Previous</span>
+                    <svg class="h-4 w-4 md:h-5 md:w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+                <span class="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-700">Page {{ page }} of {{ pages }}</span>
+                <a href="{{ url_for('admin.student_manage', page=page+1, q=q, status=status, department_id=department_id, year_level=year_level, section=section, email_verified=email_verified, account_locked=account_locked, pending_only=pending_only, sort=sort, order=order) }}" class="{{ 'pointer-events-none opacity-50' if page >= pages else '' }} relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors duration-200">
+                    <span class="sr-only">Next</span>
+                    <svg class="h-4 w-4 md:h-5 md:w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enhanced Page Loading Screen Management
+(function() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    
+    // Minimum display time for smooth UX (prevents flash)
+    const MIN_LOADING_TIME = 600;
+    const startTime = Date.now();
+    
+    function reallyHide() {
+        if (loadingScreen) {
+            // Remove from layout entirely after transition ends
+            loadingScreen.style.display = 'none';
+        }
+    }
+
+    function hideLoadingScreen() {
+        const elapsed = Date.now() - startTime;
+        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
+        
+        setTimeout(function() {
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+                // After CSS transition (~400ms), remove from layout to avoid intercepting any events
+                setTimeout(reallyHide, 450);
+            }
+        }, remainingTime);
+    }
+    
+    // Hide loading screen once page is fully loaded
+    if (document.readyState === 'complete') {
+        hideLoadingScreen();
+    } else {
+        window.addEventListener('load', hideLoadingScreen);
+    }
+    
+    // Fallback: Hide after DOMContentLoaded if load event takes too long
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Give load event a chance, but set a maximum timeout
+            setTimeout(function() {
+                if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+                    hideLoadingScreen();
+                }
+            }, 2000);
+        });
+    }
+})();
+</script>
+
+<script>
+// Auto-submit filters on change and submit on Enter in search
+(function(){
+    const form = document.getElementById('filtersForm');
+    if (!form) return;
+    const autoIds = ['statusFilter','departmentFilter','yearLevelFilter','sectionFilter','emailVerifiedFilter','lockedFilter','sortBy','orderBy','pendingOnly'];
+    autoIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', ()=>form.submit());
+    });
+    const search = document.getElementById('searchInput');
+    if (search) search.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); form.submit(); }});
+})();
+</script>
+
+<script>
+// Attach fallback handler for avatar images without using inline JS
+(function(){
+    function attachFallback(img){
+        if (!img || !img.dataset || !img.dataset.fallback) return;
+        const fallback = img.dataset.fallback;
+        // If image fails to load, swap to fallback once
+        img.addEventListener('error', function handler(){
+            img.removeEventListener('error', handler);
+            // Prevent infinite loop if fallback also fails
+            if (img.src !== fallback) {
+                img.src = fallback;
+            }
+        });
+        // Proactively detect broken images when lazy-loading defers events
+        function swapIfBroken() {
+            const src = img.currentSrc || img.src;
+            if (!src) return;
+            // If already marked broken by the browser
+            if (img.complete && img.naturalWidth === 0) {
+                if (img.src !== fallback) img.src = fallback;
+                return;
+            }
+            // Try decoding; if fails, set fallback
+            if (typeof img.decode === 'function') {
+                img.decode().catch(function(){
+                    if (img.src !== fallback) img.src = fallback;
+                });
+            } else {
+                // Create a probe image to check reachability
+                const probe = new Image();
+                probe.onload = function() { /* ok */ };
+                probe.onerror = function() {
+                    if (img.src !== fallback) img.src = fallback;
+                };
+                probe.src = src;
+            }
+        }
+        // Run once after DOM ready and again after a small delay to catch lazy-load swaps
+        swapIfBroken();
+        setTimeout(swapIfBroken, 800);
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('img.avatar-img[data-fallback]')
+            .forEach(attachFallback);
+    });
+})();
+</script>
+
+<script src="{{ url_for('static', filename='js/admin/student_manage.js') }}?v={{ ASSET_VERSION }}"></script>
+<!-- Suspension Modal moved here to be outside blurred/overflow containers -->
+<div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" data-modal-close></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-xl border border-gray-200 animate-fade-in">
+        <div class="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900" id="suspendModalTitle">Deactivate Student Account</h3>
+                <p class="text-sm text-gray-500 mt-1" id="suspendModalSubtitle">Provide a reason for deactivation. This will be shown to the student on login.</p>
+            </div>
+            <button class="text-gray-400 hover:text-gray-600 transition" data-modal-close aria-label="Close">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form id="suspendForm" class="px-6 pt-5 pb-6 space-y-5">
+            <input type="hidden" id="suspendStudentId" name="student_id" />
+            <input type="hidden" id="suspendTargetState" name="target_state" />
+            <div id="suspendReasonGroup" class="space-y-2">
+                <label for="suspendReason" class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-amber-500"></i>
+                    Suspension Reason
+                </label>
+                <textarea id="suspendReason" name="reason" rows="4" placeholder="e.g., Repeated policy violations regarding improper inquiries."
+                                    class="w-full rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 text-sm p-3 resize-none"></textarea>
+                <p class="text-xs text-gray-400">Minimum 8 characters. Be concise and professional.</p>
+            </div>
+            <div id="reactivateNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-700 text-xs px-3 py-2 rounded-lg">
+                Reactivating restores access and clears previous suspension reason.
+            </div>
+            <div id="suspendFeedback" class="hidden text-sm"></div>
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" class="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" data-modal-close>Cancel</button>
+                <button id="suspendSubmitBtn" type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-sm">
+                    <i class="fa-solid fa-user-slash"></i>
+                    Confirm Deactivate
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

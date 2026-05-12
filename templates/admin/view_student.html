@@ -1,0 +1,1367 @@
+{% extends "admin/adminbase.html" %}
+
+{% block content %}
+
+<style>
+    /* Enhanced View Student Page Styles */
+    .view-student-container {
+        background: linear-gradient(135deg, #f8fafc 0%, #e8f1f8 100%);
+        min-height: 100vh;
+        padding: 1.5rem 0;
+    }
+    
+    .enhanced-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+    }
+    
+    .enhanced-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+    
+    .profile-header-enhanced {
+        background: linear-gradient(135deg, #667eea 0%, #4f69e8 50%, #3b5bdb 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header-enhanced::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+    }
+    
+    .avatar-enhanced {
+        background: linear-gradient(135deg, #fff 0%, #f0f4f8 100%);
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .section-header {
+        background: linear-gradient(to right, #f8fafc, #f1f5f9);
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .input-enhanced {
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+    }
+    
+    .input-enhanced:focus {
+        border-color: #667eea;
+        background-color: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+    
+    .badge-enhanced {
+        padding: 0.375rem 0.875rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.025em;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-button-enhanced {
+        transition: all 0.3s ease;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .action-button-enhanced:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .info-badge {
+        background: linear-gradient(135deg, #f0f4f8 0%, #e6eef5 100%);
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        border-left: 3px solid #667eea;
+    }
+    
+    .label-enhanced {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.813rem;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+    }
+    
+    .stat-item {
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .icon-wrapper {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #4f69e8 100%);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.25);
+    }
+    
+    /* Enhanced Loading Screen Styles */
+    .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.85) 100%);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                    visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .loading-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
+    
+    .loading-content {
+        text-align: center;
+        color: white;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: loadingFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+        position: relative;
+    }
+    
+    /* Modern Spinner with Gradient Ring */
+    .loader-spinner {
+        width: 70px;
+        height: 70px;
+        position: relative;
+        margin: 0 auto 2rem;
+    }
+    
+    .loader-spinner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 4px solid transparent;
+        border-top-color: #60a5fa;
+        border-right-color: #818cf8;
+        animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+    
+    .loader-spinner::after {
+        content: '';
+        position: absolute;
+        inset: 8px;
+        border-radius: 50%;
+        border: 4px solid transparent;
+        border-bottom-color: #c084fc;
+        border-left-color: #fb7185;
+        animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) reverse infinite;
+    }
+    
+    /* Pulsing center dot */
+    .loader-spinner .spinner-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, #60a5fa, #c084fc);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: pulse 1.5s ease-in-out infinite;
+        box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes loadingFadeIn {
+        from { 
+            opacity: 0; 
+            transform: translateY(10px);
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { 
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        50% { 
+            transform: translate(-50%, -50%) scale(1.3);
+            opacity: 0.7;
+        }
+    }
+    
+    .loading-text {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        letter-spacing: 0.025em;
+        background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: shimmer 2s ease-in-out infinite;
+    }
+    
+    .loading-subtext {
+        font-size: 0.875rem;
+        opacity: 0.85;
+        font-weight: 500;
+        color: #cbd5e1;
+        animation: loadingPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes shimmer {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+    
+    @keyframes loadingPulse {
+        0%, 100% { opacity: 0.85; }
+        50% { opacity: 0.6; }
+    }
+    
+    /* Loading dots animation */
+    .loading-dots {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 4px;
+    }
+    
+    .loading-dots span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #60a5fa;
+        animation: dotBounce 1.4s ease-in-out infinite;
+    }
+    
+    .loading-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .loading-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes dotBounce {
+        0%, 80%, 100% { 
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+        40% { 
+            transform: scale(1.2);
+            opacity: 1;
+        }
+    }
+
+    /* Modal entry animations */
+    .modal-backdrop { opacity: 0; animation: backdropIn 0.22s ease-out forwards; }
+    .modal-panel { opacity: 0; transform: translateY(8px) scale(0.985); animation: modalIn 0.26s cubic-bezier(.2,.8,.2,1) forwards; }
+    @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+</style>
+
+<!-- Enhanced Loading Screen (visible on initial load, auto-hides) -->
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <div class="loader-spinner">
+            <div class="spinner-dot"></div>
+        </div>
+        <div class="loading-text">Loading Student Information</div>
+        <div class="loading-subtext">
+            Please wait
+            <span class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Header / Breadcrumb -->
+<div class="view-student-container">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="mb-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('admin.student_manage') }}" class="text-sm text-gray-600 hover:text-blue-700 inline-flex items-center gap-2 transition-all hover:gap-3 font-medium">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+            Back to Students
+        </a>
+    </div>
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+        <i class="fa-solid fa-user-pen text-blue-600"></i>
+        <span class="font-medium">Edit Student Profile</span>
+    </div>
+  
+    <!-- optional right space -->
+    <div class="w-32 hidden md:block"></div>
+</div>
+
+<!-- Profile Header Card -->
+<div class="enhanced-card overflow-hidden mb-6">
+    <div class="px-6 py-6 md:px-8 md:py-8 profile-header-enhanced">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
+            <div class="flex items-center gap-5 min-w-0">
+                <div class="h-20 w-20 md:h-24 md:w-24 rounded-2xl avatar-enhanced text-blue-600 flex items-center justify-center overflow-hidden relative">
+                    {% set _pp = student.user.profile_pic %}
+                    {% set _ppp = student.user.profile_pic_path %}
+                    {% if _pp and (_pp[:7] == 'http://' or _pp[:8] == 'https://') %}
+                        <img 
+                            src="{{ _pp }}"
+                            alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                            class="h-full w-full object-cover avatar-img"
+                            data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
+                        />
+                    {% elif _ppp %}
+                        <img 
+                            src="{{ url_for('static', filename=_ppp) }}?v={{ _pp or '' }}"
+                            alt="{{ student.user.first_name }} {{ student.user.last_name }}"
+                            class="h-full w-full object-cover avatar-img"
+                            data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
+                        />
+                    {% else %}
+                        <span class="text-3xl md:text-4xl font-bold">{{ student.user.first_name[0] }}{{ student.user.last_name[0] }}</span>
+                    {% endif %}
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-3 flex-wrap mb-1">
+                        <h3 class="text-xl md:text-2xl font-bold text-white truncate">{{ student.user.first_name }} {% if student.user.middle_name %}{{ student.user.middle_name[0] }}. {% endif %}{{ student.user.last_name }}</h3>
+                        <span class="badge-enhanced {{ 'bg-green-500 text-white' if student.user.is_active else 'bg-red-500 text-white' }}">
+                            <i class="fa-solid {{ 'fa-circle-check' if student.user.is_active else 'fa-circle-xmark' }} mr-1"></i>
+                            {{ 'Active' if student.user.is_active else 'Inactive' }}
+                        </span>
+                        {% if student.user.email_verified %}
+                        <span class="badge-enhanced bg-emerald-500 text-white" title="Email verified">
+                            <i class="fa-solid fa-circle-check mr-1"></i>Verified
+                        </span>
+                        {% else %}
+                        <span class="badge-enhanced bg-amber-500 text-white" title="Email not verified">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>Unverified
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-blue-100 truncate mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-envelope text-xs"></i>
+                        {{ student.user.email }}
+                    </p>
+                    <div class="flex flex-wrap gap-3 text-xs text-white/90">
+                        {% if student.student_number %}
+                        <span class="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                            <i class="fa-solid fa-id-card text-white/80"></i> 
+                            <strong class="font-semibold">ID:</strong> {{ student.student_number }}
+                        </span>
+                        {% endif %}
+                        {% if student.department_name %}
+                        <span class="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                            <i class="fa-solid fa-building text-white/80"></i> 
+                            {{ student.department_name }}{% if student.year_level %} • {{ student.year_level }}{% endif %}{% if student.section %} • Sec {{ student.section }}{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button 
+                    class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold {{ 'bg-white text-red-600 hover:bg-red-50' if student.user.is_active else 'bg-white text-green-600 hover:bg-green-50' }} border border-white/20 open-suspend-modal"
+                    data-student-id="{{ student.id }}"
+                    data-current-active="{{ 1 if student.user.is_active else 0 }}"
+                    data-student-name="{{ student.user.first_name }} {{ student.user.last_name }}"
+                    data-reason="{{ student.user.lock_reason or '' }}"
+                >
+                    <i class="fa-solid {% if student.user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                    {% if student.user.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+                {% if not student.user.email_verified %}
+                <button 
+                    type="button"
+                    id="verify-email-btn"
+                    class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 border border-white/20"
+                    data-student-id="{{ student.id }}"
+                    title="Mark email as verified">
+                    <i class="fa-solid fa-circle-check"></i>
+                    Verify Email
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Form + Side Info -->
+<form method="POST" action="{{ url_for('admin.view_student', student_id=student.id) }}" class="relative">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left/Main: Editable fields -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Personal Information -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-user text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Personal Information</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Basic identity details used across the system</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <label for="first_name" class="label-enhanced block mb-2">First Name</label>
+                        <input type="text" id="first_name" name="first_name" value="{{ student.user.first_name }}" required
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter first name" />
+                    </div>
+                    <div>
+                        <label for="middle_name" class="label-enhanced block mb-2">Middle Name</label>
+                        <input type="text" id="middle_name" name="middle_name" value="{{ student.user.middle_name or '' }}"
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter middle name" />
+                    </div>
+                    <div>
+                        <label for="last_name" class="label-enhanced block mb-2">Last Name</label>
+                        <input type="text" id="last_name" name="last_name" value="{{ student.user.last_name }}" required
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter last name" />
+                    </div>
+                </div>
+            </section>
+
+            <!-- Academic / Enrollment Information -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Academic Information</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Student enrollment details for identification and grouping</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label for="student_number" class="label-enhanced block mb-2">Student Number</label>
+                        <input type="text" id="student_number" name="student_number" value="{{ student.student_number or '' }}"
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="Enter student ID number" />
+                    </div>
+                    <div>
+                        <label for="department_id" class="label-enhanced block mb-2">Department</label>
+                        <select id="department_id" name="department_id"
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
+                            <option value="">— Select Department —</option>
+                            {% for d in departments %}
+                                <option value="{{ d.id }}" {% if student.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="year_level" class="label-enhanced block mb-2">Year Level</label>
+                        <select id="year_level" name="year_level"
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
+                            <option value="">— Select Year —</option>
+                            <option value="1st Year" {% if student.year_level == '1st Year' %}selected{% endif %}>1st Year</option>
+                            <option value="2nd Year" {% if student.year_level == '2nd Year' %}selected{% endif %}>2nd Year</option>
+                            <option value="3rd Year" {% if student.year_level == '3rd Year' %}selected{% endif %}>3rd Year</option>
+                            <option value="4th Year" {% if student.year_level == '4th Year' %}selected{% endif %}>4th Year</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="section" class="label-enhanced block mb-2">Section</label>
+                        <select id="section" name="section"
+                                class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900">
+                            <option value="">— Select Section —</option>
+                            {% for s in ['A','B','C','D','E'] %}
+                                <option value="{{ s }}" {% if student.section == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Account & Contact -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-envelope text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Account & Contact</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Used for communications and login</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 gap-5">
+                    <div>
+                        <label for="email" class="label-enhanced block mb-2">Email Address</label>
+                        <input type="email" id="email" name="email" value="{{ student.user.email }}" required
+                               class="input-enhanced w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400" 
+                               placeholder="student@university.edu" />
+                        <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-blue-500"></i>
+                            Important updates and notifications will be sent to this address
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right/Side: Read-only + Security -->
+        <aside class="space-y-6">
+            <!-- Activity / meta -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper">
+                            <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Account Activity</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="stat-item">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date Registered</span>
+                            <i class="fa-solid fa-calendar-plus text-blue-500"></i>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800 block">{{ student.user.created_at.strftime('%b %d, %Y') }}</span>
+                        <span class="text-xs text-gray-500">{{ student.user.created_at.strftime('%I:%M %p') }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Last Login</span>
+                            <i class="fa-solid fa-clock text-green-500"></i>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800 block">
+                            {% if student.user.last_activity %}
+                                {{ student.user.last_activity.strftime('%b %d, %Y') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </span>
+                        {% if student.user.last_activity %}
+                        <span class="text-xs text-gray-500">{{ student.user.last_activity.strftime('%I:%M %p') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Password Management -->
+            <section class="enhanced-card">
+                <div class="px-6 py-4 section-header">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-wrapper" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                            <i class="fa-solid fa-key text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800">Password Management</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Reset to system-generated password</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="info-badge mb-4">
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            <i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>
+                            This will generate a new 4-digit password for the student
+                        </p>
+                    </div>
+                    <button type="button" name="reset_password_btn"
+                            class="action-button-enhanced w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-amber-800 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-2 border-amber-200">
+                        <i class="fa-solid fa-rotate"></i>
+                        Reset Password
+                    </button>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <!-- Sticky Action Bar -->
+    <div class="mt-6 sticky bottom-4 z-10">
+        <div class="enhanced-card backdrop-blur-lg bg-white/95 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="hidden md:flex items-center text-sm text-gray-600 gap-2">
+                    <i class="fa-regular fa-floppy-disk text-blue-500"></i>
+                    <span class="font-medium">Review changes before saving</span>
+                </div>
+                <div class="flex items-center gap-3 ml-auto">
+                    <a href="{{ url_for('admin.student_manage') }}" 
+                       class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border-2 border-gray-200">
+                        <i class="fa-solid fa-xmark"></i>
+                        Cancel
+                    </a>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                        <i class="fa-solid fa-check"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+</div>
+</div>
+
+<!-- Suspension Modal -->
+<div id="suspendModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop" data-modal-close></div>
+    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
+        <!-- Modal Header with Dynamic Color -->
+        <div id="suspendModalHeader" class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-red-600 to-red-700">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <i id="suspendModalIcon" class="fa-solid fa-user-slash text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white" id="suspendModalTitle">Deactivate Student Account</h3>
+                    <p class="text-sm text-white/90 mt-1.5" id="suspendModalSubtitle">Provide a reason for deactivation. This will be shown to the student on login.</p>
+                </div>
+            </div>
+            <button class="text-white/80 hover:text-white transition p-1 ml-2" data-modal-close aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        
+        <form id="suspendForm" class="px-6 pt-6 pb-6 space-y-5">
+            <input type="hidden" id="suspendStudentId" name="student_id" />
+            <input type="hidden" id="suspendTargetState" name="target_state" />
+            
+            <!-- Warning Banner for Deactivation -->
+            <div id="deactivateWarning" class="flex items-start gap-3 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+                <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-red-900">Critical Action</p>
+                    <p class="text-xs text-red-700 mt-1">This will immediately block the student's access to the system. They will see your reason upon their next login attempt.</p>
+                </div>
+            </div>
+            
+            <div id="suspendReasonGroup" class="space-y-3">
+                <label for="suspendReason" class="label-enhanced flex items-center gap-2 text-gray-700">
+                    <i class="fa-solid fa-message-lines text-amber-500"></i>
+                    Deactivation Reason <span class="text-red-500">*</span>
+                </label>
+                <textarea id="suspendReason" name="reason" rows="4" 
+                          placeholder="Example: Repeated policy violations regarding inappropriate use of the inquiry system."
+                          class="input-enhanced w-full rounded-xl text-sm p-4 resize-none border-2"></textarea>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500 flex items-center gap-1.5">
+                        <i class="fa-solid fa-info-circle"></i>
+                        Minimum 8 characters required
+                    </p>
+                    <span id="reasonCharCount" class="text-xs font-medium text-gray-400">0 / 8</span>
+                </div>
+            </div>
+            
+            <div id="reactivateNotice" class="hidden flex items-start gap-3 p-4 bg-green-50 border-l-4 border-green-500 rounded-r-lg">
+                <i class="fa-solid fa-circle-check text-green-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-green-900">Reactivation Confirmation</p>
+                    <p class="text-xs text-green-700 mt-1">This will restore full system access for the student and clear any previous suspension reason.</p>
+                </div>
+            </div>
+            
+            <div id="suspendFeedback" class="hidden text-sm rounded-lg p-3"></div>
+            
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" 
+                        class="action-button-enhanced px-6 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" 
+                        data-modal-close>
+                    <i class="fa-solid fa-xmark mr-1"></i>
+                    Cancel
+                </button>
+                <button id="suspendSubmitBtn" type="submit" 
+                        class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-lg">
+                    <i class="fa-solid fa-user-slash"></i>
+                    Confirm Deactivation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password Confirmation Modal -->
+<div id="resetPasswordModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop" onclick="closeResetPasswordModal()"></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
+        <!-- Modal Header -->
+        <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-amber-500 to-amber-600">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <i class="fa-solid fa-key text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Reset Password</h3>
+                    <p class="text-sm text-white/90 mt-1">Generate new credentials for student</p>
+                </div>
+            </div>
+            <button class="text-white/80 hover:text-white transition p-1 ml-2" onclick="closeResetPasswordModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="px-6 py-6 space-y-5">
+            <!-- Info Section -->
+            <div class="flex items-start gap-3 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg">
+                <i class="fa-solid fa-circle-info text-amber-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-amber-900">Password Reset Information</p>
+                    <ul class="text-xs text-amber-700 mt-2 space-y-1 list-disc list-inside">
+                        <li>A new 4-digit password will be automatically generated</li>
+                        <li>The student will need to use this new password to log in</li>
+                        <li>You'll need to securely communicate the new password to the student</li>
+                        <li>Student can change their password after logging in</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Student Info -->
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Student Information</p>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-user text-gray-400 text-sm w-4"></i>
+                        <span class="text-sm font-medium text-gray-900">{{ student.user.first_name }} {{ student.user.last_name }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-envelope text-gray-400 text-sm w-4"></i>
+                        <span class="text-sm text-gray-600">{{ student.user.email }}</span>
+                    </div>
+                    {% if student.student_number %}
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-gray-400 text-sm w-4"></i>
+                        <span class="text-sm text-gray-600">{{ student.student_number }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Confirmation Question -->
+            <div class="text-center py-2">
+                <p class="text-sm font-semibold text-gray-700">Are you sure you want to reset this student's password?</p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                <button type="button" 
+                        class="action-button-enhanced px-6 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" 
+                        onclick="closeResetPasswordModal()">
+                    <i class="fa-solid fa-xmark mr-1"></i>
+                    Cancel
+                </button>
+                <button type="button" 
+                        onclick="confirmResetPassword()"
+                        class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg">
+                    <i class="fa-solid fa-rotate"></i>
+                    Reset Password
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unsaved Changes Modal -->
+<div id="unsavedChangesModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop"></div>
+    <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
+        <!-- Modal Header -->
+        <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-orange-500 to-orange-600">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <i class="fa-solid fa-triangle-exclamation text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Unsaved Changes</h3>
+                    <p class="text-sm text-white/90 mt-1">You have pending modifications</p>
+                </div>
+            </div>
+            <button class="text-white/80 hover:text-white transition p-1 ml-2" onclick="closeUnsavedModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="px-6 py-6 space-y-5">
+            <!-- Warning Message -->
+            <div class="flex items-start gap-3 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-r-lg">
+                <i class="fa-solid fa-exclamation-circle text-orange-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-orange-900">Warning</p>
+                    <p class="text-xs text-orange-700 mt-1">You have unsaved changes that will be lost if you proceed. This action cannot be undone.</p>
+                </div>
+            </div>
+            
+            <!-- Changed Fields List -->
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200" id="changedFieldsList">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Modified Fields</p>
+                <div id="changedFieldsContent" class="space-y-2 text-sm text-gray-700">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Action Question -->
+            <div class="text-center py-2">
+                <p class="text-sm font-semibold text-gray-700">Are you sure you want to cancel without saving?</p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                <button type="button" 
+                        class="action-button-enhanced px-5 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" 
+                        onclick="closeUnsavedModal()">
+                    <i class="fa-solid fa-arrow-left mr-1"></i>
+                    Keep Editing
+                </button>
+                <button type="button" 
+                        onclick="discardChanges()"
+                        class="action-button-enhanced inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 shadow-lg">
+                    <i class="fa-solid fa-trash-can"></i>
+                    Discard Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Changes Confirmation Modal -->
+<div id="saveChangesModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity modal-backdrop"></div>
+    <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden modal-panel">
+        <!-- Modal Header -->
+        <div class="px-6 py-5 flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <i class="fa-solid fa-floppy-disk text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Confirm Changes</h3>
+                    <p class="text-sm text-white/90 mt-1">Review and save student information updates</p>
+                </div>
+            </div>
+            <button class="text-white/80 hover:text-white transition p-1 ml-2" onclick="closeSaveModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="px-6 py-6 space-y-5">
+            <!-- Info Banner -->
+            <div class="flex items-start gap-3 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+                <i class="fa-solid fa-circle-info text-blue-600 text-lg mt-0.5"></i>
+                <div>
+                    <p class="text-sm font-semibold text-blue-900">Save Confirmation</p>
+                    <p class="text-xs text-blue-700 mt-1">Please review the changes below before confirming. These updates will be immediately applied to the student's profile.</p>
+                </div>
+            </div>
+            
+            <!-- Changes Summary -->
+            <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 max-h-64 overflow-y-auto">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Changes to be Saved</p>
+                <div id="saveChangesContent" class="space-y-3">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                <button type="button" 
+                        class="action-button-enhanced px-6 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-200" 
+                        onclick="closeSaveModal()">
+                    <i class="fa-solid fa-xmark mr-1"></i>
+                    Cancel
+                </button>
+                <button type="button" 
+                        onclick="confirmSaveChanges()"
+                        class="action-button-enhanced inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg">
+                    <i class="fa-solid fa-check"></i>
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/admin/view_student.js"></script>
+<script>
+// Enhanced Page Loading Screen Management
+(function() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    
+    // Minimum display time for smooth UX (prevents flash)
+    const MIN_LOADING_TIME = 600;
+    const startTime = Date.now();
+    
+    function hideLoadingScreen() {
+        const elapsed = Date.now() - startTime;
+        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
+        
+        setTimeout(function() {
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+            }
+        }, remainingTime);
+    }
+    
+    // Hide loading screen once page is fully loaded
+    if (document.readyState === 'complete') {
+        hideLoadingScreen();
+    } else {
+        window.addEventListener('load', hideLoadingScreen);
+    }
+    
+    // Fallback: Hide after DOMContentLoaded if load event takes too long
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Give load event a chance, but set a maximum timeout
+            setTimeout(function() {
+                if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+                    hideLoadingScreen();
+                }
+            }, 2000);
+        });
+    }
+})();
+
+// Enhanced Modal Management System
+(function(){
+    // Original form values for change detection
+    const originalFormData = {};
+    const form = document.querySelector('form[method="POST"]');
+    
+    // Store original values on page load
+    if (form) {
+        const formInputs = form.querySelectorAll('input[type="text"], input[type="email"], select, textarea');
+        formInputs.forEach(input => {
+            originalFormData[input.name] = input.value;
+        });
+    }
+    
+    // Function to detect changes
+    function hasUnsavedChanges() {
+        if (!form) return false;
+        const formInputs = form.querySelectorAll('input[type="text"], input[type="email"], select, textarea');
+        for (let input of formInputs) {
+            if (input.name && originalFormData[input.name] !== input.value) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Function to get changed fields
+    function getChangedFields() {
+        const changes = [];
+        if (!form) return changes;
+        
+        const fieldLabels = {
+            'first_name': 'First Name',
+            'middle_name': 'Middle Name',
+            'last_name': 'Last Name',
+            'email': 'Email Address',
+            'student_number': 'Student Number',
+            'department_id': 'Department',
+            'year_level': 'Year Level',
+            'section': 'Section'
+        };
+        
+        const formInputs = form.querySelectorAll('input[type="text"], input[type="email"], select, textarea');
+        formInputs.forEach(input => {
+            if (input.name && originalFormData[input.name] !== input.value) {
+                const oldVal = originalFormData[input.name] || '(empty)';
+                const newVal = input.value || '(empty)';
+                changes.push({
+                    field: fieldLabels[input.name] || input.name,
+                    oldValue: oldVal,
+                    newValue: newVal
+                });
+            }
+        });
+        return changes;
+    }
+    
+    // Suspension Modal Logic
+    const modal = document.getElementById('suspendModal');
+    if (modal) {
+        const suspendForm = document.getElementById('suspendForm');
+        const idInput = document.getElementById('suspendStudentId');
+        const targetStateInput = document.getElementById('suspendTargetState');
+        const reasonArea = document.getElementById('suspendReason');
+        const reasonGroup = document.getElementById('suspendReasonGroup');
+        const reactivateNotice = document.getElementById('reactivateNotice');
+        const deactivateWarning = document.getElementById('deactivateWarning');
+        const titleEl = document.getElementById('suspendModalTitle');
+        const subtitleEl = document.getElementById('suspendModalSubtitle');
+        const submitBtn = document.getElementById('suspendSubmitBtn');
+        const feedback = document.getElementById('suspendFeedback');
+        const modalHeader = document.getElementById('suspendModalHeader');
+        const modalIcon = document.getElementById('suspendModalIcon');
+        const charCount = document.getElementById('reasonCharCount');
+        
+        // Character counter for reason
+        if (reasonArea && charCount) {
+            reasonArea.addEventListener('input', function() {
+                const len = this.value.length;
+                charCount.textContent = `${len} / 8`;
+                if (len >= 8) {
+                    charCount.classList.remove('text-gray-400');
+                    charCount.classList.add('text-green-600', 'font-semibold');
+                } else {
+                    charCount.classList.remove('text-green-600', 'font-semibold');
+                    charCount.classList.add('text-gray-400');
+                }
+            });
+        }
+        
+        document.addEventListener('click', (e)=>{
+            const trigger = e.target.closest('.open-suspend-modal');
+            if (trigger) {
+                const sid = parseInt(trigger.getAttribute('data-student-id'),10);
+                const active = trigger.getAttribute('data-current-active') === '1';
+                const name = trigger.getAttribute('data-student-name') || 'this student';
+                idInput.value = sid;
+                
+                if (active) {
+                    // Deactivation Mode
+                    targetStateInput.value = '0';
+                    titleEl.textContent = 'Deactivate Student Account';
+                    subtitleEl.textContent = `Provide a reason for deactivation. This will be shown to ${name.split(' ')[0]} on next login.`;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-user-slash"></i> Confirm Deactivation';
+                    submitBtn.classList.remove('bg-blue-600','hover:bg-blue-700', 'bg-green-600', 'hover:bg-green-700');
+                    submitBtn.classList.add('bg-red-600','hover:bg-red-700');
+                    modalHeader.classList.remove('from-green-600', 'to-green-700', 'from-blue-600', 'to-blue-700');
+                    modalHeader.classList.add('from-red-600', 'to-red-700');
+                    modalIcon.classList.remove('fa-user-check');
+                    modalIcon.classList.add('fa-user-slash');
+                    reasonGroup.classList.remove('hidden');
+                    deactivateWarning.classList.remove('hidden');
+                    reactivateNotice.classList.add('hidden');
+                    reasonArea.value='';
+                    if (charCount) charCount.textContent = '0 / 8';
+                } else {
+                    // Reactivation Mode
+                    targetStateInput.value = '1';
+                    titleEl.textContent = 'Reactivate Student Account';
+                    subtitleEl.textContent = `Re-enable full system access for ${name}.`;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> Confirm Reactivation';
+                    submitBtn.classList.remove('bg-red-600','hover:bg-red-700', 'bg-blue-600', 'to-blue-700');
+                    submitBtn.classList.add('bg-green-600','hover:bg-green-700');
+                    modalHeader.classList.remove('from-red-600', 'to-red-700', 'from-blue-600', 'to-blue-700');
+                    modalHeader.classList.add('from-green-600', 'to-green-700');
+                    modalIcon.classList.remove('fa-user-slash');
+                    modalIcon.classList.add('fa-user-check');
+                    reasonGroup.classList.add('hidden');
+                    deactivateWarning.classList.add('hidden');
+                    reactivateNotice.classList.remove('hidden');
+                }
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        });
+        
+        suspendForm.addEventListener('submit', function(ev){
+            ev.preventDefault();
+            feedback.classList.remove('hidden');
+            feedback.className = 'text-sm rounded-lg p-3';
+            const sid = parseInt(idInput.value,10);
+            const targetActive = targetStateInput.value === '1';
+            let reason = reasonArea.value.trim();
+            if (!targetActive && reason.length < 8) {
+                feedback.textContent = 'Please provide a reason of at least 8 characters.';
+                feedback.classList.add('text-red-600', 'bg-red-50', 'border', 'border-red-200');
+                return;
+            }
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60','cursor-not-allowed');
+            feedback.textContent = targetActive ? 'Reactivating account...' : 'Deactivating account...';
+            feedback.classList.remove('text-red-600', 'bg-red-50', 'border-red-200');
+            feedback.classList.add('text-blue-600', 'bg-blue-50', 'border', 'border-blue-200');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            fetch('/admin/toggle_student_status', {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json','X-CSRFToken': csrfToken },
+                body: JSON.stringify({ student_id: sid, is_active: targetActive, reason })
+            }).then(r=>r.json()).then(data=>{
+                if (data.success) {
+                    feedback.textContent = targetActive ? 'Account reactivated successfully!' : 'Account deactivated successfully.';
+                    feedback.classList.remove('text-blue-600', 'bg-blue-50', 'border-blue-200');
+                    feedback.classList.add('text-green-600', 'bg-green-50', 'border', 'border-green-200');
+                    setTimeout(()=>{ window.location.reload(); }, 800);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+                    feedback.textContent = data.message || 'Operation failed.';
+                    feedback.classList.remove('text-blue-600', 'bg-blue-50', 'border-blue-200');
+                    feedback.classList.add('text-red-600', 'bg-red-50', 'border', 'border-red-200');
+                }
+            }).catch(err=>{
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+                feedback.textContent = 'Unexpected error. Please try again.';
+                feedback.classList.remove('text-blue-600', 'bg-blue-50', 'border-blue-200');
+                feedback.classList.add('text-red-600', 'bg-red-50', 'border', 'border-red-200');
+            });
+        });
+    }
+    
+    // Reset Password Modal Functions
+    window.openResetPasswordModal = function() {
+        const resetModal = document.getElementById('resetPasswordModal');
+        if (resetModal) {
+            resetModal.classList.remove('hidden');
+            resetModal.classList.add('flex');
+        }
+    };
+    
+    window.closeResetPasswordModal = function() {
+        const resetModal = document.getElementById('resetPasswordModal');
+        if (resetModal) {
+            resetModal.classList.add('hidden');
+            resetModal.classList.remove('flex');
+        }
+    };
+    
+    window.confirmResetPassword = function() {
+        const mainForm = document.querySelector('form[method="POST"]');
+        if (mainForm) {
+            // Create hidden input for reset password
+            const resetInput = document.createElement('input');
+            resetInput.type = 'hidden';
+            resetInput.name = 'reset_password';
+            resetInput.value = '1';
+            mainForm.appendChild(resetInput);
+            mainForm.submit();
+        }
+    };
+    
+    // Attach event listener to reset password button
+    const resetPasswordBtn = document.querySelector('button[name="reset_password_btn"]');
+    if (resetPasswordBtn) {
+        resetPasswordBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openResetPasswordModal();
+        });
+    }
+    
+    // Unsaved Changes Modal Functions
+    window.openUnsavedModal = function() {
+        const unsavedModal = document.getElementById('unsavedChangesModal');
+        const changedFieldsContent = document.getElementById('changedFieldsContent');
+        
+        if (unsavedModal && changedFieldsContent) {
+            const changes = getChangedFields();
+            changedFieldsContent.innerHTML = '';
+            
+            if (changes.length === 0) {
+                changedFieldsContent.innerHTML = '<p class="text-gray-500 italic">No changes detected</p>';
+            } else {
+                changes.forEach(change => {
+                    const changeItem = document.createElement('div');
+                    changeItem.className = 'flex items-start gap-2 pb-2 border-b border-gray-200 last:border-0';
+                    changeItem.innerHTML = `
+                        <i class="fa-solid fa-arrow-right text-orange-500 text-xs mt-1"></i>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-700 text-xs">${change.field}</p>
+                            <p class="text-xs text-gray-500 line-through">${change.oldValue}</p>
+                            <p class="text-xs text-gray-900 font-medium">${change.newValue}</p>
+                        </div>
+                    `;
+                    changedFieldsContent.appendChild(changeItem);
+                });
+            }
+            
+            unsavedModal.classList.remove('hidden');
+            unsavedModal.classList.add('flex');
+        }
+    };
+    
+    window.closeUnsavedModal = function() {
+        const unsavedModal = document.getElementById('unsavedChangesModal');
+        if (unsavedModal) {
+            unsavedModal.classList.add('hidden');
+            unsavedModal.classList.remove('flex');
+        }
+    };
+    
+    window.discardChanges = function() {
+        window.location.href = "{{ url_for('admin.student_manage') }}";
+    };
+    
+    // Save Changes Modal Functions
+    window.openSaveModal = function() {
+        const saveModal = document.getElementById('saveChangesModal');
+        const saveChangesContent = document.getElementById('saveChangesContent');
+        
+        if (saveModal && saveChangesContent) {
+            const changes = getChangedFields();
+            saveChangesContent.innerHTML = '';
+            
+            if (changes.length === 0) {
+                saveChangesContent.innerHTML = '<p class="text-gray-500 italic text-center py-4">No changes to save</p>';
+            } else {
+                changes.forEach(change => {
+                    const changeItem = document.createElement('div');
+                    changeItem.className = 'bg-white p-3 rounded-lg border border-gray-200';
+                    changeItem.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="font-semibold text-gray-800 text-sm">${change.field}</p>
+                            <i class="fa-solid fa-pen-to-square text-blue-500 text-sm"></i>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-gray-400 line-through flex-1">${change.oldValue}</span>
+                            <i class="fa-solid fa-arrow-right text-blue-500"></i>
+                            <span class="text-blue-700 font-semibold flex-1">${change.newValue}</span>
+                        </div>
+                    `;
+                    saveChangesContent.appendChild(changeItem);
+                });
+            }
+            
+            saveModal.classList.remove('hidden');
+            saveModal.classList.add('flex');
+        }
+    };
+    
+    window.closeSaveModal = function() {
+        const saveModal = document.getElementById('saveChangesModal');
+        if (saveModal) {
+            saveModal.classList.add('hidden');
+            saveModal.classList.remove('flex');
+        }
+    };
+    
+    window.confirmSaveChanges = function() {
+        const mainForm = document.querySelector('form[method="POST"]');
+        if (mainForm) {
+            mainForm.submit();
+        }
+    };
+    
+    // Intercept Cancel button to check for unsaved changes
+    const cancelBtn = document.querySelector('a[href*="student_manage"]');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function(e) {
+            if (hasUnsavedChanges()) {
+                e.preventDefault();
+                openUnsavedModal();
+            }
+        });
+    }
+    
+    // Intercept form submission to show save confirmation
+    const saveBtn = document.querySelector('button[type="submit"]:not([name="reset_password"])');
+    const mainForm = document.querySelector('form[method="POST"]');
+    if (saveBtn && mainForm) {
+        saveBtn.addEventListener('click', function(e) {
+            if (hasUnsavedChanges() && !mainForm.hasAttribute('data-confirmed')) {
+                e.preventDefault();
+                openSaveModal();
+            }
+        });
+    }
+    
+})();
+</script>
+<script>
+// Attach fallback handler for avatar images without using inline JS
+(function(){
+    function attachFallback(img){
+        if (!img || !img.dataset || !img.dataset.fallback) return;
+        const fallback = img.dataset.fallback;
+        img.addEventListener('error', function handler(){
+            img.removeEventListener('error', handler);
+            if (img.src !== fallback) {
+                img.src = fallback;
+            }
+        });
+        function swapIfBroken() {
+            const src = img.currentSrc || img.src;
+            if (!src) return;
+            if (img.complete && img.naturalWidth === 0) {
+                if (img.src !== fallback) img.src = fallback;
+                return;
+            }
+            if (typeof img.decode === 'function') {
+                img.decode().catch(function(){
+                    if (img.src !== fallback) img.src = fallback;
+                });
+            } else {
+                const probe = new Image();
+                probe.onload = function() {};
+                probe.onerror = function() {
+                    if (img.src !== fallback) img.src = fallback;
+                };
+                probe.src = src;
+            }
+        }
+        swapIfBroken();
+        setTimeout(swapIfBroken, 800);
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('img.avatar-img[data-fallback]')
+            .forEach(attachFallback);
+    });
+})();
+</script>
+<script>
+    (function(){
+        const btn = document.getElementById('toggle-student-status-btn');
+        if (btn) {
+            btn.addEventListener('click', function(e){
+                e.preventDefault();
+                const id = parseInt(btn.getAttribute('data-student-id'), 10);
+                const next = parseInt(btn.getAttribute('data-next-status'), 10);
+                if (!Number.isNaN(id) && !Number.isNaN(next) && typeof window.toggleStudentStatus === 'function') {
+                    window.toggleStudentStatus(id, next);
+                }
+            });
+        }
+    })();
+</script>
+<script>
+    // Section options are A–E only.
+</script>
+{% endblock %}

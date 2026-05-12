@@ -1,0 +1,18 @@
+[Unit]
+Description=PiyuGuide Flask-SocketIO (Gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/piyuguide
+EnvironmentFile=/etc/piyuguide.env
+ExecStart=/opt/piyuguide/venv/bin/gunicorn --config /opt/piyuguide/gunicorn.conf.py "app:create_app()"
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

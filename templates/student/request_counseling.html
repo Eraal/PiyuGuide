@@ -1,0 +1,1657 @@
+{% extends "student/student_base.html" %} {% block title %}Request Counseling
+Session - KapiyuGuide{% endblock %} {% block extra_head %}
+<style>
+  /* ==========================================================
+     Redesigned Counseling Request Wizard
+     Goals: full-screen utilization, reduced vertical scroll,
+     clearer hierarchy, modern minimalist aesthetic.
+     ========================================================== */
+
+  /* Root layout inside base container */
+  .wizard-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+    margin: 0 auto;
+    max-width: 1600px;
+  }
+
+  /* Full-height responsive grid (>=1280px) */
+  @media (min-width: 1280px) {
+    .wizard-shell {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      align-items: start;
+      gap: 2rem;
+      min-height: calc(100vh - 11rem); /* accounts for header + base padding */
+    }
+  }
+
+  /* Sidebar */
+  .wizard-sidebar {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);
+    border-radius: 1rem;
+    padding: 1.5rem 1.5rem 2rem;
+    color: #fff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  @media (min-width: 1280px) {
+    .wizard-sidebar { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    .wizard-sidebar::-webkit-scrollbar { width: 6px; }
+    .wizard-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+  }
+
+  .sidebar-header h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.2; }
+  .sidebar-header p { font-size: .75rem; opacity: .8; margin-top: .35rem; }
+
+  /* Stepper */
+  .step-indicator { display: flex; justify-content: space-between; gap: .75rem; }
+  .step-indicator.compact { gap: .5rem; }
+  @media (min-width:1280px){
+    .step-indicator { flex-direction: column; align-items: flex-start; }
+    .step { flex-direction: row; align-items: center; width: 100%; }
+    .step-number { margin-bottom: 0; margin-right: .75rem; }
+    .progress-line { display: none; }
+  }
+
+  /* Help accordion (native <details>) */
+  .help-accordion { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.15); border-radius: .75rem; padding: .75rem 1rem; }
+  .help-accordion + .help-accordion { margin-top: .75rem; }
+  .help-accordion[open] { backdrop-filter: blur(8px); }
+  .help-accordion summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; font-weight: 500; }
+  .help-accordion summary::-webkit-details-marker { display: none; }
+  .help-accordion p { font-size: .7rem; line-height: 1.05rem; margin-top: .5rem; opacity: .9; }
+
+  /* Main content panel */
+  .wizard-main { display: flex; flex-direction: column; gap: 1.25rem; min-height: 100%; }
+  .panel-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 1rem; box-shadow: 0 4px 16px -4px rgba(0,0,0,.06), 0 2px 6px -2px rgba(0,0,0,.05); display: flex; flex-direction: column; min-height: 0; }
+  .panel-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #f1f5f9; background: linear-gradient(90deg,#f8fafc,#f1f5f9); }
+  .panel-header h2 { font-size: 1.15rem; font-weight: 600; display: flex; align-items:center; gap:.75rem; }
+  .panel-body { padding: 1.25rem 1.5rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; overflow: hidden; }
+  .form-scroll { overflow-y: auto; padding-right: .5rem; scrollbar-width: thin; flex:1; }
+  .form-scroll::-webkit-scrollbar { width: 8px; }
+  .form-scroll::-webkit-scrollbar-track { background: transparent; }
+  .form-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+  @media (min-width:1280px){ .panel-card { height: calc(100vh - 11rem); } }
+
+  /* Condensed hero banner (moves inside panel) */
+  .hero-mini { position: relative; border-radius: .85rem; padding: 1.5rem 1.5rem 1.25rem; background: linear-gradient(135deg,#1e3a8a 0%,#2563eb 55%,#059669 100%); color:#fff; overflow: hidden; display:flex; flex-direction:column; gap:.75rem; }
+  .hero-mini:after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 25% 25%, rgba(255,255,255,.18), transparent 60%); pointer-events:none; }
+  .hero-badges { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .hero-badge { font-size:.65rem; letter-spacing:.05em; background:rgba(255,255,255,.15); padding:.35rem .65rem; border-radius:9999px; backdrop-filter:blur(6px); font-weight:500; display:inline-flex; align-items:center; }
+
+  /* Reuse / refine existing original styles below (trimmed) */
+  .full-width-container { width: 100%; max-width: 100%; }
+  .main-panel { flex:1; }
+
+  /* Office info panel */
+  /* Legacy help-card removed in favor of accordion */
+
+  /* Form styling */
+  .form-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .form-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .form-section-title i {
+    margin-right: 0.75rem;
+    color: #3b82f6;
+  }
+
+  /* Input styling */
+  .input-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .input-field[disabled] {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+  }
+
+  /* Session type selection cards */
+  .session-type-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .session-type-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background-color: white;
+  }
+
+  .session-type-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .session-type-card.selected {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+
+  .session-type-card.selected::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  }
+
+  .session-type-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f9fafb;
+  }
+
+  .session-type-card h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .session-type-card h4 i {
+    margin-right: 0.75rem;
+  }
+
+  .session-type-card p {
+    color: #4b5563;
+    font-size: 0.875rem;
+  }
+
+  .session-type-badge {
+    display: inline-block;
+    background-color: #dbeafe;
+    color: #1e40af;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    margin-top: 0.75rem;
+  }
+
+  /* Date and time picker styling */
+  .date-time-grid { display:grid; grid-template-columns: 360px 1fr; gap:1rem; }
+  @media (max-width: 1024px){ .date-time-grid { grid-template-columns: 1fr; } }
+  .calendar-card { border:1px solid #e5e7eb; border-radius:.75rem; overflow:hidden; background:#fff; }
+  .calendar-header { display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; background:linear-gradient(90deg,#f8fafc,#f1f5f9); border-bottom:1px solid #f1f5f9; }
+  .calendar-title { font-weight:600; color:#111827; }
+  .cal-nav { display:flex; gap:.5rem; }
+  .cal-btn { border:1px solid #d1d5db; background:#fff; border-radius:.5rem; padding:.4rem .6rem; font-size:.875rem; color:#374151; }
+  .cal-btn:hover { background:#f9fafb; }
+  .calendar-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:.25rem; padding: .75rem; }
+  .cal-weekday { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; text-align:center; padding:.25rem 0; }
+  .cal-day { position:relative; aspect-ratio: 1/1; border-radius:.5rem; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:500; color:#111827; }
+  .cal-day.out { color:#9ca3af; cursor:default; }
+  .cal-day.today { outline:2px solid #60a5fa; outline-offset: -2px; }
+  .cal-day.selected { background:#eff6ff; border:1px solid #bfdbfe; }
+  .slots-card { border:1px solid #e5e7eb; border-radius:.75rem; background:#fff; }
+  .slots-header { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; }
+  .slots-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap:.5rem; padding: .75rem; max-height: 360px; overflow:auto; }
+  .slot { border:1px solid #e5e7eb; border-radius:.5rem; padding:.5rem .6rem; text-align:center; font-size:.9rem; cursor:pointer; background:#fff; transition:.2s; }
+  .slot:hover { border-color:#93c5fd; box-shadow:0 2px 6px -2px rgba(59,130,246,.25); transform: translateY(-1px); }
+  .slot.booked { background:#f3f4f6; color:#9ca3af; border-color:#e5e7eb; cursor:not-allowed; }
+  .slot.past { background:#f9fafb; color:#9ca3af; border-style:dashed; cursor:not-allowed; }
+  .slot.selected { background:#dbeafe; border-color:#60a5fa; color:#1e3a8a; box-shadow:0 0 0 2px rgba(59,130,246,.25) inset; }
+  .legend { display:flex; gap:.5rem; align-items:center; }
+  .legend span { display:inline-flex; align-items:center; gap:.35rem; font-size:.75rem; color:#6b7280; }
+  .legend .dot { width:10px; height:10px; border-radius:3px; display:inline-block; }
+
+  /* Button styles */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-secondary {
+    background-color: #f9fafb;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+  }
+
+  .btn-secondary:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+  }
+
+  /* Glowing accent */
+  .glow-bg::after {
+    content: "";
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: rgba(59, 130, 246, 0.4);
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    right: -40px;
+    top: -40px;
+  }
+
+  /* Badge styles */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-green {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .badge i {
+    margin-right: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  /* Multi-step form styling */
+  .step-container {
+    position: relative;
+    margin-bottom: 2rem;
+  }
+
+  .step-indicator { margin-bottom: 1.5rem; position: relative; z-index:1; }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+    opacity: 0.7;
+  }
+
+  .step.active {
+    opacity: 1;
+  }
+
+  .step.completed {
+    opacity: 1;
+  }
+
+  .step-number {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .step.active .step-number {
+    background-color: #3b82f6;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+
+  .step.completed .step-number {
+    background-color: #10b981;
+    color: white;
+  }
+
+  .step-title {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  .step.active .step-title {
+    color: #1f2937;
+    font-weight: 500;
+  }
+
+  .step.completed .step-title {
+    color: #10b981;
+    font-weight: 500;
+  }
+
+  .progress-line { position:absolute; top:1.25rem; left:0; width:100%; height:2px; background:#e5e7eb; z-index:0; }
+
+  .progress-line-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #10b981;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  /* Form step content */
+  .form-step {
+    display: none;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .form-step.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Office card selection */
+  .office-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .office-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Truncated description with expand/collapse */
+  .office-desc { position: relative; }
+  .office-desc.clamped { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .office-desc.expanded { display: block; }
+  .office-desc-toggle { background: none; border: none; color: #2563eb; padding: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; align-self: flex-start; }
+  .office-desc-toggle:hover { text-decoration: underline; }
+
+  .office-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .office-card.selected {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+
+  .office-card.selected::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  }
+
+  .office-card-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background-color: #dbeafe;
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .office-card h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #111827;
+  }
+
+  .office-card p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    flex-grow: 1;
+    margin-bottom: 1rem;
+  }
+
+  .office-card-check {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background-color: #3b82f6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0);
+    transition: transform 0.3s ease;
+  }
+
+  .office-card.selected .office-card-check {
+    transform: scale(1);
+  }
+
+  .office-supports-video {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .office-supports-video i {
+    margin-right: 0.35rem;
+  }
+
+  /* Concern type cards — match office card interactions */
+  .concern-type-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  }
+  .concern-type-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+  .concern-type-card.selected { border-color: #3b82f6; background-color: rgba(59,130,246,0.05); }
+  .concern-type-card.selected::before { content:""; position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .concern-type-card .check-icon { position:absolute; top:0.75rem; right:0.75rem; width:1.5rem; height:1.5rem; border-radius:50%; background-color:#3b82f6; color:#fff; border:none; display:flex; align-items:center; justify-content:center; transform: scale(0); transition: transform 0.3s ease; }
+  .concern-type-card.selected .check-icon { transform: scale(1); }
+
+  /* Form navigation buttons */
+  .form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+  }
+
+  .btn-next,
+  .btn-prev,
+  .btn-submit {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-next:after,
+  .btn-submit:after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: -100%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0)
+    );
+    transition: left 0.5s ease;
+  }
+
+  .btn-next:hover:after,
+  .btn-submit:hover:after {
+    left: 100%;
+  }
+
+  /* Error messages */
+  .error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .error-message.visible {
+    display: block;
+    animation: shake 0.5s ease;
+  }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20%,
+    60% {
+      transform: translateX(-5px);
+    }
+    40%,
+    80% {
+      transform: translateX(5px);
+    }
+  }
+
+  /* Loading state */
+  .loading {
+    position: relative;
+  }
+
+  .loading:after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 50%;
+    margin-top: -0.5rem;
+    margin-left: -0.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="full-width-container px-2 sm:px-4 xl:px-0">
+  <span id="cOfficesCount" data-count="{{ counseling_offices_count|default(0) }}" class="hidden"></span>
+  <div class="wizard-shell">
+    <!-- Sidebar (progress + help) -->
+    <aside class="wizard-sidebar hidden xl:flex">
+      <div class="sidebar-header">
+        <h1 class="flex items-center gap-2"><i class="fas fa-calendar-check text-white/90"></i><span>Request Session</span></h1>
+  <p>5 quick steps. Edit any selection before submitting.</p>
+      </div>
+      <!-- Step Indicator reused -->
+      <div class="step-container mt-1">
+        <div class="step-indicator compact">
+          <div class="step active" data-step="1">
+            <div class="step-number">1</div><div class="step-title">Office</div>
+          </div>
+          <div class="step" data-step="2">
+            <div class="step-number">2</div><div class="step-title">Concern</div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="step-number">3</div><div class="step-title">Type</div>
+          </div>
+          <div class="step" data-step="4">
+            <div class="step-number">4</div><div class="step-title">Schedule</div>
+          </div>
+          <div class="step" data-step="5">
+            <div class="step-number">5</div><div class="step-title">Review</div>
+          </div>
+        </div>
+      </div>
+      <!-- Contextual mini summary (appears after office selection) -->
+      <div id="selectedOfficeBarSidebar" class="selected-office-bar hidden rounded-lg border border-white/20 bg-white/10 px-3 py-3 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <div class="sel-office-initials w-9 h-9 rounded-md bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm"></div>
+          <div>
+            <p class="sel-office-name font-medium leading-tight text-white"></p>
+            <p class="sel-office-meta text-[10px] uppercase tracking-wide text-white/70"></p>
+          </div>
+        </div>
+  <button type="button" class="change-office-btn font-medium text-white/80 hover:text-white transition-colors">Edit</button>
+      </div>
+      <!-- Help Accordions -->
+      <details class="help-accordion" open>
+        <summary><i class="fas fa-info-circle"></i><span>About Counseling</span></summary>
+        <p>Counseling is a confidential 1:1 space to discuss personal, academic, or emotional concerns with trained staff.</p>
+      </details>
+      <!-- <details class="help-accordion">
+        <summary><i class="fas fa-video"></i><span>Video Sessions</span></summary>
+        <p>Eligible offices enable secure video meetings through your browser. Choose Video if shown as available.</p>
+      </details> -->
+      <!-- <details class="help-accordion">
+        <summary><i class="fas fa-clock"></i><span>Scheduling</span></summary>
+        <p>Request up to 30 days ahead. You’ll be notified if the office confirms or adjusts your preferred time.</p>
+      </details> -->
+    </aside>
+
+    <!-- Main Column -->
+    <div class="wizard-main">
+      <!-- Back link small -->
+      <div class="flex items-center justify-between xl:hidden">
+        <a href="{{ url_for('student.counseling_dashboard') }}" class="student-breadcrumb"><i class="fas fa-arrow-left"></i>Back to My Counseling</a>
+        <div class="flex gap-1 hero-badges text-[10px]">
+          <span class="hero-badge"><i class="fas fa-building mr-1"></i>{{ counseling_offices_count }} Offices</span>
+          <span class="hero-badge"><i class="fas fa-user-shield mr-1"></i>Secure</span>
+          <span class="hero-badge"><i class="fas fa-clock mr-1"></i>30 Days Ahead</span>
+        </div>
+      </div>
+      <div class="panel-card form-container">
+        <div class="panel-header">
+          <div class="hero-mini hidden xl:flex">
+            <div>
+              <h2 class="text-lg font-semibold tracking-tight flex items-center gap-2"><span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow"><i class="fas fa-headset"></i></span> Schedule Your Counseling Session</h2>
+              <p class="text-xs text-white/80 mt-2 max-w-2xl">Choose an office, pick how to meet, then request your preferred date & time. Adjust any step before submission.</p>
+              <div class="hero-badges mt-3">
+                <span class="hero-badge"><i class="fas fa-building mr-1"></i>{{ counseling_offices_count }} Offices</span>
+                <span class="hero-badge"><i class="fas fa-user-shield mr-1"></i>Confidential</span>
+                <span class="hero-badge"><i class="fas fa-clock mr-1"></i>30 Days</span>
+              </div>
+            </div>
+          </div>
+          <div class="xl:hidden flex flex-col gap-1">
+            <h2 class="text-base font-semibold flex items-center gap-2"><span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow"><i class="fas fa-headset text-sm"></i></span> Request a Counseling Session</h2>
+            <!-- Mobile step indicator -->
+            <div class="step-container mb-0">
+              <div class="step-indicator">
+                <div class="step active" data-step="1"><div class="step-number">1</div><div class="step-title">Office</div></div>
+                <div class="step" data-step="2"><div class="step-number">2</div><div class="step-title">Concern</div></div>
+                <div class="step" data-step="3"><div class="step-number">3</div><div class="step-title">Type</div></div>
+                <div class="step" data-step="4"><div class="step-number">4</div><div class="step-title">Schedule</div></div>
+                <div class="step" data-step="5"><div class="step-number">5</div><div class="step-title">Review</div></div>
+              </div>
+              <div class="progress-line"><div class="progress-line-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <!-- Desktop only separate progress line below hero (kept for JS width updates) -->
+          <div class="hidden xl:block">
+            <div class="progress-line"><div class="progress-line-fill" style="width:0%"></div></div>
+          </div>
+          <!-- Selected office summary (mobile) -->
+          <div id="selectedOfficeBarMobile" class="selected-office-bar hidden xl:hidden mb-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="sel-office-initials w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-semibold"></div>
+              <div>
+                <p class="sel-office-name text-sm font-medium text-indigo-900"></p>
+                <p class="sel-office-meta text-xs text-indigo-600"></p>
+              </div>
+            </div>
+            <button type="button" class="change-office-btn text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors">Change</button>
+          </div>
+
+          <div class="form-scroll">
+            <form
+              id="counselingForm"
+              action="{{ url_for('student.schedule_session') }}"
+              method="POST"
+              class="space-y-2"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" id="selected_office_id" name="office_id" value="" />
+              <input type="hidden" id="is_video_session" name="is_video" value="false" />
+              <input type="hidden" id="nature_of_concern_id" name="nature_of_concern_id" value="" />
+
+              <!-- Step 1: Office Selection -->
+              <div class="form-step active" id="step-1">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-building"></i> Select an Office
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Choose which office you'd like to schedule your counseling
+                  session with
+                </p>
+
+                <div class="office-grid">
+                  {% for office in offices %}
+                  {% if office.counseling_sessions is defined %}
+                  <div
+                    class="office-card"
+                    data-office-id="{{ office.id }}"
+                    data-supports-video="{{ office.supports_video|lower }}"
+                  >
+                    <div class="office-card-icon">
+                      <i class="fas fa-building"></i>
+                    </div>
+                    <h4>{{ office.name }}</h4>
+                    <p class="office-desc clamped">{{ office.description }}</p>
+                    <button type="button" class="office-desc-toggle" style="display:none" aria-expanded="false">Read more</button>
+                    {% if office.supports_video %}
+                    <div class="office-supports-video">
+                      <i class="fas fa-video"></i> Video Available
+                    </div>
+                    {% endif %}
+                    <div class="office-card-check">
+                      <i class="fas fa-check"></i>
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% endfor %}
+                </div>
+                {% if counseling_offices_count == 0 %}
+                <div class="bg-yellow-50 text-yellow-700 p-4 rounded-md mt-3">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <i class="fas fa-exclamation-circle text-yellow-500"></i>
+                    </div>
+                    <div class="ml-3">
+                      <h3 class="text-sm font-medium">
+                        No counseling offices available
+                      </h3>
+                      <p class="mt-2 text-sm">
+                        There are currently no offices that provide counseling
+                        services. Please check back later or contact the
+                        university administration.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+                <div class="error-message" id="office-error">
+                  Please select an office to continue
+                </div>
+              </div>
+
+                <div class="form-navigation">
+                  <div></div>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-1" {% if counseling_offices_count == 0 %}disabled{% endif %}>
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 2: Nature of Concern -->
+              <div class="form-step" id="step-2">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-question-circle"></i> Nature of Concern
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Select the primary concern you want to discuss. This helps counselors prepare and route your request appropriately.
+                </p>
+                <div class="grid md:grid-cols-2 gap-4" id="concernTypeGrid">
+                  {% for ct in concern_types %}
+                  {% set office_ids = concern_type_office_map.get(ct.id, []) %}
+                  <div class="concern-type-card" data-concern-id="{{ ct.id }}" data-supporting-offices="{{ office_ids|join(',') }}" data-allows-other="{{ 'true' if ct.allows_other else 'false' }}">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <p class="font-medium text-gray-800 text-sm">{{ ct.name }}</p>
+                        {% if ct.description %}<p class="text-[11px] text-gray-500 mt-1 leading-snug line-clamp-3">{{ ct.description }}</p>{% endif %}
+                      </div>
+                      <div class="check-icon" aria-hidden="true"><i class="fas fa-check"></i></div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="error-message" id="concern-error">Please select a concern type</div>
+                <div id="otherConcernWrapper" class="mt-4 hidden">
+                  <label class="input-label" for="nature_of_concern_description">Describe Your Concern</label>
+                  <textarea id="nature_of_concern_description" name="nature_of_concern_description" rows="3" class="input-field" placeholder="Provide a brief description..."></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Required for concern types that allow additional details.</p>
+                  <div class="error-message" id="concern-desc-error">Please provide a short description (at least 10 characters)</div>
+                </div>
+              </div>
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-2-office">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-2">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 3: Session Type -->
+              <div class="form-step" id="step-3">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-handshake"></i> Session Type
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Choose how you would like to meet with the counselor
+                </p>
+
+                <div class="session-type-container">
+                  <!-- In-person session card -->
+                  <label class="session-type-card selected" id="inPersonCard">
+                    <input
+                      type="radio"
+                      name="session_type"
+                      value="false"
+                      class="hidden"
+                      checked
+                    />
+                    <h4><i class="fas fa-user"></i> In-Person Session</h4>
+                    <p>
+                      Meet face-to-face with a counselor at their office
+                      location
+                    </p>
+                    <span class="session-type-badge">
+                      <i class="fas fa-map-marker-alt"></i> On Campus
+                    </span>
+                  </label>
+
+                  <!-- Video session card -->
+                  <label class="session-type-card disabled" id="videoCard">
+                    <input
+                      type="radio"
+                      name="session_type"
+                      value="true"
+                      class="hidden"
+                      disabled
+                    />
+                    <h4><i class="fas fa-video"></i> Video Session</h4>
+                    <p>Meet virtually through a secure video platform</p>
+                    <span class="session-type-badge">
+                      <i class="fas fa-wifi"></i> Remote
+                    </span>
+                  </label>
+                </div>
+
+                <!-- Video not available message -->
+                <div id="videoNotAvailable" class="hidden mt-3">
+                  <p
+                    class="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-md flex items-center"
+                  >
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    Video counseling is not available for the selected office
+                  </p>
+                </div>
+              </div>
+
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-3">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-3">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 4: Date and Time -->
+              <div class="form-step" id="step-4">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-calendar-alt"></i> Preferred Date & Time
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Select your preferred date and time for the session. The office may adjust this based on counselor availability.
+                </p>
+
+                <div class="date-time-grid">
+                  <!-- Modern calendar -->
+                  <div class="calendar-card" id="calendarWidget">
+                    <div class="calendar-header">
+                      <div class="calendar-title" id="calTitle">Select date</div>
+                      <div class="cal-nav">
+                        <button type="button" class="cal-btn" id="calPrev"><i class="fas fa-chevron-left"></i></button>
+                        <button type="button" class="cal-btn" id="calNext"><i class="fas fa-chevron-right"></i></button>
+                      </div>
+                    </div>
+                    <div class="calendar-grid" id="calGrid">
+                      <!-- Rendered by JS -->
+                    </div>
+                  </div>
+
+                  <!-- Slots panel -->
+                  <div class="slots-card">
+                    <div class="slots-header">
+                      <div>
+                        <div class="font-semibold text-gray-800 text-sm" id="slotsTitle">Pick a time</div>
+                        <div class="text-xs text-gray-500">Blocks reflect booked or past times; details aren’t shown.</div>
+                      </div>
+                      <div class="legend">
+                        <span><span class="dot" style="background:#dbeafe;border:1px solid #60a5fa"></span> Available</span>
+                        <span><span class="dot" style="background:#f3f4f6;border:1px solid #e5e7eb"></span> Booked</span>
+                        <span><span class="dot" style="background:#f9fafb;border:1px dashed #e5e7eb"></span> Past</span>
+                      </div>
+                    </div>
+                    <div class="slots-grid" id="slotsGrid">
+                      <!-- Filled by JS from availability API -->
+                    </div>
+                  </div>
+                </div>
+                <div class="error-message" id="datetime-error">
+                  Please select a future date and time
+                </div>
+                
+                <div class="mt-3 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+                  <p class="text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i> Note: Your selected time is a preference. 
+                    The office may adjust this time based on counselor availability. You will receive a notification when your session is confirmed.
+                  </p>
+                </div>
+              </div>
+              
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-4">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="button" class="btn btn-primary btn-next" id="next-step-4">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 5: Additional Information -->
+              <div class="form-step" id="step-5">
+              <div class="form-section">
+                <h3 class="form-section-title">
+                  <i class="fas fa-sticky-note"></i> Additional Information
+                </h3>
+                <p class="text-gray-600 mb-4">
+                  Provide any details that might help the counselor prepare for
+                  your session
+                </p>
+
+                <div class="mb-4">
+                  <label for="notes" class="input-label"
+                    >Notes (Optional)</label
+                  >
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows="4"
+                    class="input-field"
+                    placeholder="Briefly describe the reason for your session or any specific concerns..."
+                  ></textarea>
+                  <p class="text-xs text-gray-500 mt-1">
+                    This information helps the counselor prepare for your
+                    session
+                  </p>
+                </div>
+              </div>
+
+              <!-- Summary of selections -->
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h4 class="font-medium text-gray-900 mb-2">Session Summary</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Office:</p>
+                    <p class="text-sm text-gray-900" id="summary-office">
+                      Not selected
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Concern:</p>
+                    <p class="text-sm text-gray-900" id="summary-concern">Not selected</p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">
+                      Session Type:
+                    </p>
+                    <p class="text-sm text-gray-900" id="summary-type">
+                      In-Person
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Date:</p>
+                    <p class="text-sm text-gray-900" id="summary-date">
+                      Not selected
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Time:</p>
+                    <p class="text-sm text-gray-900" id="summary-time">
+                      Not selected
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-secondary btn-prev" id="prev-step-5">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                  </button>
+                  <button type="submit" class="btn btn-primary btn-submit">
+                    <i class="fas fa-calendar-plus mr-2"></i> Request Session
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Variables
+    let currentStep = 1;
+  const totalSteps = 5;
+  const progressLines = document.querySelectorAll('.progress-line-fill');
+
+    // Elements for office selection
+    const officeCards = document.querySelectorAll(".office-card");
+    const selectedOfficeInput = document.getElementById("selected_office_id");
+    const officeError = document.getElementById("office-error");
+  // Multiple instances of selected office bar (desktop sidebar + mobile in form)
+    const selectedOfficeBars = document.querySelectorAll('.selected-office-bar');
+    function updateSelectedOfficeBars(name, meta, initials){
+      selectedOfficeBars.forEach(bar => {
+        const nameEl = bar.querySelector('.sel-office-name');
+        const metaEl = bar.querySelector('.sel-office-meta');
+        const initEl = bar.querySelector('.sel-office-initials');
+        if (nameEl) nameEl.textContent = name;
+        if (metaEl) metaEl.textContent = meta;
+        if (initEl) initEl.textContent = initials;
+      });
+    }
+  const changeOfficeBtns = document.querySelectorAll('.change-office-btn');
+
+    // Check for office_id in URL parameters for pre-selection
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('office_id')) {
+      const officeIdFromUrl = urlParams.get('office_id');
+      
+      // Find the matching office card and select it
+      officeCards.forEach((card) => {
+        const cardOfficeId = card.getAttribute("data-office-id");
+        if (cardOfficeId === officeIdFromUrl) {
+          // Trigger a click event on this card to select it
+          card.click();
+          
+          // Auto-advance to step 2 if an office is pre-selected
+          setTimeout(() => {
+            document.getElementById("next-step-1").click();
+          }, 300);
+        }
+      });
+    }
+
+  // Set counseling offices count for UI updates (sourced from data attribute to avoid template parsing issues)
+  const counselingOfficesCountEl = document.getElementById('cOfficesCount');
+  const counselingOfficesCount = parseInt(counselingOfficesCountEl?.dataset.count || '0', 10);
+
+    // Check if there are counseling offices available
+    if (counselingOfficesCount === 0) {
+      document.getElementById("next-step-1").disabled = true;
+      document
+        .getElementById("next-step-1")
+        .classList.add("opacity-50", "cursor-not-allowed");
+    }
+
+    // Elements for session type
+    const inPersonCard = document.getElementById("inPersonCard");
+    const videoCard = document.getElementById("videoCard");
+    const videoInput = document.querySelector(
+      "input[name='session_type'][value='true']"
+    );
+    const inPersonInput = document.querySelector(
+      "input[name='session_type'][value='false']"
+    );
+    const isVideoInput = document.getElementById("is_video_session");
+    const videoNotAvailable = document.getElementById("videoNotAvailable");
+
+    // Elements for date and time
+  const dateInput = document.getElementById("scheduled_date") || (function(){ const i=document.createElement('input'); i.type='hidden'; i.id='scheduled_date'; i.name='scheduled_date'; document.getElementById('counselingForm').appendChild(i); return i; })();
+  const timeInput = document.getElementById("scheduled_time") || (function(){ const i=document.createElement('input'); i.type='hidden'; i.id='scheduled_time'; i.name='scheduled_time'; document.getElementById('counselingForm').appendChild(i); return i; })();
+    const dateError = document.getElementById("date-error");
+    const timeError = document.getElementById("time-error");
+    const datetimeError = document.getElementById("datetime-error");
+
+    // Elements for summary
+    const summaryOffice = document.getElementById("summary-office");
+  const summaryType = document.getElementById("summary-type");
+  const summaryConcern = document.getElementById("summary-concern");
+    const summaryDate = document.getElementById("summary-date");
+    const summaryTime = document.getElementById("summary-time");
+
+    // Navigation buttons
+    const nextStep1 = document.getElementById("next-step-1");
+  const nextStep2 = document.getElementById("next-step-2");
+  const nextStep3 = document.getElementById("next-step-3");
+  const nextStep4 = document.getElementById("next-step-4");
+  const prevStep2Office = document.getElementById("prev-step-2-office");
+  const prevStep3 = document.getElementById("prev-step-3");
+  const prevStep4 = document.getElementById("prev-step-4");
+  const prevStep5 = document.getElementById("prev-step-5");
+  const natureConcernHidden = document.getElementById("nature_of_concern_id");
+  const concernDescInput = document.getElementById("nature_of_concern_description");
+  const concernError = document.getElementById("concern-error");
+  const concernDescError = document.getElementById("concern-desc-error");
+  const concernCards = document.querySelectorAll('.concern-type-card');
+  // Filter concern cards by selected office (data-supporting-offices list)
+  function filterConcernCardsForOffice(officeId){
+    concernCards.forEach(card => {
+      const offices = (card.getAttribute('data-supporting-offices') || '').split(',').filter(Boolean);
+      if(!officeId){
+        card.classList.remove('hidden');
+        return;
+      }
+      if(offices.includes(String(officeId))){
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
+        if(card.classList.contains('selected')){
+          card.classList.remove('selected');
+          natureConcernHidden.value='';
+          summaryConcern.textContent='Not selected';
+          concernDescInput.value='';
+          document.getElementById('otherConcernWrapper')?.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+    // Office card selection
+    officeCards.forEach((card) => {
+      card.addEventListener("click", function () {
+        // Remove selection from all cards
+        officeCards.forEach((c) => c.classList.remove("selected"));
+
+        // Select this card
+        this.classList.add("selected");
+
+        // Store the office ID
+        const officeId = this.getAttribute("data-office-id");
+        selectedOfficeInput.value = officeId;
+
+        // Update the summary
+        summaryOffice.textContent = this.querySelector("h4").textContent;
+
+  // Populate dynamic bar
+  const officeName = this.querySelector("h4").textContent.trim();
+  const initials = officeName.split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase();
+
+        // Hide error message if shown
+        officeError.classList.remove("visible");
+
+        // Check if selected office supports video
+        // Fix: Parse the data-supports-video attribute correctly by checking for various true values
+        const supportsVideoAttr = this.getAttribute("data-supports-video");
+        const supportsVideo = supportsVideoAttr === "true" || supportsVideoAttr === "True" || supportsVideoAttr === "1" || supportsVideoAttr === true;
+        
+        console.log("Office ID:", officeId, "Supports Video:", supportsVideo, "Raw value:", supportsVideoAttr);
+        
+        let metaText = "In-Person Only";
+        if (supportsVideo) {
+          videoCard.classList.remove("disabled");
+          videoInput.disabled = false;
+          videoNotAvailable.classList.add("hidden");
+          metaText = "Video & In-Person";
+        } else {
+          videoCard.classList.add("disabled");
+          videoInput.disabled = true;
+          inPersonInput.checked = true;
+          videoCard.classList.remove("selected");
+          inPersonCard.classList.add("selected");
+          videoNotAvailable.classList.remove("hidden");
+          isVideoInput.value = "false";
+          summaryType.textContent = "In-Person";
+        }
+
+  updateSelectedOfficeBars(officeName, metaText, initials);
+        selectedOfficeBars.forEach(bar => bar.classList.remove('hidden'));
+  // Filter concern list to those supported by this office
+  filterConcernCardsForOffice(officeId);
+      });
+    });
+
+    // Initialize read more/less toggles for office descriptions
+    function initOfficeDescToggles(){
+      document.querySelectorAll('.office-card').forEach(card => {
+        const desc = card.querySelector('.office-desc');
+        const toggle = card.querySelector('.office-desc-toggle');
+        if(!desc || !toggle) return;
+        // Ensure clamped initially
+        desc.classList.add('clamped');
+        // Use a frame to ensure layout is calculated
+        requestAnimationFrame(() => {
+          const isOverflowing = desc.scrollHeight > desc.clientHeight + 1;
+          if(isOverflowing){
+            toggle.style.display = 'inline-block';
+            toggle.textContent = 'Read more';
+            toggle.setAttribute('aria-expanded','false');
+          } else {
+            toggle.style.display = 'none';
+          }
+        });
+        toggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const expanded = desc.classList.toggle('expanded');
+          if(expanded){
+            desc.classList.remove('clamped');
+            toggle.textContent = 'Show less';
+            toggle.setAttribute('aria-expanded','true');
+          } else {
+            desc.classList.add('clamped');
+            toggle.textContent = 'Read more';
+            toggle.setAttribute('aria-expanded','false');
+          }
+        });
+      });
+    }
+    initOfficeDescToggles();
+
+    // Recompute toggle visibility on resize (debounced)
+    function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); }; }
+    const recomputeToggles = debounce(()=>{
+      document.querySelectorAll('.office-card').forEach(card => {
+        const desc = card.querySelector('.office-desc');
+        const toggle = card.querySelector('.office-desc-toggle');
+        if(!desc || !toggle) return;
+        // Temporarily ensure clamped to measure overflow when not expanded
+        const isExpanded = desc.classList.contains('expanded');
+        if(!isExpanded) desc.classList.add('clamped');
+        const hasText = (desc.textContent || '').trim().length > 0;
+        const isOverflowing = hasText && (desc.scrollHeight > desc.clientHeight + 1);
+        toggle.style.display = isOverflowing ? 'inline-block' : 'none';
+        if(!isOverflowing && isExpanded){
+          // Reset to clamped state if it no longer overflows
+          desc.classList.remove('expanded');
+          desc.classList.add('clamped');
+          toggle.textContent = 'Read more';
+          toggle.setAttribute('aria-expanded','false');
+        }
+      });
+    }, 150);
+    window.addEventListener('resize', recomputeToggles);
+
+    // Change office button
+    changeOfficeBtns.forEach(btn => btn.addEventListener('click', () => {
+      showStep(1);
+      const target = document.querySelector('#step-1');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start'});
+    }));
+
+    // Session type selection
+    const sessionTypeCards = document.querySelectorAll(".session-type-card");
+    sessionTypeCards.forEach((card) => {
+      card.addEventListener("click", function (e) {
+        // Skip if card is disabled
+        if (this.classList.contains("disabled")) {
+          e.preventDefault();
+          return false;
+        }
+
+        // Update selected state
+        sessionTypeCards.forEach((c) => c.classList.remove("selected"));
+        this.classList.add("selected");
+
+        // Check the radio input
+        this.querySelector("input").checked = true;
+
+        // Update hidden input
+        isVideoInput.value = this.querySelector("input").value;
+
+        // Update summary
+        summaryType.textContent =
+          this.id === "videoCard" ? "Video" : "In-Person";
+      });
+    });
+
+    // Helper function to format date for display
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // Helper function to format time for display
+    function formatTime(timeString) {
+      const [hours, minutes] = timeString.split(":");
+      const date = new Date();
+      date.setHours(hours, minutes);
+      return date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+    }
+
+    // Helper to add minutes to an "HH:MM" time string and return "HH:MM"
+    function addMinutesHHMM(hhmm, minutesToAdd){
+      const [h, m] = hhmm.split(":").map(Number);
+      const d = new Date();
+      d.setHours(h, m || 0, 0, 0);
+      d.setMinutes(d.getMinutes() + (minutesToAdd || 0));
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mi}`;
+    }
+
+    // Format a fixed 1-hour range label like "10:00 AM - 11:00 AM"
+    function formatOneHourRange(startHHMM){
+      const endHHMM = addMinutesHHMM(startHHMM, 60);
+      return `${formatTime(startHHMM)} - ${formatTime(endHHMM)}`;
+    }
+
+    // Calendar + Slots UI
+    const calGrid = document.getElementById('calGrid');
+    const calTitle = document.getElementById('calTitle');
+    const calPrev = document.getElementById('calPrev');
+    const calNext = document.getElementById('calNext');
+    const slotsGrid = document.getElementById('slotsGrid');
+    const slotsTitle = document.getElementById('slotsTitle');
+
+    const maxDateStr = '{{ max_date }}';
+    const minDateStr = '{{ today }}';
+    const toDate = (s)=>{ const [y,m,d]=s.split('-').map(Number); return new Date(y, m-1, d); };
+    const minDate = toDate(minDateStr);
+    const maxDate = toDate(maxDateStr);
+
+    let calCursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    let selectedDate = null;
+    let selectedSlot = null;
+
+    function renderCalendar(){
+      // Header
+      const monthName = calCursor.toLocaleString('en-US', { month:'long', year:'numeric'});
+      calTitle.textContent = monthName;
+      // Grid
+      calGrid.innerHTML = '';
+      const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      weekdays.forEach(d=>{
+        const el = document.createElement('div'); el.className='cal-weekday'; el.textContent=d; calGrid.appendChild(el);
+      });
+      const firstDay = new Date(calCursor.getFullYear(), calCursor.getMonth(), 1);
+      const startOffset = firstDay.getDay();
+      const daysInMonth = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 0).getDate();
+      // leading blanks
+      for(let i=0;i<startOffset;i++){ const s=document.createElement('div'); calGrid.appendChild(s); }
+      // days
+      for(let d=1; d<=daysInMonth; d++){
+        const cur = new Date(calCursor.getFullYear(), calCursor.getMonth(), d);
+        const dayBtn = document.createElement('button');
+        dayBtn.type='button';
+        dayBtn.className='cal-day';
+        dayBtn.textContent=String(d);
+        const outOfRange = cur < minDate || cur > maxDate;
+        if(outOfRange){ dayBtn.classList.add('out'); dayBtn.disabled = true; }
+        const today = new Date(); today.setHours(0,0,0,0);
+        const sameDay = (a,b)=>a.getFullYear()==b.getFullYear() && a.getMonth()==b.getMonth() && a.getDate()==b.getDate();
+        if(sameDay(cur, today)) dayBtn.classList.add('today');
+        if(selectedDate && sameDay(cur, selectedDate)) dayBtn.classList.add('selected');
+        dayBtn.addEventListener('click', ()=>{
+          if(outOfRange) return;
+          selectedDate = cur; selectedSlot = null; timeInput.value='';
+          document.querySelectorAll('.cal-day.selected').forEach(n=>n.classList.remove('selected'));
+          dayBtn.classList.add('selected');
+          dateInput.value = cur.toISOString().slice(0,10);
+          summaryDate.textContent = formatDate(dateInput.value);
+          dateError?.classList.remove('visible');
+          fetchSlots();
+        });
+        calGrid.appendChild(dayBtn);
+      }
+    }
+
+    calPrev.addEventListener('click', ()=>{
+      const prev = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1);
+      if(prev >= new Date(minDate.getFullYear(), minDate.getMonth(), 1)) { calCursor = prev; renderCalendar(); }
+    });
+    calNext.addEventListener('click', ()=>{
+      const next = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1);
+      if(next <= new Date(maxDate.getFullYear(), maxDate.getMonth(), 1)) { calCursor = next; renderCalendar(); }
+    });
+
+    async function fetchSlots(){
+      slotsGrid.innerHTML = '';
+      if(!selectedOfficeInput.value || !dateInput.value){
+        slotsTitle.textContent = 'Pick a date to see available times';
+        return;
+      }
+      slotsTitle.textContent = 'Loading availability...';
+      try{
+        // Force 60-minute slot generation server-side
+        const resp = await fetch(`/student/office/${selectedOfficeInput.value}/availability?date=${dateInput.value}&interval=60`);
+        if(!resp.ok){ throw new Error('Failed to load'); }
+        const data = await resp.json();
+        slotsTitle.textContent = `Available 1-hour slots for ${formatDate(data.date)}`;
+        data.slots.forEach(s=>{
+          const btn = document.createElement('button');
+          btn.type='button';
+          btn.className = `slot ${s.status}`;
+          const rangeLabel = formatOneHourRange(s.time);
+          // For booked/past, show status label; for available, show time range
+          const label = s.status === 'booked' ? 'Booked' : (s.status === 'past' ? 'Past' : rangeLabel);
+          btn.textContent = label;
+          btn.title = rangeLabel; // keep time range discoverable via tooltip
+          if(s.status !== 'available') btn.disabled = true;
+          btn.addEventListener('click', ()=>{
+            if(btn.disabled) return;
+            document.querySelectorAll('.slot.selected').forEach(n=>n.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedSlot = s.time;
+            timeInput.value = s.time;
+            summaryTime.textContent = rangeLabel;
+            timeError?.classList.remove('visible');
+          });
+          slotsGrid.appendChild(btn);
+        });
+        if(!data.slots.length){
+          const p=document.createElement('p'); p.className='text-sm text-gray-500 px-3 py-2'; p.textContent='No slots in this day.'; slotsGrid.appendChild(p);
+        }
+      }catch(e){
+        const p=document.createElement('p'); p.className='text-sm text-red-600 px-3 py-2'; p.textContent='Unable to load availability.'; slotsGrid.appendChild(p);
+      }
+    }
+
+    // When office changes, re-filter concerns and refresh availability if date picked
+    function onOfficeChanged(){
+      if(dateInput.value){ fetchSlots(); }
+    }
+
+    // Hook into office selection to refresh slots
+    officeCards.forEach((card)=>{
+      card.addEventListener('click', ()=> setTimeout(onOfficeChanged, 0));
+    });
+
+    // Initialize defaults: select minDate by default if any office preselected
+    function initCalendarDefaults(){
+      renderCalendar();
+      if(!dateInput.value){
+        selectedDate = minDate; dateInput.value = minDateStr; summaryDate.textContent = formatDate(minDateStr);
+        // highlight selected
+        setTimeout(()=>{
+          document.querySelectorAll('.cal-day').forEach(d=>{
+            if(d.textContent === String(minDate.getDate())) d.classList.add('selected');
+          });
+        },0);
+      }
+    }
+    initCalendarDefaults();
+
+    // Function to update the step indicator
+    function updateStepIndicator(step) {
+      // Update steps
+      document.querySelectorAll(".step").forEach((stepEl) => {
+        const stepNum = parseInt(stepEl.getAttribute("data-step"));
+        stepEl.classList.remove("active", "completed");
+
+        if (stepNum === step) {
+          stepEl.classList.add("active");
+        } else if (stepNum < step) {
+          stepEl.classList.add("completed");
+        }
+      });
+
+      // Update progress line
+  const progressPercentage = ((step - 1) / (totalSteps - 1)) * 100;
+  progressLines.forEach(pl => pl.style.width = `${progressPercentage}%`);
+    }
+
+    // Function to show a specific step
+    function showStep(step) {
+      // Hide all steps
+      document.querySelectorAll(".form-step").forEach((stepEl) => {
+        stepEl.classList.remove("active");
+      });
+
+      // Show the target step
+      document.getElementById(`step-${step}`).classList.add("active");
+
+      // Update the step indicator
+      updateStepIndicator(step);
+
+      // Update current step
+      currentStep = step;
+    }
+
+    // Next button event listeners
+    nextStep1.addEventListener("click", function () {
+      // Validate office selection
+      if (!selectedOfficeInput.value) {
+        officeError.classList.add("visible");
+        return;
+      }
+
+      showStep(2);
+    });
+
+    // Concern selection logic
+    concernCards.forEach(card => {
+      card.addEventListener('click', () => {
+        concernCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        natureConcernHidden.value = card.dataset.concernId;
+        summaryConcern.textContent = card.querySelector('.font-medium').textContent.trim();
+        concernError.classList.remove('visible');
+        const allowsOther = card.dataset.allowsOther === 'true';
+        if (allowsOther) {
+          document.getElementById('otherConcernWrapper').classList.remove('hidden');
+        } else {
+          document.getElementById('otherConcernWrapper').classList.add('hidden');
+          concernDescInput.value = '';
+          concernDescError.classList.remove('visible');
+        }
+      });
+    });
+
+    nextStep2.addEventListener('click', function(){
+      if (!natureConcernHidden.value) { concernError.classList.add('visible'); return; }
+      const selectedCard = document.querySelector('.concern-type-card.selected');
+      if (selectedCard && selectedCard.dataset.allowsOther === 'true') {
+        if (!concernDescInput.value || concernDescInput.value.trim().length < 10) {
+          concernDescError.classList.add('visible'); return; }
+        concernDescError.classList.remove('visible');
+      }
+      showStep(3);
+    });
+
+    nextStep3.addEventListener('click', function(){ showStep(4); });
+    nextStep4.addEventListener('click', function(){
+      if (!dateInput.value) { dateError?.classList.add('visible'); return; }
+      if (!timeInput.value) { timeError?.classList.add('visible'); return; }
+      const selectedDateTime = new Date(`${dateInput.value}T${timeInput.value}`);
+      const now = new Date();
+      if (selectedDateTime <= now) { datetimeError.classList.add('visible'); return; }
+      datetimeError.classList.remove('visible');
+      showStep(5);
+    });
+
+    // Previous button event listeners
+    prevStep2Office.addEventListener('click', () => showStep(1));
+    prevStep3.addEventListener('click', () => showStep(2));
+    prevStep4.addEventListener('click', () => showStep(3));
+    prevStep5.addEventListener('click', () => showStep(4));
+
+    // Form submission
+    const counselingForm = document.getElementById("counselingForm");
+    counselingForm.addEventListener("submit", function (e) {
+      // Final validation before submission
+      if (!selectedOfficeInput.value) {
+        e.preventDefault();
+        showStep(1);
+        officeError.classList.add("visible");
+        return;
+      }
+
+      if (!dateInput.value || !timeInput.value) {
+        e.preventDefault();
+        showStep(4);
+        if (!dateInput.value) dateError?.classList.add('visible');
+        if (!timeInput.value) timeError?.classList.add('visible');
+        return;
+      }
+      const selectedDateTime = new Date(`${dateInput.value}T${timeInput.value}`);
+      const now = new Date();
+      if (selectedDateTime <= now) {
+        e.preventDefault();
+        showStep(4);
+        datetimeError.classList.add('visible');
+        return;
+      }
+
+      // Show loading state on submit button
+      document.querySelector(".btn-submit").classList.add("loading");
+      document.querySelector(".btn-submit").textContent = "";
+    });
+  });
+</script>
+{% endblock %}

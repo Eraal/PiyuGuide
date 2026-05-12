@@ -1,0 +1,255 @@
+{% extends "student/student_base.html" %}
+{% block title %}Announcements - KapiyuGuide{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/announcement.css') }}">
+<div class="max-w-5xl mx-auto px-4 py-6">
+    <!-- Page Header with Subtle Shadow -->
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white rounded-lg shadow-sm p-4">
+        <div class="flex items-center">
+            <i class="fas fa-bullhorn text-blue-800 text-2xl mr-3"></i>
+            <h1 class="text-2xl font-bold text-gray-800">Announcements</h1>
+        </div>
+        <!-- Students don't create announcements; omit compose button -->
+    </div>
+
+    <!-- Filters in Floating Card (aligned with admin) -->
+    <div class="feed-filters mb-8">
+        <div class="filter-grid">
+            <div>
+                <label for="officeFilter">Office</label>
+                <div class="relative mt-1">
+                    <select id="officeFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Offices</option>
+                        {% for office in offices %}
+                        <option value="{{ office.id }}" {% if selected_office_id and selected_office_id == office.id %}selected{% endif %}>{{ office.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs"><i class="fas fa-chevron-down"></i></span>
+                </div>
+            </div>
+            <div>
+                <label for="statusFilter">Visibility</label>
+                <div class="relative mt-1">
+                    <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="" {% if not selected_visibility %}selected{% endif %}>All</option>
+                        <option value="public" {% if selected_visibility == 'public' %}selected{% endif %}>Public</option>
+                        <option value="office" {% if selected_visibility in ['office','private'] %}selected{% endif %}>Office-specific</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs"><i class="fas fa-chevron-down"></i></span>
+                </div>
+            </div>
+            <div>
+                <label for="dateRangeFilter">Date Range</label>
+                <div class="relative mt-1">
+                    <select id="dateRangeFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="" {% if not selected_date_range %}selected{% endif %}>All Time</option>
+                        <option value="today" {% if selected_date_range == 'today' %}selected{% endif %}>Today</option>
+                        <option value="week" {% if selected_date_range == 'week' %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if selected_date_range == 'month' %}selected{% endif %}>This Month</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs"><i class="fas fa-chevron-down"></i></span>
+                </div>
+            </div>
+            <div class="flex items-end">
+                <button id="applyFilters" class="w-full h-[42px] bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg flex items-center justify-center gap-2 text-sm">
+                    <i class="fas fa-sliders-h"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Announcements Feed -->
+    <div class="space-y-6" id="announcements-container">
+        {% if announcements %}
+            {% for announcement in announcements %}
+            <div id="ann-{{ announcement.id }}" class="ann-card announcement-card p-6 border-l-4 {% if announcement.is_public %}border-green-500{% else %}border-blue-500{% endif %}">
+                <div class="ann-header mb-3">
+                    <div class="ann-avatar">
+                        {% set pic = announcement.author.profile_pic_path %}
+                        {% if pic %}
+                        <img src="{{ url_for('static', filename=pic) }}" alt="Profile" class="w-full h-full object-cover" />
+                        {% else %}
+                        <i class="fas fa-user"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start gap-2 flex-wrap">
+                            <span class="ann-name">{{ announcement.author.get_full_name() }}</span>
+                            {% if announcement.is_public %}
+                            <span class="ann-badge">Public</span>
+                            {% else %}
+                            <span class="ann-badge">{{ announcement.target_office.name }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="ann-meta mt-1">
+                            <i class="fas fa-clock text-xs"></i>
+                            <span>{{ announcement.created_at.strftime('%b %d, %Y') }}</span>
+                            <span>•</span>
+                            <span>{{ announcement.created_at.strftime('%I:%M %p') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="ann-title">{{ announcement.title }}</h2>
+                <div class="ann-body mb-3" data-clamped="true" id="body-{{ announcement.id }}">
+                    <p>{{ announcement.content }}</p>
+                </div>
+                <button class="show-more-btn" data-target="body-{{ announcement.id }}" onclick="toggleClamp(this)"><span>Show more</span><i class="fas fa-chevron-down text-xs"></i></button>
+
+                {% if announcement.images and announcement.images|length > 0 %}
+                <div class="mt-4">
+                    {% set image_count = announcement.images|length %}
+                    {% if image_count == 1 %}
+                        {% for image in announcement.images|sort(attribute='display_order') %}
+                        <div class="relative rounded-lg overflow-hidden">
+                            <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.caption or 'Announcement image' }}" class="w-full h-64 sm:h-80 object-cover rounded-lg shadow-sm" />
+                            {% if image.caption %}
+                            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-2 backdrop-blur-sm rounded-b-lg">{{ image.caption }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% elif image_count == 2 %}
+                        <div class="grid grid-cols-2 gap-2">
+                            {% for image in announcement.images|sort(attribute='display_order') %}
+                            <div class="relative rounded-lg overflow-hidden">
+                                <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.caption or 'Announcement image' }}" class="w-full h-48 object-cover rounded-lg shadow-sm" />
+                                {% if image.caption %}
+                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-2 backdrop-blur-sm text-sm rounded-b-lg">{{ image.caption }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% elif image_count == 3 %}
+                        <div class="grid grid-cols-2 gap-2">
+                            {% for image in announcement.images|sort(attribute='display_order') %}
+                                {% if loop.index == 1 %}
+                                <div class="relative rounded-lg overflow-hidden col-span-2">
+                                    <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.caption or 'Announcement image' }}" class="w-full h-56 object-cover rounded-lg shadow-sm" />
+                                    {% if image.caption %}
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-2 backdrop-blur-sm rounded-b-lg">{{ image.caption }}</div>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <div class="relative rounded-lg overflow-hidden">
+                                    <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.caption or 'Announcement image' }}" class="w-full h-40 object-cover rounded-lg shadow-sm" />
+                                    {% if image.caption %}
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-2 backdrop-blur-sm text-sm rounded-b-lg">{{ image.caption }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {% for image in announcement.images|sort(attribute='display_order')|slice(0, 6) %}
+                            <div class="relative rounded-lg overflow-hidden {% if loop.index == 1 %}md:col-span-2 md:row-span-2{% endif %}">
+                                <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.caption or 'Announcement image' }}" class="w-full h-40 {% if loop.index == 1 %}md:h-80{% endif %} object-cover rounded-lg shadow-sm" />
+                                {% if image.caption %}
+                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-2 backdrop-blur-sm text-sm rounded-b-lg">{{ image.caption }}</div>
+                                {% endif %}
+                                {% if loop.index == 6 and image_count > 6 %}
+                                <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg">
+                                    <span class="text-white text-xl font-bold">+{{ image_count - 6 }} more</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="ann-footer">
+                    <div class="flex items-center gap-3 text-xs">
+                        {% if announcement.is_public %}
+                        <span class="visibility-pill"><i class="fas fa-globe"></i> All Users</span>
+                        {% else %}
+                        <span class="visibility-pill office"><i class="fas fa-building"></i> {{ announcement.target_office.name }} Office</span>
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for('student.view_announcement', announcement_id=announcement.id) }}" class="text-xs text-blue-700 hover:underline font-medium">Read full</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="ann-card p-12 text-center">
+                <div class="text-blue-400 mb-4">
+                    <i class="fas fa-bullhorn fa-4x"></i>
+                </div>
+                <h3 class="text-xl font-medium text-gray-700 mb-2">No Announcements Yet</h3>
+                <p class="text-gray-500 mb-2">There are currently no announcements to display.</p>
+                <button onclick="location.reload()" class="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-6 rounded-full transition-colors duration-200">Refresh</button>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if total_pages and total_pages > 1 %}
+    <div class="flex justify-center mt-8">
+        <nav class="inline-flex rounded-md shadow-sm">
+            <a href="{{ url_for('student.announcements', page=prev_page, office_id=selected_office_id, visibility=selected_visibility, date_range=selected_date_range) if prev_page else '#' }}" class="px-4 py-2 rounded-l-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 transition-colors duration-200 {{ 'opacity-50 cursor-not-allowed' if not prev_page }} flex items-center">
+                <i class="fas fa-chevron-left mr-1"></i> Prev
+            </a>
+            {% for p in range(1, total_pages + 1) %}
+                {% if (p <= 3) or (p >= total_pages - 2) or (p >= current_page - 1 and p <= current_page + 1) %}
+                    <a href="{{ url_for('student.announcements', page=p, office_id=selected_office_id, visibility=selected_visibility, date_range=selected_date_range) }}" class="px-4 py-2 border border-gray-300 {{ 'bg-blue-800 text-white' if p == current_page else 'bg-white text-gray-500 hover:bg-gray-50' }} transition-colors duration-200">{{ p }}</a>
+                {% elif (p == 4 and current_page > 4) or (p == total_pages - 3 and current_page < total_pages - 3) %}
+                    <span class="px-4 py-2 border border-gray-300 bg-white text-gray-400">...</span>
+                {% endif %}
+            {% endfor %}
+            <a href="{{ url_for('student.announcements', page=next_page, office_id=selected_office_id, visibility=selected_visibility, date_range=selected_date_range) if next_page else '#' }}" class="px-4 py-2 rounded-r-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 transition-colors duration-200 {{ 'opacity-50 cursor-not-allowed' if not next_page }} flex items-center">
+                Next <i class="fas fa-chevron-right ml-1"></i>
+            </a>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function toggleClamp(btn){
+        const id = btn.getAttribute('data-target');
+        const body = document.getElementById(id);
+        if(!body) return;
+        const clamped = body.getAttribute('data-clamped') === 'true';
+        if(clamped){
+            body.setAttribute('data-clamped','false');
+            btn.querySelector('span').textContent = 'Show less';
+            btn.querySelector('i').classList.add('rotate-180');
+        } else {
+            body.setAttribute('data-clamped','true');
+            btn.querySelector('span').textContent = 'Show more';
+            btn.querySelector('i').classList.remove('rotate-180');
+            body.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+    }
+
+    // Apply filters by reloading with query params
+    document.getElementById('applyFilters')?.addEventListener('click', function(){
+        const officeId = document.getElementById('officeFilter').value;
+        const visibility = document.getElementById('statusFilter').value;
+        const dateRange = document.getElementById('dateRangeFilter').value;
+        const params = new URLSearchParams();
+        if(officeId) params.append('office_id', officeId);
+        if(visibility) params.append('visibility', visibility);
+        if(dateRange) params.append('date_range', dateRange);
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
+    });
+</script>
+<script>
+    // If a specific announcement is targeted (?highlight=<id>), scroll to and highlight it
+    (function() {
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('highlight');
+        if (!targetId) return;
+        const el = document.getElementById('ann-' + targetId);
+        if (!el) return;
+        // Add a temporary highlight ring/animation
+        el.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'ring-offset-blue-50');
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Remove highlight after a few seconds
+        setTimeout(() => {
+            el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'ring-offset-blue-50');
+        }, 3000);
+    })();
+</script>
+{% endblock %}

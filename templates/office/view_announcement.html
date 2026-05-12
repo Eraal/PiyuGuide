@@ -1,0 +1,162 @@
+{% extends "office/office_base.html" %}
+{% block title %}{{ announcement.title }} - KapiyuGuide Office{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background-color: #f5f7fb; }
+  .post-wrapper { max-width: 860px; margin: 24px auto 64px; padding: 0 16px; }
+  .back-link { display: inline-flex; align-items: center; gap: 8px; color: #475569; text-decoration: none; font-weight: 500; }
+  .back-link:hover { color: #0f172a; }
+
+  .post-card { background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(15,23,42,0.06); border: 1px solid #e6eaf0; }
+  .post-body { padding: 24px; }
+
+  .post-header { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #eef2f7; display: inline-flex; align-items: center; justify-content: center; color: #334155; font-weight: 700; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .author { display: flex; flex-direction: column; }
+  .author .name { font-weight: 800; color: #0f172a; }
+  .author .meta { color: #64748b; font-size: 0.92rem; display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 9999px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+
+  .post-title { font-size: 1.7rem; line-height: 1.4; font-weight: 800; color: #0f172a; margin: 8px 0 8px; }
+
+  .post-content { color: #1f2937; font-size: 1.05rem; line-height: 1.8; }
+  .post-content p { margin: 0 0 1rem; }
+  .post-content h2 { font-size: 1.25rem; margin: 1.25rem 0 0.5rem; color: #0f172a; font-weight: 700; }
+  .post-content h3 { font-size: 1.1rem; margin: 1rem 0 0.25rem; color: #111827; font-weight: 700; }
+  .post-content ul, .post-content ol { padding-left: 1.25rem; margin: 0 0 1rem; }
+
+  .media { margin-top: 12px; border-radius: 12px; overflow: hidden; }
+  .media-single img { width: 100%; height: 420px; object-fit: cover; cursor: pointer; display: block; }
+  .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .media-grid img { width: 100%; height: 260px; object-fit: cover; cursor: pointer; border-radius: 10px; }
+
+  .footer { padding: 14px 20px; border-top: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; color: #64748b; font-size: 0.9rem; }
+
+  .lb { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .lb.show { display: flex; }
+  .lb img { max-width: 92%; max-height: 85vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .lb-btn { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); display: grid; place-items: center; cursor: pointer; }
+  .lb-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+  .lb-nav button { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; }
+
+  @media (max-width: 768px) {
+    .post-body { padding: 16px; }
+    .media-single img { height: 260px; }
+    .media-grid img { height: 180px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="post-wrapper">
+  <a class="back-link" href="{{ url_for('office.office_announcements') }}">
+    <i class="fas fa-arrow-left"></i>
+    <span>Back to announcements</span>
+  </a>
+
+  <article class="post-card" aria-label="Announcement">
+    <div class="post-body">
+      <header class="post-header">
+        <div class="avatar">
+          {% if announcement.author and announcement.author.profile_pic_path %}
+            <img src="{{ url_for('static', filename=announcement.author.profile_pic_path) }}?v={{ announcement.author.profile_pic or '' }}" alt="Author avatar" />
+          {% else %}
+            <span>{{ (announcement.author.first_name[0] ~ announcement.author.last_name[0]) if announcement.author else 'A' }}</span>
+          {% endif %}
+        </div>
+        <div class="author">
+          <div class="name">
+            {% if announcement.author %}
+              {{ announcement.author.get_full_name() }}
+            {% else %}
+              Announcement
+            {% endif %}
+          </div>
+          <div class="meta">
+            {% if announcement.target_office %}
+              <span class="pill"><i class="fas fa-building"></i> {{ announcement.target_office.name }}</span>
+            {% else %}
+              <span class="pill"><i class="fas fa-globe"></i> Public</span>
+            {% endif %}
+            <span>•</span>
+            <time datetime="{{ (announcement.created_at or '') }}">{{ announcement.created_at|dt12 if announcement.created_at else '' }}</time>
+          </div>
+        </div>
+      </header>
+
+      {% if announcement.title %}
+        <h1 class="post-title">{{ announcement.title }}</h1>
+      {% endif %}
+
+      <div class="post-content">
+        {{ announcement.content|safe }}
+      </div>
+
+      {% if announcement.images and announcement.images|length > 0 %}
+        <div class="media">
+          {% if announcement.images|length == 1 %}
+            <div class="media-single">
+              <img class="gallery" data-index="0" src="{{ url_for('static', filename=announcement.images[0].image_path) }}" alt="Announcement image" />
+            </div>
+          {% else %}
+            <div class="media-grid">
+              {% for image in announcement.images|sort(attribute='display_order') %}
+                <img class="gallery" data-index="{{ loop.index0 }}" src="{{ url_for('static', filename=image.image_path) }}" alt="Announcement image {{ loop.index }}" />
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="footer">
+      <div><i class="fas fa-clock"></i> {{ announcement.created_at|dt12 if announcement.created_at else '' }}</div>
+      <div><a class="back-link" href="{{ url_for('office.office_announcements') }}"><i class="fas fa-list"></i> All announcements</a></div>
+    </div>
+  </article>
+
+  <div id="lb" class="lb" aria-hidden="true">
+    <button class="lb-btn" type="button" aria-label="Close" onclick="lbClose()"><i class="fas fa-times"></i></button>
+    <div class="lb-nav" aria-hidden="true">
+      <button id="lbPrev" type="button" onclick="lbPrev()"><i class="fas fa-chevron-left"></i></button>
+      <button id="lbNext" type="button" onclick="lbNext()"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <img id="lbImg" alt="Preview" />
+  </div>
+</div>
+
+<script>
+  let lbIndex = 0;
+  let lbImages = [];
+  function lbCollect() {
+    lbImages = Array.from(document.querySelectorAll('img.gallery')).map(i => i.src);
+  }
+  function lbOpen(idx) {
+    if (lbImages.length === 0) lbCollect();
+    if (lbImages.length === 0) return;
+    lbIndex = Math.max(0, Math.min(idx, lbImages.length - 1));
+    const lb = document.getElementById('lb');
+    const img = document.getElementById('lbImg');
+    img.src = lbImages[lbIndex];
+    lb.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    const navPrev = document.getElementById('lbPrev');
+    const navNext = document.getElementById('lbNext');
+    const showNav = lbImages.length > 1;
+    navPrev.style.display = showNav ? 'inline-flex' : 'none';
+    navNext.style.display = showNav ? 'inline-flex' : 'none';
+  }
+  function lbClose() {
+    const lb = document.getElementById('lb');
+    lb.classList.remove('show');
+    document.body.style.overflow = 'auto';
+  }
+  function lbPrev() { if (lbImages.length) { lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length; document.getElementById('lbImg').src = lbImages[lbIndex]; } }
+  function lbNext() { if (lbImages.length) { lbIndex = (lbIndex + 1) % lbImages.length; document.getElementById('lbImg').src = lbImages[lbIndex]; } }
+  document.addEventListener('click', function(e) { const lb = document.getElementById('lb'); if (e.target === lb) lbClose(); });
+  document.addEventListener('keydown', function(e){ const lb = document.getElementById('lb'); if (!lb.classList.contains('show')) return; if (e.key === 'Escape') lbClose(); if (e.key === 'ArrowLeft' && lbImages.length > 1) lbPrev(); if (e.key === 'ArrowRight' && lbImages.length > 1) lbNext(); });
+  document.addEventListener('DOMContentLoaded', function(){ document.querySelectorAll('img.gallery').forEach(img => { img.addEventListener('click', (ev) => { const idx = parseInt(ev.currentTarget.getAttribute('data-index') || '0', 10); lbOpen(idx); }); }); });
+</script>
+{% endblock %}

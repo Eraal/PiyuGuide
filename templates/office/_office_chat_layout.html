@@ -1,0 +1,137 @@
+{% set si = student_info if student_info is defined else {} %}
+<div class="chat-page-container" data-inquiry-id="{{ inquiry.id }}" data-inquiry-status="{{ inquiry.status }}" data-chat-container="true"{% if current_user.profile_pic_path %} data-current-avatar-url="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"{% endif %}>
+<div class="mobile-drawer-overlay" id="drawerOverlay"></div>
+<div class="chat-three-col">
+	<!-- LEFT PANEL -->
+	<aside class="chat-panel panel-left mobile-drawer" id="panelLeft">
+		<div class="chat-panel-header"><h3><i class="fas fa-info-circle mr-2"></i>Inquiry Details</h3></div>
+		<div class="chat-panel-body">
+			<div class="inquiry-summary-card">
+				<div class="summary-subject">{{ inquiry.subject }}</div>
+				<div class="summary-row"><i class="fas fa-building"></i> {{ inquiry.office.name }}</div>
+				<div class="summary-row"><i class="fas fa-calendar"></i> {{ inquiry.created_at.strftime('%B %d, %Y') }}</div>
+				<div class="summary-row"><i class="fas fa-flag"></i> <span class="status-badge {{ inquiry.status }}">{{ inquiry.status|replace('_',' ')|title }}</span></div>
+			</div>
+			{% if inquiry.concerns %}
+			<div style="padding:0 4px 12px;">
+				<div class="detail-label" style="margin-bottom:6px;">Concern Types</div>
+				{% for concern in inquiry.concerns %}
+				<div class="detail-value" style="margin-bottom:2px;">{{ concern.concern_type.name }}{% if concern.other_specification %} <span style="color:#94a3b8;font-style:italic;">({{ concern.other_specification }})</span>{% endif %}</div>
+				{% endfor %}
+			</div>
+			{% endif %}
+			{% if related_inquiries %}
+			<div style="padding:12px 0 8px;border-top:1px solid #e2e8f0;margin-top:4px;"><h3 style="font-size:0.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#475569;">Related Inquiries</h3></div>
+			{% for related in related_inquiries %}
+			<a href="{{ url_for('office.view_inquiry', inquiry_id=related.id) }}" class="related-inquiry-card{% if related.id == inquiry.id %} active{% endif %}">
+				<div class="ri-subject">{{ related.subject }}</div>
+				<div class="ri-meta"><span class="ri-date">{{ related.created_at.strftime('%b %d, %Y') }}</span><span class="status-badge {{ related.status }}">{{ related.status|replace('_',' ')|title }}</span></div>
+			</a>
+			{% endfor %}
+			{% endif %}
+		</div>
+	</aside>
+
+	<!-- CENTER PANEL -->
+	<div class="chat-center">
+		<div class="chat-conv-header">
+			<div class="chat-conv-header-left">
+				<button class="chat-header-btn mobile-panel-toggle toggle-left" id="toggleLeftPanel" title="Details"><i class="fas fa-info-circle"></i></button>
+				<div class="chat-header-avatar">
+					{% set stu_avatar = inquiry.student.user.profile_pic_path %}
+					{% if stu_avatar %}<img src="{{ url_for('static', filename=stu_avatar) }}" alt=""/>{% else %}<span>{{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}</span>{% endif %}
+				</div>
+				<div class="chat-header-info">
+					<div class="chat-header-name">{{ inquiry.student.user.get_full_name() }}</div>
+					<div class="chat-header-sub"><span class="online-dot"></span> {{ inquiry.student.student_number or 'Student' }}</div>
+				</div>
+			</div>
+			<div class="chat-conv-header-right">
+				<button id="statusControlBtn" class="chat-header-btn" title="Update status" {% if inquiry.status == 'closed' %}disabled{% endif %}><i class="fas fa-flag"></i></button>
+				<button class="chat-header-btn mobile-panel-toggle toggle-right" id="toggleRightPanel" title="Student Info"><i class="fas fa-user"></i></button>
+				<a href="{{ url_for('office.office_inquiries') }}" class="chat-header-back"><i class="fas fa-arrow-left"></i><span>Back</span></a>
+			</div>
+		</div>
+
+		<div class="p-0 flex-1 overflow-hidden flex flex-col min-h-0 chat-container-main chat-body relative">
+			<div id="connectionStatus" class="chat-connection-status">Connecting...</div>
+			<div class="chat-history-wrapper message-container" id="messageHistory" data-inquiry-attachments='[{% for att in inquiry.attachments %}{"filename":"{{ att.filename|e }}","file_path":"{{ att.file_path|e }}","file_type":"{{ att.file_type|e }}","file_size":{{ att.file_size or 0 }} }{% if not loop.last %},{% endif %}{% endfor %}]'>
+				{% if has_more_messages %}<div id="load-more-container" class="flex justify-center mb-4"><button id="load-more-button" class="load-more-button shadow-sm"><i class="fas fa-arrow-up mr-2"></i>Load Older Messages</button></div>{% endif %}
+				{% if inquiry.messages %}
+				{% for message in inquiry.messages[-6:] %}
+				<div class="msg-row {% if message.sender_id == current_user.id %}outgoing{% else %}incoming{% endif %}">
+					{% if message.sender_id != current_user.id %}
+					<div class="chat-avatar incoming mr-2">{% if message.sender and message.sender.profile_pic_path %}<img src="{{ url_for('static', filename=message.sender.profile_pic_path) }}?v={{ message.sender.profile_pic or '' }}" alt="" class="w-full h-full object-cover rounded-full"/>{% else %}{{ message.sender.first_name[0] }}{{ message.sender.last_name[0] }}{% endif %}</div>
+					{% endif %}
+					<div class="message-bubble {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}" data-message-id="{{ message.id }}" data-sender-id="{{ message.sender_id }}"{% if message.sender_id == current_user.id and message.status == 'read' and message.read_at %} data-read-at="{{ message.read_at.isoformat() }}"{% endif %}>
+						{% if message.sender_id != current_user.id %}<div class="text-xs font-semibold mb-1 text-gray-700">{{ message.sender.get_full_name() }}{% if message.sender.role == 'student' %} <span class="text-green-600">(Student)</span>{% endif %}</div>{% endif %}
+						<div class="message-text">{{ message.content|nl2br }}</div>
+						{% if message.attachments %}
+						<div class="mt-2 flex flex-wrap gap-2">{% for attachment in message.attachments %}<a href="{{ url_for('static', filename=attachment.file_path) }}" target="_blank" class="block">{% if attachment.file_path.endswith(('.jpg','.jpeg','.png','.gif')) %}<img src="{{ url_for('static', filename=attachment.file_path) }}" alt="" class="attachment-preview"/>{% else %}<div class="attachment-chip">{% if attachment.file_path.endswith('.pdf') %}<i class="far fa-file-pdf text-red-500"></i>{% elif attachment.file_path.endswith(('.doc','.docx')) %}<i class="far fa-file-word text-blue-500"></i>{% else %}<i class="far fa-file text-slate-500"></i>{% endif %}<span class="text-xs">{{ attachment.filename|default('Attachment') }}</span></div>{% endif %}</a>{% endfor %}</div>
+						{% endif %}
+						<div class="message-meta"><span>{{ message.created_at.strftime('%I:%M %p') }}</span>{% if message.sender_id == current_user.id %}<i class="fas {% if message.status == 'read' %}fa-check-double seen{% elif message.status == 'delivered' %}fa-check-double opacity-80{% else %}fa-check opacity-80{% endif %}"></i>{% endif %}</div>
+					</div>
+					{% if message.sender_id == current_user.id %}
+					<div class="chat-avatar outgoing ml-2">{% if current_user.profile_pic_path %}<img src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}" alt="" class="w-full h-full object-cover rounded-full"/>{% else %}{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}{% endif %}</div>
+					{% endif %}
+				</div>
+				{% endfor %}
+				{% else %}
+				<div class="chat-empty-state" id="emptyStateContainer"><div class="chat-empty-icon"><i class="far fa-comments"></i></div><h3 class="text-lg font-medium text-slate-700 mb-1">No messages yet</h3><p class="text-sm">Start the conversation by typing below.</p></div>
+				{% endif %}
+			</div>
+			<div id="jumpToBottom" class="jump-to-bottom shadow-md ring-1 ring-slate-900/5 backdrop-blur-md"><i class="fas fa-chevron-down"></i><span class="jump-badge hidden">0</span></div>
+			<div id="typingIndicator" class="typing-indicator-container px-4"><div class="chat-avatar incoming"><i class="fas fa-keyboard text-white text-xs"></i></div><div class="typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>
+			<form id="messageForm" class="mt-auto flex-shrink-0">
+				<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+				<div class="relative bg-white rounded-xl border border-slate-200 shadow-sm chat-input-bar">
+					<textarea name="message" rows="2" placeholder="{% if inquiry.status == 'closed' %}This inquiry is closed.{% else %}Type your reply here...{% endif %}" id="messageInput" class="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none leading-relaxed text-slate-800 placeholder:text-slate-400" {% if inquiry.status == 'closed' %}disabled{% endif %}></textarea>
+					<div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 bg-slate-50 rounded-b-xl chat-input-toolbar">
+						<div class="flex items-center gap-2"><div class="relative"><input type="file" id="replyAttachments" name="attachments" multiple class="hidden" {% if inquiry.status == 'closed' %}disabled{% endif %}/><label for="replyAttachments" class="inline-flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-emerald-700 icon-btn file-input-trigger {% if inquiry.status == 'closed' %}pointer-events-none opacity-50{% endif %}"><i class="fas fa-paperclip text-lg"></i><span class="label-text-attach">Attach</span></label></div></div>
+						<button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 icon-btn" id="sendButton" {% if inquiry.status == 'closed' %}disabled{% endif %}><span class="label-text-send">Send</span><i class="fas fa-paper-plane"></i></button>
+					</div>
+				</div>
+				<div id="attachmentErrors" class="mt-2 text-sm text-red-600"></div>
+				<div id="replyAttachmentPreview" class="mt-2 flex flex-wrap gap-2"></div>
+			</form>
+			<button id="scrollToBottomBtn" class="hidden self-end sticky bottom-4 right-4 z-10 translate-y-2 rounded-full bg-white/90 shadow-lg ring-1 ring-slate-900/5 px-3 py-2 text-slate-700 hover:text-emerald-700 backdrop-blur-md"><i class="fas fa-arrow-down mr-2"></i> New messages</button>
+		</div>
+	</div>
+
+	<!-- RIGHT PANEL: Student Info + Files -->
+	<aside class="chat-panel panel-right mobile-drawer drawer-right" id="panelRight">
+		<div class="chat-panel-header"><h3><i class="fas fa-user mr-2"></i>Student Info</h3></div>
+		<div class="chat-panel-body">
+			<div style="text-align:center;margin-bottom:16px;">
+				{% set stu_pic = si.profile_pic or inquiry.student.user.profile_pic_path %}
+				{% if stu_pic %}
+				<img src="{{ url_for('static', filename=stu_pic) }}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;display:block;box-shadow:0 0 0 3px #d1fae5;">
+				{% else %}
+				<div style="width:64px;height:64px;border-radius:50%;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-weight:700;font-size:1.25rem;">{{ inquiry.student.user.first_name[0] }}{{ inquiry.student.user.last_name[0] }}</div>
+				{% endif %}
+				<div style="font-weight:700;color:#0f172a;">{{ si.full_name or inquiry.student.user.get_full_name() }}</div>
+				<div style="font-size:0.75rem;color:#94a3b8;">{{ si.student_number or inquiry.student.student_number or '' }}</div>
+			</div>
+			<div class="detail-row"><div class="detail-label">Email</div><div class="detail-value" style="word-break:break-all;">{{ si.email or inquiry.student.user.email or 'Not provided' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Campus</div><div class="detail-value">{{ si.campus_name or 'Not specified' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Department</div><div class="detail-value">{{ si.department_name or inquiry.student.department_name or 'Not specified' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Section</div><div class="detail-value">{{ si.section or inquiry.student.section or 'Not specified' }}</div></div>
+			<div class="detail-row"><div class="detail-label">Year Level</div><div class="detail-value">{{ si.year_level or inquiry.student.year_level or 'Not specified' }}</div></div>
+
+			<div style="padding:16px 0 8px;border-top:1px solid #e2e8f0;margin-top:12px;"><h3 style="font-size:0.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#475569;"><i class="fas fa-paperclip mr-1"></i>Shared Files</h3></div>
+			{% set all_attachments = [] %}
+			{% for msg in inquiry.messages %}{% for att in msg.attachments %}{% if all_attachments.append(att) %}{% endif %}{% endfor %}{% endfor %}
+			{% for att in inquiry.attachments %}{% if att not in all_attachments and all_attachments.append(att) %}{% endif %}{% endfor %}
+			{% if all_attachments %}{% for att in all_attachments %}
+			<a href="{{ url_for('static', filename=att.file_path) }}" target="_blank" class="file-card">
+				<div class="file-card-icon {% if att.file_path.endswith('.pdf') %}pdf{% elif att.file_path.endswith(('.doc','.docx')) %}doc{% elif att.file_path.endswith(('.xls','.xlsx','.csv')) %}xls{% elif att.file_path.endswith(('.jpg','.jpeg','.png','.gif','.webp')) %}img{% else %}other{% endif %}">{% if att.file_path.endswith('.pdf') %}<i class="far fa-file-pdf"></i>{% elif att.file_path.endswith(('.doc','.docx')) %}<i class="far fa-file-word"></i>{% elif att.file_path.endswith(('.xls','.xlsx','.csv')) %}<i class="far fa-file-excel"></i>{% elif att.file_path.endswith(('.jpg','.jpeg','.png','.gif','.webp')) %}<i class="far fa-image"></i>{% else %}<i class="far fa-file"></i>{% endif %}</div>
+				<div class="file-card-info"><div class="file-card-name">{{ att.filename|default('Attachment') }}</div>{% if att.file_size %}<div class="file-card-size">{{ (att.file_size / 1024)|round(1) }} KB</div>{% endif %}</div>
+				<div class="file-card-dl"><i class="fas fa-download"></i></div>
+			</a>
+			{% endfor %}{% else %}
+			<div style="text-align:center;padding:1rem;color:#94a3b8;"><i class="fas fa-folder-open" style="font-size:1.5rem;margin-bottom:6px;display:block;opacity:0.4;"></i><p style="font-size:0.8125rem;">No files shared yet</p></div>
+			{% endif %}
+		</div>
+	</aside>
+</div>
+</div>

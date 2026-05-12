@@ -1,0 +1,507 @@
+// Search functionality (guard for presence)
+const pg_searchInput = document.getElementById('searchInput');
+if (pg_searchInput) pg_searchInput.addEventListener('keyup', function() {
+    const searchText = this.value.toLowerCase();
+    const table = document.getElementById('studentTableBody');
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const nameCell = rows[i].getElementsByTagName('td')[1];
+        const emailCell = rows[i].getElementsByTagName('td')[2];
+        const studentNumberCell = rows[i].getElementsByTagName('td')[3];
+        const departmentCell = rows[i].getElementsByTagName('td')[4];
+        
+        if (nameCell && emailCell && studentNumberCell && departmentCell) {
+            const name = nameCell.textContent.toLowerCase();
+            const email = emailCell.textContent.toLowerCase();
+            const studentNumber = studentNumberCell.textContent.toLowerCase();
+            const department = departmentCell.textContent.toLowerCase();
+            
+            if (name.includes(searchText) || email.includes(searchText) || 
+                studentNumber.includes(searchText) || department.includes(searchText)) {
+                rows[i].style.display = '';
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    }
+});
+
+// Status filter (for active/inactive) (guard for presence)
+const pg_statusFilter = document.getElementById('statusFilter');
+if (pg_statusFilter) pg_statusFilter.addEventListener('change', function() {
+    // Since we removed status columns, this filter may need to be updated
+    // or removed based on whether you want to keep account status filtering
+    console.log('Status filter changed:', this.value);
+    // Implementation depends on whether you want to keep any status filtering
+});
+
+// Sort functionality (guard for presence)
+const pg_sortBy = document.getElementById('sortBy');
+if (pg_sortBy) pg_sortBy.addEventListener('change', function() {
+    const sortBy = this.value;
+    const table = document.getElementById('studentTableBody');
+    const rows = Array.from(table.getElementsByTagName('tr'));
+    
+    if (sortBy === '') return;
+    
+    rows.sort((a, b) => {
+        let aValue, bValue;
+        
+        if (sortBy === 'name') {
+            aValue = a.getElementsByTagName('td')[1].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[1].textContent.toLowerCase();
+        } else if (sortBy === 'email') {
+            aValue = a.getElementsByTagName('td')[2].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[2].textContent.toLowerCase();
+        } else if (sortBy === 'student_number') {
+            aValue = a.getElementsByTagName('td')[3].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[3].textContent.toLowerCase();
+        } else if (sortBy === 'department') {
+            aValue = a.getElementsByTagName('td')[4].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[4].textContent.toLowerCase();
+        } else if (sortBy === 'year_level') {
+            aValue = a.getElementsByTagName('td')[5].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[5].textContent.toLowerCase();
+        } else if (sortBy === 'section') {
+            aValue = a.getElementsByTagName('td')[6].textContent.toLowerCase();
+            bValue = b.getElementsByTagName('td')[6].textContent.toLowerCase();
+        }
+        
+        if (aValue < bValue) return -1;
+        if (aValue > bValue) return 1;
+        return 0;
+    });
+    
+    // Remove all existing rows
+    while (table.firstChild) {
+        table.removeChild(table.firstChild);
+    }
+    
+    // Add sorted rows
+    rows.forEach(row => table.appendChild(row));
+});
+
+// Function to toggle student account lock
+function toggleStudentLock(studentId, shouldLock) {
+    // Update confirmation message to be clearer about what's happening
+    const action = shouldLock ? 'lock' : 'unlock';
+    const reasonPrompt = shouldLock ? prompt("Please provide a reason for locking this account:", "") : "";
+    
+    // If user cancels the prompt for lock reason or the lock action itself
+    if (shouldLock && reasonPrompt === null) {
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to ${action} this student account?`)) {
+        return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    fetch('/admin/toggle_student_lock', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            should_lock: shouldLock,
+            reason: reasonPrompt
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the button text and style without reloading the page
+            updateLockStatus(studentId, data.account_locked, data.lock_reason, data.locked_at);
+            
+            // Show success message
+            createFlashMessage('success', 
+                `Student account ${data.account_locked ? 'locked' : 'unlocked'} successfully`);
+        } else {
+            // Show error message
+            createFlashMessage('error', 'Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        createFlashMessage('error', 'An unexpected error occurred. Please try again.');
+    });
+}
+
+// Delegate lock button clicks to support new data attributes
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.lock-button');
+    if (!btn) return;
+    const studentId = parseInt(btn.getAttribute('data-student-id'));
+    const shouldLockAttr = btn.getAttribute('data-should-lock');
+    const shouldLock = shouldLockAttr === '1';
+    if (Number.isFinite(studentId)) {
+        toggleStudentLock(studentId, shouldLock);
+    }
+});
+
+// Helper function to update lock status without page reload
+function updateLockStatus(studentId, isLocked, lockReason, lockedAt) {
+    // Find the row for this student
+    const row = document.querySelector(`tr[data-student-id="${studentId}"]`) || 
+                // Fallback selector if data attribute isn't present
+                Array.from(document.querySelectorAll('button'))
+                .find(btn => btn.onclick && btn.onclick.toString().includes(`toggleStudentLock(${studentId}`))
+                ?.closest('tr');
+    
+    if (!row) return;
+    
+    // Find the lock button
+    const lockButton = row.querySelector('.lock-button');
+    if (!lockButton) return;
+    
+    // Update button appearance
+    if (isLocked) {
+        // switch to unlocked state button visuals (green tone, unlock icon)
+        lockButton.classList.remove('bg-yellow-100','hover:bg-yellow-200','text-yellow-700');
+        lockButton.classList.add('bg-green-100','hover:bg-green-200','text-green-700');
+        lockButton.innerHTML = '<i class="fas fa-unlock"></i>';
+        lockButton.setAttribute('data-should-lock','0');
+        lockButton.title = 'Unlock Account' + (lockReason ? `: ${lockReason} (${lockedAt})` : '');
+        
+        // Add tooltip with lock reason if available
+        if (lockReason) {
+            lockButton.setAttribute('title', `Locked: ${lockReason} (${lockedAt})`);
+        }
+    } else {
+        // switch to locked state button visuals (yellow tone, lock icon)
+        lockButton.classList.remove('bg-green-100','hover:bg-green-200','text-green-700');
+        lockButton.classList.add('bg-yellow-100','hover:bg-yellow-200','text-yellow-700');
+        lockButton.innerHTML = '<i class="fas fa-lock"></i>';
+        lockButton.setAttribute('data-should-lock','1');
+        lockButton.title = 'Lock Account';
+    }
+    
+    // Also update the lock status cell if it exists
+    const lockStatusCell = row.querySelector('.lock-status');
+    if (lockStatusCell) {
+        if (isLocked) {
+            lockStatusCell.innerHTML = '<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" title="' + (lockReason || 'No reason provided') + '">Locked</span>';
+        } else {
+            lockStatusCell.innerHTML = '<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Unlocked</span>';
+        }
+    }
+}
+
+// Helper function to create flash messages
+function createFlashMessage(type, message) {
+    const flashContainer = document.createElement('div');
+    flashContainer.className = `mb-6 p-4 rounded-lg shadow-sm ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} flex justify-between items-center`;
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message;
+    flashContainer.appendChild(messageSpan);
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'text-gray-500 hover:text-gray-700 focus:outline-none transition-colors duration-200';
+    closeButton.innerHTML = '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>';
+    closeButton.onclick = function() {
+        this.parentElement.style.display = 'none';
+    };
+    flashContainer.appendChild(closeButton);
+    
+    // Insert at the top of the content
+    const contentContainer = document.querySelector('.container');
+    contentContainer.insertBefore(flashContainer, contentContainer.firstChild);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (flashContainer.parentNode) {
+            flashContainer.parentNode.removeChild(flashContainer);
+        }
+    }, 5000);
+}
+
+// Verify student email (admin bypass)
+async function pg_verifyStudentEmail(studentId, button) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    try {
+        if (button) {
+            button.disabled = true;
+            button.classList.add('opacity-60', 'cursor-not-allowed');
+        }
+        const resp = await fetch('/admin/verify_student_email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ student_id: parseInt(studentId, 10) })
+        });
+        if (!resp.ok) {
+            const text = await resp.text();
+            throw new Error(text || `Request failed (${resp.status})`);
+        }
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message || 'Operation failed');
+        // Update UI: swap Unverified badge to Verified and remove button
+        const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+        if (row) {
+            const nameCell = row.querySelector('.font-bold');
+            if (nameCell) {
+                // Remove any existing badge with title starting with 'Email'
+                nameCell.querySelectorAll('span.inline-flex[title^="Email"]').forEach(el => el.remove());
+                const badge = document.createElement('span');
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200';
+                badge.title = 'Email verified';
+                badge.innerHTML = '<i class="fas fa-circle-check mr-1"></i>Verified';
+                nameCell.appendChild(badge);
+            }
+            const btn = row.querySelector('button.mark-verified');
+            if (btn) btn.remove();
+        }
+        createFlashMessage('success', 'Student email marked as verified.');
+    } catch (err) {
+        console.error(err);
+        createFlashMessage('error', 'Failed to verify email: ' + (err.message || err));
+        if (button) {
+            button.disabled = false;
+            button.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+    }
+}
+
+// Event delegation for verify buttons
+document.addEventListener('click', function(e){
+    const btn = e.target.closest('button.mark-verified');
+    if (!btn) return;
+    const id = btn.getAttribute('data-student-id');
+    if (!id) return;
+    pg_verifyStudentEmail(id, btn);
+});
+
+// Helper function to update button without page reload
+function updateButtonStatus(studentId, isActive) {
+    // Find the button for this student
+    const row = document.querySelector(`tr[data-student-id="${studentId}"]`) || 
+                // Fallback selector if data attribute isn't present
+                Array.from(document.querySelectorAll('button'))
+                .find(btn => btn.onclick && btn.onclick.toString().includes(`toggleStudentStatus(${studentId}`))
+                ?.closest('tr');
+    
+    if (!row) return;
+    
+    const button = row.querySelector('button');
+    if (!button) return;
+    
+    // Update button appearance
+    if (isActive) {
+        button.className = button.className.replace(/bg-green-\d00/g, 'bg-red-500');
+        button.className = button.className.replace(/hover:bg-green-\d00/g, 'hover:bg-red-600');
+        button.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            DEACTIVATE
+        `;
+        button.onclick = function() { toggleStudentStatus(studentId, 0); };
+    } else {
+        button.className = button.className.replace(/bg-red-\d00/g, 'bg-green-500');
+        button.className = button.className.replace(/hover:bg-red-\d00/g, 'hover:bg-green-600');
+        button.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            ACTIVATE
+        `;
+        button.onclick = function() { toggleStudentStatus(studentId, 1); };
+    }
+    
+    // Also update the status cell
+    const statusCell = row.querySelector('td:nth-child(4)');
+    if (statusCell) {
+        if (isActive) {
+            statusCell.innerHTML = '<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>';
+        } else {
+            statusCell.innerHTML = '<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>';
+        }
+    }
+}
+
+// ---- Suspension Modal Logic (lazy, event-delegated) ----
+function pg_getSuspendModalEls() {
+    return {
+        modal: document.getElementById('suspendModal'),
+        form: document.getElementById('suspendForm'),
+        idInput: document.getElementById('suspendStudentId'),
+        targetStateInput: document.getElementById('suspendTargetState'),
+        reasonArea: document.getElementById('suspendReason'),
+        reasonGroup: document.getElementById('suspendReasonGroup'),
+        reactivateNotice: document.getElementById('reactivateNotice'),
+        titleEl: document.getElementById('suspendModalTitle'),
+        subtitleEl: document.getElementById('suspendModalSubtitle'),
+        submitBtn: document.getElementById('suspendSubmitBtn'),
+        feedback: document.getElementById('suspendFeedback')
+    };
+}
+
+function pg_ensureModalAtBody(modal) {
+    if (!modal) return;
+    if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+    }
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.zIndex = '1200';
+}
+
+function pg_openSuspendModal(studentId, currentlyActive, name) {
+    const { modal, idInput, targetStateInput, reasonArea, reasonGroup, reactivateNotice, titleEl, subtitleEl, submitBtn, feedback } = pg_getSuspendModalEls();
+    if (!modal || !idInput || !targetStateInput || !submitBtn) return;
+    pg_ensureModalAtBody(modal);
+    document.body.style.overflow = 'hidden';
+    idInput.value = studentId;
+    if (currentlyActive) {
+        targetStateInput.value = '0';
+        if (titleEl) titleEl.textContent = 'Deactivate Student Account';
+        if (subtitleEl) subtitleEl.textContent = `Provide a reason for deactivation. This will be shown to ${name.split(' ')[0]} on next login.`;
+        submitBtn.innerHTML = '<i class="fa-solid fa-user-slash"></i> Confirm Deactivate';
+        submitBtn.classList.remove('bg-blue-600','hover:bg-blue-700');
+        submitBtn.classList.add('bg-red-600','hover:bg-red-700');
+        if (reasonGroup) reasonGroup.classList.remove('hidden');
+        if (reactivateNotice) reactivateNotice.classList.add('hidden');
+        if (reasonArea) reasonArea.value = '';
+    } else {
+        targetStateInput.value = '1';
+        if (titleEl) titleEl.textContent = 'Reactivate Student Account';
+        if (subtitleEl) subtitleEl.textContent = `Re-enable access for ${name}.`;
+        submitBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> Confirm Reactivate';
+        submitBtn.classList.remove('bg-red-600','hover:bg-red-700');
+        submitBtn.classList.add('bg-blue-600','hover:bg-blue-700');
+        if (reasonGroup) reasonGroup.classList.add('hidden');
+        if (reactivateNotice) reactivateNotice.classList.remove('hidden');
+        if (feedback) feedback.classList.add('hidden');
+    }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function pg_closeSuspendModal() {
+    const { modal, feedback } = pg_getSuspendModalEls();
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (feedback) feedback.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+// Open trigger (event delegation)
+document.addEventListener('click', (e)=>{
+    const trigger = e.target.closest('.open-suspend-modal');
+    if (trigger) {
+        const sid = parseInt(trigger.getAttribute('data-student-id'),10);
+        const active = trigger.getAttribute('data-current-active') === '1';
+        const name = trigger.getAttribute('data-student-name') || 'this student';
+        pg_openSuspendModal(sid, active, name);
+    }
+});
+
+// Redundant capture-phase listener to survive stopPropagation in bubbling
+document.addEventListener('click', (e)=>{
+    const trigger = e.target.closest('.open-suspend-modal');
+    if (trigger) {
+        const sid = parseInt(trigger.getAttribute('data-student-id'),10);
+        const active = trigger.getAttribute('data-current-active') === '1';
+        const name = trigger.getAttribute('data-student-name') || 'this student';
+        pg_openSuspendModal(sid, active, name);
+    }
+}, true);
+
+// Also bind directly after DOM ready as a fallback
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.open-suspend-modal').forEach(btn => {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            const sid = parseInt(btn.getAttribute('data-student-id'),10);
+            const active = btn.getAttribute('data-current-active') === '1';
+            const name = btn.getAttribute('data-student-name') || 'this student';
+            pg_openSuspendModal(sid, active, name);
+        });
+    });
+});
+
+// Close via backdrop or any element with data-modal-close
+document.addEventListener('click', (e) => {
+    const closeEl = e.target.closest('[data-modal-close]');
+    const { modal } = pg_getSuspendModalEls();
+    if (closeEl || (modal && e.target === modal)) {
+        pg_closeSuspendModal();
+    }
+});
+
+// Close on ESC key
+document.addEventListener('keydown', (e) => {
+    const { modal } = pg_getSuspendModalEls();
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        pg_closeSuspendModal();
+    }
+});
+
+// Submit handler via delegation (ensures it works even if form is parsed later)
+document.addEventListener('submit', function(ev) {
+    const form = ev.target;
+    if (!form || form.id !== 'suspendForm') return;
+    ev.preventDefault();
+    const { idInput, targetStateInput, reasonArea, submitBtn, feedback } = pg_getSuspendModalEls();
+    if (!idInput || !targetStateInput || !submitBtn) return;
+    if (feedback) {
+        feedback.classList.remove('hidden');
+        feedback.className = 'text-sm';
+    }
+    const studentId = parseInt(idInput.value,10);
+    const targetActive = targetStateInput.value === '1';
+    let reason = reasonArea ? reasonArea.value.trim() : '';
+    if (!targetActive && (!reason || reason.length < 8)) {
+        if (feedback) {
+            feedback.textContent = 'Please provide a reason of at least 8 characters.';
+            feedback.classList.add('text-red-600');
+        }
+        return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60','cursor-not-allowed');
+    if (feedback) {
+        feedback.textContent = targetActive ? 'Reactivating account...' : 'Deactivating account...';
+        feedback.classList.remove('text-red-600');
+        feedback.classList.add('text-gray-600');
+    }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    fetch('/admin/toggle_student_status', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json','X-CSRFToken': csrfToken },
+        body: JSON.stringify({ student_id: studentId, is_active: targetActive, reason })
+    }).then(r=>r.json()).then(data=>{
+        if (data.success) {
+            if (feedback) {
+                feedback.textContent = targetActive ? 'Account reactivated successfully.' : 'Account deactivated successfully.';
+                feedback.classList.remove('text-gray-600');
+                feedback.classList.add('text-green-600');
+            }
+            setTimeout(()=>{ window.location.reload(); }, 800);
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+            if (feedback) {
+                feedback.textContent = data.message || 'Operation failed.';
+                feedback.classList.remove('text-gray-600');
+                feedback.classList.add('text-red-600');
+            }
+        }
+    }).catch(err=>{
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-60','cursor-not-allowed');
+        if (feedback) {
+            feedback.textContent = 'Unexpected error. Please try again.';
+            feedback.classList.remove('text-gray-600');
+            feedback.classList.add('text-red-600');
+        }
+        console.error(err);
+    });
+});
+
+

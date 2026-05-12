@@ -1,0 +1,345 @@
+{% extends (current_campus and 'campus/headerbase.html' or 'headerbase.html') %}
+
+{% block title %}{{ current_campus_name }} - Student Portal Login{% endblock %}
+
+{% block content %}
+{# Resolve campus-scoped assets (logo/background), with safe fallbacks #}
+{% set _logo_path = current_campus.campus_logo_path if current_campus and current_campus.campus_logo_path else None %}
+{% if _logo_path %}
+  {% if _logo_path.startswith('http') or _logo_path.startswith('/') %}
+    {% set campus_logo_url = _logo_path %}
+  {% else %}
+    {% set campus_logo_url = url_for('static', filename=_logo_path) %}
+  {% endif %}
+{% else %}
+  {% set campus_logo_url = brand_logo_url %}
+{% endif %}
+
+{% set _bg_path = current_campus.campus_landing_bg_path if current_campus and current_campus.campus_landing_bg_path else 'images/backgroundlanding.png' %}
+{% if _bg_path.startswith('http') or _bg_path.startswith('/') %}
+  {% set campus_bg_url = _bg_path %}
+{% else %}
+  {% set campus_bg_url = url_for('static', filename=_bg_path) %}
+{% endif %}
+
+<!-- Full-screen Background Image -->
+<div class="relative min-h-screen flex flex-col">
+  <div
+    class="bg-cover bg-center flex-1"
+    data-bg-url="{{ campus_bg_url }}"
+  >
+    <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+    
+    <!-- Login Card -->
+    <div class="relative flex justify-center items-center min-h-screen py-12 px-4">
+      <div class="bg-white rounded-lg shadow-xl overflow-hidden w-full max-w-md">
+        <div class="flex flex-col items-center p-6 pb-2">
+          <img 
+            src="{{ campus_logo_url }}" 
+            alt="Laguna State Polytechnic University Logo" 
+            class="w-40 h-40 mb-4 rounded-full"
+          >
+          <h2 class="text-2xl font-bold text-blue-800 text-center">PORTAL</h2>
+        </div>
+        
+        <div class="p-6 pt-2">
+          <form action="{{ url_for('auth.login', campus_id=(current_campus.id if current_campus else None)) }}" method="post" class="space-y-4">
+            <!-- Email Input -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="relative">
+              <div class="flex items-center bg-gray-100 rounded-md">
+                <span class="pl-3 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </span>
+                <input 
+                  type="email" 
+                  name="email" 
+                  placeholder="Email" 
+                  class="block w-full px-3 py-3 bg-gray-100 border-0 focus:outline-none focus:ring-0"
+                  required
+                >
+              </div>
+            </div>
+            
+            <!-- Password Input -->
+            <div class="relative">
+              <div class="flex items-center bg-gray-100 rounded-md">
+                <span class="pl-3 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </span>
+                <input 
+                  type="password" 
+                  name="password" 
+                  placeholder="Password" 
+                  class="block w-full px-3 py-3 bg-gray-100 border-0 focus:outline-none focus:ring-0"
+                  required
+                >
+                <button type="button" class="password-toggle pr-3 text-gray-500" aria-label="Toggle password visibility">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Login Button -->
+            <button 
+              type="submit" 
+              class="w-full py-3 bg-blue-800 hover:bg-blue-900 text-white font-bold rounded-md transition duration-200"
+            >
+              LOG IN
+            </button>
+            
+            <!-- Remember Me -->
+            <div class="flex items-center text-sm">
+              <div class="flex items-center">
+                <input type="checkbox" id="remember" name="remember" class="h-4 w-4 text-blue-800 focus:ring-blue-800 border-gray-300 rounded">
+                <label for="remember" class="ml-2 text-gray-700">Remember me</label>
+              </div>
+            </div>
+          </form>
+          
+          <!-- Register Link -->
+          <div class="text-center mt-6 text-sm">
+            <p class="text-gray-700">
+              Don't have an account? 
+              <a href="{{ url_for('auth.register', campus_id=(current_campus.id if current_campus else None)) }}" class="text-blue-800 font-semibold hover:underline">Register</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Password toggle functionality
+    const passwordToggles = document.querySelectorAll('.password-toggle');
+    // Set background image from data attribute to avoid inline Jinja in CSS
+    const bgEl = document.querySelector('[data-bg-url]');
+    if (bgEl && bgEl.dataset.bgUrl) {
+      bgEl.style.backgroundImage = `url('${bgEl.dataset.bgUrl}')`;
+    }
+    
+    passwordToggles.forEach(toggle => {
+      toggle.addEventListener('click', function() {
+        const passwordInput = this.parentNode.querySelector('input');
+        const type = passwordInput.getAttribute('type');
+        
+        if (type === 'password') {
+          passwordInput.setAttribute('type', 'text');
+          this.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          `;
+        } else {
+          passwordInput.setAttribute('type', 'password');
+          this.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          `;
+        }
+      });
+    });
+  });
+</script>
+<!-- Serialized login error context -->
+<script id="login-error-data" type="application/json">
+  {{ {
+      'login_error_message': (login_error_message or ''),
+      'suppress_flashes': (suppress_flashes or false),
+      'suspended_reason': (suspended_reason or '')
+    } | tojson }}
+</script>
+<script>
+  // Accessible Error Modal
+  (function() {
+  let loginErrorMessage = '';
+  let suppressFlashes = false;
+  let suspendedReason = '';
+    const dataEl = document.getElementById('login-error-data');
+    if (dataEl) {
+      try {
+        const parsed = JSON.parse(dataEl.textContent || '{}');
+  loginErrorMessage = parsed.login_error_message || '';
+  suppressFlashes = !!parsed.suppress_flashes;
+  suspendedReason = parsed.suspended_reason || '';
+      } catch (e) {
+        // ignore parse errors; default values remain
+      }
+    }
+  const hasError = !!loginErrorMessage;
+  const isSuspended = !!suspendedReason && !hasError;
+
+    // If suppressing flashes, hide header flash container for this page render
+    if (suppressFlashes) {
+      const flashWrap = document.querySelector('.flash-messages');
+      if (flashWrap) flashWrap.style.display = 'none';
+    }
+
+    // Create modal elements
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-200';
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const modal = document.createElement('div');
+    modal.className = 'bg-white w-full max-w-md mx-4 rounded-lg shadow-2xl transform scale-95 opacity-0 transition-all duration-200 outline-none';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'login-error-title');
+    modal.setAttribute('aria-describedby', 'login-error-desc');
+
+    // Encode helper to avoid HTML injection in error messages
+    function encodeHTML(str){
+      const p = document.createElement('p');
+      p.textContent = str; return p.innerHTML;
+    }
+
+    const suspensionBlock = suspendedReason ? `
+      <div class="border-t-4 border-red-600 rounded-t-lg"></div>
+      <div class="p-5">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 text-red-600 mr-3" aria-hidden="true">
+            <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+          </div>
+          <div class="flex-1">
+            <h3 id="login-error-title" class="text-lg font-semibold text-red-700">Account Suspended</h3>
+            <p id="login-error-desc" class="mt-1 text-sm text-gray-700">Your account has been suspended due to the following reason:</p>
+            <div class="mt-3 bg-red-50 border border-red-200 text-red-800 text-sm px-3 py-2 rounded-lg leading-relaxed">${encodeHTML(suspendedReason)}</div>
+            <p class="mt-3 text-xs text-gray-500">If you believe this is a mistake, please contact your Campus Administrator.</p>
+          </div>
+          <button type="button" class="ml-3 text-gray-500 hover:text-gray-700" aria-label="Close dialog" data-close>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+        <div class="mt-5 space-y-3">
+          <a href="mailto:support@lspu.edu.ph" class="w-full inline-flex justify-center items-center gap-2 py-2 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            <i class="fa-solid fa-envelope"></i> Contact Support
+          </a>
+          <button type="button" class="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2" data-close>Close</button>
+        </div>
+      </div>` : '';
+
+    modal.innerHTML = isSuspended ? suspensionBlock : `
+      <div class="border-t-4 border-red-600 rounded-t-lg"></div>
+      <div class="p-5">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 text-red-600 mr-3" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 id="login-error-title" class="text-lg font-semibold text-red-700">Login error</h3>
+            <p id="login-error-desc" class="mt-1 text-sm text-gray-700">${encodeHTML(loginErrorMessage || 'An error occurred during login. Please try again.')}</p>
+          </div>
+          <button type="button" class="ml-3 text-gray-500 hover:text-gray-700" aria-label="Close login error" data-close>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+  <div class="mt-4 space-y-3">
+          <button type="button" class="w-full py-2 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" data-close>
+            Try again
+          </button>
+        </div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Focusable elements inside modal for focus trap
+    function getFocusables() {
+      return modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    }
+
+    function openModal() {
+      overlay.classList.remove('pointer-events-none');
+      overlay.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(() => {
+        overlay.classList.add('opacity-100');
+        modal.classList.remove('opacity-0', 'scale-95');
+        modal.classList.add('opacity-100', 'scale-100');
+      });
+      // Set initial focus
+      const focusables = getFocusables();
+      if (focusables.length) focusables[focusables.length - 1].focus();
+      document.addEventListener('keydown', onKeydown);
+      document.addEventListener('focus', trapFocus, true);
+    }
+
+    function closeModal() {
+      overlay.classList.remove('opacity-100');
+      modal.classList.remove('opacity-100', 'scale-100');
+      modal.classList.add('opacity-0', 'scale-95');
+      // Small delay to allow animation
+      setTimeout(() => {
+        overlay.classList.add('pointer-events-none');
+        overlay.setAttribute('aria-hidden', 'true');
+      }, 180);
+      document.removeEventListener('keydown', onKeydown);
+      document.removeEventListener('focus', trapFocus, true);
+      // Return focus to email input for quick retry
+      const email = document.querySelector('input[name="email"]');
+      if (email) email.focus();
+    }
+
+    function onKeydown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      } else if (e.key === 'Tab') {
+        // trap focus
+        const focusables = Array.from(getFocusables());
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
+      }
+    }
+
+    function trapFocus(e) {
+      if (!modal.contains(e.target)) {
+        e.stopPropagation();
+        const focusables = getFocusables();
+        if (focusables.length) focusables[0].focus();
+      }
+    }
+
+    // Overlay click to close
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    // Close buttons
+    overlay.addEventListener('click', function(e) {
+      const target = e.target.closest('[data-close]');
+      if (target) {
+        e.preventDefault();
+        closeModal();
+      }
+    });
+
+  // No "Forgot password" link shown; add real flow later if implemented
+
+    // Auto-open when there is an error
+    if (hasError || isSuspended) {
+      openModal();
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block page_title %}My Profile{% endblock %}
+{% block page_subtitle %}Account details and preferences{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+	<div class="relative bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+		<div class="absolute inset-0 opacity-10">
+			<div class="absolute top-6 left-6 w-28 h-28 border-2 border-white rounded-full animate-ping"></div>
+			<div class="absolute bottom-10 right-10 w-20 h-20 border-2 border-white rounded-full animate-pulse"></div>
+		</div>
+		<div class="relative z-10 flex items-start md:items-center justify-between gap-6 flex-col md:flex-row">
+			<div class="flex items-center gap-5">
+				{% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+				<img src="{{ avatar_url or url_for('static', filename='images/default.jpg') }}" class="h-16 w-16 rounded-2xl object-cover ring-4 ring-white/20" alt="Avatar"/>
+				<div>
+					<h1 class="text-3xl font-bold">{{ current_user.first_name }} {{ current_user.last_name }}</h1>
+					<p class="text-blue-200 font-medium">Super Administrator</p>
+				</div>
+			</div>
+			<div class="flex gap-3">
+				<a href="{{ url_for('super_admin.account_settings') }}" class="bg-white/15 hover:bg-white/25 border border-white/20 text-white px-5 py-3 rounded-xl font-semibold transition-all">
+					<i class="fas fa-user-edit mr-2"></i> Edit Profile
+				</a>
+				<a href="{{ url_for('auth.logout') }}" class="bg-red-500/90 hover:bg-red-600 text-white px-5 py-3 rounded-xl font-semibold transition-all">
+					<i class="fas fa-sign-out-alt mr-2"></i> Logout
+				</a>
+			</div>
+		</div>
+	</div>
+
+	<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+		<!-- Account Details -->
+		<div class="xl:col-span-2 bg-white rounded-3xl shadow-2xl border border-gray-100 p-8">
+			<h3 class="text-2xl font-bold text-gray-800 mb-6">Account Details</h3>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div class="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+					<p class="text-gray-500 text-sm">Full Name</p>
+					<p class="text-gray-900 font-semibold text-lg">{{ current_user.first_name }} {% if current_user.middle_name %}{{ current_user.middle_name }} {% endif %}{{ current_user.last_name }}</p>
+				</div>
+				<div class="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+					<p class="text-gray-500 text-sm">Email Address</p>
+					<p class="text-gray-900 font-semibold text-lg">{{ current_user.email }}</p>
+				</div>
+				<div class="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+					<p class="text-gray-500 text-sm">Role</p>
+					<p class="text-gray-900 font-semibold text-lg">Super Admin</p>
+				</div>
+				<div class="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+					<p class="text-gray-500 text-sm">Assigned Campus</p>
+					<p class="text-gray-900 font-semibold text-lg">{{ campus.name if campus else 'Not assigned' }}</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Quick Actions -->
+		<div class="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8">
+			<h3 class="text-2xl font-bold text-gray-800 mb-6">Quick Actions</h3>
+			<div class="space-y-3">
+				<a href="{{ url_for('super_admin.account_settings') }}" class="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+							<i class="fas fa-cogs"></i>
+						</div>
+						<div>
+							<p class="font-semibold text-gray-900">Account Settings</p>
+							<p class="text-sm text-gray-500">Manage your profile and password</p>
+						</div>
+					</div>
+					<i class="fas fa-chevron-right text-gray-400"></i>
+				</a>
+				<a href="{{ url_for('super_admin.activity_logs') }}" class="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+							<i class="fas fa-clipboard-list"></i>
+						</div>
+						<div>
+							<p class="font-semibold text-gray-900">Activity Logs</p>
+							<p class="text-sm text-gray-500">Review recent actions</p>
+						</div>
+					</div>
+					<i class="fas fa-chevron-right text-gray-400"></i>
+				</a>
+				<a href="{{ url_for('super_admin.account_settings') }}#change-password" class="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors">
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+							<i class="fas fa-key"></i>
+						</div>
+						<div>
+							<p class="font-semibold text-gray-900">Change Password</p>
+							<p class="text-sm text-gray-500">Update your credentials</p>
+						</div>
+					</div>
+					<i class="fas fa-chevron-right text-gray-400"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

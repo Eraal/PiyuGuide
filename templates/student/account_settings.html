@@ -1,0 +1,283 @@
+{% extends "student/student_base.html" %}
+{% block title %}Account Settings - KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  .settings-card {background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,.08);transition:.3s}
+  .settings-card:hover{transform:translateY(-2px);box-shadow:0 10px 18px -5px rgba(0,0,0,.12)}
+  .section-header{border-left:4px solid #3b82f6;background:linear-gradient(135deg,#eff6ff,#dbeafe)}
+  .input-field{border:2px solid #e5e7eb;transition:.2s}
+  .input-field:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+  .avatar-ring{position:relative;width:120px;height:120px;margin:0 auto;border-radius:50%;overflow:hidden;box-shadow:0 4px 14px -2px rgba(0,0,0,.2);border:4px solid #fff}
+  .avatar-ring img{width:100%;height:100%;object-fit:cover}
+  .avatar-upload-btn{position:absolute;bottom:6px;right:6px;background:#2563eb;color:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem;box-shadow:0 4px 10px -2px rgba(37,99,235,.6)}
+  .toggle-switch{position:relative;display:inline-block;width:50px;height:26px}
+  .toggle-switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#d1d5db;transition:.3s;border-radius:34px}
+  .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+  input:checked + .slider{background:#2563eb}
+  input:checked + .slider:before{transform:translateX(24px)}
+  .save-bar{position:sticky;bottom:0;left:0;right:0;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.5rem}
+  .pill{background:#eef2ff;color:#4338ca;padding:.25rem .65rem;border-radius:9999px;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .info-badge{background:#f0fdf4;color:#15803d;padding:.25rem .55rem;border-radius:6px;font-size:.65rem;font-weight:500}
+  .gradient-border{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,#3b82f6,#9333ea) border-box;border:2px solid transparent;border-radius:14px}
+  .subtle{color:#6b7280;font-size:.8rem}
+  .divider{height:1px;background:linear-gradient(90deg,transparent,#d1d5db,transparent)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <!-- Page Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Account Settings</h1>
+      <p class="text-gray-600">Manage your account preferences and privacy settings</p>
+    </div>
+    <div class="mt-4 md:mt-0">
+      <a
+        href="{{ url_for('student.profile') }}"
+        class="student-breadcrumb"
+      >
+        <i class="fas fa-arrow-left"></i>
+        Back to Profile
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+    <!-- Left rail -->
+    <div class="space-y-6 xl:col-span-1">
+      <!-- Profile overview + change photo -->
+      <div class="settings-card rounded-2xl p-6 gradient-border">
+        <div class="relative mb-5">
+          <div class="avatar-ring">
+            {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+            {% if avatar_url %}
+              <img src="{{ avatar_url }}" alt="Profile Picture" />
+            {% else %}
+              <img src="{{ url_for('static', filename='images/default.jpg') }}" alt="Default" />
+            {% endif %}
+            <form id="picUploadForm" action="{{ url_for('student.update_profile_picture') }}" method="post" enctype="multipart/form-data">
+              {{ pic_form.csrf_token }}
+              <label class="avatar-upload-btn" title="Change photo">
+                <i class="fas fa-camera"></i>
+                {{ pic_form.profile_pic(class='hidden', id='profilePicInput') }}
+              </label>
+            </form>
+          </div>
+        </div>
+        <div class="text-center">
+          <h2 class="text-xl font-semibold text-gray-900">{{ current_user.get_full_name() }}</h2>
+          <p class="subtle mt-1">Student Account</p>
+          {% if student.student_number %}<p class="mt-2 text-sm font-mono bg-gray-100 inline-block px-2 py-1 rounded">Student Number: {{ student.student_number }}</p>{% endif %}
+        </div>
+        <div class="divider my-6"></div>
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center gap-2"><i class="fas fa-envelope text-blue-600"></i> <span>{{ current_user.email }}</span></li>
+          {% if campus %}<li class="flex items-center gap-2"><i class="fas fa-school text-purple-600"></i> <span>{{ campus.name }}</span></li>{% endif %}
+          {% if student.department_name %}<li class="flex items-center gap-2"><i class="fas fa-layer-group text-emerald-600"></i> <span>{{ student.department_name }}</span></li>{% endif %}
+          {% if student.year_level %}<li class="flex items-center gap-2"><i class="fas fa-graduation-cap text-indigo-600"></i> <span>{{ student.year_level }}</span></li>{% endif %}
+          {% if student.section %}<li class="flex items-center gap-2"><i class="fas fa-users text-pink-600"></i> <span>Section {{ student.section }}</span></li>{% endif %}
+        </ul>
+        <p class="mt-6 text-xs text-gray-500">Changes are logged for security & audit purposes.</p>
+      </div>
+      <!-- Quick tips -->
+      <div class="settings-card rounded-2xl p-5">
+        <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-lightbulb text-amber-500"></i> Tips</h3>
+        <ul class="space-y-2 text-xs text-gray-600">
+          <li>Use a clear photo where your face is visible.</li>
+          <li>Keep your email updated for notifications.</li>
+          <li>Turn on reminders to avoid missing sessions.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Main content -->
+  <div class="xl:col-span-3 space-y-10">
+      <!-- Personal / Academic Info -->
+      <div id="personal" class="settings-card rounded-2xl p-8">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-user text-blue-600"></i> Personal & Academic Information</h3>
+            <p class="subtle mt-1">Update the fields below. Student Number remains locked after initial set.</p>
+          </div>
+          <span class="pill">Profile</span>
+        </div>
+        <form class="mt-6 space-y-6" method="post" action="{{ url_for('student.update_personal_info') }}">
+          {{ personal_form.csrf_token }}
+          <div class="grid md:grid-cols-3 gap-6">
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">First Name</label>
+              {{ personal_form.first_name(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Middle Name</label>
+              {{ personal_form.middle_name(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Last Name</label>
+              {{ personal_form.last_name(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-6">
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Email</label>
+              {{ personal_form.email(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Student Number</label>
+              {{ personal_form.student_number(class='input-field w-full px-3 py-2 rounded-lg text-sm ' + ('opacity-60 cursor-not-allowed' if student.student_number else ''), readonly=student.student_number is not none) }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Department</label>
+              {{ personal_form.department_id(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Year Level</label>
+              {{ personal_form.year_level(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Section</label>
+              {{ personal_form.section(class='input-field w-full px-3 py-2 rounded-lg text-sm') }}
+            </div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-xs text-amber-800">
+            <i class="fas fa-shield-alt mt-0.5"></i>
+            <p>All profile changes are subject to review. Some updates may require administrative verification.</p>
+          </div>
+          <div class="save-bar rounded-b-2xl">
+            <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow">Save Changes</button>
+          </div>
+        </form>
+      </div>
+
+      
+
+      <!-- Password Security -->
+      <div id="password-security" class="settings-card rounded-2xl p-8">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-shield-alt text-rose-600"></i> Password Security</h3>
+            <p class="subtle mt-1">Keep your account protected with a strong password.</p>
+          </div>
+          <span class="pill">Security</span>
+        </div>
+        <form class="mt-6 space-y-7" method="post" action="{{ url_for('student.change_password') }}" autocomplete="off">
+          {{ password_form.csrf_token }}
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="md:col-span-1">
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Current Password</label>
+              {{ password_form.current_password(class='input-field w-full px-3 py-2 rounded-lg text-sm', autocomplete='current-password', placeholder='••••••••') }}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">New Password</label>
+              {{ password_form.new_password(class='input-field w-full px-3 py-2 rounded-lg text-sm password-new', autocomplete='new-password', placeholder='At least 8 characters') }}
+              <div class="mt-2">
+                <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="pwStrengthBar" class="h-full w-0 transition-all"></div>
+                </div>
+                <p id="pwStrengthText" class="text-[10px] mt-1 text-gray-500">Strength: Unknown</p>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Confirm New Password</label>
+              {{ password_form.confirm_password(class='input-field w-full px-3 py-2 rounded-lg text-sm', autocomplete='new-password', placeholder='Repeat new password') }}
+            </div>
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center gap-5 justify-between text-[11px] text-gray-500">
+            <ul class="list-disc list-inside space-y-1">
+              <li>Minimum 8 characters</li>
+              <li>Include letters, a number & symbol</li>
+              <li>Avoid reusing old passwords</li>
+            </ul>
+            <div class="flex items-center gap-3">
+              <button type="submit" class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow">Update Password</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Account Deactivation -->
+      <div id="account-status" class="settings-card rounded-2xl p-8 border-amber-300" style="border-image:linear-gradient(90deg,#fbbf24,#f59e0b) 1;">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-user-slash text-amber-600"></i> Account Status</h3>
+            <p class="subtle mt-1">Deactivate your account if you no longer need access.</p>
+          </div>
+          <span class="pill" style="background:#fef3c7;color:#92400e">Caution</span>
+        </div>
+        <form class="mt-6 space-y-6" method="post" action="{{ url_for('student.deactivate_account') }}" onsubmit="return confirm('Are you sure you want to deactivate your account?');">
+          {{ deactivate_form.csrf_token }}
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold tracking-wide text-gray-600 mb-1">Reason (optional)</label>
+              {{ deactivate_form.reason(class='input-field w-full px-3 py-2 rounded-lg text-sm', rows='3', maxlength='255', placeholder='Briefly tell us why (helps improvement)') }}
+              <p class="text-[10px] mt-1 text-gray-500">This note is only visible to administrators.</p>
+            </div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-xs text-amber-800">
+            <i class="fas fa-exclamation-triangle mt-0.5"></i>
+            <p>Your login will be disabled immediately. You can request reactivation later by contacting campus support.</p>
+          </div>
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <p class="text-[11px] text-gray-500">Need temporary break? Deactivation preserves your data.</p>
+            <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow">Deactivate Account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded',() => {
+    // Auto submit profile picture when selected
+    const input = document.getElementById('profilePicInput');
+    if (input){
+      input.addEventListener('change', ()=>{ if(input.files.length){ document.getElementById('picUploadForm').submit(); } });
+    }
+
+    // Custom toggle styling sync
+    document.querySelectorAll('.toggle-switch .slider').forEach(slider=>{
+      slider.addEventListener('click',()=>{
+        const fieldName = slider.getAttribute('data-toggle-for');
+        const hiddenInput = document.getElementById(fieldName);
+        if(hiddenInput){ hiddenInput.checked = !hiddenInput.checked; }
+      });
+    });
+
+    // Password strength meter
+    const pwInput = document.querySelector('.password-new');
+    if(pwInput){
+      const bar = document.getElementById('pwStrengthBar');
+      const text = document.getElementById('pwStrengthText');
+      pwInput.addEventListener('input', ()=>{
+        const val = pwInput.value || '';
+        let score = 0;
+        if(val.length >= 8) score++;
+        if(/[A-Z]/.test(val)) score++;
+        if(/[a-z]/.test(val)) score++;
+        if(/[0-9]/.test(val)) score++;
+        if(/[!@#$%^&*(),.?":{}|<>]/.test(val)) score++;
+        const percent = (score/5)*100;
+        bar.style.width = percent + '%';
+        let color = '#ef4444';
+        let label = 'Very Weak';
+        if(score===2){color='#f97316';label='Weak';}
+        if(score===3){color='#eab308';label='Fair';}
+        if(score===4){color='#10b981';label='Good';}
+        if(score===5){color='#059669';label='Strong';}
+        bar.style.backgroundColor = color;
+        text.textContent = 'Strength: ' + label;
+      });
+    }
+
+    // Section choices are letters A–E only; no dynamic mapping needed.
+  });
+</script>
+{% endblock %}

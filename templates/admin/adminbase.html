@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{{ current_campus_name }} - Campus Admin{% endblock %}</title>
+    <!-- Tailwind CSS (locally compiled) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}" />
+    <script src="{{ url_for('static', filename='js/admin/adminbase.js') }}"></script>
+    <!-- Socket.IO for real-time updates -->
+    <script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+    <!-- Global CSRF token that will be accessible for all AJAX requests -->
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/vendor/fontawesome-local.css') }}"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+    <style>
+      /* Fallback utilities used in this template when local Tailwind build misses arbitrary classes */
+      .w-\[430px\] { width: 430px; }
+      .h-\[20px\] { height: 20px; }
+      .h-\[42px\] { height: 42px; }
+      .min-w-\[20px\] { min-width: 20px; }
+      .min-w-\[120px\] { min-width: 120px; }
+      .min-w-\[200px\] { min-width: 200px; }
+      .min-w-\[300px\] { min-width: 300px; }
+      .leading-\[18px\] { line-height: 18px; }
+
+      /* Theme variables */
+      :root {
+        --admin-primary: {{ campus_theme.colors.primary if campus_theme else '#1e40af' }};
+        --admin-secondary: {{ campus_theme.colors.secondary if campus_theme else '#3b82f6' }};
+        --admin-accent: {{ campus_theme.colors.accent if campus_theme else '#60a5fa' }};
+      }
+
+      /* Enhanced sidebar styling */
+      .sidebar-item {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 8px;
+        margin: 2px 8px;
+        position: relative;
+      }
+      
+      .sidebar-item:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(96, 165, 250, 0.05));
+        transform: translateX(2px);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+      }
+      
+      .active-nav {
+        background: linear-gradient(135deg, var(--admin-secondary), var(--admin-primary));
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+      
+      .active-nav:hover {
+        background: linear-gradient(135deg, var(--admin-primary), #1d4ed8);
+        transform: translateX(0);
+      }
+
+      /* Enhanced dropdown styling */
+      .dropdown {
+        position: relative;
+        display: inline-block;
+      }
+      
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background: white;
+        min-width: 200px;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e5e7eb;
+        z-index: 50;
+        overflow: hidden;
+        margin-top: 8px;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.2s ease-out;
+      }
+      
+      .dropdown-content.show {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+      }
+      
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Sidebar dropdown menu */
+      .sidebar-dropdown-content {
+        display: none;
+        background: rgba(59, 130, 246, 0.05);
+        border-radius: 8px;
+        margin: 4px 16px 8px 16px;
+        padding: 4px 0;
+        border-left: 2px solid #e5e7eb;
+      }
+      
+      .sidebar-dropdown.active .sidebar-dropdown-content {
+        display: block;
+        animation: slideDown 0.2s ease-out;
+      }
+      
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          max-height: 0;
+        }
+        to {
+          opacity: 1;
+          max-height: 300px;
+        }
+      }
+      
+      .sidebar-dropdown-content .sidebar-item {
+        margin: 2px 8px;
+        padding-left: 2rem;
+      }
+
+      /* Flash message styling */
+      .flash-message {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 1;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+      }
+
+      .flash-messages {
+        pointer-events: none;
+      }
+
+      .flash-message {
+        pointer-events: auto;
+      }
+
+      /* Enhanced navigation icons */
+      .nav-icon {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+      }
+
+      /* Enhanced profile styling */
+      .profile-badge {
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .profile-badge:hover {
+        transform: scale(1.05);
+      }
+
+      .profile-badge::after {
+        content: "";
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        border: 2px solid white;
+      }
+
+      /* Sidebar section headers */
+      .sidebar-section {
+        color: #6b7280;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 16px 16px 8px 16px;
+        margin-top: 16px;
+        border-top: 1px solid #f3f4f6;
+      }
+
+      .sidebar-section:first-child {
+        border-top: none;
+        margin-top: 8px;
+      }
+
+      /* Enhanced topbar */
+      .topbar-solid {
+        background: var(--admin-primary);
+        border-bottom: 1px solid #1e3a8a;
+      }
+
+      /* Chevron rotation animation */
+      .sidebar-dropdown.active .chevron {
+        transform: rotate(180deg);
+      }
+
+      .chevron {
+        transition: transform 0.2s ease;
+      }
+
+      /* Scrollbar styling */
+      .sidebar-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .sidebar-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .sidebar-scroll::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 2px;
+      }
+
+      .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+      }
+
+      /* ===================== */
+      /* Campus Admin Notifications (Dropdown & Toast) */
+      /* ===================== */
+    /* Notification bell wrapper: remove perspective (was creating its own stacking context)
+      and raise z-index so dropdown can layer above subsequent flex layout */
+    #campus-ann-bell-wrapper { position: relative; /* establish containing block */ z-index: 1000; }
+
+      #campus-ann-dropdown {
+        --drop-bg: #ffffff;
+        --line-color: #e5e7eb;
+        backdrop-filter: saturate(1.2) blur(8px);
+        box-shadow: 0 8px 24px -4px rgba(17,24,39,0.15), 0 4px 12px -2px rgba(17,24,39,0.08);
+        transform-origin: top right;
+        opacity: 0;
+        transform: translateY(-8px) scale(.96);
+        transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .32s cubic-bezier(.4,0,.2,1);
+        z-index: 1100; /* ensure it sits above other interface elements */
+      }
+      #campus-ann-dropdown.open { opacity: 1; transform: translateY(0) scale(1); }
+      #campus-ann-dropdown.closing { opacity: 0; transform: translateY(-6px) scale(.95); pointer-events:none; }
+
+      #campus-ann-dropdown .gradient-border { position:relative; }
+      #campus-ann-dropdown .gradient-border:before {
+        content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; background:linear-gradient(135deg, var(--admin-secondary), var(--admin-primary)); mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; -webkit-mask-composite: destination-out;
+      }
+
+      .campus-ann-item { position:relative; display:flex; gap:.75rem; }
+      .campus-ann-item .icon-pill { flex-shrink:0; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:600; letter-spacing:.5px; }
+      .campus-ann-item.unread .icon-pill:after { content:""; position:absolute; top:4px; right:4px; width:9px; height:9px; border-radius:50%; background:linear-gradient(135deg,#34d399,#059669); box-shadow:0 0 0 2px #fff; }
+      .campus-ann-item .ann-body { flex:1; min-width:0; }
+      .campus-ann-item .ann-title { font-weight:600; font-size:.78rem; line-height:1.1rem; color:#1f2937; letter-spacing:.3px; }
+      .campus-ann-item .ann-msg { font-size:.67rem; color:#4b5563; line-height:1rem; margin-top:2px; }
+      .campus-ann-item .ann-meta { font-size:.6rem; color:#9ca3af; margin-top:4px; display:flex; align-items:center; gap:4px; text-transform:uppercase; font-weight:500; letter-spacing:.5px; }
+  /* spacing handled by padding; reserved for potential future gap styling */
+      .campus-ann-item:before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:0 3px 3px 0; opacity:.9; background:var(--accent-bar,#3b82f6); }
+      .campus-ann-item.type-info { --accent-bar:#3b82f6; }
+      .campus-ann-item.type-success { --accent-bar:#10b981; }
+      .campus-ann-item.type-warning { --accent-bar:#f59e0b; }
+      .campus-ann-item.type-error { --accent-bar:#ef4444; }
+      .campus-ann-item.unread { background:linear-gradient(90deg, rgba(59,130,246,0.07), rgba(59,130,246,0)); }
+      .campus-ann-item:hover { background:linear-gradient(90deg, rgba(59,130,246,0.12), rgba(59,130,246,0.02)); }
+      .campus-ann-scroll { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
+      .campus-ann-scroll::-webkit-scrollbar { width:6px; }
+      .campus-ann-scroll::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
+      .campus-ann-empty { padding:3.5rem 1.25rem; text-align:center; }
+      .campus-ann-empty i { opacity:.35; }
+
+      /* Toast system */
+      .toast-zone { position:fixed; top:5rem; right:1.25rem; display:flex; flex-direction:column; gap:.75rem; z-index:70; width:clamp(260px, 30vw, 380px); pointer-events:none; }
+      .toast { position:relative; background:#ffffff; border-radius:18px; padding:.9rem 1rem 1rem 1rem; box-shadow:0 10px 25px -5px rgba(17,24,39,0.18), 0 4px 10px -3px rgba(17,24,39,0.08); display:flex; gap:.85rem; transform:translateX(40px) scale(.96); opacity:0; animation:toastIn .55s cubic-bezier(.68,-0.55,.27,1.55) forwards; border:1px solid #e5e7eb; backdrop-filter:saturate(1.2) blur(6px); pointer-events:auto; }
+      .toast.closing { animation:toastOut .35s ease forwards; }
+      .toast:before { content:""; position:absolute; inset:0; border-radius:inherit; padding:1px; background:linear-gradient(135deg,var(--bar-color,#3b82f6),var(--bar-color-alt,#1e40af)); -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite: exclude; opacity:0.65; }
+      .toast .toast-icon-wrapper { position:relative; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.05rem; font-weight:600; box-shadow:0 4px 12px -2px rgba(0,0,0,.2); }
+      .toast.type-info { --bar-color:#3b82f6; --bar-color-alt:#2563eb; }
+      .toast.type-success { --bar-color:#10b981; --bar-color-alt:#059669; }
+      .toast.type-warning { --bar-color:#f59e0b; --bar-color-alt:#d97706; }
+      .toast.type-error { --bar-color:#ef4444; --bar-color-alt:#dc2626; }
+      .toast .toast-content { flex:1; min-width:0; }
+      .toast .toast-title { font-weight:600; font-size:.85rem; color:#111827; letter-spacing:.3px; }
+      .toast .toast-message { font-size:.7rem; color:#374151; margin-top:2px; line-height:1.05rem; }
+      .toast button.toast-close { position:absolute; top:6px; right:6px; width:30px; height:30px; border-radius:12px; background:rgba(0,0,0,0.05); color:#4b5563; display:flex; align-items:center; justify-content:center; font-size:.75rem; transition:all .2s; }
+      .toast button.toast-close:hover { background:rgba(0,0,0,0.12); color:#111827; }
+      .toast .progress-bar { position:absolute; left:8px; right:8px; bottom:6px; height:4px; border-radius:2px; overflow:hidden; background:#e5e7eb; }
+      .toast .progress-fill { height:100%; width:100%; transform-origin:left; animation:toastProgress linear forwards; background:linear-gradient(90deg,var(--bar-color,#3b82f6),var(--bar-color-alt,#1e40af)); }
+      @keyframes toastIn { 0% { opacity:0; transform:translateX(50px) scale(.9); } 60% { opacity:1; transform:translateX(-4px) scale(1.02); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+      @keyframes toastOut { 0% { opacity:1; transform:translateX(0) scale(1); } 100% { opacity:0; transform:translateX(40px) scale(.9); } }
+      @keyframes toastProgress { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+      .toast-enter-from { opacity:0; transform:translateY(-10px) scale(.95); }
+      .toast-focus-ring:focus-visible { outline:3px solid var(--bar-color,#3b82f6); outline-offset:3px; }
+      @media (prefers-reduced-motion: reduce) {
+        .toast, #campus-ann-dropdown { transition:none; animation:none; transform:none !important; }
+      }
+    </style>
+  </head>
+
+  {% with messages = get_flashed_messages(with_categories=true) %} {% if
+  messages %}
+  <div class="flash-messages fixed top-16 left-0 right-0 z-50 px-4">
+    {% for category, message in messages %}
+    <div
+      class="flash-message relative border-l-4 p-4 mb-3 rounded shadow-md w-full mx-auto {% if category == 'success' %}border-green-500 bg-green-200 text-green-700 {% elif category == 'error' %}border-red-500 bg-red-200 text-red-700 {% elif category == 'warning' %}border-yellow-500 bg-yellow-200 text-yellow-700 {% else %}border-blue-500 bg-blue-50 text-blue-700{% endif %}"
+    >
+      <div class="flex items-center">
+        <!-- Icon based on category -->
+        {% if category == 'success' %}
+        <i class="fas fa-check-circle mr-2"></i>
+        {% elif category == 'error' %}
+        <i class="fas fa-exclamation-circle mr-2"></i>
+        {% elif category == 'warning' %}
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        {% else %}
+        <i class="fas fa-info-circle mr-2"></i>
+        {% endif %}
+        <span>{{ message }}</span>
+      </div>
+      <button
+        class="close-flash absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %} {% endwith %}  <body class="bg-gray-50 flex flex-col h-screen">
+    <!-- Enhanced Top Navigation Bar -->
+  <nav class="text-white shadow-lg" style="background: var(--admin-primary); border-bottom: 1px solid var(--admin-primary);">
+      <div class="flex justify-between items-center px-6 py-4">
+        <!-- Logo and Brand -->
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center bg-white/10 rounded-xl p-2">
+            <img
+              src="{{ campus_logo_url or brand_logo_url }}"
+              alt="Campus Logo"
+              class="h-8 w-8"
+            />
+          </div>
+          <div>
+            <span class="font-bold text-xl tracking-wide">{{ current_campus_name }}</span>
+            <div class="text-xs text-blue-100 font-medium">Campus Admin Portal</div>
+          </div>
+        </div>
+
+        <!-- User Profile Section -->
+        <div class="flex items-center space-x-4">
+          <!-- Campus Admin Notifications -->
+          {% if current_user.role == 'super_admin' %}
+          <div class="relative" id="campus-ann-bell-wrapper">
+            <button id="campus-ann-bell" class="group relative w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30">
+              <i class="fas fa-bell text-lg text-white transition-transform group-hover:scale-110"></i>
+              <span id="campus-ann-badge" class="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] leading-[18px] rounded-full text-center font-semibold shadow {% if campus_unread_notifications_count == 0 %}hidden{% endif %}">{{ campus_unread_notifications_count }}</span>
+            </button>
+            <div id="campus-ann-dropdown" class="absolute right-0 mt-3 w-[430px] bg-white/95 rounded-2xl border border-gray-200 z-50 overflow-hidden hidden">
+              <div class="px-5 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100/70 backdrop-blur-sm border-b border-gray-200/70">
+                <div class="font-semibold text-gray-800 flex items-center gap-2 text-sm tracking-wide"><span class="relative inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow"><i class="fas fa-bell"></i></span><span>Notifications</span></div>
+                <div class="flex items-center gap-3">
+                  <button id="campus-ann-refresh" class="text-xs px-2.5 py-1.5 rounded-lg bg-white/70 hover:bg-white text-blue-700 font-medium shadow-sm border border-blue-100 transition">Refresh</button>
+                  <button id="campus-ann-mark-all" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition">Mark all read</button>
+                </div>
+              </div>
+              <div id="campus-ann-list" class="campus-ann-scroll max-h-96 overflow-y-auto divide-y divide-transparent">
+                {% if campus_sidebar_notifications %}
+                  {% for n in campus_sidebar_notifications %}
+                  <a href="{{ n.link or url_for('admin.announcement') }}" data-id="{{ n.id }}" class="campus-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}" data-title="{{ n.title|e }}" data-message="{{ n.message|e }}">
+                    <div class="icon-pill bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+                    <div class="ann-body">
+                      <div class="ann-title">{{ n.title }}</div>
+                      <div class="ann-msg line-clamp-2">{{ n.message }}</div>
+                      <div class="ann-meta"><i class="fas fa-clock"></i>{{ n.created_at.strftime('%b %d, %H:%M') }}</div>
+                    </div>
+                  </a>
+                  {% endfor %}
+                {% else %}
+                <div class="campus-ann-empty text-gray-500 text-sm">
+                  <i class="fas fa-bell-slash text-3xl mb-3 block"></i>
+                  <p class="font-medium">No announcements yet</p>
+                  <p class="text-xs mt-1 text-gray-400">You're all caught up!</p>
+                </div>
+                {% endif %}
+              </div>
+              <div class="border-t border-gray-100/80 bg-gray-50/60 backdrop-blur-sm flex items-center justify-between px-5 py-3">
+                <a href="{{ url_for('admin.announcement') }}" class="text-[11px] tracking-wide font-semibold text-blue-700 hover:text-blue-900 uppercase flex items-center gap-1">View All <i class="fas fa-arrow-right text-[10px]"></i></a>
+                <span class="text-[10px] text-gray-400 font-medium select-none">Real-time updates</span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <!-- Welcome Message -->
+          <div class="hidden md:flex flex-col items-end">
+            <div class="text-sm font-medium text-blue-100">
+              Welcome back,
+            </div>
+            <div class="text-sm font-bold text-white">
+              {{ current_user.first_name }} {{ current_user.last_name }}
+            </div>
+          </div>
+
+          <!-- Profile Dropdown -->
+          <div class="dropdown" id="profileDropdown">
+            <button 
+              class="profile-badge focus:outline-none focus:ring-2 focus:ring-white/20 rounded-full"
+              id="profileButton"
+              onclick="toggleProfileDropdown()"
+            >
+              <div class="w-11 h-11 rounded-full overflow-hidden bg-white/20 flex items-center justify-center border-2 border-white/30 hover:border-white/50 transition-all duration-300">
+                {% if current_user.profile_pic_path %}
+                <img
+                  src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"
+                  alt="Profile Picture"
+                  class="w-full h-full object-cover"
+                />
+                {% else %}
+                <div class="flex items-center justify-center text-white text-lg font-bold">
+                  {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                </div>
+                {% endif %}
+              </div>
+            </button>
+            <div class="dropdown-content" id="profileDropdownContent">
+              <!-- Profile Header -->
+              <div class="py-4 px-4 border-b border-gray-100 bg-blue-50">
+                <p class="font-semibold text-gray-800 text-sm">
+                  {{ current_user.first_name }} {{ current_user.last_name }}
+                </p>
+                <p class="text-xs text-gray-500 capitalize">
+                  {{ current_user.role|replace('_', ' ') }}
+                </p>
+                <p class="text-xs text-blue-600 mt-1">
+                  {{ current_user.email }}
+                </p>
+              </div>
+              
+              <!-- Menu Items -->
+              <div class="py-2">
+                <a
+                  href="{{ url_for('admin.account_settings') }}"
+                  class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                >
+                  <i class="fas fa-user-cog w-4 mr-3 text-blue-600"></i>
+                  Account Settings
+                </a>
+                <div class="border-t border-gray-100 my-1"></div>
+                <a
+                  href="{{ url_for('auth.logout') }}"
+                  class="flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                >
+                  <i class="fas fa-sign-out-alt w-4 mr-3"></i>
+                  Sign Out
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav><div class="flex flex-1 overflow-hidden">
+      <!-- Enhanced Sidebar Navigation -->
+      <aside class="bg-white w-64 flex-shrink-0 shadow-xl border-r border-gray-200 sidebar-scroll overflow-y-auto">
+        <!-- Admin Profile Section -->
+  <div class="p-6 text-white" style="background: linear-gradient(135deg, var(--admin-secondary), var(--admin-primary));">
+          <div class="flex items-center space-x-3">
+            <div class="relative">
+              <div class="w-12 h-12 rounded-xl overflow-hidden bg-white/20 border-2 border-white/30 flex items-center justify-center backdrop-blur-sm">
+                {% if current_user.profile_pic_path %}
+                <img
+                  src="{{ url_for('static', filename=current_user.profile_pic_path) }}?v={{ current_user.profile_pic or '' }}"
+                  alt="Profile Picture"
+                  class="w-full h-full object-cover"
+                />
+                {% else %}
+                <div class="text-white text-lg font-bold">
+                  {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                </div>
+                {% endif %}
+              </div>
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
+            </div>
+            <div class="flex-1">
+              <h3 class="font-semibold text-white text-sm">
+                {{ current_user.first_name }} {{ current_user.last_name }}
+              </h3>
+              <span class="text-xs text-blue-100 capitalize">
+                Campus Admin
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="py-2">
+          <!-- Dashboard Section -->
+          <div class="sidebar-section">
+            <i class="fas fa-tachometer-alt mr-2"></i>Overview
+          </div>
+
+          <a
+            href="{{ url_for('admin.dashboard') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.dashboard' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <span>Dashboard</span>
+            {% if request.endpoint == 'admin.dashboard' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <!-- Management Section -->
+          <div class="sidebar-section">
+            <i class="fas fa-cogs mr-2"></i>Management
+          </div>
+
+          {% if current_user.role == 'super_admin' %}
+          <a
+            href="{{ url_for('admin.manage_admins') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.manage_admins' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-user-shield"></i>
+            </div>
+            <span>Admin Accounts</span>
+            {% if request.endpoint == 'admin.manage_admins' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+          {% endif %}
+
+          <a
+            href="{{ url_for('admin.manage_departments') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.manage_departments' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-layer-group"></i>
+            </div>
+            <span>Departments</span>
+            {% if request.endpoint == 'admin.manage_departments' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <a
+            href="{{ url_for('admin.student_manage') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.student_manage' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-user-graduate"></i>
+            </div>
+            <span>Student Accounts</span>
+            {% if request.endpoint == 'admin.student_manage' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <!-- Office Management Dropdown -->
+          <div class="sidebar-dropdown">
+            <button
+              class="sidebar-item flex items-center px-4 py-3 text-sm font-medium w-full text-left {% if 'admin.office' in request.endpoint or 'admin.add_office' in request.endpoint or 'admin.manage_office_admins' in request.endpoint or 'admin.manage_concern_types' in request.endpoint %}text-blue-700 bg-blue-50{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+              onclick="toggleSidebarDropdown(this); return false;"
+            >
+              <div class="flex items-center flex-1">
+                <div class="nav-icon mr-3">
+                  <i class="fas fa-building"></i>
+                </div>
+                <span>Office Management</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs chevron"></i>
+            </button>
+            <div class="sidebar-dropdown-content">
+              <a
+                href="{{ url_for('admin.office_stats') }}"
+                class="sidebar-item flex items-center py-2 text-sm {% if request.endpoint == 'admin.office_stats' %}text-blue-700 font-medium{% else %}text-gray-600 hover:text-gray-800{% endif %}"
+              >
+                <div class="nav-icon mr-3">
+                  <i class="fas fa-chart-bar"></i>
+                </div>
+                <span>Office Statistics</span>
+              </a>
+              <a
+                href="{{ url_for('admin.add_office') }}"
+                class="sidebar-item flex items-center py-2 text-sm {% if request.endpoint == 'admin.add_office' %}text-blue-700 font-medium{% else %}text-gray-600 hover:text-gray-800{% endif %}"
+              >
+                <div class="nav-icon mr-3">
+                  <i class="fas fa-plus-circle"></i>
+                </div>
+                <span>Create Office</span>
+              </a>
+              <a
+                href="{{ url_for('admin.manage_office_admins') }}"
+                class="sidebar-item flex items-center py-2 text-sm {% if request.endpoint == 'admin.manage_office_admins' %}text-blue-700 font-medium{% else %}text-gray-600 hover:text-gray-800{% endif %}"
+              >
+                <div class="nav-icon mr-3">
+                  <i class="fas fa-user-plus"></i>
+                </div>
+                <span>Create Office Admin</span>
+              </a>
+              <a
+                href="{{ url_for('admin.manage_concern_types') }}"
+                class="sidebar-item flex items-center py-2 text-sm {% if request.endpoint == 'admin.manage_concern_types' %}text-blue-700 font-medium{% else %}text-gray-600 hover:text-gray-800{% endif %}"
+              >
+                <div class="nav-icon mr-3">
+                  <i class="fas fa-tags"></i>
+                </div>
+                <span>Concern Categories</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Services Section -->
+          <div class="sidebar-section">
+            <i class="fas fa-hands-helping mr-2"></i>Services
+          </div>
+
+          {% if current_user.role == 'super_admin' %}
+          <a
+            href="{{ url_for('admin.admin_counseling') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.admin_counseling' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-user-md"></i>
+            </div>
+            <span>Counseling Sessions</span>
+            {% if request.endpoint == 'admin.admin_counseling' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+          {% endif %}
+
+          <a
+            href="{{ url_for('admin.all_inquiries') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.all_inquiries' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-question-circle"></i>
+            </div>
+            <span>Student Inquiries</span>
+            {% if request.endpoint == 'admin.all_inquiries' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <!-- Communication Section -->
+          <div class="sidebar-section">
+            <i class="fas fa-bullhorn mr-2"></i>Communication
+          </div>
+
+          <a
+            href="{{ url_for('admin.announcement') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.announcement' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-megaphone"></i>
+            </div>
+            <span>Announcements</span>
+            {% if request.endpoint == 'admin.announcement' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <!-- System Section -->
+          <div class="sidebar-section">
+            <i class="fas fa-server mr-2"></i>System
+          </div>
+
+          <a
+            href="{{ url_for('admin.audit_logs') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.audit_logs' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-clipboard-list"></i>
+            </div>
+            <span>Activity Logs</span>
+            {% if request.endpoint == 'admin.audit_logs' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <a
+            href="{{ url_for('admin.system_customization') }}"
+            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium {% if request.endpoint == 'admin.system_customization' %}active-nav{% else %}text-gray-700 hover:text-gray-900{% endif %}"
+          >
+            <div class="nav-icon mr-3">
+              <i class="fas fa-sliders-h"></i>
+            </div>
+            <span>System Settings</span>
+            {% if request.endpoint == 'admin.system_customization' %}
+            <span class="ml-auto">
+              <i class="fas fa-circle text-xs opacity-75"></i>
+            </span>
+            {% endif %}
+          </a>
+
+          <!-- Logout -->
+          <div class="px-4 py-6">
+            <a
+              href="{{ url_for('auth.logout') }}"
+              class="flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
+            >
+              <div class="nav-icon mr-3">
+                <i class="fas fa-sign-out-alt"></i>
+              </div>
+              <span>Sign Out</span>
+            </a>
+          </div>
+        </nav>
+      </aside>      <!-- Main Content -->
+      <main class="flex-1 overflow-y-auto bg-gray-50">
+        <div class="p-6">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>    <!-- JavaScript for enhanced functionality -->
+    <script>
+      // Profile dropdown toggle function
+      function toggleProfileDropdown() {
+        const dropdown = document.getElementById('profileDropdownContent');
+        dropdown.classList.toggle('show');
+      }
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('profileDropdown');
+        const dropdownContent = document.getElementById('profileDropdownContent');
+        
+        if (!dropdown.contains(event.target)) {
+          dropdownContent.classList.remove('show');
+        }
+      });
+
+      function toggleSidebarDropdown(element) {
+        const parent = element.parentElement;
+        parent.classList.toggle("active");
+        
+        // Close other dropdowns
+        const allDropdowns = document.querySelectorAll('.sidebar-dropdown');
+        allDropdowns.forEach(dropdown => {
+          if (dropdown !== parent) {
+            dropdown.classList.remove('active');
+          }
+        });
+      }
+
+      // Enhanced initialization
+      document.addEventListener("DOMContentLoaded", () => {
+        // Auto-activate sidebar dropdowns for current page
+        const activeDropdownItems = document.querySelectorAll(
+          '.sidebar-dropdown-content a[class*="text-blue-700"]'
+        );
+        activeDropdownItems.forEach((item) => {
+          const parentDropdown = item.closest(".sidebar-dropdown");
+          if (parentDropdown) {
+            parentDropdown.classList.add("active");
+          }
+        });
+
+        // CSRF token setup
+        const csrfToken = document
+          .querySelector('meta[name="csrf-token"]')
+          ?.getAttribute("content");
+
+        if (csrfToken && window.XMLHttpRequest) {
+          const originalOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function () {
+            originalOpen.apply(this, arguments);
+            this.setRequestHeader("X-CSRFToken", csrfToken);
+          };
+        }
+
+        // Enhanced flash message handling
+        const closeButtons = document.querySelectorAll(".close-flash");
+        closeButtons.forEach((button) => {
+          button.addEventListener("click", function () {
+            const flashMessage = this.closest(".flash-message");
+            flashMessage.style.opacity = "0";
+            flashMessage.style.transform = "translateY(-20px)";
+            setTimeout(() => {
+              flashMessage.remove();
+            }, 300);
+          });
+        });
+
+        // Auto-dismiss flash messages with staggered animation
+        setTimeout(() => {
+          const flashMessages = document.querySelectorAll(".flash-message");
+          flashMessages.forEach((message, index) => {
+            setTimeout(() => {
+              message.style.opacity = "0";
+              message.style.transform = "translateY(-20px)";
+              setTimeout(() => {
+                message.remove();
+              }, 300);
+            }, index * 200);
+          });
+        }, 5000);
+
+        // Add smooth scrolling to sidebar
+        const sidebarLinks = document.querySelectorAll('.sidebar-item[href]');
+        sidebarLinks.forEach(link => {
+          link.addEventListener('click', function(e) {
+            // Add loading state
+            if (!this.classList.contains('active-nav')) {
+              const icon = this.querySelector('.nav-icon i');
+              if (icon) {
+                icon.classList.add('fa-spin');
+                setTimeout(() => {
+                  icon.classList.remove('fa-spin');
+                }, 1000);
+              }
+            }
+          });
+        });
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', function(e) {
+          if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+              case 'd':
+                e.preventDefault();
+                window.location.href = "{{ url_for('admin.dashboard') }}";
+                break;
+              case 's':
+                e.preventDefault();
+                window.location.href = "{{ url_for('admin.student_manage') }}";
+                break;
+            }
+          }
+          
+          // Close dropdown on Escape key
+          if (e.key === 'Escape') {
+            const dropdownContent = document.getElementById('profileDropdownContent');
+            dropdownContent.classList.remove('show');
+          }
+        });
+      });
+    </script>
+
+    <!-- Socket.IO client (already included earlier for office; include if missing) -->
+    <script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+    <script>
+    (function(){
+      if (typeof io === 'undefined') return;
+      if (!window.location.pathname.startsWith('/admin')) return;
+      const role = '{{ current_user.role }}';
+      if (role !== 'super_admin') return; // Only campus admins
+
+      // Elements
+      const bellBtn = document.getElementById('campus-ann-bell');
+      const dropdown = document.getElementById('campus-ann-dropdown');
+      const list = document.getElementById('campus-ann-list');
+      const badge = document.getElementById('campus-ann-badge');
+      const markAll = document.getElementById('campus-ann-mark-all');
+      const refreshBtn = document.getElementById('campus-ann-refresh');
+
+      // Toast zone
+      let toastZone = document.querySelector('.toast-zone');
+      if(!toastZone){
+        toastZone = document.createElement('div');
+        toastZone.className = 'toast-zone';
+        document.body.appendChild(toastZone);
+      }
+
+      function escapeHtml(str){
+        return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+      }
+      function incrementBadge(){
+        if (!badge) return; let n = parseInt(badge.textContent||'0'); n+=1; badge.textContent=String(n); badge.classList.remove('hidden');
+      }
+      function buildAnnElement(data){
+        const a = document.createElement('a');
+        a.href = `/admin/admin_announcement#ann-${data.announcement_id}`;
+        a.className = 'campus-ann-item unread px-4 py-3 transition-colors';
+        a.dataset.id = data.announcement_id;
+        a.innerHTML = `
+          <div class="icon-pill bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+          <div class="ann-body">
+            <div class="ann-title">${escapeHtml(data.title)}</div>
+            <div class="ann-msg line-clamp-2">From ${escapeHtml(data.author)}${data.updated ? ' (Updated)' : ''}</div>
+            <div class="ann-meta"><i class="fas fa-clock"></i>${new Date(data.timestamp).toLocaleString()}</div>
+          </div>`;
+        return a;
+      }
+      function prependAnnouncement(data){
+        if(!list) return; const el = buildAnnElement(data); list.prepend(el); el.classList.add('unread');
+      }
+
+      // Toast
+      function showToast({title='Notification', message='', type='info', duration=6000}){
+        const t = document.createElement('div');
+        t.className = `toast type-${type}`;
+        t.setAttribute('role','alert');
+        t.setAttribute('aria-live','polite');
+        const iconMap = { info:'fa-bell', success:'fa-check', warning:'fa-exclamation', error:'fa-times' };
+        const icon = iconMap[type] || iconMap.info;
+        t.innerHTML = `
+          <div class="toast-icon-wrapper" style="background:linear-gradient(135deg,var(--bar-color),var(--bar-color-alt));"><i class="fa-solid ${icon}"></i></div>
+          <div class="toast-content">
+            <div class="toast-title">${escapeHtml(title)}</div>
+            <div class="toast-message">${escapeHtml(message)}</div>
+          </div>
+          <button class="toast-close" aria-label="Close notification">&times;</button>
+          <div class="progress-bar"><div class="progress-fill" style="animation-duration:${duration}ms"></div></div>`;
+        const close = ()=>{ if(t.classList.contains('closing')) return; t.classList.add('closing'); setTimeout(()=>t.remove(),340); };
+        t.querySelector('.toast-close').addEventListener('click', close);
+        setTimeout(close, duration+200);
+        toastZone.appendChild(t);
+        return t;
+      }
+
+      // Dropdown open/close with animation
+      function openDropdown(){
+        if(!dropdown || dropdown.classList.contains('open')) return;
+        dropdown.classList.remove('hidden','closing');
+        requestAnimationFrame(()=>dropdown.classList.add('open'));
+      }
+      function closeDropdown(){
+        if(!dropdown || dropdown.classList.contains('hidden')) return;
+        dropdown.classList.add('closing');
+        dropdown.classList.remove('open');
+        setTimeout(()=>dropdown.classList.add('hidden'),220);
+      }
+
+      if(bellBtn){
+        bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.contains('open')?closeDropdown():openDropdown(); });
+        document.addEventListener('click', (e)=>{ if(dropdown && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) closeDropdown(); });
+        document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDropdown(); });
+      }
+
+      if(markAll){
+        markAll.addEventListener('click', async ()=>{
+          try {
+            const res = await fetch('/admin/api/notifications/mark-all-campus-announcements-read', {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
+            if(!res.ok){
+              showToast({title:'Error', message:'Server did not accept request.', type:'error'});
+              return;
+            }
+            const data = await res.json();
+            if(data.error){
+              showToast({title:'Error', message:data.error, type:'error'});
+              return;
+            }
+            const remaining = data.unread_remaining ?? 0;
+            if(badge){
+              if(remaining <= 0){
+                badge.textContent = '0';
+                badge.classList.add('hidden');
+              } else {
+                badge.textContent = String(remaining);
+                badge.classList.remove('hidden');
+              }
+            }
+            // Remove unread highlighting
+            list.querySelectorAll('.campus-ann-item.unread').forEach(a=>a.classList.remove('unread'));
+            showToast({title:'All read', message:`${data.updated||0} announcements marked as read.`, type:'success', duration:3000});
+          } catch(err){
+            showToast({title:'Error', message:'Failed to update.', type:'error'});
+          }
+        });
+      }
+      if(refreshBtn){
+        refreshBtn.addEventListener('click', async ()=>{
+          try {
+            const res = await fetch('/admin/api/notifications/campus-announcements');
+            if(res.ok){
+              const data = await res.json();
+              list.innerHTML = '';
+              if(data.length){
+                data.forEach(n=>{
+                  const a = document.createElement('a');
+                  a.href = n.link || "{{ url_for('admin.announcement') }}";
+                  a.className = 'campus-ann-item px-4 py-3 transition-colors '+(n.is_read?'' : 'unread');
+                  a.innerHTML = `<div class="icon-pill bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div><div class="ann-body"><div class="ann-title">${escapeHtml(n.title)}</div><div class="ann-msg line-clamp-2">${escapeHtml(n.message)}</div><div class="ann-meta"><i class="fas fa-clock"></i>${n.created_at}</div></div>`;
+                  list.appendChild(a);
+                });
+              } else {
+                list.innerHTML = '<div class="campus-ann-empty text-gray-500 text-sm"><i class="fas fa-bell-slash text-3xl mb-3 block"></i><p class="font-medium">No announcements</p><p class="text-xs mt-1 text-gray-400">Nothing new right now.</p></div>';
+              }
+              showToast({title:'Refreshed', message:'Latest announcements loaded.', type:'info', duration:2500});
+            }
+          } catch(e){ showToast({title:'Error', message:'Could not refresh.', type:'error'}); }
+        });
+      }
+
+      // Socket handling
+      try {
+        const socket = io('/campus-admin', {transports:['websocket']});
+        socket.on('campus_announcement', function(data){
+          if (parseInt(data.author_id) === parseInt('{{ current_user.id }}')) return; // ignore own
+          incrementBadge();
+            prependAnnouncement(data);
+            showToast({
+              title: 'New Announcement',
+              message: data.title,
+              type: 'info',
+              duration: 7000
+            });
+        });
+      } catch(e) { /* ignore */ }
+    })();
+    </script>
+    {% block extra_js %} {% endblock %}
+  </body>
+</html>

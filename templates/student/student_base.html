@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ brand_title or 'PiyuGuide' }} — {{ current_campus_name or 'Student Portal' }}{% endblock %}</title>
+    <!-- Tailwind CSS (locally compiled) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}" />
+    <!-- Fallback custom utilities CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+    <!-- Font Awesome for icons (local) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/fontawesome-local.css') }}" />
+    <link rel="stylesheet" href="/static/css/customs.css" />
+    <script src="{{ url_for('static', filename='js/vendor/chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+    <!-- Global CSRF token -->
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    {% block extra_head %}{% endblock %}
+    <style>
+      /* ── Google Font ── */
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+      html, body { height: 100%; }
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        background: #f8fafc;
+        overflow: hidden;
+      }
+
+      /* ── Scrollbar ── */
+      ::-webkit-scrollbar { width: 5px; }
+      ::-webkit-scrollbar-track { background: #f1f5f9; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+      /* ── Top bar ── */
+      .topbar { background: #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+
+      /* ── Sidebar core ── */
+      #sidebar {
+        width: 256px;
+        background: #ffffff;
+        border-right: 1px solid #e2e8f0;
+        transition: width 0.25s ease;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      #sidebar,
+      main {
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+      }
+      .student-shell {
+        height: calc(100vh - 64px);
+        height: calc(100dvh - 64px);
+      }
+      #sidebar.collapsed { width: 68px; }
+
+      /* hide labels/sections when collapsed */
+      #sidebar.collapsed .sidebar-label,
+      #sidebar.collapsed .sidebar-badge,
+      #sidebar.collapsed .sidebar-section-hdr,
+      #sidebar.collapsed .shortcut-section { display: none !important; }
+
+      #sidebar.collapsed .sidebar-nav-item {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      #sidebar.collapsed .sidebar-profile { padding: 12px; justify-content: center; }
+      #sidebar.collapsed .sidebar-profile-avatar { margin: 0; }
+
+      /* Tooltip on collapsed sidebar */
+      #sidebar.collapsed .sidebar-nav-item {
+        position: relative;
+      }
+      #sidebar.collapsed .sidebar-nav-item::after {
+        content: attr(data-label);
+        position: absolute;
+        left: calc(100% + 10px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: #1e293b;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s;
+        z-index: 200;
+        box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      }
+      #sidebar.collapsed .sidebar-nav-item:hover::after { opacity: 1; }
+
+      /* ── Nav item states ── */
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        margin: 2px 8px;
+        transition: background 0.15s, color 0.15s;
+        color: #475569;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        position: relative;
+      }
+      .sidebar-nav-item:hover { background: #eff6ff; color: #1d4ed8; }
+      .sidebar-nav-item.active-nav {
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 600;
+        border-left: 3px solid #1d4ed8;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 8px;
+        flex-shrink: 0;
+        font-size: 0.85rem;
+        background: #f1f5f9;
+        color: #64748b;
+        transition: background 0.15s, color 0.15s;
+      }
+      .sidebar-nav-item.active-nav .nav-icon,
+      .sidebar-nav-item:hover .nav-icon { background: #dbeafe; color: #1d4ed8; }
+
+      /* ── Dropdown ── */
+      .dropdown { position: relative; display: inline-block; }
+      .dropdown-content {
+        display: none; position: absolute; right: 0;
+        background: #fff; min-width: 210px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.12);
+        z-index: 1000; border-radius: 12px;
+        border: 1px solid #e2e8f0; overflow: hidden;
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── Notification badge ── */
+      @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+
+      /* ── Notification panel ── */
+      .notification-item { transition: background 0.2s; }
+      .notification-item:hover { background: #f8fafc; }
+      .notification-item.unread { border-left: 3px solid #1d4ed8; background: rgba(29,78,216,.04); }
+      .notification-close { opacity: 0; transition: opacity 0.2s; }
+      .notification-item:hover .notification-close { opacity: 1; }
+
+      /* Counter badges */
+      .counter-badge { font-size: 10px; font-weight: 600; border-radius: 999px; padding: 2px 8px; }
+      .counter-red   { background: #ef4444; color: #fff; }
+      .counter-blue  { background: #1d4ed8; color: #fff; }
+      .counter-green { background: #16a34a; color: #fff; }
+
+      /* ── Status dot ── */
+      .status-indicator { width:10px;height:10px;border-radius:50%;border:2px solid #fff;position:absolute;bottom:-1px;right:-1px; }
+      .status-online { background:#16a34a; animation:statusPulse 2s infinite; }
+      @keyframes statusPulse {
+        0%,100% { box-shadow:0 0 0 0 rgba(22,163,74,.5); }
+        50%      { box-shadow:0 0 0 4px rgba(22,163,74,0); }
+      }
+
+      /* ── Profile email ── */
+      .profile-email { display:block; font-size:.68rem; line-height:1rem; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+      /* ── Breadcrumbs ── */
+      .student-breadcrumb {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.85rem;
+        border-radius: 9999px;
+        border: 1px solid #dbeafe;
+        background: linear-gradient(135deg, rgba(239,246,255,0.96) 0%, rgba(255,255,255,0.98) 100%);
+        color: #1d4ed8;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(15,23,42,.04);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      }
+      .student-breadcrumb:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1e40af;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(29,78,216,.08);
+      }
+      .student-breadcrumb:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(29,78,216,.14);
+      }
+      .student-breadcrumb i {
+        font-size: 0.78rem;
+        flex-shrink: 0;
+      }
+      .student-breadcrumb--compact {
+        padding: 0.45rem 0.75rem;
+        font-size: 0.8125rem;
+      }
+      .student-breadcrumb--muted {
+        background: #fff;
+        border-color: #e2e8f0;
+        color: #475569;
+      }
+      .student-breadcrumb--muted:hover {
+        background: #f8fafc;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+      }
+
+      /* ── Mobile notification panel ── */
+      @media (max-width: 768px) {
+        #student-ann-dropdown {
+          position: fixed !important; inset: auto 0 0 0 !important;
+          top: 64px; width: 100% !important; height: calc(100dvh - 64px) !important;
+          max-width: none !important; margin: 0 !important;
+          border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important;
+          display: none; background: rgba(255,255,255,.97) !important;
+          backdrop-filter: blur(14px);
+        }
+        #student-ann-dropdown.open { display: block !important; }
+        #student-ann-dropdown.mobile-active { animation: slideDownPanel 220ms ease; }
+        #student-ann-list { max-height: none !important; height: calc(100% - 64px); overflow-y: auto; }
+        #student-ann-overlay { display: none; }
+        #student-ann-overlay.active { display: block; }
+        body.mobile-notif-open { overflow: hidden; }
+        /* Mobile sidebar: slide-in drawer */
+        #sidebar { position: fixed; top: 0; bottom: 0; left: 0; height: 100dvh !important; z-index: 50; transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); width: 280px !important; box-shadow: 4px 0 24px rgba(0,0,0,0.15); border-radius: 0; }
+        #sidebar.mobile-open { transform: translateX(0); }
+        #sidebarOverlay { z-index: 40 !important; }
+      }
+      @keyframes slideDownPanel { from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)} }
+    </style>
+  </head>
+  <body class="bg-slate-50 flex flex-col h-screen overflow-hidden">
+    <!-- ── Top Navigation Bar ── -->
+    <header class="topbar text-white sticky top-0 z-30 h-16 flex items-center shrink-0">
+      <div class="w-full px-4 flex justify-between items-center">
+
+        <div class="flex items-center gap-3">
+          <!-- Unified sidebar toggle: mobile drawer + desktop collapse -->
+          <button id="sidebarToggleBtn"
+            class="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+            aria-label="Toggle sidebar">
+            <i class="fas fa-bars text-sm"></i>
+          </button>
+          <!-- Logo -->
+          <a href="{{ url_for('student.dashboard') }}" class="flex items-center gap-3">
+            <img src="{{ brand_logo_url or url_for('static', filename='images/schoollogo.png') }}"
+              alt="{{ brand_title or 'KapiyuGuide' }} Logo"
+              class="h-9 w-9 rounded-full border-2 border-white/20 shadow"/>
+            <div class="hidden sm:block leading-tight">
+              <span class="text-base font-bold tracking-tight">{{ brand_title or 'KapiyuGuide' }}</span>
+              <p class="text-xs text-blue-200 font-medium">{{ current_campus_name or 'Student Portal' }}</p>
+            </div>
+          </a>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Welcome pill (md+) -->
+          <span class="hidden md:flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5 text-sm">
+            <i class="fas fa-user-graduate text-blue-200 text-xs"></i>
+            Welcome, <strong>{{ current_user.first_name }}!</strong>
+          </span>
+
+          <!-- Notifications bell -->
+          <div class="relative" id="student-ann-bell-wrapper">
+            <button id="student-ann-bell"
+              class="group relative w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30">
+              <i class="fas fa-bell text-sm text-white"></i>
+              <span id="student-ann-badge"
+                class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] leading-[16px] rounded-full text-center font-semibold {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                {{ unread_notifications_count }}</span>
+            </button>
+            <!-- Notification dropdown -->
+            <div id="student-ann-dropdown" class="absolute right-0 mt-3 w-[420px] bg-white rounded-xl border border-slate-200 z-50 overflow-hidden hidden shadow-xl">
+              <div class="px-4 py-3 flex items-center justify-between bg-slate-50 border-b border-slate-200">
+                <div class="font-semibold text-slate-800 flex items-center gap-2 text-sm">
+                  <span class="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center text-xs"><i class="fas fa-bell"></i></span>
+                  Notifications
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="student-ann-refresh" class="text-xs px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-blue-700 font-medium border border-slate-200 transition">Refresh</button>
+                  <button id="student-ann-mark-all" class="text-xs px-2.5 py-1 rounded-md bg-blue-700 hover:bg-blue-800 text-white font-medium transition">Mark all read</button>
+                </div>
+              </div>
+              <div id="student-ann-list" class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                {% if notifications %}
+                  {% for n in notifications %}
+                  <a href="{% if n.inquiry_id %}{{ url_for('student.view_inquiry', inquiry_id=n.inquiry_id) }}{% elif n.announcement_id %}{{ url_for('student.announcements') }}?highlight={{ n.announcement_id }}{% elif n.link %}{{ n.link }}{% else %}{{ url_for('student.notifications') }}{% endif %}"
+                    data-id="{{ n.id }}"
+                    {% if n.announcement_id %} data-announcement-id="{{ n.announcement_id }}"{% endif %}
+                    class="office-ann-item relative px-4 py-3 transition-colors {{ 'unread' if not n.is_read else '' }}"
+                    data-title="{{ n.title|e }}" data-message="{{ n.message|e }}">
+                    <div class="icon-pill bg-blue-700 text-white shadow-sm"><i class="fa-solid fa-bell"></i></div>
+                    <div class="ann-body">
+                      <div class="ann-title">{{ n.title }}</div>
+                      <div class="ann-msg line-clamp-2">{{ n.message }}</div>
+                      <div class="ann-meta"><i class="fas fa-clock"></i>{{ n.created_at|dt12 }}</div>
+                    </div>
+                  </a>
+                  {% endfor %}
+                {% else %}
+                <div class="office-ann-empty text-slate-500 text-sm">
+                  <i class="fas fa-bell-slash text-3xl mb-3 block text-slate-300"></i>
+                  <p class="font-medium">No notifications yet</p>
+                  <p class="text-xs mt-1 text-slate-400">You're all caught up!</p>
+                </div>
+                {% endif %}
+              </div>
+              <div class="border-t border-slate-100 bg-slate-50 flex items-center justify-between px-4 py-2.5">
+                <a href="{{ url_for('student.notifications') }}" class="text-xs font-semibold text-blue-700 hover:text-blue-900 uppercase flex items-center gap-1">View All <i class="fas fa-arrow-right text-[10px]"></i></a>
+                <span class="text-[10px] text-slate-400 font-medium">Real-time updates</span>
+              </div>
+            </div>
+          </div>
+          <!-- Mobile notif overlay -->
+          <div id="student-ann-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden md:hidden" aria-hidden="true"></div>
+
+          <!-- User Dropdown -->
+          <div class="dropdown" id="userDropdown">
+            <button id="userMenuToggle"
+              class="group relative w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+              aria-haspopup="true" aria-expanded="false" aria-controls="userMenu" title="User menu">
+              {% set avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+              {% if avatar_url %}
+              <img src="{{ avatar_url }}" alt="Avatar" class="w-full h-full rounded-lg object-cover"/>
+              {% else %}
+              <span class="font-semibold text-sm text-white">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</span>
+              {% endif %}
+              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-blue-700 bg-green-400"></span>
+            </button>
+            <div class="dropdown-content text-gray-800 mt-2" id="userMenu" role="menu" aria-labelledby="userMenuToggle">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</div>
+                  <div>
+                    <div class="font-semibold text-slate-800 text-sm">{{ current_user.first_name }} {{ current_user.last_name }}</div>
+                    <div class="text-xs text-slate-500">{{ current_user.role|replace('_',' ')|title }}</div>
+                  </div>
+                </div>
+              </div>
+              <a href="{{ url_for('student.profile') }}" class="block px-4 py-2.5 hover:bg-slate-50 transition-colors text-sm" role="menuitem"><i class="fas fa-user-circle mr-3 text-blue-700"></i>My Profile</a>
+              <a href="{{ url_for('student.account_settings') }}" class="block px-4 py-2.5 hover:bg-slate-50 transition-colors text-sm" role="menuitem"><i class="fas fa-cog mr-3 text-slate-500"></i>Account Settings</a>
+              <hr class="border-slate-100">
+              <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2.5 hover:bg-red-50 text-red-600 transition-colors text-sm" role="menuitem"><i class="fas fa-sign-out-alt mr-3"></i>Logout</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="student-shell flex flex-1 min-h-0 overflow-hidden">
+
+      <!-- ── Sidebar ── -->
+      <aside id="sidebar" class="flex flex-col h-full min-h-0 overflow-y-auto overflow-x-hidden" role="navigation" aria-label="Student navigation">
+        <!-- Profile -->
+        <div class="sidebar-profile flex items-center gap-3 p-4 border-b border-slate-100 flex-shrink-0">
+          <div class="sidebar-profile-avatar relative flex-shrink-0">
+            <div class="w-9 h-9 rounded-xl overflow-hidden bg-blue-700 ring-2 ring-blue-100 flex-shrink-0">
+              {% set side_avatar_url = current_user.profile_pic_path and url_for('static', filename=current_user.profile_pic_path) %}
+              {% if side_avatar_url %}
+              <img src="{{ side_avatar_url }}" alt="Profile" class="w-full h-full object-cover"/>
+              {% else %}
+              <div class="w-full h-full flex items-center justify-center text-white text-sm font-bold">{{ current_user.first_name[0] }}{{ current_user.last_name[0] }}</div>
+              {% endif %}
+            </div>
+            <div class="status-indicator status-online" title="Online"></div>
+          </div>
+          <div class="flex-1 min-w-0 sidebar-label">
+            <p class="text-sm font-semibold text-slate-800 truncate">{{ current_user.first_name }} {{ current_user.last_name }}</p>
+            <p class="profile-email" title="{{ current_user.email }}">{{ current_user.email }}</p>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="shortcut-section px-2 pt-4 pb-2 flex-shrink-0">
+          <p class="sidebar-section-hdr sidebar-label text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2 mb-2">Quick Actions</p>
+          <div class="space-y-1">
+            <a href="{{ url_for('student.university_offices') }}"
+               class="flex items-center gap-3 px-2 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors">
+              <div class="nav-icon w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-question-circle text-white text-sm"></i>
+              </div>
+              <div class="sidebar-label min-w-0">
+                <p class="text-xs font-semibold text-amber-800 truncate">Submit Inquiry</p>
+                <p class="text-[10px] text-amber-600 truncate">Ask questions &amp; get help</p>
+              </div>
+            </a>
+            <a href="{{ url_for('student.request_counseling_session') }}"
+               class="flex items-center gap-3 px-2 py-2 rounded-xl border border-green-200 bg-green-50 hover:bg-green-100 transition-colors">
+              <div class="nav-icon w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-user-md text-white text-sm"></i>
+              </div>
+              <div class="sidebar-label min-w-0">
+                <p class="text-xs font-semibold text-green-800 truncate">Request Counseling</p>
+                <p class="text-[10px] text-green-600 truncate">Schedule a session</p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex-1 px-2 py-2 overflow-y-auto">
+          <p class="sidebar-section-hdr sidebar-label text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2 mb-2">Navigation</p>
+          <nav class="space-y-0.5">
+
+            <a href="{{ url_for('student.dashboard') }}" data-label="Dashboard"
+               class="sidebar-nav-item {% if request.endpoint == 'student.dashboard' %}active-nav{% endif %}">
+              <div class="nav-icon"><i class="fas fa-tachometer-alt"></i></div>
+              <span class="sidebar-label">Dashboard</span>
+              {% if request.endpoint == 'student.dashboard' %}<span class="sidebar-badge ml-auto w-1.5 h-1.5 rounded-full bg-blue-700 animate-pulse"></span>{% endif %}
+            </a>
+
+            <a href="{{ url_for('student.inquiries') }}" data-label="My Inquiries"
+               class="sidebar-nav-item {% if request.endpoint == 'student.inquiries' %}active-nav{% endif %}">
+              <div class="nav-icon"><i class="fas fa-question-circle"></i></div>
+              <span class="sidebar-label">My Inquiries</span>
+              {% if pending_inquiries and pending_inquiries > 0 %}
+              <span class="sidebar-badge ml-auto counter-badge counter-red">{{ pending_inquiries }}</span>
+              {% elif request.endpoint == 'student.inquiries' %}<span class="sidebar-badge ml-auto w-1.5 h-1.5 rounded-full bg-blue-700 animate-pulse"></span>{% endif %}
+            </a>
+
+            <a href="{{ url_for('student.counseling_dashboard') }}" data-label="My Counseling"
+               class="sidebar-nav-item {% if request.endpoint == 'student.counseling_dashboard' %}active-nav{% endif %}">
+              <div class="nav-icon"><i class="fas fa-video"></i></div>
+              <span class="sidebar-label">My Counseling</span>
+              {% if upcoming_sessions and upcoming_sessions > 0 %}
+              <span class="sidebar-badge ml-auto counter-badge counter-blue">{{ upcoming_sessions }}</span>
+              {% elif request.endpoint == 'student.counseling_dashboard' %}<span class="sidebar-badge ml-auto w-1.5 h-1.5 rounded-full bg-blue-700 animate-pulse"></span>{% endif %}
+            </a>
+
+            <a href="{{ url_for('student.announcements') }}" data-label="Announcements"
+               class="sidebar-nav-item {% if request.endpoint == 'student.announcements' %}active-nav{% endif %}">
+              <div class="nav-icon"><i class="fas fa-bullhorn"></i></div>
+              <span class="sidebar-label">Announcements</span>
+              {% if request.endpoint == 'student.announcements' %}<span class="sidebar-badge ml-auto w-1.5 h-1.5 rounded-full bg-blue-700 animate-pulse"></span>{% endif %}
+            </a>
+
+            <a href="{{ url_for('student.university_offices') }}" data-label="Univ. Offices"
+               class="sidebar-nav-item {% if request.endpoint == 'student.university_offices' %}active-nav{% endif %}">
+              <div class="nav-icon"><i class="fas fa-building"></i></div>
+              <span class="sidebar-label">University Offices</span>
+              {% if request.endpoint == 'student.university_offices' %}<span class="sidebar-badge ml-auto w-1.5 h-1.5 rounded-full bg-blue-700 animate-pulse"></span>{% endif %}
+            </a>
+
+          </nav>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex-shrink-0 p-3 border-t border-slate-100 sidebar-label">
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <i class="fas fa-clock text-slate-300"></i>
+            <span>
+              {% if current_user.last_activity %}
+              Last: {{ current_user.last_activity.strftime('%b %d') }}
+              {% else %}First Login{% endif %}
+            </span>
+            <span class="ml-auto flex items-center gap-1"><i class="fas fa-wifi text-green-400"></i> v2.1.1</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Mobile sidebar overlay -->
+      <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 hidden" aria-hidden="true"></div>
+
+      <!-- ── Main Content ── -->
+      <main class="flex-1 min-w-0 min-h-0 overflow-x-hidden overflow-y-auto bg-slate-50">
+        <div class="container mx-auto px-4 py-6">
+          <!-- Flash Messages -->
+          {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
+          <div class="mb-6 space-y-2">
+            {% for category, message in messages %}
+            <div class="flex items-start gap-3 p-4 rounded-xl border-l-4 {% if category == 'success' %}border-green-500 bg-green-50 text-green-800{% elif category == 'error' %}border-red-500 bg-red-50 text-red-800{% elif category == 'warning' %}border-yellow-500 bg-yellow-50 text-yellow-800{% else %}border-blue-500 bg-blue-50 text-blue-800{% endif %}" role="alert">
+              <div class="flex-shrink-0 mt-0.5">
+                {% if category == 'success' %}<div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center"><i class="fas fa-check text-white text-[9px]"></i></div>
+                {% elif category == 'error' %}<div class="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"><i class="fas fa-exclamation text-white text-[9px]"></i></div>
+                {% elif category == 'warning' %}<div class="w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center"><i class="fas fa-exclamation-triangle text-white text-[9px]"></i></div>
+                {% else %}<div class="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"><i class="fas fa-info text-white text-[9px]"></i></div>{% endif %}
+              </div>
+              <p class="flex-1 text-sm font-medium">{{ message }}</p>
+              <button class="flex-shrink-0 text-current opacity-50 hover:opacity-100" onclick="this.closest('[role=alert]').remove()"><i class="fas fa-times text-xs"></i></button>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}{% endwith %}
+
+          <!-- Main Content Area -->
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+
+
+    <!-- Audio for notifications -->
+    <audio id="notification-sound" preload="auto" style="display: none">
+      <source src="{{ url_for('static', filename='sounds/notification.mp3') }}" type="audio/mpeg" />
+    </audio>
+
+    <!-- Reminder Popup Modal -->
+    <div id="reminderModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="reminderTitle" aria-describedby="reminderMessage">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative h-full w-full flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+          <div class="px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <i class="fas fa-bell"></i>
+              </div>
+              <h3 id="reminderTitle" class="font-semibold">Session Reminder</h3>
+            </div>
+            <button id="reminderCloseBtn" class="text-white/80 hover:text-white" aria-label="Close reminder dialog">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="px-5 py-4">
+            <p id="reminderMessage" class="text-gray-700"></p>
+          </div>
+          <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-2">
+            <button id="reminderDismissBtn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Dismiss</button>
+            <a id="reminderActionLink" href="#" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Open</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+
+    <script>
+      // Office-style notification/ toast CSS (minimal reuse via class names used above)
+      const studentNotifStyles = document.createElement('style');
+      studentNotifStyles.textContent = `
+        #student-ann-bell-wrapper { position: relative; z-index: 1000; }
+        #student-ann-dropdown { backdrop-filter: saturate(1.2) blur(8px); box-shadow: 0 8px 24px -4px rgba(17,24,39,0.15), 0 4px 12px -2px rgba(17,24,39,0.08); transform-origin: top right; opacity:0; transform: translateY(-8px) scale(.96); transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .32s cubic-bezier(.4,0,.2,1); }
+        #student-ann-dropdown.open { opacity:1; transform: translateY(0) scale(1); }
+        #student-ann-dropdown.closing { opacity:0; transform: translateY(-6px) scale(.95); pointer-events:none; }
+        .office-ann-item { position:relative; display:flex; gap:.75rem; }
+        .office-ann-item .icon-pill { flex-shrink:0; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:600; }
+        .office-ann-item.unread { background:linear-gradient(90deg, rgba(59,130,246,0.10), rgba(99,102,241,0)); }
+        .office-ann-item:hover { background:linear-gradient(90deg, rgba(59,130,246,0.16), rgba(99,102,241,0.04)); }
+        .office-ann-item .ann-body { flex:1; min-width:0; }
+        .office-ann-item .ann-title { font-weight:600; font-size:.78rem; line-height:1.1rem; color:#1f2937; letter-spacing:.3px; }
+        .office-ann-item .ann-msg { font-size:.67rem; color:#4b5563; line-height:1rem; margin-top:2px; }
+        .office-ann-item .ann-meta { font-size:.6rem; color:#9ca3af; margin-top:4px; display:flex; align-items:center; gap:4px; text-transform:uppercase; font-weight:500; letter-spacing:.5px; }
+        .office-ann-empty { padding:3.5rem 1.25rem; text-align:center; }
+        .toast-zone { position:fixed; top:5rem; right:1.25rem; display:flex; flex-direction:column; gap:.75rem; z-index:70; width:clamp(260px, 30vw, 380px); pointer-events:none; }
+        .toast { position:relative; background:#ffffff; border-radius:18px; padding:.9rem 1rem 1rem 1rem; box-shadow:0 10px 25px -5px rgba(17,24,39,0.18), 0 4px 10px -3px rgba(17,24,39,0.08); display:flex; gap:.85rem; transform:translateX(40px) scale(.96); opacity:0; animation:toastIn .55s cubic-bezier(.68,-0.55,.27,1.55) forwards; border:1px solid #e5e7eb; backdrop-filter:saturate(1.2) blur(6px); pointer-events:auto; }
+        .toast.closing { animation:toastOut .35s ease forwards; }
+        .toast .toast-icon-wrapper { position:relative; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.05rem; font-weight:600; box-shadow:0 4px 12px -2px rgba(0,0,0,.2); }
+        .toast.type-info { --bar-color:#3b82f6; --bar-color-alt:#1d4ed8; }
+        .toast.type-success { --bar-color:#10b981; --bar-color-alt:#059669; }
+        .toast.type-warning { --bar-color:#f59e0b; --bar-color-alt:#d97706; }
+        .toast.type-error { --bar-color:#ef4444; --bar-color-alt:#dc2626; }
+        .toast .progress-bar { position:absolute; left:8px; right:8px; bottom:6px; height:4px; border-radius:2px; overflow:hidden; background:#e5e7eb; }
+        .toast .progress-fill { height:100%; width:100%; transform-origin:left; animation:toastProgress linear forwards; background:linear-gradient(90deg,var(--bar-color,#3b82f6),var(--bar-color-alt,#1d4ed8)); }
+        @keyframes toastIn { 0% { opacity:0; transform:translateX(50px) scale(.9); } 60% { opacity:1; transform:translateX(-4px) scale(1.02); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+        @keyframes toastOut { 0% { opacity:1; transform:translateX(0) scale(1); } 100% { opacity:0; transform:translateX(40px) scale(.9); } }
+        @keyframes toastProgress { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+      `;
+      document.head.appendChild(studentNotifStyles);
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // Prime notification audio to satisfy autoplay policies
+        const notifAudio = document.getElementById('notification-sound');
+        const primeAudio = () => {
+          if (!notifAudio) return;
+          try {
+            const p = notifAudio.play();
+            if (p && typeof p.then === 'function') {
+              p.then(() => { notifAudio.pause(); notifAudio.currentTime = 0; })
+               .catch(() => {});
+            } else {
+              notifAudio.pause();
+              notifAudio.currentTime = 0;
+            }
+          } catch(_) {}
+          document.removeEventListener('click', primeAudio, true);
+          document.removeEventListener('touchstart', primeAudio, true);
+        };
+        document.addEventListener('click', primeAudio, true);
+        document.addEventListener('touchstart', primeAudio, true);
+        // Reminder modal helpers
+        const reminderModal = document.getElementById("reminderModal");
+        const reminderTitleEl = document.getElementById("reminderTitle");
+        const reminderMessageEl = document.getElementById("reminderMessage");
+        const reminderActionLink = document.getElementById("reminderActionLink");
+        const reminderCloseBtn = document.getElementById("reminderCloseBtn");
+        const reminderDismissBtn = document.getElementById("reminderDismissBtn");
+
+        function showReminderModal(data) {
+          // Only show for reminder-type notifications
+          if (!data || data.notification_type !== "reminder") return;
+          reminderTitleEl.textContent = data.title || "Session Reminder";
+          reminderMessageEl.textContent = data.message || "You have an upcoming session.";
+          if (data.link) {
+            reminderActionLink.href = data.link;
+            reminderActionLink.classList.remove("hidden");
+          } else {
+            reminderActionLink.href = "#";
+            reminderActionLink.classList.add("hidden");
+          }
+          reminderModal.classList.remove("hidden");
+        }
+
+        function hideReminderModal() {
+          reminderModal.classList.add("hidden");
+        }
+
+        if (reminderCloseBtn) reminderCloseBtn.addEventListener("click", hideReminderModal);
+        if (reminderDismissBtn) reminderDismissBtn.addEventListener("click", hideReminderModal);
+        // Close when clicking backdrop
+        if (reminderModal) {
+          reminderModal.addEventListener("click", function (e) {
+            if (e.target === reminderModal || e.target.classList.contains("backdrop-blur-sm")) {
+              hideReminderModal();
+            }
+          });
+        }
+        // ── Sidebar: unified toggle (mobile drawer + desktop collapse) ──
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const isMobile = () => window.innerWidth < 768;
+
+        // Desktop collapse state (persisted in sessionStorage)
+        let desktopCollapsed = sessionStorage.getItem('sidebarCollapsed') === 'true';
+
+        function applyDesktopState() {
+          if (desktopCollapsed) {
+            sidebar.classList.add('collapsed');
+          } else {
+            sidebar.classList.remove('collapsed');
+          }
+        }
+
+        // Mobile: show/hide drawer
+        function openMobileDrawer() {
+          sidebar.style.transform = 'translateX(0)';
+          sidebarOverlay.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        }
+        function closeMobileDrawer() {
+          sidebar.style.transform = '';
+          sidebarOverlay.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+
+        function handleResize() {
+          if (!isMobile()) {
+            // Restore desktop state
+            sidebar.style.transform = '';
+            sidebarOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+            applyDesktopState();
+          } else {
+            sidebar.classList.remove('collapsed');
+            sidebar.style.transform = ''; // reset to CSS-controlled
+          }
+        }
+
+        // Init
+        handleResize();
+
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', () => {
+            if (isMobile()) {
+              // Mobile: toggle drawer
+              const isOpen = sidebar.style.transform === 'translateX(0px)' || sidebar.style.transform === 'translateX(0)';
+              isOpen ? closeMobileDrawer() : openMobileDrawer();
+            } else {
+              // Desktop: collapse/expand
+              desktopCollapsed = !desktopCollapsed;
+              sessionStorage.setItem('sidebarCollapsed', desktopCollapsed);
+              applyDesktopState();
+            }
+          });
+        }
+
+        sidebarOverlay.addEventListener('click', closeMobileDrawer);
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(handleResize, 150);
+        });
+
+        // Student unified dropdown open/close (office-style)
+        (function(){
+          const bellBtn = document.getElementById('student-ann-bell');
+          const dropdown = document.getElementById('student-ann-dropdown');
+          const list = document.getElementById('student-ann-list');
+          const badge = document.getElementById('student-ann-badge');
+          const markAll = document.getElementById('student-ann-mark-all');
+          const refreshBtn = document.getElementById('student-ann-refresh');
+
+          // Toast zone shared
+          let toastZone = document.querySelector('.toast-zone');
+          if(!toastZone){ toastZone = document.createElement('div'); toastZone.className='toast-zone'; document.body.appendChild(toastZone); }
+
+          function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+          function formatPHT(input){
+            try{
+              let d;
+              if(!input){ d = new Date(); }
+              else if(typeof input === 'number'){ d = new Date(input); }
+              else if(typeof input === 'string'){
+                const t = Date.parse(input);
+                d = isNaN(t) ? new Date() : new Date(t);
+              } else if(input instanceof Date){ d = input; } else { d = new Date(); }
+              const opts = { timeZone: 'Asia/Manila', month: 'short', day: '2-digit', hour: '2-digit', minute:'2-digit', hour12: true };
+              const parts = new Intl.DateTimeFormat('en-US', opts).formatToParts(d);
+              const map = Object.fromEntries(parts.map(p=>[p.type,p.value]));
+              return `${map.month} ${map.day}, ${map.hour}:${map.minute} ${map.dayPeriod}`;
+            }catch(_){ return new Date().toLocaleString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true }); }
+          }
+          function incrementBadge(){ if (!badge) return; let n=parseInt(badge.textContent||'0'); n+=1; badge.textContent=String(n); badge.classList.remove('hidden'); }
+          function setBadgeCount(n){ if(!badge) return; if(n<=0){badge.textContent='0'; badge.classList.add('hidden');} else {badge.textContent=String(n); badge.classList.remove('hidden');} }
+          function buildItem(data){
+            const a = document.createElement('a');
+            const href = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcements?highlight=${data.announcement_id}` : (data.link || "{{ url_for('student.notifications') }}"));
+            a.href = href; a.className='office-ann-item unread px-4 py-3 transition-colors'; a.dataset.id = data.id || data.notification_id || '';
+            if (data.announcement_id) a.dataset.announcementId = String(data.announcement_id);
+            const ts = formatPHT(data.created_at || data.timestamp || Date.now());
+            const source = escapeHtml(data.target_office_name || data.posted_by_office_name || 'Announcement');
+            const title = escapeHtml(data.title||'Notification');
+            const msg = escapeHtml(data.message||'');
+            a.innerHTML = `
+              <div class="icon-pill bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-inner"><i class="fa-solid fa-bell"></i></div>
+              <div class="ann-body">
+                <div class="ann-title">${source ? source + ' — ' : ''}${title}</div>
+                <div class="ann-msg line-clamp-2">${msg}</div>
+                <div class="ann-meta"><i class="fas fa-clock"></i>${ts}</div>
+              </div>`; return a;
+          }
+          function prependItem(data){ if(!list) return; const el = buildItem(data); list.prepend(el); }
+
+          function showToast({title='Notification', message='', type='info', duration=6500, link=null}){
+            const t = document.createElement('div');
+            t.className = `toast type-${type}`; t.setAttribute('role','alert'); t.setAttribute('aria-live','polite');
+            const iconMap = { info:'fa-bell', success:'fa-check', warning:'fa-exclamation', error:'fa-times' };
+            const icon = iconMap[type] || iconMap.info;
+            const progress = `<div class="progress-bar"><div class="progress-fill" style="animation-duration:${duration}ms"></div></div>`;
+            t.innerHTML = `
+              <div class="toast-icon-wrapper" style="background:linear-gradient(135deg,var(--bar-color),var(--bar-color-alt));">
+                <i class="fa-solid ${icon} toast-icon"></i>
+              </div>
+              <div class="toast-content">
+                <div class="toast-title">${escapeHtml(title)}</div>
+                <div class="toast-message">${escapeHtml(message)}</div>
+              </div>
+              <button class="toast-close" aria-label="Close notification">&times;</button>
+              ${progress}`;
+            if(link){ t.classList.add('cursor-pointer'); t.addEventListener('click', (ev)=>{ if(ev.target.closest('.toast-close')) return; window.location.href = link; }); }
+            const close = ()=>{ if(t.classList.contains('closing')) return; t.classList.add('closing'); setTimeout(()=>t.remove(),340); };
+            t.querySelector('.toast-close').addEventListener('click', close);
+            setTimeout(close, duration+200);
+            toastZone.appendChild(t);
+            return t;
+          }
+
+          function openDropdown(){
+            if(!dropdown || dropdown.classList.contains('open')) return;
+            // Mobile adjustments
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            if(isMobile){
+              const header = document.querySelector('header');
+              if(header){ const rect = header.getBoundingClientRect(); dropdown.style.top = rect.bottom + 'px'; dropdown.style.height = `calc(100dvh - ${rect.bottom}px)`; }
+              dropdown.classList.add('mobile-active');
+              document.body.classList.add('mobile-notif-open');
+              const overlay = document.getElementById('student-ann-overlay'); if(overlay){ overlay.classList.add('active'); }
+            }
+            dropdown.classList.remove('hidden','closing');
+            requestAnimationFrame(()=>dropdown.classList.add('open'));
+          }
+          function closeDropdown(){
+            if(!dropdown || dropdown.classList.contains('hidden')) return;
+            dropdown.classList.add('closing'); dropdown.classList.remove('open','mobile-active');
+            setTimeout(()=>dropdown.classList.add('hidden'),220);
+            if(window.matchMedia('(max-width: 768px)').matches){
+              document.body.classList.remove('mobile-notif-open');
+              const overlay = document.getElementById('student-ann-overlay'); if(overlay){ overlay.classList.remove('active'); }
+            }
+          }
+          if(bellBtn){
+            bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.contains('open')?closeDropdown():openDropdown(); });
+            document.addEventListener('click', (e)=>{ if(dropdown && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) closeDropdown(); });
+            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDropdown(); });
+          }
+          const notifOverlay = document.getElementById('student-ann-overlay');
+          if(notifOverlay){ notifOverlay.addEventListener('click', ()=> closeDropdown()); }
+
+          if(list){
+            list.addEventListener('click', async (e)=>{
+              const a = e.target.closest('.office-ann-item');
+              if(!a) return;
+              // Do not intercept announcement clicks; allow navigation to announcements page
+              if(a.classList.contains('unread')){
+                a.classList.remove('unread');
+                const id = a.dataset.id;
+                if(badge && !badge.classList.contains('hidden')){ let n=parseInt(badge.textContent||'0'); n=isNaN(n)?0:Math.max(0,n-1); setBadgeCount(n); }
+                if(id){ try { fetch(`/student/notifications/mark-read/${id}`, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}, keepalive: true}); } catch(err){} }
+              }
+            });
+          }
+
+          if(markAll){
+            markAll.addEventListener('click', async ()=>{
+              try{
+                const res = await fetch('/student/notifications/mark-all-read', {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
+                if(!res.ok) return showToast({title:'Error', message:'Request failed', type:'error', duration:4000});
+                const data = await res.json();
+                list.querySelectorAll('.office-ann-item.unread').forEach(a=>a.classList.remove('unread'));
+                setBadgeCount(0);
+                showToast({title:'All read', message:data.message || 'Marked as read', type:'success', duration:3000});
+              }catch(e){ showToast({title:'Error', message:'Could not update', type:'error'}); }
+            });
+          }
+
+          if(refreshBtn){
+            refreshBtn.addEventListener('click', async ()=>{
+              refreshBtn.disabled = true; const prev = refreshBtn.textContent; refreshBtn.textContent='...';
+              try{
+                const res = await fetch('/student/notifications/get-unread-count');
+                if(res.ok){
+                  // Soft refresh: only update badge
+                  const data = await res.json(); setBadgeCount(parseInt(data.unread_count||0));
+                  showToast({title:'Refreshed', message:'Badge updated.', type:'info', duration:2000});
+                }
+              } finally { refreshBtn.disabled=false; refreshBtn.textContent=prev; }
+            });
+          }
+
+          // Socket wiring for student notifications
+          try{
+            const socket = io();
+            socket.on('connect', ()=>{ try{ socket.emit('join', { room: `student_{{ current_user.id }}` }); }catch(_){} });
+            socket.on('new_notification', data => {
+              try{ document.getElementById('notification-sound')?.play().catch(()=>{});}catch(_){ }
+              incrementBadge();
+              prependItem(data);
+              const kind = (data.notification_type||data.type||'').toLowerCase();
+              let toastType = 'info';
+              if(/success|scheduled|ready/.test(kind)) toastType='success';
+              else if(/warning|reminder/.test(kind)) toastType='warning';
+              else if(/error|fail/.test(kind)) toastType='error';
+              const link = data.inquiry_id ? `/student/inquiry/${data.inquiry_id}` : (data.announcement_id ? `/student/announcements?highlight=${data.announcement_id}` : (data.link || null));
+              let title = data.title || 'Notification';
+              let message = data.message || '';
+              if(message.length>180) message = message.slice(0,177)+'…';
+              showToast({title, message, type:toastType, duration: kind==='reminder'?8000:6500, link});
+            });
+
+            // Realtime updates when notifications are marked as read from chat views
+            socket.on('notification_update', data => {
+              try{
+                const c = parseInt((data&&data.count)||1);
+                const badge = document.getElementById('student-ann-badge');
+                if (badge) {
+                  let n = parseInt(badge.textContent||'0');
+                  n = isNaN(n)?0:Math.max(0, n - c);
+                  badge.textContent = String(n);
+                  if (n <= 0) badge.classList.add('hidden'); else badge.classList.remove('hidden');
+                }
+              }catch(_){ }
+            });
+          }catch(e){}
+        })();
+
+    // User avatar dropdown: avatar toggles the menu directly (caret removed)
+        (function(){
+          const menuToggle = document.getElementById('userMenuToggle');
+          const menu = document.getElementById('userMenu');
+          const dropdown = document.getElementById('userDropdown');
+          if(!menu || !menuToggle || !dropdown) return;
+
+          function openMenu(){
+            menu.style.display = 'block';
+            menu.style.animation = 'fadeInUp 160ms ease-out';
+            menuToggle.setAttribute('aria-expanded','true');
+          }
+          function closeMenu(){
+            menu.style.display = 'none';
+            menuToggle.setAttribute('aria-expanded','false');
+          }
+          function isOpen(){ return menu.style.display !== 'none' && menu.style.display !== ''; }
+
+          // Initialize hidden
+          closeMenu();
+
+          menuToggle.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            isOpen() ? closeMenu() : openMenu();
+          });
+
+          // Close on outside click or ESC
+          document.addEventListener('click', (e)=>{
+            if (!dropdown.contains(e.target)) closeMenu();
+          });
+          document.addEventListener('keydown', (e)=>{
+            if (e.key === 'Escape') closeMenu();
+          });
+
+          // Close menu when a menu item is clicked
+          menu.querySelectorAll('a, button').forEach(el => {
+            el.addEventListener('click', () => closeMenu());
+          });
+        })();
+
+        // Handle notification clicks - redirect to target page
+        const notificationItems = document.querySelectorAll(".notification-item");
+        notificationItems.forEach((item) => {
+          item.addEventListener("click", function (e) {
+            // Don't navigate if clicked on close button
+            if (e.target.closest(".notification-close")) {
+              return;
+            }
+
+            // Get inquiry ID and navigate if available
+            const inquiryId = this.dataset.inquiryId;
+            const announcementId = this.dataset.announcementId;
+            const directLink = this.dataset.link; // e.g., /student/view-session/<id>
+            if (inquiryId) {
+              // Mark as read before navigating
+              fetch(`/student/api/notifications/${this.dataset.notificationId}/dismiss`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+                },
+              })
+                .then(() => {
+                  window.location.href = `/student/inquiry/${inquiryId}`;
+                })
+                .catch((error) => {
+                  console.error("Error marking notification as read:", error);
+                  window.location.href = `/student/inquiry/${inquiryId}`;
+                });
+            } else if (announcementId) {
+              fetch(`/student/api/notifications/${this.dataset.notificationId}/dismiss`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+                },
+              })
+                .then(() => {
+                  window.location.href = `/student/announcement/${announcementId}`;
+                })
+                .catch((error) => {
+                  console.error("Error marking notification as read:", error);
+                  window.location.href = `/student/announcement/${announcementId}`;
+                });
+            } else if (directLink) {
+              // Generic navigation using provided link (e.g., counseling session details)
+              const nid = this.dataset.notificationId;
+              if (nid) {
+                fetch(`/student/api/notifications/${nid}/dismiss`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": document.querySelector('meta[name="csrf-token"]').getAttribute("content") || "",
+                  },
+                }).finally(() => { window.location.href = directLink; });
+              } else {
+                window.location.href = directLink;
+              }
+            }
+          });
+        });
+
+        // Handle notification dismiss buttons
+        const closeButtons = document.querySelectorAll(".notification-close");
+        closeButtons.forEach((button) => {
+          button.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const notificationItem = this.closest(".notification-item");
+            const notificationId = notificationItem.dataset.notificationId;
+
+            // Mark as read in the database via fetch API
+            fetch(`/student/api/notifications/${notificationId}/dismiss`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+              },
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error("Network response was not ok");
+                }
+                return response.json();
+              })
+              .then((data) => {
+                if (data.success) {
+                  // Remove the notification from UI
+                  notificationItem.style.height = notificationItem.offsetHeight + "px";
+                  setTimeout(() => {
+                    notificationItem.style.height = "0";
+                    notificationItem.style.padding = "0";
+                    notificationItem.style.margin = "0";
+                    notificationItem.style.opacity = "0";
+                    notificationItem.style.overflow = "hidden";
+                  }, 10);
+
+                  // Remove from DOM after animation completes
+                  setTimeout(() => {
+                    notificationItem.remove();
+
+                    // Update badge count
+                    const badges = document.querySelectorAll(".notification-badge");
+                    badges.forEach(badge => {
+                      let count = parseInt(badge.textContent || "0");
+                      if (count > 0) {
+                        count--;
+                        if (count === 0) {
+                          badge.classList.add("hidden");
+                        } else {
+                          badge.textContent = count;
+                        }
+                      }
+                    });
+
+                    // Show "no notifications" message if this was the last one
+                    const container = document.getElementById("notificationsContainer");
+                    if (container && !container.querySelector(".notification-item")) {
+                      container.innerHTML = `
+                        <div class="p-3 text-center text-gray-500">
+                          <i class="far fa-bell-slash text-gray-300 text-lg mb-2"></i>
+                          <p>No notifications</p>
+                        </div>
+                      `;
+                    }
+                  }, 300);
+                }
+              })
+              .catch((error) => console.error("Error dismissing notification:", error));
+          });
+        });
+
+        // Mark all as read functionality
+        const markAllAsReadBtn = document.getElementById("markAllAsRead");
+        if (markAllAsReadBtn) {
+          markAllAsReadBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            fetch("/student/api/notifications/mark-all-read", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+              },
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error("Network response was not ok");
+                }
+                return response.json();
+              })
+              .then((data) => {
+                if (data.success) {
+                  // Update UI - remove 'unread' class from all notifications
+                  document.querySelectorAll(".notification-item.unread").forEach((item) => {
+                    item.classList.remove("unread");
+                  });
+
+                  // Hide the badge counter
+                  const badges = document.querySelectorAll(".notification-badge");
+                  badges.forEach(badge => {
+                    badge.textContent = "0";
+                    badge.classList.add("hidden");
+                  });
+
+                  // Show confirmation feedback
+                  const container = document.getElementById("notificationsContainer");
+                  const feedbackDiv = document.createElement("div");
+                  feedbackDiv.className = "bg-green-50 text-green-700 text-xs text-center p-2 border-b border-green-100";
+                  feedbackDiv.innerText = "All notifications marked as read";
+                  container.prepend(feedbackDiv);
+
+                  // Remove the feedback after 2 seconds
+                  setTimeout(() => {
+                    feedbackDiv.style.opacity = "0";
+                    feedbackDiv.style.transition = "opacity 0.5s ease";
+                    setTimeout(() => feedbackDiv.remove(), 500);
+                  }, 2000);
+                }
+              })
+              .catch((error) => console.error("Error marking notifications as read:", error));
+          });
+        }
+
+  // (Socket connection handled above in the unified dropdown controller)
+
+  // Reminder pop-up remains for reminder-type notifications
+  // kept via showReminderModal(data) from earlier code if needed in future
+      });
+    </script>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

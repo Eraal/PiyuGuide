@@ -1,0 +1,189 @@
+{% extends 'headerbase.html' %}
+
+{% block title %}{{ current_campus_name }} - Supported Offices{% endblock %}
+
+{% block content %}
+<!-- Hero Section with Enhanced Styling -->
+<div class="relative overflow-hidden">
+  <div
+    class="bg-cover bg-center h-80 md:h-96 relative"
+    style="background-image: url('{{ url_for('static', filename='images/backgroundlanding.png') }}');"
+  >
+    <!-- Enhanced overlay with gradient -->
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-purple-900/60"></div>
+    
+    <!-- Floating elements for visual interest -->
+    <div class="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl animate-pulse"></div>
+    <div class="absolute bottom-20 right-20 w-32 h-32 bg-blue-400/20 rounded-full blur-2xl animate-pulse delay-1000"></div>
+    
+    <!-- School Logo - Enhanced positioning -->
+    <div class="relative container mx-auto px-4 pt-6 text-center">
+      <img
+  src="{{ brand_logo_url }}"
+        alt="{{ current_campus_name }} Logo"
+        class="h-20 md:h-24 mx-auto mb-6 drop-shadow-2xl animate-pulse"
+      />
+    </div>
+    
+    <!-- Content Container -->
+    <div class="relative container mx-auto px-4 pb-16 text-center">
+      <h1 class="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg animate-fade-in">
+        University Offices
+      </h1>
+      <p class="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto leading-relaxed">
+        Connect with the right office for your concerns and inquiries
+      </p>
+      
+      <!-- Quick Stats -->
+      <div class="flex justify-center space-x-8 text-white">
+        <div class="text-center">
+          <div class="text-3xl font-bold">{{ office_data|length }}</div>
+          <div class="text-sm opacity-75">Total Offices</div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl font-bold">{{ office_data|selectattr('is_available')|list|length }}</div>
+          <div class="text-sm opacity-75">Available Now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Offices Grid Section -->
+<div class="py-16 bg-gradient-to-br from-gray-50 to-blue-50">
+  <div class="container mx-auto px-4">
+    
+    {% if office_data %}
+    <!-- Offices Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {% for data in office_data %}
+      <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200 transform hover:-translate-y-2">
+        <!-- Office Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+          <div class="relative">
+            <h3 class="text-xl font-bold mb-2">{{ data.office.name }}</h3>
+            {% if data.is_available %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <i class="fas fa-circle text-green-400 mr-1 animate-pulse"></i>
+              Available
+            </span>
+            {% else %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <i class="fas fa-circle text-red-400 mr-1"></i>
+              Unavailable
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Office Content -->
+        <div class="p-6">
+          {% if data.office.description %}
+          <p class="text-gray-600 mb-4 leading-relaxed line-clamp-3">
+            {{ data.office.description }}
+          </p>
+          {% endif %}
+
+          <!-- Statistics -->
+          <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="text-center p-3 bg-blue-50 rounded-lg">
+              <div class="text-2xl font-bold text-blue-600">{{ data.total_inquiries }}</div>
+              <div class="text-xs text-gray-500">Total Inquiries</div>
+            </div>
+            <div class="text-center p-3 bg-orange-50 rounded-lg">
+              <div class="text-2xl font-bold text-orange-600">{{ data.pending_inquiries }}</div>
+              <div class="text-xs text-gray-500">Pending</div>
+            </div>
+          </div>
+
+          <!-- Concern Types -->
+          {% if data.concern_types %}
+          <div class="mb-4">
+            <h4 class="text-sm font-semibold text-gray-700 mb-2">Services Available:</h4>
+            <div class="flex flex-wrap gap-1">
+              {% for concern_type in data.concern_types[:3] %}
+              <span class="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                {{ concern_type.name }}
+              </span>
+              {% endfor %}
+              {% if data.concern_types|length > 3 %}
+              <span class="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                +{{ data.concern_types|length - 3 }} more
+              </span>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Action Button -->
+          <div class="flex space-x-2">
+            <a
+              href="{{ url_for('main.office_details', office_id=data.office.id) }}"
+              class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-center py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
+            >
+              <i class="fas fa-info-circle mr-2"></i>
+              View Details
+            </a>
+            {% if data.is_available %}
+            <a
+              href="{{ url_for('student.create_inquiry', office_id=data.office.id) if current_user.is_authenticated and current_user.role == 'student' else url_for('auth.login') }}"
+              class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              title="Submit Inquiry"
+            >
+              <i class="fas fa-plus"></i>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- No Offices Message -->
+    <div class="text-center py-16">
+      <div class="max-w-md mx-auto">
+        <i class="fas fa-building text-6xl text-gray-300 mb-6"></i>
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">No Offices Available</h3>
+        <p class="text-gray-600 mb-8">
+          There are currently no offices available. Please check back later or contact the administrator.
+        </p>
+        <a
+          href="{{ url_for('main.campus_selection') }}"
+          class="inline-block bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+        >
+          <i class="fas fa-arrow-left mr-2"></i>
+          Back to Campus Selection
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Call to Action Section -->
+<div class="bg-gradient-to-r from-blue-800 to-blue-900 py-16">
+  <div class="container mx-auto px-4 text-center">
+    <h2 class="text-3xl font-bold text-white mb-4">Need Help?</h2>
+    <p class="text-blue-100 mb-8 max-w-2xl mx-auto">
+      If you can't find the right office for your concern, don't hesitate to contact our main office for assistance.
+    </p>
+    <div class="flex flex-col sm:flex-row justify-center gap-4">
+      <a
+        href="{{ url_for('auth.login') }}"
+        class="bg-white text-blue-800 py-3 px-8 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+      >
+        <i class="fas fa-sign-in-alt mr-2"></i>
+        Login to Submit Inquiry
+      </a>
+      <a
+        href="{{ url_for('main.securityprivacy') }}"
+        class="border border-white text-white py-3 px-8 rounded-lg font-semibold hover:bg-white hover:text-blue-800 transition-colors"
+      >
+        <i class="fas fa-shield-alt mr-2"></i>
+        Privacy & Security
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

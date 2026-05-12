@@ -1,0 +1,517 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Create Campus{% endblock %}
+
+{% block page_title %}Create Campus{% endblock %}
+{% block page_subtitle %}Add a new campus to the university system{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Button -->
+    <div class="flex items-center">
+        <a href="{{ url_for('super_admin.campus_list') }}" 
+           class="group bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border-2 border-gray-200 transition-all duration-300 flex items-center">
+            <i class="fas fa-arrow-left mr-3 group-hover:-translate-x-1 transition-transform duration-300"></i>
+            Back to Campuses
+        </a>
+    </div>
+
+    <!-- Header Section aligned with Create Campus Admin -->
+    <div class="relative bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 rounded-3xl shadow-2xl p-8 text-white overflow-hidden">
+        <!-- Animated Background Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-4 left-4 w-32 h-32 border-2 border-white rounded-full animate-ping"></div>
+            <div class="absolute top-20 right-20 w-24 h-24 border-2 border-white rounded-full animate-pulse delay-300"></div>
+            <div class="absolute bottom-10 left-20 w-16 h-16 border-2 border-white rounded-full animate-bounce delay-700"></div>
+        </div>
+        
+        <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="flex-1">
+                <div class="flex items-center mb-4">
+                    <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-4">
+                        <i class="fas fa-university text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-4xl font-bold mb-1">Create Campus</h1>
+                        <p class="text-blue-200 text-lg">
+                            Add a new campus with its core details and description
+                        </p>
+                    </div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 max-w-2xl">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-cyan-300 text-xl mt-1"></i>
+                        <div>
+                            <h3 class="font-semibold text-white mb-2">Campus Details</h3>
+                            <ul class="text-blue-200 text-sm space-y-1">
+                                <li>• Provide a clear campus name</li>
+                                <li>• Use a short unique code (2–10 characters)</li>
+                                <li>• Add address and description for context (optional)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <!-- Step indicators -->
+                <div class="mt-6 flex items-center space-x-4">
+                    <div id="step1Indicator" class="flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
+                        <div class="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold text-sm">1</span>
+                        </div>
+                        <span class="font-medium">Campus Information</span>
+                    </div>
+                    <div class="w-8 border-t-2 border-white/30"></div>
+                    <div id="step2Indicator" class="flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 opacity-50">
+                        <div class="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold text-sm">2</span>
+                        </div>
+                        <span class="font-medium">Campus Theme & Logo</span>
+                    </div>
+                    <div class="w-8 border-t-2 border-white/30"></div>
+                    <div id="step3Indicator" class="flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 opacity-50">
+                        <div class="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold text-sm">3</span>
+                        </div>
+                        <span class="font-medium">Review & Create</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Section aligned with Create Campus Admin -->
+    <div class="bg-white/70 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+        <div class="bg-gradient-to-r from-gray-50 to-teal-50 px-8 py-6 border-b border-gray-200">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-clipboard-list text-white text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Campus Information</h2>
+                    <p class="text-gray-600">Fill in the details for the new campus. Fields marked with * are required.</p>
+                </div>
+            </div>
+        </div>
+
+    <form method="POST" id="campusForm" class="p-8 space-y-8" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Step 1: Edit -->
+            <div id="step1" class="space-y-6">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center border-b border-gray-200 pb-3">
+                    <i class="fas fa-info-circle mr-3 text-teal-600"></i>
+                    Basic Details
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Campus Name -->
+                    <div class="form-group space-y-2">
+                        <label for="name" class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-university text-teal-600 mr-2"></i>
+                            Campus Name *
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="name" name="name" required
+                                   class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 text-lg font-medium placeholder-gray-400"
+                                   placeholder="e.g., LSPU San Pablo Campus">
+                            <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                <i id="nameCheck" class="fas fa-check text-green-500 hidden"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <i class="fas fa-lightbulb mr-1"></i>
+                            Use the official campus name
+                        </p>
+                    </div>
+
+                    <!-- Campus Code -->
+                    <div class="form-group space-y-2">
+                        <label for="code" class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-tag text-purple-600 mr-2"></i>
+                            Campus Code *
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="code" name="code" required maxlength="10"
+                                   class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 text-lg font-medium placeholder-gray-400 uppercase"
+                                   placeholder="e.g., SP, SC, LB">
+                            <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                <i id="codeCheck" class="fas fa-check text-green-500 hidden"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            2–10 characters, letters and numbers only
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Optional Details -->
+                <div class="grid grid-cols-1 gap-8">
+                    <!-- Address -->
+                    <div class="form-group space-y-2">
+                        <label for="address" class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-map-marker-alt text-red-600 mr-2"></i>
+                            Campus Address (Optional)
+                        </label>
+                        <textarea id="address" name="address" rows="3"
+                                  class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 text-lg font-medium placeholder-gray-400"
+                                  placeholder="Street, City, Province, Postal Code"></textarea>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group space-y-2">
+                        <label for="description" class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-file-alt text-green-600 mr-2"></i>
+                            Description (Optional)
+                        </label>
+                        <textarea id="description" name="description" rows="4"
+                                  class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 text-lg font-medium placeholder-gray-400"
+                                  placeholder="Programs, facilities, specializations, etc."></textarea>
+                    </div>
+                </div>
+            </div>
+
+                <!-- Actions for Step 1 -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-8 border-t border-gray-200">
+                    <a href="{{ url_for('super_admin.campus_list') }}" 
+                       class="flex-1 sm:flex-none bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-4 px-8 rounded-2xl transition-all duration-300 flex items-center justify-center border-2 border-gray-200 hover:border-gray-300">
+                        <i class="fas fa-arrow-left mr-3"></i>
+                        Back to Campus List
+                    </a>
+                    <button type="button" id="toStep2Btn"
+                            class="group flex-1 sm:flex-none bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold py-4 px-8 rounded-2xl transition-all duration-300 flex items-center justify-center">
+                        <i class="fas fa-arrow-right mr-3 group-hover:translate-x-1 transition-transform"></i>
+                        Next: Theme & Logo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Theme & Logo -->
+            <div id="step2" class="space-y-6 hidden">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center border-b border-gray-200 pb-3">
+                    <i class="fas fa-paint-brush mr-3 text-teal-600"></i>
+                    Campus Theme & Branding
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Theme selection -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-palette text-indigo-600 mr-2"></i>
+                            Theme
+                        </label>
+                        <select id="campus_theme_key" name="campus_theme_key"
+                                class="w-full px-4 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 text-lg font-medium">
+                            <option value="blue">Blue</option>
+                            <option value="emerald">Emerald</option>
+                            <option value="violet">Violet</option>
+                            <option value="sunset">Sunset</option>
+                            <option value="teal">Teal</option>
+                            <option value="indigo">Indigo</option>
+                        </select>
+                    </div>
+
+                    <!-- Logo upload/url -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-image text-teal-600 mr-2"></i>
+                            Logo (PNG recommended)
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="url" id="campus_logo_url" name="campus_logo_url" placeholder="https://..."
+                                   class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 placeholder-gray-400">
+                            <input type="file" id="campus_logo_file" name="campus_logo_file" accept="image/*"
+                                   class="w-full px-4 py-2 bg-white border-2 border-gray-200 rounded-2xl">
+                        </div>
+                        <div class="mt-3 flex items-center space-x-4">
+                            <img id="logoPreview" src="" alt="Logo Preview" class="h-16 w-16 object-contain rounded-full hidden border-2 border-gray-200">
+                            <span id="logoHint" class="text-sm text-gray-500">Provide a URL or upload a file. File takes precedence.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-8">
+                    <!-- Background upload/url -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-image text-cyan-600 mr-2"></i>
+                            Landing Background Image
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="url" id="campus_bg_url" name="campus_bg_url" placeholder="https://..."
+                                   class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-300 placeholder-gray-400">
+                            <input type="file" id="campus_bg_file" name="campus_bg_file" accept="image/*"
+                                   class="w-full px-4 py-2 bg-white border-2 border-gray-200 rounded-2xl">
+                        </div>
+                        <div class="mt-3">
+                            <img id="bgPreview" src="" alt="Background Preview" class="w-full max-w-xl h-40 object-cover rounded-2xl hidden border-2 border-gray-200">
+                        </div>
+                        <p class="text-sm text-gray-500">Large landscape images work best. File takes precedence over URL.</p>
+                    </div>
+                </div>
+
+                <!-- Actions for Step 2 -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-8 border-t border-gray-200">
+                    <button type="button" id="backToStep1Btn"
+                            class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-4 px-8 rounded-2xl transition-all duration-300 text-center flex items-center justify-center border-2 border-gray-200 hover:border-gray-300">
+                        <i class="fas fa-arrow-left mr-3"></i>
+                        Back
+                    </button>
+                    <button type="button" id="toStep3Btn"
+                            class="group flex-1 sm:flex-none bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold py-4 px-8 rounded-2xl transition-all duration-300 flex items-center justify-center">
+                        <i class="fas fa-arrow-right mr-3 group-hover:translate-x-1 transition-transform"></i>
+                        Next: Review
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Review -->
+            <div id="step3" class="space-y-6 hidden">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center border-b border-gray-200 pb-3">
+                    <i class="fas fa-eye mr-3 text-teal-600"></i>
+                    Review & Create Campus
+                </h3>
+
+                <div class="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-6 border border-teal-100">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl p-4 border border-gray-100">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-university text-teal-600 mr-2"></i>
+                                <span class="font-semibold text-gray-700">Campus Name</span>
+                            </div>
+                            <p id="reviewName" class="text-lg font-bold text-gray-900">-</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 border border-gray-100">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-tag text-purple-600 mr-2"></i>
+                                <span class="font-semibold text-gray-700">Campus Code</span>
+                            </div>
+                            <p id="reviewCode" class="text-lg font-bold text-gray-900 uppercase">-</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 border border-gray-100 md:col-span-2">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-map-marker-alt text-red-600 mr-2"></i>
+                                <span class="font-semibold text-gray-700">Address</span>
+                            </div>
+                            <p id="reviewAddress" class="text-gray-900">Not specified</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 border border-gray-100 md:col-span-2">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-file-alt text-green-600 mr-2"></i>
+                                <span class="font-semibold text-gray-700">Description</span>
+                            </div>
+                            <p id="reviewDescription" class="text-gray-900">Not specified</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 border border-gray-100">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-palette text-indigo-600 mr-2"></i>
+                                <span class="font-semibold text-gray-700">Theme</span>
+                            </div>
+                            <p id="reviewTheme" class="text-gray-900 capitalize">Blue</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 border border-gray-100">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-images text-teal-600 mr-2"></i>
+                                <span class="font-semibold text-gray-700">Branding Preview</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <img id="reviewLogo" src="" class="h-12 w-12 object-contain rounded-full border hidden" alt="Logo" />
+                                <img id="reviewBg" src="" class="h-12 w-24 object-cover rounded border hidden" alt="BG" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions for Step 3 -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
+                    <button type="button" id="backToStep2Btn"
+                            class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-4 px-8 rounded-2xl transition-all duration-300 text-center flex items-center justify-center border-2 border-gray-200 hover:border-gray-300">
+                        <i class="fas fa-arrow-left mr-3"></i>
+                        Back to Edit
+                    </button>
+                    <a href="{{ url_for('super_admin.campus_list') }}" 
+                       class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-700 font-semibold py-4 px-8 rounded-2xl transition-all duration-300 text-center flex items-center justify-center border-2 border-red-200 hover:border-red-300">
+                        <i class="fas fa-times mr-3"></i>
+                        Cancel
+                    </a>
+                    <button type="submit" id="submitBtn" disabled
+                            class="flex-1 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-4 px-8 rounded-2xl transition-all duration-300 flex items-center justify-center">
+                        <i class="fas fa-save mr-3"></i>
+                        <span id="submitText">Create Campus</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Simple validation aligned with Create Campus Admin page
+let isFormValid = false;
+let validations = {
+    name: false,
+    code: false
+};
+
+function checkFormValidity() {
+    isFormValid = Object.values(validations).every(v => v);
+    const submitBtn = document.getElementById('submitBtn');
+    if (isFormValid) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('disabled:from-gray-400', 'disabled:to-gray-500', 'disabled:cursor-not-allowed');
+    } else {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('disabled:from-gray-400', 'disabled:to-gray-500', 'disabled:cursor-not-allowed');
+    }
+}
+
+// Name validation
+document.getElementById('name').addEventListener('input', function() {
+    const value = this.value.trim();
+    const check = document.getElementById('nameCheck');
+    if (value.length >= 3) {
+        validations.name = true;
+        check.classList.remove('hidden');
+        this.classList.remove('border-red-300');
+        this.classList.add('border-green-300');
+    } else {
+        validations.name = false;
+        check.classList.add('hidden');
+        this.classList.remove('border-green-300');
+        if (value.length > 0) this.classList.add('border-red-300');
+    }
+    checkFormValidity();
+});
+
+// Code validation (uppercase alphanumeric 2-10 chars)
+document.getElementById('code').addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const value = this.value.trim();
+    const check = document.getElementById('codeCheck');
+    if (value.length >= 2 && value.length <= 10 && /^[A-Z0-9]+$/.test(value)) {
+        validations.code = true;
+        check.classList.remove('hidden');
+        this.classList.remove('border-red-300');
+        this.classList.add('border-green-300');
+    } else {
+        validations.code = false;
+        check.classList.add('hidden');
+        this.classList.remove('border-green-300');
+        if (value.length > 0) this.classList.add('border-red-300');
+    }
+    checkFormValidity();
+});
+
+// Step handling and submission
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const step3 = document.getElementById('step3');
+const toStep2Btn = document.getElementById('toStep2Btn');
+const backToStep1Btn = document.getElementById('backToStep1Btn');
+const toStep3Btn = document.getElementById('toStep3Btn');
+const backToStep2Btn = document.getElementById('backToStep2Btn');
+const step1Indicator = document.getElementById('step1Indicator');
+const step2Indicator = document.getElementById('step2Indicator');
+const step3Indicator = document.getElementById('step3Indicator');
+
+function updateStepIndicators(activeStep) {
+    const steps = [step1Indicator, step2Indicator, step3Indicator];
+    steps.forEach((el, idx) => {
+        const bubble = el.querySelector('.w-8.h-8');
+        if (idx + 1 === activeStep) {
+            el.classList.remove('opacity-50');
+            bubble.classList.remove('bg-gray-400');
+            bubble.classList.add('bg-teal-500');
+        } else {
+            el.classList.add('opacity-50');
+            bubble.classList.remove('bg-teal-500');
+            bubble.classList.add('bg-gray-400');
+        }
+    });
+}
+
+function goTo(step) {
+    [step1, step2, step3].forEach((el, idx) => {
+        if (idx + 1 === step) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    });
+    updateStepIndicators(step);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+if (toStep2Btn) toStep2Btn.addEventListener('click', () => {
+    if (!validations.name || !validations.code) {
+        alert('Please complete required fields before proceeding.');
+        return;
+    }
+    goTo(2);
+});
+if (backToStep1Btn) backToStep1Btn.addEventListener('click', () => goTo(1));
+if (toStep3Btn) toStep3Btn.addEventListener('click', () => {
+    // Populate review
+    document.getElementById('reviewName').textContent = document.getElementById('name').value.trim() || '-';
+    document.getElementById('reviewCode').textContent = document.getElementById('code').value.trim() || '-';
+    document.getElementById('reviewAddress').textContent = document.getElementById('address').value.trim() || 'Not specified';
+    document.getElementById('reviewDescription').textContent = document.getElementById('description').value.trim() || 'Not specified';
+    const theme = document.getElementById('campus_theme_key').value || 'blue';
+    document.getElementById('reviewTheme').textContent = theme;
+    const logoSrc = document.getElementById('logoPreview').src || document.getElementById('campus_logo_url').value || '';
+    const bgSrc = document.getElementById('bgPreview').src || document.getElementById('campus_bg_url').value || '';
+    const reviewLogo = document.getElementById('reviewLogo');
+    const reviewBg = document.getElementById('reviewBg');
+    if (logoSrc) { reviewLogo.src = logoSrc; reviewLogo.classList.remove('hidden'); } else { reviewLogo.classList.add('hidden'); }
+    if (bgSrc) { reviewBg.src = bgSrc; reviewBg.classList.remove('hidden'); } else { reviewBg.classList.add('hidden'); }
+    goTo(3);
+});
+if (backToStep2Btn) backToStep2Btn.addEventListener('click', () => goTo(2));
+
+// Live previews for file/url inputs
+function setImgPreview(inputEl, imgEl) {
+    const url = inputEl.value.trim();
+    if (url) {
+        imgEl.src = url;
+        imgEl.classList.remove('hidden');
+    }
+}
+const logoUrlEl = document.getElementById('campus_logo_url');
+const logoFileEl = document.getElementById('campus_logo_file');
+const logoPrevEl = document.getElementById('logoPreview');
+const bgUrlEl = document.getElementById('campus_bg_url');
+const bgFileEl = document.getElementById('campus_bg_file');
+const bgPrevEl = document.getElementById('bgPreview');
+
+if (logoUrlEl) logoUrlEl.addEventListener('input', () => setImgPreview(logoUrlEl, logoPrevEl));
+if (bgUrlEl) bgUrlEl.addEventListener('input', () => setImgPreview(bgUrlEl, bgPrevEl));
+if (logoFileEl) logoFileEl.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = () => { logoPrevEl.src = reader.result; logoPrevEl.classList.remove('hidden'); };
+        reader.readAsDataURL(file);
+    }
+});
+if (bgFileEl) bgFileEl.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = () => { bgPrevEl.src = reader.result; bgPrevEl.classList.remove('hidden'); };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Form submission
+document.getElementById('campusForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    // Only allow submit on step 3 and when valid
+    const onStep3 = !step3.classList.contains('hidden');
+    if (!isFormValid || !onStep3) {
+        e.preventDefault();
+        alert('Please review details before submitting.');
+        return;
+    }
+    submitBtn.disabled = true;
+    submitText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+});
+</script>
+
+{% endblock %}

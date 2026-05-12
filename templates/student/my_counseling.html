@@ -1,0 +1,450 @@
+{% extends "student/student_base.html" %}
+{% block title %}My Counseling &mdash; KapiyuGuide{% endblock %}
+
+{% block extra_head %}
+<style>
+  .stat-card { background:#fff; border:1px solid #e2e8f0; border-radius:0.875rem; padding:1.25rem 1.5rem; transition:box-shadow .2s, transform .2s; }
+  .stat-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.09); transform:translateY(-2px); }
+  .stat-icon { width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+  .stat-number { font-size:2rem; font-weight:700; line-height:1; letter-spacing:-.02em; }
+
+  .panel { background:#fff; border:1px solid #e2e8f0; border-radius:0.875rem; overflow:hidden; }
+  .panel-header { display:flex; justify-content:space-between; align-items:center; padding:0.875rem 1.25rem; border-bottom:1px solid #f1f5f9; gap:1rem; }
+  .panel-title { font-size:.9375rem; font-weight:600; color:#0f172a; display:flex; align-items:center; gap:.5rem; }
+
+  .filter-bar { background:#fff; border:1px solid #e2e8f0; border-radius:0.875rem; padding:1.25rem; }
+  .filter-control { width:100%; border:1px solid #e2e8f0; border-radius:.625rem; padding:.55rem .875rem; font-size:.875rem; color:#334155; background:#fff; transition:border-color .15s, box-shadow .15s; outline:none; }
+  .filter-control:focus { border-color:#1d4ed8; box-shadow:0 0 0 3px rgba(29,78,216,.1); }
+
+  .btn-primary { display:inline-flex; align-items:center; gap:.375rem; padding:.5rem 1rem; font-size:.875rem; font-weight:500; background:#1d4ed8; color:#fff; border-radius:.625rem; transition:background .15s; border:none; }
+  .btn-primary:hover { background:#1e3a8a; }
+  .btn-outline { display:inline-flex; align-items:center; gap:.375rem; padding:.5rem 1rem; font-size:.875rem; font-weight:500; background:#fff; color:#475569; border:1px solid #e2e8f0; border-radius:.625rem; transition:background .15s; }
+  .btn-outline:hover { background:#f8fafc; }
+  .btn-view { display:inline-flex; align-items:center; gap:.25rem; padding:.375rem .75rem; font-size:.75rem; font-weight:500; border:1px solid #1d4ed8; color:#1d4ed8; border-radius:.5rem; transition:background .15s, color .15s; background:#fff; }
+  .btn-view:hover { background:#1d4ed8; color:#fff; }
+  .btn-success { display:inline-flex; align-items:center; gap:.375rem; padding:.375rem .75rem; font-size:.75rem; font-weight:500; background:#16a34a; color:#fff; border-radius:.5rem; transition:background .15s; border:none; }
+  .btn-success:hover { background:#15803d; }
+
+  .tbl th { font-size:.7rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; padding:.75rem 1.25rem; background:#f8fafc; text-align:left; }
+  .tbl td { padding:.875rem 1.25rem; font-size:.875rem; color:#334155; }
+  .tbl tbody tr { border-top:1px solid #f1f5f9; transition:background .15s, transform .15s; }
+  .tbl tbody tr:hover { background:#f8fafc; }
+  .tbl tbody tr.clickable { cursor:pointer; }
+
+  .session-row { display:flex; align-items:flex-start; gap:1rem; padding:1rem; border-radius:.75rem; border:1px solid #e2e8f0; transition:background .15s, border-color .15s; }
+  .session-row:hover { background:#f8fafc; border-color:#bfdbfe; }
+  .date-badge { text-align:center; background:#fff; border:1px solid #e2e8f0; border-radius:.5rem; padding:.375rem .625rem; min-width:52px; flex-shrink:0; }
+  .date-badge .mon { font-size:.6rem; font-weight:700; color:#1d4ed8; text-transform:uppercase; }
+  .date-badge .day { font-size:1.375rem; font-weight:700; color:#0f172a; line-height:1; }
+  .date-badge .wday { font-size:.6rem; color:#94a3b8; text-transform:uppercase; }
+
+  .status-pill { display:inline-flex; align-items:center; gap:.25rem; padding:.2rem .625rem; border-radius:999px; font-size:.7rem; font-weight:600; }
+  .pill-pending { background:#fef9c3; color:#854d0e; border:1px solid #fef08a; }
+  .pill-progress { background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
+  .pill-resolved { background:#dcfce7; color:#14532d; border:1px solid #bbf7d0; }
+  .pill-confirmed { background:#dcfce7; color:#14532d; border:1px solid #bbf7d0; }
+  .pill-default { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+
+  .session-type-badge { display:inline-flex; align-items:center; gap:.25rem; padding:.2rem .625rem; border-radius:999px; font-size:.7rem; font-weight:600; border:1px solid; }
+  .type-video { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+  .type-inperson { background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe; }
+
+  .office-card { background:#fff; border:1px solid #e2e8f0; border-radius:.875rem; overflow:hidden; transition:box-shadow .2s, transform .2s, border-color .2s; }
+  .office-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.08); transform:translateY(-2px); border-color:#bfdbfe; }
+  .office-card-top { height:4px; background:#1d4ed8; }
+
+  .page-btn { display:inline-flex; align-items:center; justify-content:center; min-width:36px; height:36px; padding:0 .75rem; border-radius:.5rem; font-size:.875rem; border:1px solid #e2e8f0; color:#475569; background:#fff; transition:background .15s; }
+  .page-btn:hover { background:#f8fafc; }
+  .page-btn.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; font-weight:600; }
+  .page-btn.disabled { background:#f1f5f9; color:#94a3b8; pointer-events:none; }
+
+  .empty-state { background:#fff; border:1px dashed #cbd5e1; border-radius:.875rem; }
+
+  @media (max-width: 767px) {
+    .stat-card { padding:1rem 1.1rem; }
+    .stat-number { font-size:1.75rem; }
+    .panel-header { padding:0.875rem 1rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-2 py-5 space-y-6">
+  <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <i class="fas fa-user-md text-white text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-slate-900">My Counseling</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Track your sessions, check status updates, and schedule counseling appointments</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <a href="{{ url_for('student.request_counseling_session') }}" class="btn-primary">
+        <i class="fas fa-calendar-plus text-sm"></i>
+        <span class="text-sm">Request Session</span>
+      </a>
+      <a href="#offices-section" class="btn-outline">
+        <i class="fas fa-building text-sm"></i>
+        <span class="text-sm">Browse Offices</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="stat-card">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Total Sessions</p>
+          <p class="stat-number text-slate-800">{{ stats.total }}</p>
+          <p class="text-xs text-slate-400 mt-1">All counseling requests</p>
+        </div>
+        <div class="stat-icon bg-slate-100 text-slate-600"><i class="fas fa-chart-line"></i></div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Upcoming</p>
+          <p class="stat-number text-blue-700">{{ stats.upcoming }}</p>
+          <p class="text-xs text-slate-400 mt-1">Pending or confirmed soon</p>
+        </div>
+        <div class="stat-icon bg-blue-50 text-blue-700"><i class="fas fa-calendar-alt"></i></div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Pending</p>
+          <p class="stat-number text-amber-600">{{ stats.pending }}</p>
+          <p class="text-xs text-slate-400 mt-1">Waiting for review</p>
+        </div>
+        <div class="stat-icon bg-amber-50 text-amber-500"><i class="fas fa-clock"></i></div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Completed</p>
+          <p class="stat-number text-green-600">{{ stats.completed }}</p>
+          <p class="text-xs text-slate-400 mt-1">Finished sessions</p>
+        </div>
+        <div class="stat-icon bg-green-50 text-green-600"><i class="fas fa-check-circle"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="flex items-center gap-2 mb-3">
+      <i class="fas fa-filter text-blue-700 text-sm"></i>
+      <span class="text-sm font-semibold text-slate-700">Filter Sessions</span>
+      {% if current_status != 'all' or current_office != 'all' %}
+      <span class="ml-1 text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase tracking-wide">Active</span>
+      {% endif %}
+    </div>
+    <form action="{{ url_for('student.counseling_dashboard') }}" method="get" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div>
+        <label for="status" class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+        <select id="status" name="status" class="filter-control">
+          <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+          <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="confirmed" {% if current_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+          <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed</option>
+          <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+          <option value="no-show" {% if current_status == 'no-show' %}selected{% endif %}>No Show</option>
+        </select>
+      </div>
+      <div>
+        <label for="office_id" class="block text-xs font-semibold text-slate-600 mb-1">Office</label>
+        <select id="office_id" name="office_id" class="filter-control">
+          <option value="all" {% if current_office == 'all' %}selected{% endif %}>All Offices</option>
+          {% for office in offices %}
+          <option value="{{ office.id }}" {% if current_office|int == office.id %}selected{% endif %}>{{ office.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-end gap-2 lg:justify-end">
+        <button type="submit" class="btn-primary flex-1 lg:flex-none lg:px-4 justify-center">
+          <i class="fas fa-search text-xs"></i>
+          <span>Apply</span>
+        </button>
+        {% if current_status != 'all' or current_office != 'all' %}
+        <a href="{{ url_for('student.counseling_dashboard') }}" class="btn-outline flex-1 lg:flex-none lg:px-4 justify-center">
+          <i class="fas fa-times text-xs"></i>
+          <span>Clear</span>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="fas fa-calendar-check text-blue-700"></i>My Sessions</span>
+      <span class="text-xs text-slate-400 font-medium">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    </div>
+
+    {% if sessions %}
+    <div class="hidden md:block overflow-x-auto">
+      <table class="min-w-full tbl">
+        <thead>
+          <tr>
+            <th>Office</th>
+            <th>Date &amp; Time</th>
+            <th>Counselor</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white">
+          {% for session in sessions %}
+          <tr class="clickable" data-href="{{ url_for('student.view_session', session_id=session.id) }}" tabindex="0">
+            <td>
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-building text-blue-700 text-xs"></i>
+                </div>
+                <div>
+                  <p class="font-medium text-slate-800 truncate max-w-[220px]">{{ session.office.name }}</p>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="font-medium text-slate-800">{{ session.scheduled_at.strftime('%b %d, %Y') }}</div>
+              <div class="text-xs text-slate-500 flex items-center gap-1"><i class="far fa-clock"></i>{{ session.scheduled_at.strftime('%I:%M %p') }}</div>
+            </td>
+            <td>
+              {% if session.counselor %}
+              <div class="font-medium text-slate-800">{{ session.counselor.first_name }} {{ session.counselor.last_name }}</div>
+              <div class="text-xs text-slate-400">Assigned counselor</div>
+              {% else %}
+              <div class="font-medium text-amber-600">Not assigned yet</div>
+              <div class="text-xs text-slate-400">Pending assignment</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if session.is_video_session %}
+              <span class="session-type-badge type-video"><i class="fas fa-video text-[9px]"></i> Video</span>
+              {% else %}
+              <span class="session-type-badge type-inperson"><i class="fas fa-user-friends text-[9px]"></i> In-Person</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="status-pill
+                {% if session.status == 'confirmed' %}pill-confirmed
+                {% elif session.status == 'pending' %}pill-pending
+                {% elif session.status == 'in_progress' %}pill-progress
+                {% elif session.status == 'completed' %}pill-confirmed
+                {% elif session.status == 'cancelled' %}pill-default
+                {% elif session.status == 'no-show' %}pill-default
+                {% else %}pill-default{% endif %}">
+                {{ session.status|replace('_', ' ')|title }}
+              </span>
+            </td>
+            <td>
+              <div class="flex items-center gap-2 flex-wrap">
+                <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="btn-view">
+                  <i class="fas fa-eye text-[10px]"></i>View
+                </a>
+                {% if session.id in joinable_sessions %}
+                <a href="{{ url_for('student.join_video_session', session_id=session.id) }}" class="btn-success">
+                  <i class="fas fa-video text-[10px]"></i>Join
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="md:hidden p-4 space-y-3">
+      {% for session in sessions %}
+      <div class="session-row" data-href="{{ url_for('student.view_session', session_id=session.id) }}" tabindex="0">
+        <div class="date-badge">
+          <div class="mon">{{ session.scheduled_at|mon }}</div>
+          <div class="day">{{ session.scheduled_at.day }}</div>
+          <div class="wday">{{ session.scheduled_at|wday }}</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-slate-800 truncate">{{ session.office.name }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">{{ session.scheduled_at|dt12 }}</p>
+            </div>
+            <span class="status-pill flex-shrink-0
+              {% if session.status == 'confirmed' %}pill-confirmed
+              {% elif session.status == 'pending' %}pill-pending
+              {% elif session.status == 'in_progress' %}pill-progress
+              {% elif session.status == 'completed' %}pill-confirmed
+              {% else %}pill-default{% endif %}">
+              {{ session.status|replace('_', ' ')|title }}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mb-2">
+            <span class="flex items-center gap-1">
+              <i class="far fa-user"></i>
+              {% if session.counselor %}{{ session.counselor.first_name }} {{ session.counselor.last_name }}{% else %}Not assigned yet{% endif %}
+            </span>
+            {% if session.is_video_session %}
+            <span class="session-type-badge type-video"><i class="fas fa-video text-[9px]"></i>Video</span>
+            {% else %}
+            <span class="session-type-badge type-inperson"><i class="fas fa-user-friends text-[9px]"></i>In-Person</span>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <a href="{{ url_for('student.view_session', session_id=session.id) }}" class="btn-view"><i class="fas fa-eye text-[10px]"></i>View</a>
+            {% if session.id in joinable_sessions %}
+            <a href="{{ url_for('student.join_video_session', session_id=session.id) }}" class="btn-success"><i class="fas fa-video text-[10px]"></i>Join</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <div class="px-4 sm:px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+      <div class="text-sm text-slate-500">
+        Showing page <span class="font-semibold text-slate-700">{{ pagination.page }}</span> of <span class="font-semibold text-slate-700">{{ pagination.pages }}</span>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('student.counseling_dashboard', page=pagination.prev_num, status=current_status, office_id=current_office) }}" class="page-btn">
+          <i class="fas fa-chevron-left text-[10px]"></i>
+          <span class="ml-1">Prev</span>
+        </a>
+        {% else %}
+        <span class="page-btn disabled">
+          <i class="fas fa-chevron-left text-[10px]"></i>
+          <span class="ml-1">Prev</span>
+        </span>
+        {% endif %}
+
+        {% if pagination.has_next %}
+        <a href="{{ url_for('student.counseling_dashboard', page=pagination.next_num, status=current_status, office_id=current_office) }}" class="page-btn">
+          <span class="mr-1">Next</span>
+          <i class="fas fa-chevron-right text-[10px]"></i>
+        </a>
+        {% else %}
+        <span class="page-btn disabled">
+          <span class="mr-1">Next</span>
+          <i class="fas fa-chevron-right text-[10px]"></i>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state py-16 text-center m-4">
+      <div class="max-w-md mx-auto px-4">
+        <div class="w-16 h-16 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-calendar-times text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-2">No counseling sessions yet</h3>
+        <p class="text-sm text-slate-500 mb-6">Schedule your first session to start tracking counseling updates in one place.</p>
+        <a href="{{ url_for('student.request_counseling_session') }}" class="btn-primary justify-center">
+          <i class="fas fa-calendar-plus text-sm"></i>
+          <span>Schedule New Session</span>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div id="offices-section" class="space-y-5">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="fas fa-building text-blue-700"></i>Available Counseling Offices</span>
+        <span class="text-xs text-slate-400 font-medium">Schedule directly with the office that fits your need</span>
+      </div>
+    </div>
+
+    {% if offices %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {% for office in offices %}
+      <div class="office-card">
+        <div class="office-card-top"></div>
+        <div class="p-5">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-user-tie text-lg"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-semibold text-slate-900 text-base truncate">{{ office.name }}</h3>
+              <p class="text-sm text-slate-500 mt-1 line-clamp-2">{{ (office.description or 'Schedule a session with this office.')|truncate(110) }}</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-4">
+            {% if office.supports_video %}
+            <span class="session-type-badge type-video"><i class="fas fa-video text-[9px]"></i>Video</span>
+            {% endif %}
+            <span class="session-type-badge type-inperson"><i class="fas fa-user-friends text-[9px]"></i>In-Person</span>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-100">
+            <a href="{{ url_for('student.request_counseling_session', office_id=office.id) }}" class="btn-primary w-full justify-center">
+              <i class="fas fa-calendar-plus text-sm"></i>
+              <span>Schedule Session</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state p-6 text-center">
+      <div class="w-14 h-14 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
+        <i class="fas fa-building text-xl"></i>
+      </div>
+      <h3 class="text-base font-semibold text-slate-800 mb-1">No counseling offices available</h3>
+      <p class="text-sm text-slate-500">Available offices will appear here when counseling is enabled.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.tbl tbody tr[data-href]').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('a')) return;
+      const href = row.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
+
+    row.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const href = row.getAttribute('data-href');
+        if (href) window.location.href = href;
+      }
+    });
+  });
+
+  document.querySelectorAll('.session-row[data-href]').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('a')) return;
+      const href = card.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
+
+    card.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const href = card.getAttribute('data-href');
+        if (href) window.location.href = href;
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

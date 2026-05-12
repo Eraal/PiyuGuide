@@ -1,0 +1,822 @@
+{% extends 'office/office_base.html' %}
+{% block title %}Counseling Details | {{ session.reference_code or ('Session #' ~ session.id) }}{% endblock %}
+
+{% block content %}
+<style>
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  .stagger-1 { animation-delay: 0.1s; opacity: 0; }
+  .stagger-2 { animation-delay: 0.2s; opacity: 0; }
+  .stagger-3 { animation-delay: 0.3s; opacity: 0; }
+  .stagger-4 { animation-delay: 0.4s; opacity: 0; }
+  
+  .action-btn.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  
+  .action-btn.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+</style>
+
+<div id="sessionCtx" data-session-id="{{ session.id }}" class="hidden"></div>
+
+<!-- Gradient Background Header (Rounded) -->
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white overflow-hidden rounded-2xl shadow-lg">
+    <div class="absolute inset-0 bg-black/10"></div>
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnpNNiAzNGMzLjMxIDAgNi0yLjY5IDYtNnMtMi42OS02LTYtNi02IDIuNjktNiA2IDIuNjkgNiA2IDZ6TTM2IDU0YzMuMzEgMCA2LTIuNjkgNi02cy0yLjY5LTYtNi02LTYgMi42OS02IDYgMi42OSA2IDYgNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20"></div>
+    <div class="relative px-6 py-8">
+      <!-- Title & Status (no breadcrumbs) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <i class="fas fa-clipboard-list text-white/90"></i>
+            Counseling Request Details
+          </h1>
+          <p class="text-white/70 text-sm font-medium">{{ session.reference_code or ('Session #' ~ session.id) }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-lg backdrop-blur-sm border border-white/20
+            {% if session.status == 'pending' %} bg-amber-400/90 text-amber-900
+            {% elif session.status == 'confirmed' %} bg-emerald-400/90 text-emerald-900
+            {% elif session.status == 'in_progress' %} bg-green-500/90 text-white animate-pulse
+            {% elif session.status in ['cancelled','declined'] %} bg-red-400/90 text-red-900
+            {% elif session.status == 'completed' %} bg-blue-400/90 text-blue-900
+            {% else %} bg-gray-300/90 text-gray-800 {% endif %}">
+            <span class="w-2 h-2 rounded-full 
+              {% if session.status == 'pending' %} bg-amber-900
+              {% elif session.status == 'confirmed' %} bg-emerald-900
+              {% elif session.status == 'in_progress' %} bg-white
+              {% elif session.status in ['cancelled','declined'] %} bg-red-900
+              {% elif session.status == 'completed' %} bg-blue-900
+              {% else %} bg-gray-800 {% endif %}"></span>
+            {{ session.status|replace('_', ' ')|title }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left: Details -->
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Student Profile Card with Glass-morphism -->
+  <section class="animate-fade-in-up stagger-1 group relative bg-gradient-to-br from-white via-white to-indigo-50/30 shadow-xl rounded-3xl p-6 border border-indigo-100/50 hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] overflow-hidden">
+        <!-- Decorative gradient orb -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+        
+  <div class="relative flex items-center gap-5">
+          <!-- Avatar with ring animation -->
+          <div class="relative shrink-0 w-20 h-20">
+            {% set avatar = student_user.profile_pic_path if student_user else None %}
+            {% if avatar %}
+              <img src="{{ url_for('static', filename=avatar) }}" alt="{{ student_user.full_name if student_user else 'Student' }}" class="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-lg"/>
+            {% else %}
+              <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center text-2xl font-bold ring-4 ring-white shadow-lg">
+                {% if student_user %}
+                  {{ (student_user.first_name[:1] ~ student_user.last_name[:1]).upper() }}
+                {% else %}
+                  ST
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- Student Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div class="min-w-0 space-y-1">
+                <h2 class="text-xl font-bold text-gray-900 leading-tight truncate flex items-center gap-2">
+                  <i class="fas fa-user-graduate text-indigo-600 text-lg"></i>
+                  {{ student_user.full_name if student_user else 'Student' }}
+                </h2>
+                <a href="mailto:{{ student_user.email if student_user else '' }}" class="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 hover:underline transition-colors truncate">
+                  <i class="fas fa-envelope text-xs"></i>
+                  {{ student_user.email if student_user else 'N/A' }}
+                </a>
+              </div>
+              
+              <!-- Badges -->
+              <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 shadow-sm border border-slate-200/50">
+                  <i class="fas fa-id-badge text-slate-500"></i>
+                  {{ student.student_number if student else 'N/A' }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-700 shadow-sm border border-indigo-200/50">
+                  <i class="fas fa-graduation-cap text-indigo-500"></i>
+                  {{ student.department_name if student else 'N/A' }}{% if student and student.year_level %}<span class="mx-1">•</span>Y{{ student.year_level }}{% endif %}
+                </span>
+              </div>
+            </div>
+            
+            {% if student and student.section %}
+              <div class="mt-3 inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200">
+                <i class="fas fa-users text-gray-400"></i>
+                <span class="font-medium">Section:</span> {{ student.section }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <!-- Session Info Card with Color-coded Fields -->
+      <section class="animate-fade-in-up stagger-2 bg-white shadow-xl rounded-3xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+        <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-info-circle"></i>
+          </div>
+          <span>Session Information</span>
+        </h2>
+        
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <!-- Type -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="fas fa-video text-blue-500"></i>
+              Type
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {% if is_video %}
+                <span class="inline-flex items-center gap-1.5">
+                  <i class="fas fa-video text-indigo-600"></i>
+                  Video Counseling
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5">
+                  <i class="fas fa-handshake text-emerald-600"></i>
+                  In-Person
+                </span>
+              {% endif %}
+            </dd>
+          </div>
+          
+          <!-- Schedule -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="far fa-calendar-alt text-emerald-500"></i>
+              Preferred Schedule
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {% if session.scheduled_at %}
+                <div class="flex items-center gap-2">
+                  <i class="far fa-clock text-emerald-600 text-sm"></i>
+                  {{ session.scheduled_at.strftime('%b %d, %Y') }} • {{ session.scheduled_at.strftime('%I:%M %p') }}
+                </div>
+              {% else %}
+                <span class="text-gray-400 italic">Not yet scheduled</span>
+              {% endif %}
+            </dd>
+          </div>
+          
+          <!-- Concern -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="fas fa-exclamation-circle text-amber-500"></i>
+              Concern
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {% if session.nature_of_concern and session.nature_of_concern.name %}
+                {{ session.nature_of_concern.name }}
+              {% elif session.nature_of_concern_description %}
+                Other
+              {% else %}
+                <span class="text-gray-400">N/A</span>
+              {% endif %}
+            </dd>
+          </div>
+          
+          <!-- Created -->
+          <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-100 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <i class="far fa-clock text-purple-500"></i>
+              Created
+            </dt>
+            <dd class="text-base font-bold text-gray-900">
+              {{ (session.created_at or session.date_created).strftime('%b %d, %Y %I:%M %p') if (session.created_at or session.date_created) else 'N/A' }}
+            </dd>
+          </div>
+          
+          <!-- Student Notes (full width) -->
+          <div class="sm:col-span-2 group relative p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200 hover:shadow-md transition-all duration-200">
+            <dt class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <i class="fas fa-sticky-note text-slate-500"></i>
+              Student Notes / Details
+            </dt>
+            <dd class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-white/50 rounded-lg p-3 border border-slate-100">
+              {{ session.nature_of_concern_description or session.notes or '—' }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- Counselor Notes with Modern Editor Styling -->
+      <section class="animate-fade-in-up stagger-3 bg-white shadow-xl rounded-3xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg">
+              <i class="fas fa-edit"></i>
+            </div>
+            <span>Counselor Notes</span>
+          </h2>
+          <button id="saveNotesBtn" class="group relative px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2">
+            <i class="fas fa-save"></i>
+            <span>Save Notes</span>
+            <div class="absolute inset-0 rounded-xl bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+          </button>
+        </div>
+        
+        <div class="relative">
+          <textarea id="notesInput" class="w-full h-48 border-2 border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 resize-none bg-gray-50/50 hover:bg-white font-mono text-sm" placeholder="Add internal notes visible to office staff only...&#10;&#10;• Session observations&#10;• Follow-up actions&#10;• Resources provided">{{ session.notes or '' }}</textarea>
+          <div class="absolute bottom-3 right-3 text-xs text-gray-400 font-medium bg-white/80 px-2 py-1 rounded-lg">
+            <i class="fas fa-lock text-gray-400"></i> Private
+          </div>
+        </div>
+        
+        <p class="text-xs text-gray-500 mt-3 flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+          <i class="fas fa-info-circle text-amber-500"></i>
+          <span>Notes are not visible to students and are for internal use only.</span>
+        </p>
+      </section>
+    </div>
+
+    <!-- Right: Actions & Quick Info -->
+    <aside class="space-y-6">
+      <!-- Actions Card -->
+  <section class="animate-fade-in-up stagger-2 bg-gradient-to-br from-white to-sky-50/30 shadow-xl rounded-3xl p-6 border border-sky-100 hover:shadow-2xl transition-all duration-300">
+        <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-bolt"></i>
+          </div>
+          <span>Actions</span>
+        </h2>
+        
+        <div class="flex flex-col gap-3">
+          {% if session.status == 'pending' %}
+            <button data-action="assign_confirm" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-check-circle relative z-10"></i>
+              <span class="relative z-10">Assign & Confirm</span>
+            </button>
+            
+            <button data-action="reschedule" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-calendar-alt relative z-10"></i>
+              <span class="relative z-10">Reschedule</span>
+            </button>
+            
+            <button data-action="decline" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-times-circle relative z-10"></i>
+              <span class="relative z-10">Decline</span>
+            </button>
+            
+            <button data-action="remind" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-bell relative z-10"></i>
+              <span class="relative z-10">Send Reminder</span>
+            </button>
+            
+          {% elif session.status == 'confirmed' %}
+            {% if is_video %}
+              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="group relative px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                <i class="fas fa-video relative z-10 animate-pulse"></i>
+                <span class="relative z-10">Join Session Now</span>
+              </a>
+            {% endif %}
+            
+            <button data-action="remind" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-bell relative z-10"></i>
+              <span class="relative z-10">Send Reminder</span>
+            </button>
+            
+            <button data-action="reschedule" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-calendar-alt relative z-10"></i>
+              <span class="relative z-10">Reschedule</span>
+            </button>
+            
+            <button data-action="cancel" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-ban relative z-10"></i>
+              <span class="relative z-10">Cancel Counseling</span>
+            </button>
+            
+          {% elif session.status == 'in_progress' %}
+            {% if is_video %}
+              <a href="{{ url_for('office.join_video_session', session_id=session.id) }}" class="group relative px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                <i class="fas fa-sign-in-alt relative z-10 animate-pulse"></i>
+                <span class="relative z-10">Rejoin Session</span>
+              </a>
+            {% endif %}
+            
+            <button data-action="complete" class="action-btn group relative px-4 py-3 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden">
+              <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <i class="fas fa-check-double relative z-10"></i>
+              <span class="relative z-10">Mark as Completed</span>
+            </button>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- Quick Info Card -->
+      <section class="animate-fade-in-up stagger-3 bg-gradient-to-br from-white to-violet-50/30 shadow-xl rounded-3xl p-6 border border-violet-100 hover:shadow-2xl transition-all duration-300">
+        <h2 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-info"></i>
+          </div>
+          <span>Quick Info</span>
+        </h2>
+        
+        <dl class="space-y-3">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-violet-100">
+            <dt class="text-sm font-semibold text-gray-600 flex items-center gap-2">
+              <i class="fas fa-layer-group text-violet-500"></i>
+              Mode
+            </dt>
+            <dd class="text-sm font-bold text-gray-900">
+              {% if is_video %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700">
+                  <i class="fas fa-video text-xs"></i>
+                  Video
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700">
+                  <i class="fas fa-handshake text-xs"></i>
+                  In-Person
+                </span>
+              {% endif %}
+            </dd>
+          </div>
+          
+          <div class="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-violet-100">
+            <dt class="text-sm font-semibold text-gray-600 flex items-center gap-2">
+              <i class="fas fa-flag text-violet-500"></i>
+              Status
+            </dt>
+            <dd class="text-sm font-bold">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                {% if session.status == 'pending' %} bg-amber-100 text-amber-700
+                {% elif session.status == 'confirmed' %} bg-emerald-100 text-emerald-700
+                {% elif session.status == 'in_progress' %} bg-green-100 text-green-700
+                {% elif session.status in ['cancelled','declined'] %} bg-red-100 text-red-700
+                {% elif session.status == 'completed' %} bg-blue-100 text-blue-700
+                {% else %} bg-gray-100 text-gray-700 {% endif %}">
+                {{ session.status|replace('_', ' ')|title }}
+              </span>
+            </dd>
+          </div>
+          
+          {% if is_video %}
+          <div class="p-3 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100">
+            <dt class="text-sm font-semibold text-indigo-600 mb-2 flex items-center gap-2">
+              <i class="fas fa-link text-indigo-500"></i>
+              Meeting Link
+            </dt>
+            <dd>
+              <a class="inline-flex items-center gap-2 text-sm font-bold text-indigo-700 hover:text-indigo-800 underline hover:no-underline transition-all" href="{{ url_for('office.join_video_session', session_id=session.id) }}" target="_blank" rel="noopener">
+                <i class="fas fa-external-link-alt text-xs"></i>
+                Open in New Tab
+              </a>
+            </dd>
+          </div>
+          {% endif %}
+        </dl>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- Reschedule Modal (full-featured to match list page) -->
+<div id="detailsRescheduleModal" class="fixed inset-0 z-[90] hidden" aria-modal="true" role="dialog">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-details-resch-backdrop></div>
+  <div class="relative z-10 max-w-xl w-[95vw] mx-auto my-10 animate-fade-in-up">
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <!-- Header -->
+      <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center"><i class="fas fa-calendar-alt"></i></div>
+          <div>
+            <h3 class="text-lg font-semibold">Reschedule Session</h3>
+            <p class="text-xs text-white/80">Select a new date and time</p>
+          </div>
+        </div>
+        <button type="button" id="detailsReschClose" class="p-2 rounded-lg hover:bg-white/10 transition" aria-label="Close"><i class="fas fa-times"></i></button>
+      </div>
+      <!-- Body -->
+      <div class="p-6 space-y-5">
+        <!-- Session summary -->
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold text-gray-900 truncate">{{ student_user.full_name if student_user else 'Student' }}</div>
+              <div class="text-xs text-gray-600 mt-1 flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1"><i class="far fa-calendar text-blue-500"></i><span id="details-resch-current-date">{% if session.scheduled_at %}{{ session.scheduled_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}</span></span>
+                <span class="inline-flex items-center gap-1"><i class="far fa-clock text-green-600"></i><span id="details-resch-current-time">{% if session.scheduled_at %}{{ session.scheduled_at.strftime('%H:%M') }}{% else %}—{% endif %}</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <form id="detailsRescheduleForm" class="space-y-4" novalidate>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="details_new_date" class="block text-sm font-medium text-gray-700">New Date</label>
+              <div class="relative mt-1">
+                <input type="date" id="details_new_date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 pr-10" required>
+                <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400"><i class="far fa-calendar"></i></div>
+              </div>
+            </div>
+            <div>
+              <label for="details_new_time" class="block text-sm font-medium text-gray-700">New Time</label>
+              <div class="relative mt-1">
+                <input type="time" id="details_new_time" step="3600" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 pr-10" required>
+                <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400"><i class="far fa-clock"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick picks -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-gray-500 mr-1">Quick picks:</span>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700" data-details-resch-quick="+60">+1 hour</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700" data-details-resch-quick="tomorrow">Tomorrow same time</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700" data-details-resch-quick="nextweek">Next week</button>
+          </div>
+
+          <!-- Working hours hint -->
+          <div id="details-resch-hours-hint" class="text-xs text-gray-500"></div>
+
+          <!-- Time-slot picker -->
+          <div id="detailsSlotPickerWrap" class="hidden space-y-2">
+            <div class="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <i class="far fa-clock text-blue-500"></i>
+              <span>Available time slots</span>
+            </div>
+            <div id="detailsSlotPicker" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+            <div id="detailsSlotHint" class="text-xs text-gray-500"></div>
+          </div>
+
+          <div id="details-resch-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"></div>
+
+          <div class="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+            <i class="fas fa-info-circle mr-1"></i>
+            The student will be notified of this schedule change.
+          </div>
+        </form>
+      </div>
+      <!-- Footer -->
+      <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+        <button type="button" id="detailsReschCancel" class="inline-flex justify-center rounded-lg border border-gray-300 px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="button" id="detailsReschConfirm" class="inline-flex justify-center rounded-lg px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 shadow-sm">Confirm Reschedule</button>
+      </div>
+    </div>
+  </div>
+  <!-- /Panel -->
+ </div>
+
+<!-- Reschedule Confirmation Modal (details) -->
+<div id="detailsRescheduleConfirmModal" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+  <div class="relative z-10 max-w-md w-[95vw] mx-auto my-10">
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle"></i></div>
+          <h3 class="text-lg font-semibold">Session Rescheduled</h3>
+        </div>
+        <button type="button" id="detailsReschConfirmClose" class="p-2 rounded-lg hover:bg-white/10 transition" aria-label="Close"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6 space-y-3">
+        <p class="text-gray-700">The session has been rescheduled to:</p>
+        <p id="detailsReschConfirmWhen" class="text-base font-semibold text-gray-900">—</p>
+        <p class="text-sm text-gray-500">A notification has been sent to the student.</p>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 flex justify-end">
+        <button type="button" id="detailsReschConfirmOk" class="inline-flex justify-center rounded-lg px-4 py-2 bg-emerald-600 text-sm font-medium text-white hover:bg-emerald-700 shadow-sm">OK</button>
+      </div>
+    </div>
+  </div>
+  <!-- /Panel -->
+ </div>
+
+<script>
+  const sessionId = Number(document.getElementById('sessionCtx')?.dataset.sessionId || '0');
+  function getCsrfToken(){ try { return document.querySelector('meta[name="csrf-token"]').getAttribute('content'); } catch(_) { return ''; } }
+
+  // Helpers copied from list page for consistency
+  const WORKING_HOURS = { start: '08:00', end: '17:00' };
+  const SLOT_STEP_MINUTES = 60;
+  const DISABLE_WEEKENDS = true;
+  const HOLIDAYS = [];
+  function isWeekend(date) { const d = (date instanceof Date) ? date : new Date(date); const day = d.getDay(); return day===0 || day===6; }
+  function timeToMinutes(t){ const [h,m] = t.split(':').map(Number); return h*60+(m||0); }
+  function formatTime12(t24){ if(!t24||!/^[0-2]\d:[0-5]\d$/.test(t24)) return t24||''; let [hh,mm] = t24.split(':').map(Number); const ap = hh>=12?'PM':'AM'; hh = hh%12||12; return `${hh}:${String(mm).padStart(2,'0')} ${ap}`; }
+  function formatDateInput(d){ try{ const dt=(d instanceof Date)?d:new Date(d); const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const da=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }catch(_){ return ''; } }
+  function roundToStep(dateObj, stepMins){ const ms=(stepMins||60)*60000; const t=dateObj instanceof Date?dateObj.getTime():new Date(dateObj).getTime(); return new Date(Math.ceil(t/ms)*ms); }
+  function clampToWorkingHours(dateObj){ const minutes=dateObj.getHours()*60+dateObj.getMinutes(); const startM=timeToMinutes(WORKING_HOURS.start); const endM=timeToMinutes(WORKING_HOURS.end); let c=new Date(dateObj); if (minutes<startM){ c.setHours(Math.floor(startM/60), startM%60,0,0);} if (minutes>endM){ c.setHours(Math.floor(endM/60), endM%60,0,0);} return c; }
+  function getNextBusinessDay(dateObj){ const d=new Date(dateObj); do{ d.setDate(d.getDate()+1);} while ((DISABLE_WEEKENDS && isWeekend(d)) || HOLIDAYS.includes(formatDateInput(d))); return d; }
+  function getSlotsForDate(dateStr){ const slots=[]; const date=new Date(dateStr+'T00:00:00'); if ((DISABLE_WEEKENDS && isWeekend(date))){ return slots; } const startM=timeToMinutes(WORKING_HOURS.start); const endM=timeToMinutes(WORKING_HOURS.end); const now=new Date(); const isToday=formatDateInput(now)===dateStr; let minM=startM; if (isToday){ const minFuture=roundToStep(new Date(now.getTime()+60*60000),60); minM=Math.max(minM, minFuture.getHours()*60+minFuture.getMinutes()); } const latestStart=endM-SLOT_STEP_MINUTES; for(let m=minM; m<=latestStart; m+=SLOT_STEP_MINUTES){ slots.push(`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`);} return slots; }
+
+  async function postJSON(url, payload) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      body: JSON.stringify(payload || {})
+    });
+    if (!res.ok) throw new Error('Request failed');
+    return res.json().catch(() => ({}));
+  }
+
+  async function postForm(url, dataObj) {
+    const body = new URLSearchParams();
+    Object.entries(dataObj || {}).forEach(([k,v]) => body.append(k, v));
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken() },
+      body: body.toString()
+    });
+    if (!res.ok) throw new Error('Request failed');
+    return res.json().catch(() => ({}));
+  }
+
+  document.getElementById('saveNotesBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('saveNotesBtn');
+    const notes = document.getElementById('notesInput').value;
+    
+    // Add loading state
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="ml-2">Saving...</span>';
+    btn.disabled = true;
+    btn.classList.add('loading');
+    
+    try {
+      await postJSON(`{{ url_for('office.update_session_notes', session_id=0) }}`.replace('0', sessionId), { notes });
+      
+      // Success feedback
+      btn.innerHTML = '<i class="fas fa-check"></i><span class="ml-2">Saved!</span>';
+      btn.classList.remove('loading');
+      btn.classList.add('bg-green-600');
+      
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'success', message: 'Notes saved successfully' }}));
+      
+      // Reset button after 2s
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        btn.classList.remove('bg-green-600');
+      }, 2000);
+    } catch (e) {
+      btn.innerHTML = '<i class="fas fa-exclamation-circle"></i><span class="ml-2">Failed</span>';
+      btn.classList.remove('loading');
+      btn.classList.add('bg-red-600');
+      
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Failed to save notes' }}));
+      
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        btn.classList.remove('bg-red-600');
+      }, 2000);
+    }
+  });
+
+  // Details page actions
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const action = btn.getAttribute('data-action');
+      
+      // Add loading state
+      const originalHTML = btn.innerHTML;
+      btn.classList.add('loading');
+      btn.disabled = true;
+      
+      try {
+        if (action === 'assign_confirm') {
+          // Match list page behavior: rely on backend to assign on confirmation
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'confirmed' });
+          window.location.reload();
+          return;
+        } else if (action === 'reschedule') {
+          // Open local reschedule modal
+          btn.classList.remove('loading');
+          btn.disabled = false;
+          const m = document.getElementById('detailsRescheduleModal');
+          // Prefill with today rounded +1h
+          const now = new Date();
+          const rounded = new Date(Math.ceil((now.getTime()+3600000) / 3600000) * 3600000);
+          const yyyy = rounded.getFullYear();
+          const mm = String(rounded.getMonth()+1).padStart(2,'0');
+          const dd = String(rounded.getDate()).padStart(2,'0');
+          const HH = String(rounded.getHours()).padStart(2,'0');
+          const MM = '00';
+          const dEl = document.getElementById('details_new_date');
+          const tEl = document.getElementById('details_new_time');
+          if (dEl && !dEl.value) dEl.value = `${yyyy}-${mm}-${dd}`;
+          if (tEl && !tEl.value) tEl.value = `${HH}:${MM}`;
+          m && m.classList.remove('hidden');
+          return;
+        } else if (action === 'decline') {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+          let reason = window.prompt('Optional: Provide a reason for declining (will be noted for the student).', '');
+          if (reason === null) return; // cancelled
+          btn.classList.add('loading');
+          btn.disabled = true;
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled', reason: reason || 'Declined by office' });
+        } else if (action === 'remind') {
+          await postForm(`{{ url_for('office.send_session_reminder', session_id=0) }}`.replace('0', sessionId), { type: 'in_app' });
+        } else if (action === 'cancel') {
+          await postForm(`{{ url_for('office.update_session_status', session_id=0) }}`.replace('0', sessionId), { status: 'cancelled' });
+        } else if (action === 'complete') {
+          // Redirect to complete endpoint (GET will mark as completed and redirect to summary)
+          window.location.href = `{{ url_for('office.complete_session', session_id=0) }}`.replace('0', sessionId);
+          return;
+        }
+        window.location.reload();
+      } catch (e) {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: 'Action failed' }}));
+      }
+    });
+  });
+
+  // Details reschedule modal handlers and slot picker
+  const drModal = document.getElementById('detailsRescheduleModal');
+  const drClose = document.getElementById('detailsReschClose');
+  const drCancel = document.getElementById('detailsReschCancel');
+  const drConfirm = document.getElementById('detailsReschConfirm');
+  const drError = document.getElementById('details-resch-error');
+  const dDateEl = document.getElementById('details_new_date');
+  const dTimeEl = document.getElementById('details_new_time');
+  const dSlotsWrap = document.getElementById('detailsSlotPickerWrap');
+  const dSlotsGrid = document.getElementById('detailsSlotPicker');
+  const dSlotHint = document.getElementById('detailsSlotHint');
+  const dHoursHint = document.getElementById('details-resch-hours-hint');
+
+  function hideDetailsResch(){ drModal && drModal.classList.add('hidden'); if (drError){ drError.classList.add('hidden'); drError.textContent=''; } }
+  drClose && drClose.addEventListener('click', hideDetailsResch);
+  drCancel && drCancel.addEventListener('click', hideDetailsResch);
+  drModal && drModal.addEventListener('click', (e)=>{ if (e.target && e.target.hasAttribute('data-details-resch-backdrop')) hideDetailsResch(); });
+
+  function updateDetailsWorkingHoursHint(){ if (!dHoursHint) return; const dateStr=dDateEl?.value||''; const weekend = dateStr && isWeekend(new Date(dateStr)); let text=`Working hours: ${formatTime12(WORKING_HOURS.start)} - ${formatTime12(WORKING_HOURS.end)}`; if (dateStr){ if (DISABLE_WEEKENDS && weekend){ text += ' • Selected date is a weekend'; } if (HOLIDAYS.includes(dateStr)){ text += ' • Holiday'; } } dHoursHint.textContent = text; dHoursHint.className = 'text-xs ' + ((DISABLE_WEEKENDS && weekend)?'text-red-600':'text-gray-500'); }
+
+  async function updateDetailsSlotPicker(){
+    if (!dSlotsWrap || !dSlotsGrid || !dDateEl) return;
+    const dateStr = dDateEl.value || '';
+    dSlotsGrid.innerHTML = '';
+    if (!dateStr){ dSlotsWrap.classList.add('hidden'); return; }
+    updateDetailsWorkingHoursHint();
+    let slots = [];
+    try {
+      const resp = await fetch(`/office/video-session/availability?date=${encodeURIComponent(dateStr)}&exclude_session_id=${sessionId}`);
+      if (resp.ok){ const data = await resp.json(); slots = data.slots || []; }
+    } catch(_){ }
+    if (!slots.length) { slots = (getSlotsForDate(dateStr)||[]).map(t=>({time:t,status:'available'})); }
+    if (!slots.length){ dSlotsWrap.classList.remove('hidden'); dSlotHint.textContent = 'No slots available for this date.'; return; }
+    dSlotHint.textContent = 'Click a 1-hour slot to fill the time field.';
+    dSlotsWrap.classList.remove('hidden');
+    const currentVal = dTimeEl?.value;
+    slots.forEach(s => {
+      const t = s.time; const status = s.status || 'available';
+      const btn = document.createElement('button'); btn.type = 'button';
+      const isSelected = (t === currentVal); const isDisabled = status !== 'available';
+      btn.className = 'px-3 py-2 rounded-lg text-xs border transition-all duration-200 ' + (
+        isSelected ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300' :
+        isDisabled ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' :
+        'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:scale-105'
+      );
+      btn.textContent = `${formatTime12(t)} - ${formatTime12(String(parseInt(t.split(':')[0])+1).padStart(2,'0')+':'+t.split(':')[1])}`;
+      if (!isDisabled){
+        btn.addEventListener('click', ()=>{
+          if (dTimeEl) dTimeEl.value = t;
+          Array.from(dSlotsGrid.querySelectorAll('button')).forEach(b=>{
+            b.classList.remove('bg-blue-600','text-white','border-blue-600','ring-2','ring-blue-300');
+            b.classList.add('bg-white','text-gray-700','border-gray-200');
+          });
+          btn.classList.remove('bg-white','text-gray-700','border-gray-200');
+          btn.classList.add('bg-blue-600','text-white','border-blue-600','ring-2','ring-blue-300');
+          btn.style.transform='scale(0.98)'; setTimeout(()=>{ btn.style.transform='scale(1)'; }, 100);
+        });
+      } else { btn.disabled = true; }
+      dSlotsGrid.appendChild(btn);
+    });
+  }
+
+  // Quick picks
+  document.querySelectorAll('[data-details-resch-quick]').forEach(el => {
+    el.addEventListener('click', ()=>{
+      let base = new Date();
+      if (dDateEl?.value && dTimeEl?.value){ base = new Date(`${dDateEl.value}T${dTimeEl.value}`); }
+      const val = el.getAttribute('data-details-resch-quick');
+      let next = new Date(base);
+      if (val === '+60') next = roundToStep(new Date(base.getTime()+60*60000), 60);
+      else if (val === 'tomorrow') next.setDate(next.getDate()+1);
+      else if (val === 'nextweek') next.setDate(next.getDate()+7);
+      if (DISABLE_WEEKENDS && isWeekend(next)) next = getNextBusinessDay(next);
+      next = clampToWorkingHours(next);
+      if (dDateEl) dDateEl.value = formatDateInput(next);
+      if (dTimeEl) dTimeEl.value = `${String(next.getHours()).padStart(2,'0')}:${String(next.getMinutes()).padStart(2,'0')}`;
+      updateDetailsSlotPicker();
+    });
+  });
+
+  dDateEl?.addEventListener('change', updateDetailsSlotPicker);
+  dTimeEl?.addEventListener('input', updateDetailsSlotPicker);
+
+  drConfirm && drConfirm.addEventListener('click', async ()=>{
+    const d = dDateEl?.value; const t = dTimeEl?.value;
+    if (!d || !t){ drError && (drError.textContent = 'Please select both date and time.', drError.classList.remove('hidden')); return; }
+    const selectedDateTime = new Date(d + 'T' + t);
+    if (selectedDateTime <= new Date()){
+      drError && (drError.textContent = 'Please select a future date and time.', drError.classList.remove('hidden'));
+      return;
+    }
+    // Loading state
+    const orig = drConfirm.textContent; drConfirm.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Rescheduling...'; drConfirm.disabled = true;
+    try {
+      const resp = await fetch(`{{ url_for('office.reschedule_session', session_id=0) }}`.replace('0', sessionId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken() },
+        body: `reschedule_date=${encodeURIComponent(d)}&reschedule_time=${encodeURIComponent(t)}`
+      });
+      const data = await resp.json();
+      if (resp.ok && data.status === 'success'){
+        // Show confirmation modal
+        drModal.classList.add('hidden');
+        const cm = document.getElementById('detailsRescheduleConfirmModal');
+        const cw = document.getElementById('detailsReschConfirmWhen');
+        let whenRaw = (data.new_time || `${d} ${t}`);
+        let label = whenRaw.replace('T',' ');
+        const m = label.match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+        if (m){ label = `${m[1]} ${formatTime12(m[2])}`; }
+        if (cw) cw.textContent = label;
+        cm && cm.classList.remove('hidden');
+      } else {
+        drError && (drError.textContent = data.message || 'Failed to reschedule. Please try another time.', drError.classList.remove('hidden'));
+      }
+    } catch (err){
+      drError && (drError.textContent = 'An unexpected error occurred.', drError.classList.remove('hidden'));
+    } finally { drConfirm.textContent = orig; drConfirm.disabled = false; }
+  });
+
+  // Confirmation modal controls
+  const dReschConfirm = document.getElementById('detailsRescheduleConfirmModal');
+  function closeDetailsReschConfirm(){ dReschConfirm?.classList.add('hidden'); window.location.reload(); }
+  document.getElementById('detailsReschConfirmOk')?.addEventListener('click', closeDetailsReschConfirm);
+  document.getElementById('detailsReschConfirmClose')?.addEventListener('click', closeDetailsReschConfirm);
+</script>
+{% endblock %}
