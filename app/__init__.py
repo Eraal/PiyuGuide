@@ -114,13 +114,17 @@ def create_app():
     from .admin import admin_bp
     from .office import office_bp
     from .student import student_bp
+    from .mobile import mobile_bp
     from .super_admin import super_admin_bp
+
+    csrf.exempt(mobile_bp)
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(office_bp)
     app.register_blueprint(student_bp)
+    app.register_blueprint(mobile_bp)
     app.register_blueprint(super_admin_bp)
 
     from .models import User, SystemSettings
