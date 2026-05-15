@@ -67,6 +67,14 @@ def create_app():
     csrf = CSRFProtect(app)
     login_manager.login_view = 'auth.login' 
     
+    @app.before_request
+    def exempt_socketio_from_csrf():
+        # Socket.IO long-polling uses POST requests which trigger CSRF checks.
+        # This completely bypasses the CSRF check for socket paths to fix 400 Bad Request errors.
+        from flask import request
+        if request.path.startswith('/socket.io'):
+            setattr(request, '_csrf_exempt', True)
+            
     # Register nl2br filter
     def nl2br(value):
         result = jinja2.filters.do_forceescape(value)
