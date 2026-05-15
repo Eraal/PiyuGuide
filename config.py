@@ -66,6 +66,7 @@ class Config:
     MAIL_PORT = int(os.getenv('MAIL_PORT', '587'))
     MAIL_USE_TLS = _get_bool('MAIL_USE_TLS', True)
     MAIL_USE_SSL = _get_bool('MAIL_USE_SSL', False)
+    MAIL_TIMEOUT = _get_int('MAIL_TIMEOUT', 10)  # 10 seconds timeout to prevent hanging
     MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')  # Brevo SMTP login (set via environment)
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')  # Brevo SMTP key (set via environment)
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'PiyuGuide <no-reply@piyuguide.live>')

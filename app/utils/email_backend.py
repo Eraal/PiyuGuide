@@ -63,7 +63,13 @@ def send_email_with_fallback(subject: str,
                 msg.html = html
             if body and not html:
                 msg.body = body
-            mail.send(msg)
+            import socket
+            old_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(5.0)
+            try:
+                mail.send(msg)
+            finally:
+                socket.setdefaulttimeout(old_timeout)
             return
         except Exception as smtp_exc:
             # Only fallback if API key is configured
