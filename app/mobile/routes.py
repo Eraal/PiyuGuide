@@ -595,8 +595,6 @@ def get_offices():
             'id': o.id,
             'name': o.name,
             'description': o.description,
-            'building': o.building,
-            'floor': o.floor,
         } for o in offices]
     })
 
