@@ -1,5 +1,9 @@
 import os
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file immediately
+load_dotenv()
 
 
 def _get_bool(name: str, default: bool = False) -> bool:
