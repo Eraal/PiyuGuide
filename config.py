@@ -18,7 +18,7 @@ def _get_int(name: str, default: int) -> int:
 
 def _parse_cors_list(value: str | None):
     if not value:
-        return None  # None = same-origin only for Socket.IO
+        return '*'  # '*' allows all origins, fixing proxy HTTPS mismatch
     items = [v.strip() for v in value.split(',') if v.strip()]
     return items or None
 

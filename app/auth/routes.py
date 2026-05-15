@@ -55,15 +55,10 @@ def login():
             
             # Enforce email verification for students
             if user.role == 'student' and not getattr(user, 'email_verified', False):
-                # Optionally auto-resend if last sent is older than 5 minutes
-                try:
-                    if not user.email_verification_sent_at or (datetime.utcnow() - (user.email_verification_sent_at or datetime.utcnow()) > timedelta(minutes=5)):
-                        _issue_and_send_verification(user)
-                        db.session.commit()
-                except Exception:
-                    db.session.rollback()
-                # Show verification guidance page
-                return redirect(url_for('auth.check_email', email=user.email))
+                # Temporary fix: since SMTP is blocked on DigitalOcean, automatically verify their email
+                user.email_verified = True
+                db.session.commit()
+                # Bypass the verification guidance page and continue login
 
             # Successful login (verified or non-student)
             login_user(user)
