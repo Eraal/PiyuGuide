@@ -2,10 +2,10 @@
 import multiprocessing
 
 bind = "127.0.0.1:8000"
-# Use at least 2 workers to avoid brief upstream unavailability during restarts
-# With eventlet, each worker can handle many concurrent clients cooperatively,
-# but additional workers help isolate blocking tasks and improve resilience.
-workers = 2
+# Use exactly 1 worker. Flask-SocketIO with eventlet REQUIRES 1 worker
+# when no Redis message queue is configured. Multiple workers cause 
+# 400 Bad Request errors because WebSocket handshakes hit different processes.
+workers = 1
 worker_class = "eventlet"
 # threads has no effect with eventlet; cooperative concurrency comes from eventlet
 
