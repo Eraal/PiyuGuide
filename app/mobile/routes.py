@@ -462,6 +462,50 @@ def me():
     return jsonify({'success': True, 'user': _serialize_user(current_user)})
 
 
+@mobile_bp.route('/notifications', methods=['GET'])
+def get_notifications():
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(desc(Notification.created_at)).limit(50).all()
+    
+    return jsonify({
+        'success': True,
+        'notifications': [{
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'notification_type': n.notification_type,
+            'inquiry_id': n.inquiry_id,
+            'source_office_id': n.source_office_id,
+            'is_read': n.is_read,
+            'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S') if n.created_at else None,
+            'link': n.link
+        } for n in notifications]
+    })
+
+
+@mobile_bp.route('/notifications/mark-read', methods=['POST'])
+def mark_notifications_read():
+    if not current_user.is_authenticated:
+        return _json_error('Authentication required.', 401)
+
+    payload = request.get_json(silent=True) or request.form
+    notification_id = _parse_int(payload.get('notification_id'))
+
+    if notification_id:
+        notif = Notification.query.filter_by(id=notification_id, user_id=current_user.id).first()
+        if notif:
+            notif.is_read = True
+    else:
+        # Mark all as read
+        Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 @mobile_bp.route('/campuses', methods=['GET'])
 def campuses():
     campuses_query = Campus.query.filter_by(is_active=True).order_by(Campus.name.asc()).all()
@@ -526,11 +570,14 @@ def inquiry_messages(inquiry_id: int):
     content = (payload.get('message') or payload.get('content') or '').strip()
     client_msg_id = payload.get('client_msg_id') or payload.get('clientMsgId')
 
+    # Collect uploaded files (multipart/form-data support)
+    uploaded_files = request.files.getlist('attachments') if 'attachments' in request.files else []
+
     if (inquiry.status or '').lower() == 'closed':
         return _json_error('This inquiry is closed. Further messages are disabled.', 400)
 
-    if not content:
-        return _json_error('Message is required.', 400)
+    if not content and not any(f.filename for f in uploaded_files):
+        return _json_error('Message or attachment is required.', 400)
 
     new_message = InquiryMessage(
         inquiry_id=inquiry.id,
@@ -542,6 +589,35 @@ def inquiry_messages(inquiry_id: int):
     )
     db.session.add(new_message)
     db.session.flush()
+
+    # Process file attachments
+    attachments_payload = []
+    for file in uploaded_files:
+        if not file or not file.filename:
+            continue
+        try:
+            from app.utils.file_uploads import save_upload
+            from werkzeug.utils import secure_filename as _sf
+            static_path, meta = save_upload(file, subfolder='messages')
+        except Exception:
+            continue
+        from app.models import MessageAttachment
+        att = MessageAttachment(
+            filename=meta.get('filename') or _sf(file.filename),
+            file_path=static_path,
+            file_size=meta.get('file_size'),
+            file_type=meta.get('file_type') or (file.content_type if hasattr(file, 'content_type') else None),
+            uploaded_by_id=current_user.id,
+            uploaded_at=datetime.utcnow(),
+            message_id=new_message.id,
+        )
+        db.session.add(att)
+        attachments_payload.append({
+            'filename': att.filename,
+            'file_path': att.file_path,
+            'file_type': att.file_type,
+            'file_size': att.file_size,
+        })
 
     office = inquiry.office or Office.query.get(inquiry.office_id)
     office_admins = OfficeAdmin.query.filter_by(office_id=office.id).all() if office else []
@@ -557,6 +633,9 @@ def inquiry_messages(inquiry_id: int):
         ))
 
     payload_message = _serialize_message(new_message, current_user.id)
+    # Inject attachments into the payload (they may not be loaded by the ORM yet)
+    if attachments_payload:
+        payload_message['attachments'] = attachments_payload
     if client_msg_id:
         payload_message['client_msg_id'] = client_msg_id
 
