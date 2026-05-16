@@ -231,6 +231,10 @@ def _serialize_counseling_session(session: CounselingSession):
             'role': counselor.role,
         } if counselor else None,
         'nature_of_concern': session.nature_of_concern.name if session.nature_of_concern else session.nature_of_concern_description,
+        'feedback': {
+            'message': session.feedback[0].message,
+            'created_at': session.feedback[0].created_at.strftime('%Y-%m-%d %H:%M:%S')
+        } if session.feedback else None
     }
 
 
@@ -925,6 +929,44 @@ def get_counseling_session(session_id):
         'success': True,
         'session': _serialize_counseling_session(session_obj)
     })
+
+
+@mobile_bp.route('/counseling/session/<int:session_id>/feedback', methods=['POST'])
+def submit_counseling_feedback(session_id):
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    session_obj = CounselingSession.query.filter_by(id=session_id, student_id=student.id).first()
+    if not session_obj:
+        return _json_error('Session not found.', 404)
+
+    if session_obj.status != 'completed':
+        return _json_error('Feedback can only be submitted for completed sessions.', 400)
+
+    data = request.get_json()
+    message = data.get('message')
+    if not message:
+        return _json_error('Feedback message is required.', 400)
+
+    # Check if feedback already exists
+    existing = Feedback.query.filter_by(session_id=session_id).first()
+    if existing:
+        existing.message = message
+    else:
+        feedback = Feedback(
+            session_id=session_id,
+            student_id=student.id,
+            message=message
+        )
+        db.session.add(feedback)
+    
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Feedback submitted successfully.'})
+    except Exception as e:
+        db.session.rollback()
+        return _json_error(str(e), 500)
 
 
 @mobile_bp.route('/counseling/offices', methods=['GET'])
