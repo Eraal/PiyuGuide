@@ -182,6 +182,31 @@ def _serialize_inquiry_summary(inquiry: Inquiry):
     }
 
 
+def _serialize_inquiry_details(inquiry: Inquiry):
+    office = inquiry.office
+    concerns = InquiryConcern.query.filter_by(inquiry_id=inquiry.id).all()
+    concern_names = []
+    for c in concerns:
+        if c.concern_type:
+            name = c.concern_type.name
+            if c.other_specification:
+                name += f": {c.other_specification}"
+            concern_names.append(name)
+
+    return {
+        'id': inquiry.id,
+        'subject': inquiry.subject,
+        'status': inquiry.status,
+        'created_at': inquiry.created_at.strftime('%Y-%m-%d %H:%M:%S') if inquiry.created_at else None,
+        'office': {
+            'id': office.id,
+            'name': office.name,
+            'description': office.description
+        } if office else None,
+        'concerns': concern_names
+    }
+
+
 def _parse_int(value):
     try:
         return int(value)
@@ -534,6 +559,22 @@ def inquiries():
     return jsonify({
         'success': True,
         'inquiries': [_serialize_inquiry_summary(inquiry) for inquiry in inquiries_query],
+    })
+
+
+@mobile_bp.route('/inquiry/<int:inquiry_id>', methods=['GET'])
+def get_inquiry_details(inquiry_id: int):
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    inquiry = Inquiry.query.filter_by(id=inquiry_id, student_id=student.id).first()
+    if not inquiry:
+        return _json_error('Inquiry not found.', 404)
+
+    return jsonify({
+        'success': True,
+        'inquiry': _serialize_inquiry_details(inquiry)
     })
 
 
