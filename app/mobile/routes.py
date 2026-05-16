@@ -911,6 +911,22 @@ def get_counseling_sessions():
     })
 
 
+@mobile_bp.route('/counseling/session/<int:session_id>', methods=['GET'])
+def get_counseling_session(session_id):
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    session_obj = CounselingSession.query.filter_by(id=session_id, student_id=student.id).first()
+    if not session_obj:
+        return _json_error('Session not found.', 404)
+
+    return jsonify({
+        'success': True,
+        'session': _serialize_counseling_session(session_obj)
+    })
+
+
 @mobile_bp.route('/counseling/offices', methods=['GET'])
 def get_counseling_offices():
     student, error = _get_authenticated_student()
