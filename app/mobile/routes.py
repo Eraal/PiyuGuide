@@ -9,7 +9,7 @@ from app.extensions import db, socketio
 from app.models import (
     AuditLog, Campus, Department, Inquiry, InquiryMessage, Notification,
     Office, OfficeAdmin, Student, User, ConcernType, OfficeConcernType,
-    InquiryConcern, StudentActivityLog
+    InquiryConcern, StudentActivityLog, CounselingSession
 )
 
 from . import mobile_bp
@@ -204,6 +204,33 @@ def _serialize_inquiry_details(inquiry: Inquiry):
             'description': office.description
         } if office else None,
         'concerns': concern_names
+    }
+
+
+def _serialize_counseling_session(session: CounselingSession):
+    office = session.office
+    counselor = session.counselor
+    
+    return {
+        'id': session.id,
+        'status': session.status,
+        'scheduled_at': session.scheduled_at.strftime('%Y-%m-%d %H:%M:%S') if session.scheduled_at else None,
+        'duration_minutes': session.duration_minutes,
+        'is_video_session': session.is_video_session,
+        'notes': session.notes,
+        'meeting_id': session.meeting_id,
+        'meeting_password': session.meeting_password,
+        'meeting_url': session.meeting_url,
+        'office': {
+            'id': office.id,
+            'name': office.name,
+        } if office else None,
+        'counselor': {
+            'id': counselor.id,
+            'full_name': counselor.get_full_name(),
+            'role': counselor.role,
+        } if counselor else None,
+        'nature_of_concern': session.nature_of_concern.name if session.nature_of_concern else session.nature_of_concern_description,
     }
 
 
@@ -867,3 +894,182 @@ def submit_inquiry():
         'inquiry_id': new_inquiry.id,
         'message': 'Inquiry created successfully.',
     })
+
+
+# --- Counseling Endpoints ---
+
+@mobile_bp.route('/counseling/sessions', methods=['GET'])
+def get_counseling_sessions():
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    sessions = CounselingSession.query.filter_by(student_id=student.id).order_by(desc(CounselingSession.scheduled_at)).all()
+    return jsonify({
+        'success': True,
+        'sessions': [_serialize_counseling_session(s) for s in sessions]
+    })
+
+
+@mobile_bp.route('/counseling/offices', methods=['GET'])
+def get_counseling_offices():
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    campus_id = student.campus_id or session.get('selected_campus_id')
+    query = Office.query.filter(Office.supports_video.is_(True))
+    if campus_id:
+        query = query.filter_by(campus_id=campus_id)
+    
+    offices = query.order_by(Office.name.asc()).all()
+    return jsonify({
+        'success': True,
+        'offices': [{
+            'id': o.id,
+            'name': o.name,
+            'description': o.description,
+        } for o in offices]
+    })
+
+
+@mobile_bp.route('/counseling/office/<int:office_id>/availability', methods=['GET'])
+def get_office_availability(office_id):
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    date_str = request.args.get('date')  # YYYY-MM-DD
+    if not date_str:
+        return _json_error('Date is required.', 400)
+
+    try:
+        day = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return _json_error('Invalid date format. Use YYYY-MM-DD.', 400)
+
+    office = Office.query.get_or_404(office_id)
+    if not office.supports_video:
+        return _json_error('Counseling is not available for this office.', 403)
+
+    # Simplified availability logic for mobile
+    from datetime import time as dtime
+    start_t = dtime(8, 0)
+    end_t = dtime(17, 0)
+    slot_minutes = 60
+
+    day_start = datetime.combine(day, start_t)
+    day_end = datetime.combine(day, end_t)
+
+    blocking_sessions = CounselingSession.query.filter(
+        CounselingSession.office_id == office.id,
+        CounselingSession.status.in_(['confirmed', 'in_progress']),
+        CounselingSession.scheduled_at < day_end
+    ).all()
+
+    booked_intervals = []
+    for s in blocking_sessions:
+        s_start = s.scheduled_at
+        s_end = s_start + timedelta(minutes=(s.duration_minutes or 60))
+        if s_end > day_start and s_start < day_end:
+            booked_intervals.append((max(s_start, day_start), min(s_end, day_end)))
+
+    slots = []
+    cursor = day_start
+    now = datetime.utcnow()
+    while cursor < day_end:
+        slot_end = cursor + timedelta(minutes=slot_minutes)
+        status = 'available'
+        if slot_end <= now:
+            status = 'past'
+        else:
+            for b_start, b_end in booked_intervals:
+                if b_end > cursor and b_start < slot_end:
+                    status = 'booked'
+                    break
+        
+        slots.append({
+            'time': cursor.strftime('%H:%M'),
+            'status': status
+        })
+        cursor = slot_end
+
+    return jsonify({
+        'success': True,
+        'slots': slots
+    })
+
+
+@mobile_bp.route('/counseling/request', methods=['POST'])
+def request_counseling():
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    payload = request.get_json(silent=True) or request.form
+    office_id = payload.get('office_id')
+    date_str = payload.get('date')
+    time_str = payload.get('time')
+    notes = payload.get('notes', '')
+    nature_of_concern_id = payload.get('nature_of_concern_id')
+    is_video = payload.get('is_video', True)
+
+    if not office_id or not date_str or not time_str:
+        return _json_error('Office, date, and time are required.', 400)
+
+    try:
+        scheduled_at = datetime.strptime(f"{date_str} {time_str}", '%Y-%m-%d %H:%M')
+        if scheduled_at <= datetime.utcnow():
+            return _json_error('Appointment must be in the future.', 400)
+    except ValueError:
+        return _json_error('Invalid date or time format.', 400)
+
+    office = Office.query.get_or_404(office_id)
+    if not office.supports_video:
+        return _json_error('This office does not offer counseling.', 403)
+
+    new_session = CounselingSession(
+        student_id=student.id,
+        office_id=office_id,
+        scheduled_at=scheduled_at,
+        status='pending',
+        is_video_session=is_video,
+        notes=notes,
+        nature_of_concern_id=int(nature_of_concern_id) if nature_of_concern_id else None
+    )
+    db.session.add(new_session)
+    db.session.commit()
+
+    # Create notifications for office admins
+    try:
+        from app.utils.smart_notifications import SmartNotificationManager
+        admin_ids = SmartNotificationManager.get_office_admin_for_notification(office_id)
+        for admin_id in admin_ids:
+            SmartNotificationManager.create_counseling_notification(new_session, admin_id, 'new_counseling_request')
+    except Exception:
+        pass
+
+    return jsonify({
+        'success': True,
+        'message': 'Counseling request submitted successfully.',
+        'session': _serialize_counseling_session(new_session)
+    })
+
+
+@mobile_bp.route('/counseling/session/<int:session_id>/cancel', methods=['POST'])
+def cancel_counseling_session(session_id):
+    student, error = _get_authenticated_student()
+    if error:
+        return error
+
+    session_obj = CounselingSession.query.filter_by(id=session_id, student_id=student.id).first_or_404()
+    if session_obj.status not in ['pending', 'confirmed']:
+        return _json_error('This session cannot be cancelled.', 400)
+
+    session_obj.status = 'cancelled'
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Session cancelled successfully.'
+    })
