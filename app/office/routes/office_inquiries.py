@@ -771,6 +771,16 @@ def api_send_message(inquiry_id):
         room = f'inquiry_{inquiry.id}'
         socketio.emit('receive_message', payload, room=room, namespace='/chat')
 
+        # Broadcast update to student's global room for real-time list reordering
+        student_room = f'student_{inquiry.student.user_id}'
+        socketio.emit('conversation_updated', {
+            'inquiry_id': inquiry.id,
+            'latest_message': payload['content'],
+            'updated_at': payload['timestamp'],
+            'office_name': payload['sender_name'],
+            'status': inquiry.status
+        }, room=student_room)
+
         return jsonify({'success': True, 'message_id': new_message.id, 'client_msg_id': client_msg_id, 'message': payload})
     except Exception as e:
         db.session.rollback()

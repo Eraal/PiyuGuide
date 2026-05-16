@@ -594,6 +594,16 @@ def inquiry_messages(inquiry_id: int):
     try:
         room = f'inquiry_{inquiry.id}'
         socketio.emit('receive_message', payload_message, room=room, namespace='/chat')
+        
+        # Broadcast update to student's global room for real-time list reordering
+        student_room = f'student_{current_user.id}'
+        socketio.emit('conversation_updated', {
+            'inquiry_id': inquiry.id,
+            'latest_message': payload_message['content'],
+            'updated_at': payload_message['timestamp'],
+            'office_name': inquiry.office.name if inquiry.office else 'Office',
+            'status': inquiry.status
+        }, room=student_room)
     except Exception:
         pass
 
