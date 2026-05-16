@@ -570,14 +570,11 @@ def inquiry_messages(inquiry_id: int):
     content = (payload.get('message') or payload.get('content') or '').strip()
     client_msg_id = payload.get('client_msg_id') or payload.get('clientMsgId')
 
-    # Collect uploaded files (multipart/form-data support)
-    uploaded_files = request.files.getlist('attachments') if 'attachments' in request.files else []
-
     if (inquiry.status or '').lower() == 'closed':
         return _json_error('This inquiry is closed. Further messages are disabled.', 400)
 
-    if not content and not any(f.filename for f in uploaded_files):
-        return _json_error('Message or attachment is required.', 400)
+    if not content:
+        return _json_error('Message is required.', 400)
 
     new_message = InquiryMessage(
         inquiry_id=inquiry.id,
@@ -588,58 +585,11 @@ def inquiry_messages(inquiry_id: int):
         created_at=datetime.utcnow(),
     )
     db.session.add(new_message)
-    db.session.flush()
-
-    # Process file attachments
-    attachments_payload = []
-    for file in uploaded_files:
-        if not file or not file.filename:
-            continue
-        try:
-            from app.utils.file_uploads import save_upload
-            from werkzeug.utils import secure_filename as _sf
-            static_path, meta = save_upload(file, subfolder='messages')
-        except Exception:
-            continue
-        from app.models import MessageAttachment
-        att = MessageAttachment(
-            filename=meta.get('filename') or _sf(file.filename),
-            file_path=static_path,
-            file_size=meta.get('file_size'),
-            file_type=meta.get('file_type') or (file.content_type if hasattr(file, 'content_type') else None),
-            uploaded_by_id=current_user.id,
-            uploaded_at=datetime.utcnow(),
-            message_id=new_message.id,
-        )
-        db.session.add(att)
-        attachments_payload.append({
-            'filename': att.filename,
-            'file_path': att.file_path,
-            'file_type': att.file_type,
-            'file_size': att.file_size,
-        })
-
-    office = inquiry.office or Office.query.get(inquiry.office_id)
-    office_admins = OfficeAdmin.query.filter_by(office_id=office.id).all() if office else []
-    for admin in office_admins:
-        db.session.add(Notification(
-            user_id=admin.user_id,
-            title='New Message',
-            message=f"New message from {current_user.get_full_name()} in inquiry '{inquiry.subject}'",
-            is_read=False,
-            notification_type='inquiry_reply',
-            inquiry_id=inquiry.id,
-            source_office_id=office.id if office else None,
-        ))
+    db.session.commit()
 
     payload_message = _serialize_message(new_message, current_user.id)
-    # Inject attachments into the payload (they may not be loaded by the ORM yet)
-    if attachments_payload:
-        payload_message['attachments'] = attachments_payload
     if client_msg_id:
         payload_message['client_msg_id'] = client_msg_id
-
-    db.session.commit()
 
     try:
         room = f'inquiry_{inquiry.id}'

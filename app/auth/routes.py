@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, redirect, url_for, flash, session,
 from werkzeug.security import check_password_hash, generate_password_hash  
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, Student, AuditLog, Campus, Department, VerificationToken
-from sqlalchemy import func
 from datetime import datetime, timedelta
 from app.extensions import db, mail  
 from flask_wtf.csrf import CSRFProtect
@@ -22,10 +21,10 @@ def login():
         if campus:
             session['selected_campus_id'] = campus.id
     if request.method == 'POST':
-        email = (request.form.get('email') or '').strip().lower()
+        email = request.form.get('email')
         password = request.form.get('password')
         
-        user = User.query.filter(func.lower(User.email) == email).first()
+        user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
             # Block suspended/deactivated accounts before login_user
@@ -154,7 +153,7 @@ def register():
         # Get form data
         first_name = request.form.get('first_name')
         last_name = request.form.get('last_name')
-        email = (request.form.get('email') or '').strip().lower()
+        email = request.form.get('email')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         
