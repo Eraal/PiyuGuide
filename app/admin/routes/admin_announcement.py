@@ -4,7 +4,7 @@ from app.extensions import db
 from flask_wtf.csrf import CSRFProtect
 from app.models import Announcement, Office, AuditLog, User, AnnouncementImage, Notification, OfficeAdmin
 from datetime import datetime, timedelta
-from sqlalchemy import desc
+from sqlalchemy import desc, or_, and_
 from app.admin import admin_bp
 import os
 from werkzeug.utils import secure_filename
